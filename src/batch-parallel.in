@@ -1,0 +1,356 @@
+#!@PERL_BINARY@ -w
+###############################################################################
+#
+# File:         batch-parallel.pl
+# RCS:          $Header: /mount/cello/cvs/Lintel/src/batch-parallel.in,v 1.3 2005/02/14 04:36:53 anderse Exp $
+# Description:  Script for running batch processing type operations, extended
+#               by a module that controls how the jobs are selected and
+#               executed
+# Author:       Eric Anderson
+# Created:      Thu Sep 30 22:00:00 2004
+# Modified:     Wed Feb  2 12:07:39 2005 (Eric Anderson) anderse@hpl.hp.com
+# Language:     Perl
+# Package:      N/A
+# Status:       Experimental (Do Not Distribute)
+#
+# (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
+#
+###############################################################################
+
+use strict;
+use English;
+use Getopt::Long;
+use Data::Dumper;
+use POSIX;
+use Carp;
+@PERL_MODULES_INC_UNSHIFT@
+BEGIN { unshift(@INC,"@expanded_datadir@/bp_modules"); }
+use BatchParallel::common;
+
+$|=1;
+my $bsub_jobwidth;
+my $bsub_groupsize;
+my $bsub_maxgroups;
+my $local_parallelism;
+my $lsfexec;
+my $no_exec;
+my $queue;
+my $shuffle = 1;
+my $show_rebuild;
+
+my @dirs;
+while(@ARGV > 0 && $ARGV[@ARGV-1] ne '--') {
+    unshift(@dirs,pop @ARGV);
+}
+
+if (@ARGV == 0) {
+    @ARGV = @dirs;
+    @dirs = ();
+}
+
+my $ret = GetOptions('w=i' => \$bsub_jobwidth,
+		     'q=s' => \$queue,
+		     'j=i' => \$local_parallelism,
+		     'n!' => \$no_exec,
+		     'lsfexec=i' => \$lsfexec,
+		     'groupsize=i' => \$bsub_groupsize,
+		     'maxgroups=i' => \$bsub_maxgroups,
+		     'shuffle!' => \$shuffle,
+		     'show-rebuild!' => \$show_rebuild);
+
+unshift(@INC,"$ENV{HOME}/.bp_modules");
+
+my @bp_module_dirs = ("$ENV{HOME}/.bp_modules","@expanded_datadir@/bp_modules");
+
+if (defined $ENV{BP_MODULES}) {
+    unshift(@bp_module_dirs,split(/:/o,$ENV{BP_MODULES}));
+    unshift(@INC,split(/:/o,$ENV{BP_MODULES}));
+}
+
+usage() unless $ret && @ARGV >= 1;
+
+die "can't specify both groupsize and maxgroups"
+    if defined $bsub_groupsize && defined $bsub_maxgroups;
+
+my $bp_fullpath = shift @ARGV;
+my $bp_module_name;
+
+my @bp_args = @ARGV;
+if ($bp_fullpath =~ m!^(.*)/([^/]+)$!o) {
+    my($path,$module) = ($1,$2);
+    unshift(@INC,$path);
+    $bp_module_name = $module;
+} else {
+    $bp_module_name = $bp_fullpath;
+}
+
+eval "use $bp_module_name;";
+if ($@ =~ /^Can\'t locate \S+ in \@INC/o) {
+    eval "use BatchParallel::$bp_module_name;";
+    unless ($@) {
+	$bp_module_name = "BatchParallel::$bp_module_name";
+    }
+} elsif ($@) {
+    die $@;
+}
+
+die "Using $bp_module_name and BatchParallel::$bp_module_name failed: $@" 
+    if $@;
+
+my $module = new $bp_module_name(@bp_args);
+
+die "new $bp_module_name did not return a reference"
+    unless defined $module && ref $module;
+
+if (@dirs == 0) {
+    @dirs = $bp_module_name->default_source_locations();
+}
+
+usage() unless @dirs > 0;
+
+if (defined $lsfexec) {
+    lsfexec();
+    exit(0);
+}
+
+unless (defined $bsub_jobwidth || defined $local_parallelism) {
+    if (-r "/proc/cpuinfo") {
+	open(CPUINFO,"/proc/cpuinfo") || die "Can't read /proc/cpuinfo: $!";
+	$local_parallelism = 0;
+	while(<CPUINFO>) {
+	    ++$local_parallelism if /^processor\s+:/o;
+	}
+	close(CPUINFO);
+	print "Using default parallelism $local_parallelism based on number of cpus in /proc/cpuinfo\n";
+    } else {
+	$local_parallelism = 1;
+	print "Using default parallelism $local_parallelism; no other guess available\n";
+    }
+}
+
+my ($source_count,@things_to_build) = $module->find_things_to_build(@dirs);
+
+die "internal: source_count = $source_count" 
+    unless ref $source_count eq '' && $source_count =~ /^\d+$/o;
+
+if ($source_count == 0) {
+    print "Didn't find any sources needing processing under: ", join(", ",@dirs), "\n";
+    exit(0);
+}
+my $rebuild_count = @things_to_build;
+my $percent = sprintf("%.2f%%",100*$rebuild_count / $source_count);
+print "Found $source_count sources, $rebuild_count ($percent) needing rebuild.\n";
+
+exit(0) if $rebuild_count == 0;
+if ($show_rebuild) {
+    die "broken with new multi-type support";
+    print join("\n",map { $_->[1] } @things_to_build), "\n";
+    exit(0);
+}
+
+if ($shuffle) {
+   $module->shuffle(\@things_to_build);
+}
+
+$module->pre_exec_setup();
+
+if (defined $local_parallelism) {
+    local_parallel();
+} else {
+    bsub_submit();
+}
+
+sub usage {
+    my %available_modules;
+    foreach my $dir (@bp_module_dirs) {
+	next unless -d "$dir/BatchParallel";
+	opendir(DIR,"$dir/BatchParallel") || die "can't open dir $dir/Bp: $!";
+	while(my $file = readdir(DIR)) {
+	    next unless $file =~ s/\.pm$//o;
+	    $available_modules{$file} = 1;
+	}
+    }
+    my $mods = join(" ",sort keys %available_modules);
+    confess "Usage: $0 [-n] [-w bsub-job-width] [-j local-parallelism] 
+    [-q batch-queue] [--maxgroups=#, default min(bsub-job-width*5,2000)]
+    [--groupsize=#, rebuilds/lsf-job]
+    [--noshuffle # process jobs exactly in order they were found ]
+    [-- (if bp args use -'s)] <bp-module> [bp-module args...] -- dir...
+    bp modules: $mods
+    looked in: @bp_module_dirs
+    you can define \$BP_MODULES to add directories
+ "; # extra space to get the line number in the die statement
+}
+    
+sub finish_child {
+    my ($kidinfo) = @_;
+
+    my $pid = wait;
+    die "no children?!" unless defined $pid && $pid > 0;
+    die "pid $pid not my child?!" unless defined $kidinfo->{$pid};
+    my $thing_info = $kidinfo->{$pid};
+    if ($? == 0) {
+	$module->rebuild_thing_success($thing_info);
+    } else {
+	$module->rebuild_thing_fail($thing_info);
+    }
+
+    delete $kidinfo->{$pid};
+}
+
+sub local_parallel {
+    print "* Running locally with $local_parallelism parallelism.\n";
+    my $nchildren = 0;
+    my %kidinfo;
+    foreach my $rebuild (@things_to_build) {
+	if ($nchildren >= $local_parallelism) {
+	    finish_child(\%kidinfo);
+	    --$nchildren;
+	}
+
+	if ($no_exec) {
+	    $module->rebuild_thing_messsage($rebuild);
+	} else {
+	    my $pid = fork;
+	    die "fork failed: $!" unless defined $pid && $pid >= 0;
+	    if ($pid == 0) {
+		$module->rebuild_thing_do($rebuild);
+		die "error $module -> rebuild_thing_do returned";
+		exit(1);
+	    } else {
+		$kidinfo{$pid} = $rebuild;
+		++$nchildren;
+	    }
+	}
+    }
+
+    while($nchildren > 0) {
+	finish_child(\%kidinfo);
+	--$nchildren;
+    }
+}
+
+sub bsub_submit {
+    print "Running using LSF with $bsub_jobwidth job-width, ";
+    if (defined $queue) {
+	print "queue $queue, ";
+	$queue = "-q $queue";
+    } else {
+	$queue = '';
+    }
+    my $hostname = `hostname`;
+    chomp($hostname);
+    my $workdir = "batch-parallel.$hostname.$$";
+    unless(-d $workdir) {
+	mkdir($workdir,0755) || die "can't mkdir $workdir: $!";
+    }
+
+    open(BSUB_LIST,">$workdir/joblist")
+	|| die "open($workdir/joblist) failed: $!";
+    my $str = Dumper(\@things_to_build);
+    print BSUB_LIST $str;
+    close(BSUB_LIST);
+    die "write bad $workdir/joblist" unless -s "$workdir/joblist" == length $str;
+    my $batch_size = 1;
+    if (defined $bsub_groupsize) {
+	$batch_size = $bsub_groupsize;
+	$bsub_maxgroups = 2*@things_to_build / $batch_size;
+	$bsub_maxgroups = 2000 unless defined $bsub_maxgroups;
+	if (scalar @things_to_build / $batch_size > $bsub_maxgroups) {
+	    print "WARNING, increasing batch size from $batch_size to ";
+	    $batch_size = ceil(scalar @things_to_build / $batch_size);
+	    print "$batch_size to keep below $bsub_maxgroups groups\n";
+	}
+    } else {
+	unless (defined $bsub_maxgroups) {
+	    $bsub_maxgroups = $bsub_jobwidth * 5;
+	    $bsub_maxgroups = 2000 if $bsub_maxgroups > 2000;
+	}
+	if (@things_to_build >= $bsub_maxgroups) {
+	    $batch_size = ceil((scalar @things_to_build) / $bsub_maxgroups);
+	}
+    }
+    print "and batch size $batch_size\n";
+    my $njobs = ceil(@things_to_build / $batch_size);
+    my $jobname = "batch-parallel:$hostname:$$:$bp_module_name:$hostname:[1-$njobs]%$bsub_jobwidth";
+
+    my $cmd_args = join(' ',$bp_fullpath,map { quotemeta $_ } @bp_args, "--",$workdir);
+
+    my $cmd = "bsub $queue -J '$jobname' -o $workdir/log.%I $0 --lsfexec=$batch_size $cmd_args";
+    if ($no_exec) {
+	print "should run $cmd\n";
+    } else {
+	print "$cmd\n";
+	my $ret = system($cmd);
+	die "submit failed ($ret)\n"
+	    unless $ret == 0;
+    }
+}
+
+sub lsfexec {
+    die "wrong number of arguments" unless @dirs == 1;
+    my $base_index = $ENV{LSB_JOBINDEX};
+    die "Don't have \$ENV{LSB_JOBINDEX}"
+	unless defined $base_index;
+    die "invalid \$ENV{LSB_JOBINDEX} '$base_index'"
+	unless $base_index =~ /^\d+$/o;
+
+    --$base_index;
+    open(BPENTS,"$dirs[0]/joblist") || die "can't open $dirs[0] for read: $!";
+    my $data;
+    {
+        local $/;
+	no strict;
+	my $str = <BPENTS>;
+	die "no data in $dirs[0]" unless defined $str;
+	$data = eval $str;
+	die "error in eval of $dirs[0]: $@" if $@;
+	die "error in eval of $data; wrong type" unless ref $data eq 'ARRAY';
+    }
+    my $start_index = $base_index * $lsfexec;
+    my $end_index = $start_index + $lsfexec;
+    $end_index = @$data if $end_index > @$data;
+    die "internal error" unless $end_index > $start_index;
+
+    @things_to_build = ();
+    for(my $i=$start_index;$i<$end_index;++$i) {
+	push(@things_to_build,$data->[$i]);
+    }
+
+    $local_parallelism = 1;
+    local_parallel();
+}
+
+=pod
+
+=head1 Usage
+
+ % batch-parallel.pl [bp-options] [--] <module> [module-args] -- [dir/file list]
+
+Batch parallel is a script to run a bunch of tasks in parallel either
+on a single local machine, or against an LSF cluster.  The modules are
+able to quite flexibly determine the tasks that are going to be
+performed, but the traditional form is to perform a make-like
+transform on one file to convert it to another form.  For example,
+re-compressing a bunch of files, converting dataseries files to text,
+running NFS source file conversion.
+
+=head1 Recipies
+
+These recipies explain how to perform certain tasks
+
+=head2 Find out what modules are currently installed
+
+  % batch-parallel.pl
+
+This will provide the usage options, and will list the bp modules that
+are installed in the two standard paths ~/.bp_modules and
+/etc/bp_modules, and any paths listed in a colon-separated $BP_MODULES.
+
+=head2 Get usage information for a particular module
+  
+  % batch-parallel.pl <module> help
+
+This will provide whatever additional help a module has on it's particular
+usage and options.  
+

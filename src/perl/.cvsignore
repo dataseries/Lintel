@@ -1,0 +1,11 @@
+*.Oo
+*.Fo
+blib
+Makefile.aperl
+Makefile
+pm_to_blib
+Lintel.c
+Lintel.C
+Lintel.bs
+perl
+perlmain.c

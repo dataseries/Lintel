@@ -1,0 +1,108 @@
+###############################################################################
+#
+# File:         Make.cvs
+# RCS:          $Header: /mount/cello/cvs/Lintel/src/Make.cvs,v 1.1 2000/03/13 00:07:46 anderse Exp $
+# Description:  Makefile for cvs type operations
+# Author:       Eric Anderson
+# Created:      Mon Nov  1 11:50:05 1999
+# Modified:     Sun Mar 12 15:56:12 2000 (Eric Anderson) anderse@hpl.hp.com
+# Language:     Makefile
+# Package:      Lintel
+# Status:       Experimental (Do Not Distribute)
+#
+# (C) Copyright 1999, Hewlett-Packard Laboratories, all rights reserved.
+#
+###############################################################################
+
+ifndef CVS_WHOAMI
+CVS_WHOAMI := $(shell whoami)
+
+# Workaround for Eric Anderson :)
+ifeq ($(CVS_WHOAMI),eanders)
+CVS_WHOAMI := anderse
+endif
+
+endif
+
+ifndef CVS_IMPORT_ROOT
+CVS_IMPORT_ROOT := :ext:$(CVS_WHOAMI)@cello:/mount/ssp/cvs
+endif
+
+ifndef CVS_IMPORT_PACKAGE
+CVS_IMPORT_PACKAGE := $(shell basename `pwd`)
+endif
+
+help:
+	@echo "make cvs-check; list every non-added file not ignored by a .cvsignore file"
+	@echo "make cvs-add; add every file listed by cvs-check"
+	@echo "make cvs-import; import $(CVS_IMPORT_PACKAGE) to $(CVS_IMPORT_ROOT)"
+	@echo "     then move $(CVS_IMPORT_PACKAGE) to $(CVS_IMPORT_PACKAGE).bak & checkout the package"
+	@echo "make cvs-branch; create the branch tag private_$(CVS_WHOAMI)"
+	@echo "make cvs-join; join back with the main trunk"
+	@echo "make cvs-branch-clean; refresh a non-joined copy of the private branch"
+	@echo
+	@echo "Make Variables: (with defaults, used in help text)"
+	@echo "    CVS_WHOAMI=$(CVS_WHOAMI)" 
+	@echo "    CVS_IMPORT_PACKAGE=$(CVS_IMPORT_PACKAGE)"
+	@echo "    CVS_IMPORT_ROOT=$(CVS_IMPORT_ROOT)"
+
+cvs-check:
+	cvs status 2>&1 | grep '^\?'
+
+cvs-add:
+	@echo "Getting file list..."; \
+	FILES=`cvs status 2>&1 | grep '^\?' | sed 's/^\? //'`; \
+	FOUNDDIR=no; \
+	for i in $$FILES; do \
+		echo "Adding $$i"; \
+		(cd `dirname $$i`; cvs add `basename $$i`); \
+		[ -d $$i ] && FOUNDDIR=yes; \
+	done; \
+	if [ $$FOUNDDIR = yes ]; then \
+		echo "Found Directory, you must re-run make cvs-add, check with cvs-check"; \
+		echo "You probably want to put a .cvsignore file in there"; \
+	fi
+
+cvs-import:
+	cvs -d $(CVS_IMPORT_ROOT) import -m "Initial check-in of $(CVS_IMPORT_PACKAGE)" $(CVS_IMPORT_PACKAGE) import initial
+	(cd ..; mv $(CVS_IMPORT_PACKAGE) $(CVS_IMPORT_PACKAGE).bak)
+	(cd ..; cvs -d $(CVS_IMPORT_ROOT) checkout $(CVS_IMPORT_PACKAGE))
+
+cvs-branch:
+	echo "Create Branch..."
+	cvs tag -b private_$(CVS_WHOAMI)
+	echo "Update to the new branch..."
+	cvs update -r private_$(CVS_WHOAMI)
+	echo "Mark where we started..."
+	cvs tag start_branch_$(CVS_WHOAMI)
+	
+cvs-join:
+	@echo "Making sure everything is committed..."
+	@cvs commit
+	@echo "Moving back to main branch..."
+	cvs update -A
+	@echo "Joining private changes..."
+	cvs update -j start_branch_$(CVS_WHOAMI) -j private_$(CVS_WHOAMI)
+	@echo "Removing obsolete tags..."
+	cvs tag -r private_$(CVS_WHOAMI) -d private_$(CVS_WHOAMI)
+	cvs tag -r start_branch_$(CVS_WHOAMI) -d start_branch_$(CVS_WHOAMI)
+	@echo "** Now fix conflicts and do a make cvs-commit or cvs commit"
+	@echo "** You can then make cvs-branch to create a new private branch"
+	@echo "** If you have other checkouts along this branch, you should"
+	@echo "** clean them out entirely, and re-checkout the branch"
+	@echo "** make cvs-branch-clean will do this for you."
+
+cvs-branch-clean:
+	@ROOT=`cat CVS/Root`; \
+	MODULE=`cat CVS/Repository`; \
+	echo "CVS Branch Clean will run cd ..; rm -rf $$MODULE;"; \
+	echo "then cvs -d $$ROOT checkout -r private_$(CVS_WHOAMI) $$MODULE"; \
+	echo "Hit Return to continue, ctrl-c to abort"; \
+	read foo; \
+	cd ..; \
+	echo "Cleaning things up..."; \
+	rm -rf $$MODULE; \
+	echo "Checking things out..."; \
+	cvs -d $$ROOT checkout -r private_$(CVS_WHOAMI) $$MODULE
+
+

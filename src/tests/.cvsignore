@@ -1,0 +1,7 @@
+*-debug
+*-optimize
+*.regression
+.make.depend
+*.Do
+*.Po
+*.Oo

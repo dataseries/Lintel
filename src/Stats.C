@@ -1,0 +1,249 @@
+/* -*-C++-*-
+*******************************************************************************
+*
+* File:         Stats.C
+* RCS:          $Header: /mount/cello/cvs/Lintel/src/Stats.C,v 1.30 2005/02/14 04:36:52 anderse Exp $
+* Description:  Simple statistics functions for single variables
+* Author:       John Wilkes
+* Created:      Fri Nov 12 16:57:10 1993
+* Modified:     Sun Jan 30 14:41:03 2005 (Eric Anderson) anderse@hpl.hp.com
+* Language:     C++
+* Package:      Lintel
+*
+* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
+*
+* Derived from an original version by Chris Ruemmler and Richard Golding.
+*
+*******************************************************************************
+*/
+
+#include <stdlib.h>
+#include <cstdio>
+#include <string>
+#include <float.h>
+
+#include "LintelAssert.H"
+#include "Stats.H"
+#include "Double.H"
+
+///////////////////////////////////////////////////////////////////////////
+// Functions specific to the Statistics base class
+///////////////////////////////////////////////////////////////////////////
+
+StatsBase::StatsBase()
+      : reset_count(0),		// make sure reset has a valid initial value
+	is_assigned(true)	// "successfully initialized"
+{
+    reset();			// Do most of the work here
+    reset_count = 0;		//  -- since this really is the first time
+};
+
+
+StatsBase::~StatsBase()
+{
+    Assert(1,checkInvariants());
+    is_assigned = false;
+};
+
+void
+StatsBase::reset()
+{
+    Assert(1,checkInvariants());
+    reset_count++;
+}
+
+const double
+StatsBase::stddev() const
+{
+    Assert(1,checkInvariants());
+    double sigsq = variance();
+
+    if (sigsq <= 0.0)
+	return 0.0;
+
+    Assert(1,sigsq > 0.0);
+    return sqrt(sigsq);
+}
+
+const double 
+StatsBase::relconf95() const
+{
+    Assert(1,checkInvariants());
+    return conf95()/mean();
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+// Functions related to the Stats singe-variable statistic class
+///////////////////////////////////////////////////////////////////////////
+
+// Create a new one
+//
+Stats::Stats()
+      : StatsBase()
+{
+  reset();
+};
+
+
+Stats::~Stats()	// Delete a value
+{};
+
+
+
+void Stats::reset()
+{
+    Assert(1,checkInvariants());
+    StatsBase::reset();
+    number = 0;
+    sum = 0.0;
+    sumsq = 0.0;
+    min_value = Double::Inf;
+    max_value = -Double::Inf;
+}
+
+
+
+void Stats::add(const double value)
+{
+    AssertMsg(1,value == value,("You tried to add a NaN to the stats object.")); 
+    Assert(1,checkInvariants());
+    number++;
+    sum += value;
+    sumsq += value*value;
+
+    if (number == 1) {
+	min_value = max_value = value;
+    } else {
+	if (value < min_value)
+	    min_value = value;
+	if (value > max_value)
+	    max_value = value;
+    }
+}
+
+void
+Stats::addTimeSeq(const double value, const double timeSeq)
+{
+    this->add(value);
+}
+
+// Accessor functions
+
+const double Stats::mean() const
+{
+    Assert(1,checkInvariants());
+    if (number == 0)
+	return 0.0;
+    else
+	return double(sum)/double(number);
+};
+
+
+const double Stats::variance() const
+{
+    Assert(1,checkInvariants());
+    if (number == 0) return 0.0;
+    double m = double(mean());
+    return double(sumsq)/double(number) - m*m;
+}
+
+
+
+const double Stats::conf95() const
+{
+    Assert(1,checkInvariants());
+    if (number == 0) return DBL_MAX; // **** Should really be NaN if count==0
+    Assert(1,number > 0);
+    return 1.96*stddev()/sqrt((double)number);
+}
+
+
+
+// Summarize contents as a string
+
+std::string Stats::debugString() const
+{
+    // XXX rewrite using std::ostrstream.
+    Assert(1,checkInvariants());
+
+    char line[1024];
+    if (count() == 0)
+	sprintf(line, "count 0");
+    else
+	sprintf(line,
+		"count %ld mean %G stddev %G var %G"
+		" 95%%conf %G rel95%%conf %G min %G max %G",
+		count(), mean(), stddev(), variance(),
+		conf95(), relconf95(), min(), max());
+    Assert(1,strlen(line) < 1024);
+    return std::string(line);
+};
+
+
+void
+Stats::printRome(int depth, std::ostream &out) const
+{
+    Assert(1,checkInvariants());
+
+    std::string spaces;
+    for(int i = 0; i < depth; i++) {
+	spaces += " ";
+    }
+
+    out << spaces << "{ count " << countll() << " }\n";
+    if (count() > 0) {
+	out << spaces << "{ min " << min() << " }\n";
+	out << spaces << "{ max " << max() << " }\n";
+	out << spaces << "{ mean " << mean() << " }\n";
+	out << spaces << "{ stddev " << stddev() << " }\n";
+	out << spaces << "{ variance " << variance() << " }\n";
+	out << spaces << "{ conf95 " << conf95() << " }\n";
+	out << spaces << "{ total " << total() << " }\n";
+	out << spaces << "{ total_sq " << total_sq() << " }\n";
+    }
+}
+
+void
+Stats::printTabular(int depth, std::ostream &out) const
+{
+  Assert(1,checkInvariants());
+
+  std::string spaces;
+  for(int i = 0; i < depth; i++) {
+    spaces += " ";
+  }
+
+  out << spaces << "count " << countll() << "\n";
+  if (count() > 0) {
+    out << spaces << "min " << min() << "\n";
+    out << spaces << "max " << max() << "\n";
+    out << spaces << "mean " << mean() << "\n";
+    out << spaces << "stddev " << stddev() << "\n";
+    out << spaces << "variance " << variance() << "\n";
+    out << spaces << "conf95 " << conf95() << "\n";
+    out << spaces << "total " << total() << "\n";
+    out << spaces << "total_sq " << total_sq() << "\n";
+  }
+  // This is kind of a hack, but I had problems when the printout of 
+  // Stats changed for an empty list.
+  else
+    {
+      out << spaces << "min " << min() << "\n";
+      out << spaces << "max " << max() << "\n";
+      out << spaces << "mean " << 0 << "\n";
+      out << spaces << "stddev " << 0 << "\n";
+      out << spaces << "variance " << 0 << "\n";
+      out << spaces << "conf95 " << 0 << "\n";
+      out << spaces << "total " << total() << "\n";
+      out << spaces << "total_sq " << total_sq() << "\n";
+    }
+}
+  
+Stats *
+Stats::another_new() const
+{
+    return new Stats();
+}
+
+

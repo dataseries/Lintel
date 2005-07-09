@@ -1,0 +1,28 @@
+To install:
+    make build
+
+Everything will be installed in ../{bin,lib,tcl,include}. These directories
+will be created if they don't already exist. Make sure that either the bin 
+directory is in your path, or you edit the environment section (at the
+top of the Makefile) to include the full path for buildTcl, or the second 
+make step of the build will not succeed.
+
+You will need Tcl installed on your system. If you're running HP-UX
+within HP, you can use:
+	ninstall -vh cello.hpl.hp.com opt_ssp.tcl_tk.8.3.0
+Note that I think this installs into /usr/local, if you don't have this
+directory, a good way to provide it is to create /opt/local, and then make
+a link to this.
+
+If you're using HP-UX externally to HP, you can get Tcl at the HP-UX
+porting and archive centre: http://hpux.cae.wisc.edu/
+
+On Linux systems, make sure that /usr/bin/awk points to mawk, not
+gawk, or the compilation of the LintelTclCommands.C won't succeed.
+Additionally, make sure that there's a link to tclsh in /usr/local/bin.
+(This is where the sspinstall script expects to find it.)
+
+For other operating systems (we have only tested on Linux) you're on
+you're own.
+
+

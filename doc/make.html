@@ -1,0 +1,333 @@
+<head>
+<title>Generating and using Makefiles</title>
+</head>
+
+<body bgcolor="#ffffff">
+
+<h1>Generating and using Makefiles</h1>
+
+<p>
+Pretty much everything gets a <code>Makefile</code> (please note the
+capitalization of the file name).
+
+<h3>Makefile targets</h3>
+There are two types of Makefile targets - those that every package should
+provide, and those that sahould be there, but aren't strictly required.
+
+<h4>Required targets:</h4>
+<dl>
+  <dt><code>build</code>
+  <dd>the first, and thus default, target: should build the package, producing
+      libraries/binaries as approprriate (the <em>deliverables</em>); 
+      Typically there are 4 types of deliverables:
+      <ul>
+      <li> <em>debug</em> - all debugging information and asserts
+      <li> <em>profile</em> - built for profiling
+      <li> <em>optimize</em> - built using O2 optimizing, and containing asserts.
+      <li> <em>optimize-full</em> - higher optimization, all asserts removed.
+      </ul>
+      For most packages, optimize is the default level. If it is, the
+      <code>debug</code> target <b>must</b> exist.<br>
+      The build target should also install copies of the deliverables
+      in <tt>../{lib,bin,include}</tt>, so that they can be used by other
+      packages.
+
+  <dt><code>rebuild</code>
+  <dd>realclean + build
+
+  <dt><code>install</code>
+  <dd>Will install copies of the package in a specified directory. All SSP
+      packages will install into the directory immediately above the package
+      directory by default. This is also done by <code>build</code>.
+
+  <dt><code>install-docs</code>
+  <dd>Copies documentation from the docs directory to somewhere in your
+	web server directory (for SSP, <code>~ssp/WWW/</code>).
+
+  <dt><code>depend</code>
+  <dd>rebuilds dependancy information, using <code>makedepend</code>. This is
+        also done automatically by <code>build</code>.
+
+  <dt><code>clean</code>
+  <dd>deletes object modules and other junk
+
+  <dt><code>realclean</code>
+  <dd>requires <code>clean</code>; also deletes the package deliverables.
+
+  <dt><code>regression</code>
+  <dd>builds and runs standard tests, comparing output.
+
+  <dt><code>build.regression</code>
+  <dd>builds new regression test output. <b>Be absolutely sure that your
+      changes are correct before doing this!</b>
+
+</dl>
+
+
+<h4>Optional targets:</h4>
+<dl>
+  <dt><code>all</code>
+  <dd>Makes and installs all versions of the deliverables. 
+
+  <dt><code>export</code>
+  <dd>only applicable to packages that have been "approved" for outside export
+        (see <a href="http://www.hpl.hp.com/research/itc/csl/ssp/software/">
+        here</a> for a list and details). This target should build a version
+        of the package that doesn't include information that we do not wish to 
+        have disclosed outside the company.
+
+  <dt><code>debug</code>
+  <dd>builds and installs debug version of the package as the default
+
+  <dt><code>optimize</code>
+  <dd>builds and installs optimized version of the package as the default
+
+  <dt><code>profile</code>
+  <dd>builds and installs profiled version of the package as the default
+
+  <dt><code>install.ssp</code>
+  <dd>installs deliverables into /mount/ssp.
+
+  <dt><code>nodep</code>
+  <dd>For large packages, the depend step can take a while. This can be
+      annoying if you're in a tight debug cycle, and you know you aren't
+      changing dependancies with your edits. <code>nodep</code> should
+      do the same as <code>debug</code>, without doing the <code>depend</code>
+      step.
+</dl>
+
+<h2>Generating a new Makefile</h2>
+
+You can build a Makefile in any fashion that seems reasonable to you (as
+long as it complies with the rules above). However, almost all of our
+software uses <tt>Make.common</tt> from the Lintel package to simplify
+life. Make.common provides a set of variables (customized by the operating
+system that you're using) and functions that can be used in your Makefile,
+taking care of doing most of the grungy details.
+
+<p>
+Things you need to do to use Make.common:
+<ul>
+<li> Define the build targets
+<li> include Make.common
+<li> For a target foo, define foo_objs (the objects to be built)
+<li> Define SRCS or DEPEND_SRCS so that <tt>make depend</tt> will work
+<li> Define your default target to be the debug or optimize target, as
+     appropriate.
+<li> Add the rest of the stuff you need (install, clean etc)
+</ul>
+
+A very simple example for the foo program could be:
+<pre>
+    build: depend foo
+    include ../Lintel/Make.common
+    foo_sources := foo.C foo2.C
+    foo_objs := $(foo_sources:.C=.o)
+    DEPEND_SRCS = $(foo_sources)
+    foo: foo-debug
+            [ ! -f foo ] || rm -f foo
+	    ln foo-debug foo
+
+    $(call debug_program_target,foo)
+</pre>
+
+This should work to build foo on all architectures and OS's.
+
+Below are some more details on the Make.common facilities, and how to
+use them.
+
+<h4>Target generation</h4>
+
+Make.common provides a set of "special" variable declarations that can be
+used to generate default targets of various kinds. These are currently
+<code>{debug,profile,optimize,optimize-full}_{lib,program}_target</code>. 
+They are used as in the
+example above - use <tt>call</tt> with the target and name of the thing to be
+built, and it will generate the rules to build a target with the appropriate
+compiler flags (debuggable, profiled or optimized) and type (standalone
+program or library). In the example above, the call function results in the
+rules to make foo-debug being defined.
+
+<p>
+You can define lots of different targets for different programs in the
+same Makefile. These are customized with the following variables (N.B.
+<i>foo</i> is used as a placeholder for the target name).
+<dl>
+    <dt> foo_objs
+    <dd> The object files that will be generated. Mandatory
+
+    <dt> foo_deps
+    <dd> Dependancies to be included in the target. Typically used for
+         library dependancies, where both the library and program are
+	 built in the same package. Optional
+
+    <dt> foo_libs
+    <dd> libraries to be used to build foo. Optional
+
+    <dt> foo_flags
+    <dd> extra flags to be used to compile foo. Optional
+</dl>
+
+<h4>Dependancy generation</h4>
+
+Make.common contains everything needed for dependancy generation, except
+the list of files for which dependancies must be built. This should be
+placed in either the SRCS or DEPEND_SRCS variables. Many people like to
+use SRCS as the list of source files. However, when this list contains
+files that are automatically generated, you may not wish to have 'make
+depend' consider them. In this case, you can define DEPEND_SRCS as the
+subset independant of these files, and it will take priority over
+SRCS. Note that there is an important tradeoff here: 'make depend' will
+work perfectly well, even if the files for which dependancies are being
+generated do not exist - however, it will print a warning informing you
+of this, which may be annoying. However, by not including generated files
+in the dependancy list, you won't get dependancy information for that file.
+
+<h4>Predefined targets</h4>
+
+Make.common also defines some commonly used targets. <tt>depend</tt> is
+covered above. <tt>clean</tt> is also predefined
+to delete many files, including all object and core files. You can add
+to clean rules by using a double-colon clean rule, e.g.
+<pre>
+    clean::
+            -rm -f my-clean-file
+</pre>
+
+<h4>Predefined variables</h4>
+
+Make.common also defines some variables that may be useful in defining your
+own rules:
+<dl>
+    <dt> CXX
+    <dd> the C++ compiler to be used
+
+    <dt> COMMON_FLAGS
+    <dd> flags that should be defined for every compile
+
+    <dt> YACC_FLAGS
+    <dd> extra flags to use for compiling yacc-generated files
+
+    <dt> YACC_LIBS
+    <dd> libraries to link with YACC generated programs
+
+    <dt> {DEBUG,PROFILE,OPTIMIZE}_FLAGS
+    <dd> flags to use for each of the compile classes. Includes COMMON_FLAGS
+
+    <dt> OS
+    <dd> The OS type of the system
+
+    <dt> OS_REVISION
+    <dd> The OS version of the system
+</dl>
+
+As well as defining your own rules, these variables can be used for other
+things. As examples, consider if you have some programs in your package
+that are operating system dependant. The you can do something like:
+
+<pre> 
+    BINARIES := foo bar
+    ifeq ($(OS),HP-UX)
+        BINARIES += baz
+    endif
+</pre>
+
+which will result in BINARIES being set to "foo bar" for all systems,
+except HP_UX, where it will be set to "foo bar baz".
+
+As another example, files generated with yacc often include constructs
+that cause warnings when compiled with the default compiler flags. These
+warnings can be suppressed by compiling with YACC_FLAGS. The best way
+of doing this is setting the compile flags for that file. e.g. for a 
+file parse.C, which has been generated by parse.y, the line:
+<pre>
+    parse_flags := $(YACC_FLAGS)
+</pre>
+will have this effect.
+
+<h4>CXXFLAGS</h4>
+
+Finally, you need to be able to specify your own compiler options for all
+files. This can be done with the CXXFLAGS variable. A typical minimal example
+is:
+
+<pre>
+    CXXFLAGS := -I.
+</pre>
+
+Per-file options can be set with the <i>foo</i>_flags variable.
+
+<H4>Separating out the Makefile</H4>
+
+<P>It can be useful to keep pieces of the makefile divided into
+multiple, logically independent pieces.  You can put files called
+<I>target</I>.mk into the same directory as the Makefile. These will
+be included; one nice form is to make one for each target binary or
+library. </P>
+
+<P>You can also make files called <CODE>subdir.mk</CODE> in the direct
+subdirectories of the makefile.  A sample one of these would be: </P>
+
+<PRE>
+# First we list the source files
+SRC_BASE := Buttress_Creek.C Filament.C LoomReal.C Shuttle.C \
+            Buttress_Store.C Loom.C LoomSimulator.C Timer.C
+
+# Then we transform them so that they are in the base directory
+SRC_BASE := $(foreach file,$(SRC_BASE),base/$(file))
+# Then we turn them into object files.
+OBJ_BASE := $(SRC_BASE:.C=.o)
+
+# Add our sources to the list of all sources
+SRCS += $(SRC_BASE)
+
+# Add the flags we need to compile, and the flags other people will
+# use to acces us.
+
+CXXFLAGS += -I$(ROME_SRC)/base -I$(ROME_SRC)/statements -I$(ROME_SRC)/attributes -Ibase
+
+# Add the target to clean up after compilation.
+clean::
+        -(cd base; rm *\~ *.o *.Do *.Po *.Oo) 2>/dev/null
+
+</PRE>
+
+<H2>Commentary on CommonMake</H2>
+
+<P>CommonMake helps a fair bit with making the Makefiles easier to
+write.  It eliminates the need for the Makefile.local.template file,
+and moves all the compilation flags to a common place, so we know that
+everything is using the same options.  It also supports parallel make
+across directories in a single package, which lets us use directories
+without concern that we're going to get much worse performance, even
+dependencies between directories in a package are handled
+correctly.</P>
+
+<P>Unfortunately, it also has some problems.  First, Writing Makefiles
+is still a little tedious.  In particular, the need to write three
+parallel copies of the targets for the three different versions.  I
+have thought at times about writing a script to pre-process the
+makefiles (ala Makefile.PL), but couldn't convince myself this was a
+good idea</P>
+
+<P>Second, doing more than two levels of makefiles is hard, I tried
+this once for Ergastulum, and then abandoned it.  Basically the
+subdir.mk files have to include further down subdir.mk files.  Also
+it's obnoxious then to move directories around, as the subdir.mk files
+have a notion of where they live.  Again this could be fixed by a
+pre-processing script, again it's not clear it's worth the work.</P>
+
+<P>Third, inter-package dependencies are not handled at all.  The
+correct thing to do is for each package to have a location independent
+makefile, so that other packages can just include that makefile, and
+make a dependency on whatever they need (e.g. libSRTlite.O.a,
+libRome-debug.a), and then automagically things will be built as
+necessary.  In addition, this would mean that parallel compiles would
+be able to run across everything.</P>
+
+<P>All of the commonmake stuff tries to avoid using recursive make.
+For a discussion of why, see <A
+HREF="http://www.pcug.org.au/~millerp/rmch/recu-make-cons-harm.html">Recursive
+Make Considered Harmful.</A></P>
+
+</body>

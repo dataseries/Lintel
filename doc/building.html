@@ -1,0 +1,252 @@
+<!--
+###############################################################################
+#
+# File:         building.html
+# RCS:          $Header: /mount/cello/cvs/Lintel/doc/building.html,v 1.1 2005/02/14 04:36:51 anderse Exp $
+# Description:  
+# Author:       Eric Anderson
+# Created:      Sat Jan  8 22:06:06 2005
+# Modified:     Wed Jan 26 23:47:59 2005 (Eric Anderson) anderse@hpl.hp.com
+# Language:     HTML helper
+# Package:      Lintel
+# Status:       Experimental (Do Not Distribute)
+#
+# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
+#
+###############################################################################
+-->
+
+These instructions assume that you are going to work with the
+convention of keeping convention of having your sources stored in
+~/projects/<I>package</I>, and your compiled versions in
+~/build/{debug,optimize,profile}/{bin,include,lib,<I>package</I>}.
+
+<P>I want to:
+<UL>
+  <LI> <A HREF="#checkout">Checkout a package</A>
+  <LI> <A HREF="#build">Build a package</A>
+  <LI> <A HREF="#old-style">Use a new style (configure) package with an old style (Make.common) package</A>
+  <LI> <A HREF="#edit-rebuild">Edit an existing source file and rebuild</A>
+  <LI> <A HREF="#addsource">Add a source file to an existing program or library</A>
+  <LI> <A HREF="#addbinary">Add a new binary</A>
+  <LI> <A HREF="#addlibrary">Add a new library</A>
+  <LI> <A HREF="#addoptflags">Add optimization flags</A>
+  <LI> <A HREF="#update-configbits">Update the autoconf files</A>
+  <LI> <A HREF="#notes-autoconf-grizzly">See the notes on autoconfig Grizzly</A>
+</UL>
+
+<A NAME="checkout"><H3>Checkout a package</H3></A>
+
+<UL>
+  <LI> mkdir -p ~/projects; cd ~/projects
+  <LI> If you are on a machine with /mount/cello mounted: cvs -d /mount/cello/cvs checkout <I>package</I>
+  <LI> If you have an account on cello: cvs -d :ext:cello:/mount/cello/cvs checkout <I>package</I>
+  <LI> Notes:
+      <UL>
+	<LI> You can set the environment variable CVSROOT to avoid specifying the -d ... option.
+	<LI> You can set the environment variable CVS_RSH to control the program used to connect to a remote machine, for example to use ssh or remsh on HP-UX.
+      </UL>
+  <LI> Examples:
+      <UL>
+	<LI> cvs -d :ext:cello:/mount/cello/cvs checkout Lintel
+	<LI> cvs -d /mount/cello/cvs checkout DataSeries
+      </UL>
+</UL>
+
+<A NAME="build"><H3>Build a package</H3></A>
+
+<UL>
+  <LI> Follow the instructions to <A HREF="#checkout">checkout</A> the package first
+  <LI> Decide if you are going to build for debugging, profiling, or optimizing; the example will be given for optimization
+  <LI> # create the build directory
+  <LI> mkdir -p ~/build/optimize
+  <LI> cd ~/build/optimize
+  <LI> # create the package build directory
+  <LI> mkdir <I>package</I>
+  <LI> cd <I>package</I>
+  <LI> # configure the package for compilation
+  <LI> ~/projects/<I>package</I>/configure --enable-optmode=optimize --enable-maintainer-mode
+  <LI> By default this configure step will set the install prefix to $HOME/build/<I>optmode</I>
+  <LI> (verify that the configure step worked correctly, and selected the options you wanted, fix any problems found)
+  <LI> # compile the package, check against the regression tests, and install the various files
+  <LI> make && make check && make install
+  <LI> Notes:
+      <UL>
+	<LI> If you are building on cello, you probably want to set the environment variable CPPFLAGS to -I/usr/local/include and the environment variable LDFLAGS to -L/usr/local/lib
+	<LI> You can leave off the --enable-maintainer-mode option if you do not intend to add new source files or targets; if you have the --enable-maintainer-mode, you will need to have autoconf (v2.59), automake (v>=1.7, 1.9.4 recommended), and libtool (>= 1.5.6, 1.5.10 recommended) installed.
+	<LI> You can leave off the --enable-optmode={debug,optimize,profile} and instead specify optimization options in the CPPFLAGS environment variable
+	<LI> You can specify --prefix=<I>root-dir</I> to determine where to install the various binaries, libraries, and include files
+	<LI> You can skip the make check part of the compilation stage to avoid running the regression tests
+      </UL>
+  <LI> Examples:
+      <UL>
+	<LI> Build Lintel in optimized mode: mkdir -p ~/build/optimize/Lintel && cd ~/build/optimize/Lintel && ~/projects/Lintel/configure --prefix=$HOME/build/optimize --enable-optmode=optimize --enable-maintainer-mode && make && make check && make install
+	<LI> Build DataSeries in debug mode: mkdir -p ~/build/debug/DataSeries && cd ~/build/debug/DataSeries && ~/projects/DataSeries/configure --prefix=$HOME/build/debug --enable-optmode=debug --enable-maintainer-mode && make && make check && make install
+	<LI> Rebuild lintel without tcl support: cd ~/build/optimize/Lintel && ~/projects/Lintel/configure --prefix=$HOME/build/optimize --enable-optmode=optimize --without-tcl --enable-maintainer-mode && make clean && make && make check && make install
+      </UL>
+</UL>
+
+<A NAME="old-style"><H3>Use a new style (configure) package with an old style (Make.common) package</H3></A>
+
+There are three options for doing this: 
+<OL>
+  <LI> symlink the new-style files into the location expected by the old-style package
+      <UL>
+	<LI> Assuming that you used the standard install location, and that you built the optimized version:
+	<LI> cd <I>old-package-loc</I>/../include
+	<LI> ln -s $HOME/build/optimize/include/Lintel/* .
+	<LI> ln -s $HOME/build/optimize/include/* .
+	<LI> cd ../lib
+	<LI> ln -s $HOME/build/optimize/lib/* .
+      </UL>
+  <LI> update the old-style makefile to use the location of the new-style install
+      <UL>
+	<LI> Assuming that you used the standard install location, and that you built the optimized version:
+	<LI> add -I`$HOME/build/optimize/bin/<I>package</I>-config --cflags` to the CXXFLAGS definition in the Makefile
+	<LI> add -I`$HOME/build/optimize/bin/<I>package</I>-config --libs` to the BIN_LDFLAGS and *_libs variable defintions in the Makefile and *.mk files
+      </UL>
+  <LI> update the package to be a new-style package
+      <UL>
+	<LI> Doing this update is package specific.  There are <A HREF="#notes-autoconf-grizzly">notes on this update for the grizzly package</A>
+      </UL>
+</OL>
+
+
+<A NAME="edit-rebuild"><H3>Edit an existing source file and rebuild</H3></A>
+
+<UL>
+  <LI> Follow the instructions to <A HREF="#build">build</A> the package first; this example will be given for a debugging mode build
+  <LI> cd ~/build/debug/<I>package</I>/src
+  <LI> emacs ~/projects/<I>package</I>/src/<I>file</I>
+  <LI> ... edit the file and save it back out ...
+  <LI> make 
+  <LI> Notes:
+      <UL>
+	<LI> You could also do a make check and make install
+	<LI> You can also compile from the root package directory.
+      </UL>
+</UL>
+
+<A NAME="addsource"><H3>Add a source file to an existing program or library</H3></A>
+<UL>
+  <LI> Follow the instructions to <A HREF="#build">build</A> the package first, make sure to use --enable-maintainer-mode; this example will be given for a debugging mode build
+  <LI> cd ~/build/debug/<I>package</I>/src
+  <LI> emacs ~/projects/<I>package</I>/src/<I>new-file</I>
+  <LI> ... edit the new file and save it back out ...
+  <LI> emacs ~/projects/<I>package</I>/src/Makefile.am
+  <LI> ... find the <I>program/library</I>_SOURCES variable definition, and add your file to the list.
+      The lists are normally in alphabetical order
+  <LI> make
+  <LI> if you did not see something like '/bin/sh /home/anderse/projects/DataSeries-autoconf/missing --run automake-1.7 --foreign  Makefile'; at the beginning of the make command, then you probably forgot to use --enable-maintainer-mode
+</UL>
+
+<A NAME="addbinary"><H3>Add a new binary</H3></A>
+<UL>
+  <LI> Follow the instructions to <A HREF="#build">build</A> the package first, make sure to use --enable-maintainer-mode; this example will be given for a debugging mode build
+  <LI> cd ~/build/debug/<I>package</I>/src
+  <LI> emacs ~/projects/<I>package</I>/src/<I>new-file</I>
+  <LI> ... edit the new file and save it back out ...
+  <LI> emacs ~/projects/<I>package</I>/src/Makefile.am
+  <LI> ... find the bin_PROGRAMS line, and add the name of your binary to the list.
+  <LI> ... add the line: <I>programname</I>_SOURCES = <I>source files...</I> # note that this is very important for C++ programs as otherwise automake will choose the wrong way to link
+  <LI> ... if additional libraries are needed, add the line: <I>programname</I>_LDADD = <I>libraries needed</I>
+  <LI> make
+  <LI> if you did not see something like '/bin/sh /home/anderse/projects/DataSeries-autoconf/missing --run automake-1.7 --foreign  Makefile'; at the beginning of the make command, then you probably forgot to use --enable-maintainer-mode
+</UL>
+
+<A NAME="addlibrary"><H3>Add a new library</H3></A>
+<UL>
+  <LI> Follow the instructions to <A HREF="#build">build</A> the package first, make sure to use --enable-maintainer-mode; this example will be given for a debugging mode build
+  <LI> cd ~/build/debug/<I>package</I>/src
+  <LI> emacs ~/projects/<I>package</I>/src/<I>new-library-file</I>
+  <LI> ... edit the new file and save it back out ...
+  <LI> emacs ~/projects/<I>package</I>/src/Makefile.am
+  <LI> ... find the lib_LTLIBRARIES line, and add 'lib<I>libname</I>.la' to the list.
+  <LI> ... add the line: lib<I>libname</I>_la_SOURCES = <I>source files...</I>
+  <LI> ... add the line: lib<I>libname</I>_la_LDFLAGS = -no-undefined -version-info @LIB<I>LIBNAME</I>_VERSION@
+  <LI> ... if this library depends on other libraries, add the line: lib<I>libname</I>_la_LIBADD = <I>libraries needed</I>
+  <LI> emacs ~/projects/<I>package</I>/configure.ac
+  <LI> ... find the bit about '# Libtool library revision control info'
+  <LI> ... add the line LIB<I>LIBNAME</I>_VERSION=0:0:0
+  <LI> ... add the line AC_SUBST(LIB<I>LIBNAME</I>_VERSION)
+  <LI> make
+  <LI> if you did not see something like '/bin/sh /home/anderse/projects/DataSeries-autoconf/missing --run automake-1.7 --foreign  Makefile'; at the beginning of the make command, then you probably forgot to use --enable-maintainer-mode
+</UL>
+
+<A NAME="addoptflags"><H3>Add optimization flags</H3></A>
+
+<UL>
+  <LI> You should have gotten a message during configuration like:
+  <LI> <CODE>configure: Unknown host (i686-pc-linux-gnu) proctype (IntelPentiumMprocessor1700MHz) compiler (gcc-3.4.2) combination</CODE>
+  <LI> First you need to select the optimization flags that you think should be used for that combination of host, processor type and compiler.  In this case similar to the ones for i686-pc-linux-gnu::*PentiumM*::gcc-3.3*, but replacing the -march=pentium3 with -march=pentium-m
+  <LI> Update Lintel/com_hp_hpl_lintel.m4 to have your new case entry in the
+      list of cases, in our example:
+<PRE>
+	i686-pc-linux-gnu::*PentiumM*::gcc-3.4*) 
+	   OPTFLAGS="-O2 -march=pentium-m -D__pentiumpro__ -g"
+	   ;;
+</PRE>
+  <LI> in the Lintel directory, run aclocal && autoconf, and re-run your configure step.
+  <LI> for other packages, you will need to run configure with --enable-maintainer-mode, and then run aclocal && autoconf, or just make to rebuild the configure script using the macros installed earlier by your install of the Lintel package
+</UL>
+
+<A NAME="update-configbits"><H3>Update the autoconf files</H3></A>
+
+<UL>
+  <LI> From time to time new versions of autoconf, automake, and
+      libtool are released and we want to update the files that we ship in
+      our distribution.  This can be done by running two commands:
+  <LI> <CODE>automake -a -c -f</CODE> -- -a add's missing files, -c copies files rather than symlinking, and -f updates files that already exist
+  <LI> <CODE>libtoolize --automake -c -f</CODE> -- --automake assumes we use automake, -c copies files rather than symlinking, and -f updates files that already exist
+</UL>
+
+<A NAME="notes-autoconf-grizzly"><H3>Notes on autoconfig Grizzly</H3></A>
+
+<UL>
+  <LI> create Grizzly-autoconf directory
+  <LI> copy Makefile.am, configure.ac from DataSeries directory
+  <LI> remove almost everything from the configure.ac, leaving the minimal bits of automake initialization, lintel requiring and optmode, and the maintainer bits.  Change the AC_INIT, and AC_CONFIG_FILES lines
+  <LI> leave just the SUBDIRS=src bit of Makefile.am
+  <LI> create src directory, copy the DataSeries/src/Makefile.am file there,
+      remove almost everything except the AM_CPPFLAGS bit
+  <LI> make analysis/nfs subdirectory, copy Grizzly/cpp/analayis/nfsdsanalysis*[CH] there
+  <LI> create nfsdsanalysis_SOURCES in src/Makefile.am, add to bin_PROGRAMS
+  <LI> remove the HPL_REQUIRELIB_LINTEL from configure.ac, copy the AC_DEFUN from Lintel/com_hp_hpl_lintel.m4, and replace lintel with dataseries
+  <LI> symlink com_hp_hpl_lintel.m4 to acinclude.m4
+  <LI> run aclocal, automake
+  <LI> get error about missing files, run automake -a
+  <LI> run autoconf
+  <LI> run ./configure --prefix=$HOME/build/debug --enable-optmode=debug 
+  <LI> Discover failure as we don't have a dataseriesVersion version function, add that to dataseries and rebuild
+  <LI> a bit of work to get things going again (add back in AC_PROG_{CC,CXX,INSTALL} which had been incorrectly removed, update to dataseries-config to add XML cflags)
+  <LI> add src/Makefile to configure.ac AC_CONFIG_FILES line and reconfigure with --enable-maintainer-mode
+  <LI> make, get error missing analysis-common.H, copy over analysis-common.[CH]
+  <LI> update src/Makefile.am to have ANALYSIS_CPPFLAGS and nfsdsanalysis_CPPFLAGS
+  <LI> much better, missing sourcebyrange.H; copy and update src/Makefile.am
+  <LI> link step fails, add in AC_LIBTOOL_SETUP, AC_PROG_LIBTOOL, AC_SUBST(LIBTOOL_DEPS) to configure.ac; run automake -a, get error, run libtoolize --automake to install extra files
+  <LI> link fails again, add analysis/analysis-common.C to nfsdsanalysis_SOURCES
+  <LI> success building that program
+  <LI> copy lsfdsanalysis source files into src/analysis/lsf
+  <LI> add in lsfdsanalysis_{CPPFLAGS,SOURCES} to src/Makefile.am, rebuild -- success
+  <LI> copy indexnfscommon source file
+  <LI> add in indexnfscommon_{CPPFLAGS,SOURCES} to src/Makefile.am, rebuild -- success
+  <LI> copy lsfconvert source file
+  <LI> add in lsfconvert_SOURCES to src/Makefile.am, rebuild
+  <LI> discover we need cryptutil.C, aes-i586.S, rebuild
+  <LI> discover we need pcre support; create HPL_WITHLIB_PCRE in configure.ac to support this following the structure of HPL_WITHLIB_BZ2 from DataSeries/com_hp_hpl_dataseries.m4, modify src/Makefile.am to make building of lsfconvert conditional on pcre support, and add lsfconvert_LDFLAGS
+  <LI> discover we also need crypto support; same as above
+  <LI> copy tcpdump2ds source files, update src/Makefile.am
+  <LI> handle the generation of nfs_prot.h by using a BUILT_SOURCES and a
+       special rule
+  <LI> added WITHLIB_PCAP to control pcap library
+  <LI> rename lsfconvert to bacct2ds
+  <LI> copy over the dreamworks rr/rj conversion programs, update
+       src/Makefile.am
+  <LI> copy over nfsextract, job-{list,report,trace}, decrypt scripts;
+       remove the .pl on the scripts.
+  <LI> a bunch of magic added to Lintel/com_hp_hpl_lintel.m4 in order to do perl substitutions so that we can
+       properly install the Grizzly perl modules.  Update configure.ac to add in makeplots as a configure file
+       so that it will get substituted during configuring; add explicit dependency to src makefile so that if
+       the source file for makeplots changes, the derived file will be rebuilt.
+  <LI> add ipdsanalysis 
+</UL>

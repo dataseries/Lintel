@@ -1,0 +1,32 @@
+TYPEMAP
+Stats *				O_OBJECT
+StatsHistogram *		O_OBJECT
+StatsHistogramUniform *		O_OBJECT
+StatsHistogramLogAccum *	O_OBJECT
+MersenneTwisterRandom *		O_DOBJECT
+
+OUTPUT
+O_OBJECT
+  sv_setref_pv( $arg, CLASS, (void *)($var) );
+
+O_DOBJECT
+  sv_setref_pv( $arg, CLASS, (void *)($var) );
+
+INPUT
+O_OBJECT
+  if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
+     StatsBase *_n = (StatsBase *)SvIV((SV*)SvRV( $arg ));
+     $var = dynamic_cast<$type>(_n);
+     assert($var != NULL);
+   } else {
+     die( \"${Package}::$func_name() -- $var is not a blessed SV reference\" );
+     XSRETURN_UNDEF;
+   }
+
+O_DOBJECT
+  if( sv_isobject($arg) && (SvTYPE(SvRV($arg)) == SVt_PVMG) ) {
+     $var = ($type)((void *)SvIV((SV*)SvRV( $arg )));
+   } else {
+     die( \"${Package}::$func_name() -- $var is not a blessed SV reference\" );
+     XSRETURN_UNDEF;
+   }

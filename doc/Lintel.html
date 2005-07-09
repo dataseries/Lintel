@@ -1,0 +1,105 @@
+<HTML><HEAD>
+<title>The Lintel library</title>
+</head>
+<body bgcolor="#ffffff">
+
+<h1> The Lintel library</h1>
+A brief introduction to the contents of the Lintel
+	package/library.
+
+<p><hr><p>
+
+<h2>Contents</h2>
+<ul>
+<li> <a href="#Introduction">Introduction</a>
+<li> <a href="#SubPackage">Useful sub-packages</a>
+<li> <a href="#TIF">Using the Tcl/C++ interface</a>
+<li> <a href="make.html">The common Make environment</a>
+</ul>
+
+<a name="Introduction">
+<h2>Introduction</h2>
+
+Lintel is the name of our support library. (A
+<em>lintel</em> is the thing that goes across a doorway to support
+the wall above it.) It's the place to put those miscellaneous pieces of
+code that could be potentially useful to others. The only caveats are:
+<ul>
+<li> Make sure that it should be in a library
+<li> <b>Don't break the existing stuff!!!</b>
+<li> Document what it does (here, and in the code) so others can use it
+</ul>
+
+<a name="SubPackage">
+<h2>Useful sub-packages</h2>
+
+<dl>
+  <dt><code>Double</code>
+  <dd>Eric to document...
+  <dt><code>GC_Alloc</code>
+  <dd>
+  <dt><code>LintelAssert</code>
+  <dd>Functions to check that invariants hold, and complain vigorously
+      if not.  The use of different <code>AssertLevel</code>s means
+      that comprehensive but expensive tests can be compiled in, but
+      will not be executed unless explicitly requested.
+  <dt><code>MathSpecialFunctions</code>
+  <dd>
+  <dt><code>MersenneTwisterRandom</code>
+  <dd>
+  <dt><code>Matrix</code>
+  <dd>
+  <dt><code>Nameable</code>
+  <dd>A class that aids access to (derived) classes for debugging purposes.
+  <dt><code>Posix</code>
+  <dd>Error checking wrappers for POSIX functions.
+  <dt><code>Pthread</code>
+  <dd>
+  <dt><code>Random</code>
+  <dd>
+  <dt><code>Stats</code>
+  <dd>Basic statistics
+  <dt><code>StatsHistogram</code>
+  <dd>
+  <dt><code>StatsMaker</code>
+  <dd>
+  <dt><code>StatsRW</code>
+  <dd>
+  <dt><code>StatsSequence</code>
+  <dd>
+  <dt><code>StatsSeries</code>
+  <dd>
+  <dt><code>StatsUtil</code>
+  <dd>
+  <dt><code>StatsUtilHistogram</code>
+  <dd>
+  <dt><code>StringId</code>
+  <dd>
+  <dt><code>TclInterface</code>
+  <dd>The TclInterface class, used for building Tcl/C++ interfaces
+  <dt><code>Uncompress</code>
+  <dd>Transparent reading of compressed files
+  <dt><code>drawRandomLogNormal</code>
+  <dd>
+  <dt><code>stdio_64</code>
+  <dd>stdio routines that allow for large files
+</dl>
+
+<a name="Make">
+<h2> The common Make environment</h2>
+
+A description of whats in Make.common and how to generate new makefiles
+will go here...
+
+<a name="TIF">
+<h2> The Tcl/C++ interfaces</h2>
+
+A system for the easy merging of Tcl and C++. You can think of it as
+either a method for easily using Tcl configuration scripts as a front end 
+to your C++ system or for adding objects to Tcl. 
+
+<p>
+There is a detailed <a href="tif.html">usage guide</a>.
+
+</BODY>
+</HTML>

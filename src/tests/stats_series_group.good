@@ -1,0 +1,193 @@
+stats test {
+  { count 10003 }
+  { min 0.000176047 }
+  { max 7 }
+  { mean 0.496337 }
+  { stddev 0.298065 }
+  { variance 0.0888427 }
+  { conf95 0.0058412 }
+  { total 4964.86 }
+  { total_sq 3352.93 }
+  { seriesInterval 100 }
+  { seriesStart 0 }
+  { seriesEnd 1776 }
+  { series (
+    {
+      { count 1001 }
+      { min 0.000740895 }
+      { max 0.999168 }
+      { mean 0.48816 }
+      { stddev 0.284003 }
+      { variance 0.0806579 }
+      { conf95 0.0175939 }
+      { total 488.648 }
+      { total_sq 319.277 }
+      { interval_start 0 }
+    }
+    {
+      { count 1000 }
+      { min 0.00118859 }
+      { max 0.999829 }
+      { mean 0.490275 }
+      { stddev 0.287946 }
+      { variance 0.0829129 }
+      { conf95 0.0178471 }
+      { total 490.275 }
+      { total_sq 323.282 }
+      { interval_start 100 }
+    }
+    {
+      { count 1000 }
+      { min 0.000692499 }
+      { max 0.999593 }
+      { mean 0.488655 }
+      { stddev 0.29245 }
+      { variance 0.085527 }
+      { conf95 0.0181262 }
+      { total 488.655 }
+      { total_sq 324.31 }
+      { interval_start 200 }
+    }
+    {
+      { count 999 }
+      { min 0.00046964 }
+      { max 0.998226 }
+      { mean 0.4999 }
+      { stddev 0.285631 }
+      { variance 0.081585 }
+      { conf95 0.0177124 }
+      { total 499.4 }
+      { total_sq 331.153 }
+      { interval_start 300 }
+    }
+    {
+      { count 1000 }
+      { min 0.000340846 }
+      { max 0.999184 }
+      { mean 0.499087 }
+      { stddev 0.282701 }
+      { variance 0.07992 }
+      { conf95 0.017522 }
+      { total 499.087 }
+      { total_sq 329.007 }
+      { interval_start 400 }
+    }
+    {
+      { count 1000 }
+      { min 0.00132153 }
+      { max 0.996412 }
+      { mean 0.508253 }
+      { stddev 0.28989 }
+      { variance 0.0840363 }
+      { conf95 0.0179676 }
+      { total 508.253 }
+      { total_sq 342.358 }
+      { interval_start 500 }
+    }
+    {
+      { count 1000 }
+      { min 0.000176047 }
+      { max 0.999711 }
+      { mean 0.500205 }
+      { stddev 0.28652 }
+      { variance 0.0820935 }
+      { conf95 0.0177587 }
+      { total 500.205 }
+      { total_sq 332.298 }
+      { interval_start 600 }
+    }
+    {
+      { count 1000 }
+      { min 0.000218277 }
+      { max 0.999157 }
+      { mean 0.49502 }
+      { stddev 0.29203 }
+      { variance 0.0852814 }
+      { conf95 0.0181002 }
+      { total 495.02 }
+      { total_sq 330.326 }
+      { interval_start 700 }
+    }
+    {
+      { count 1000 }
+      { min 0.0022082 }
+      { max 0.998458 }
+      { mean 0.483247 }
+      { stddev 0.285569 }
+      { variance 0.0815497 }
+      { conf95 0.0176998 }
+      { total 483.247 }
+      { total_sq 315.078 }
+      { interval_start 800 }
+    }
+    {
+      { count 1000 }
+      { min 0.000465658 }
+      { max 0.999459 }
+      { mean 0.499067 }
+      { stddev 0.285966 }
+      { variance 0.0817765 }
+      { conf95 0.0177243 }
+      { total 499.067 }
+      { total_sq 330.845 }
+      { interval_start 900 }
+    }
+    {
+      { count 0 }
+      { interval_start 1000 }
+    }
+    {
+      { count 0 }
+      { interval_start 1100 }
+    }
+    {
+      { count 0 }
+      { interval_start 1200 }
+    }
+    {
+      { count 0 }
+      { interval_start 1300 }
+    }
+    {
+      { count 1 }
+      { min 1 }
+      { max 1 }
+      { mean 1 }
+      { stddev 0 }
+      { variance 0 }
+      { conf95 0 }
+      { total 1 }
+      { total_sq 1 }
+      { interval_start 1400 }
+    }
+    {
+      { count 1 }
+      { min 5 }
+      { max 5 }
+      { mean 5 }
+      { stddev 0 }
+      { variance 0 }
+      { conf95 0 }
+      { total 5 }
+      { total_sq 25 }
+      { interval_start 1500 }
+    }
+    {
+      { count 0 }
+      { interval_start 1600 }
+    }
+    {
+      { count 1 }
+      { min 7 }
+      { max 7 }
+      { mean 7 }
+      { stddev 0 }
+      { variance 0 }
+      { conf95 0 }
+      { total 7 }
+      { total_sq 49 }
+      { interval_start 1700 }
+    }
+  )}
+};
+

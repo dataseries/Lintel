@@ -1,0 +1,168 @@
+** Random.C standalone test.
+Check that values converge to the mean: iterations=100000
+mean test: RandC passed (mean=0, target=0, diff=0)
+mean test: RandE passed (mean=0.997015, target=1, diff=0.00298526)
+mean test: RandG passed (mean=1.00148, target=1, diff=0.00147562)
+mean test: RandGeom passed (mean=10.0011, target=10, diff=0.0011)
+mean test: RandH passed (mean=0.499806, target=0.5, diff=0.000193638)
+mean test: RandN passed (mean=-0.000725067, target=0, diff=0.000725067)
+mean test: RandU passed (mean=0.498857, target=0.5, diff=0.00114313)
+
+Testing Seeder resetting, iterations = 100
+Seeder-resetting test passed
+
+Sequence of 20 RandC
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+	RandC	0.000000
+
+Sequence of 20 RandE
+	RandE	1.242042
+	RandE	0.491468
+	RandE	3.297049
+	RandE	0.576494
+	RandE	0.497780
+	RandE	0.020757
+	RandE	0.041342
+	RandE	1.936584
+	RandE	0.401489
+	RandE	2.131188
+	RandE	0.061164
+	RandE	0.586219
+	RandE	1.536010
+	RandE	1.397736
+	RandE	3.479437
+	RandE	1.813833
+	RandE	0.661735
+	RandE	1.369276
+	RandE	0.293448
+	RandE	0.238372
+
+Sequence of 20 RandG
+	RandG	0.057114
+	RandG	0.713245
+	RandG	0.145883
+	RandG	0.352178
+	RandG	0.263760
+	RandG	3.094715
+	RandG	0.147031
+	RandG	0.016114
+	RandG	1.251713
+	RandG	0.488907
+	RandG	0.929867
+	RandG	1.393528
+	RandG	0.562324
+	RandG	0.307844
+	RandG	0.809520
+	RandG	0.553317
+	RandG	1.240533
+	RandG	2.647799
+	RandG	0.151471
+	RandG	0.371298
+
+Sequence of 20 RandGeom
+	RandGeom	1.000000
+	RandGeom	2.000000
+	RandGeom	2.000000
+	RandGeom	10.000000
+	RandGeom	2.000000
+	RandGeom	14.000000
+	RandGeom	3.000000
+	RandGeom	17.000000
+	RandGeom	3.000000
+	RandGeom	3.000000
+	RandGeom	6.000000
+	RandGeom	15.000000
+	RandGeom	3.000000
+	RandGeom	4.000000
+	RandGeom	40.000000
+	RandGeom	1.000000
+	RandGeom	22.000000
+	RandGeom	11.000000
+	RandGeom	3.000000
+	RandGeom	10.000000
+
+Sequence of 20 RandH
+	RandH	0.032666
+	RandH	0.386955
+	RandH	0.391509
+	RandH	0.077930
+	RandH	0.141688
+	RandH	0.563095
+	RandH	0.289117
+	RandH	0.420018
+	RandH	0.683145
+	RandH	0.282505
+	RandH	0.000860
+	RandH	0.802852
+	RandH	0.348354
+	RandH	0.324043
+	RandH	0.209081
+	RandH	0.978420
+	RandH	0.592054
+	RandH	0.336953
+	RandH	0.513034
+	RandH	0.680235
+
+Sequence of 20 RandN
+	RandN	0.217066
+	RandN	0.066409
+	RandN	-0.026657
+	RandN	0.043624
+	RandN	-0.283261
+	RandN	-0.423997
+	RandN	-1.000118
+	RandN	0.540329
+	RandN	-1.424874
+	RandN	-2.398558
+	RandN	0.455159
+	RandN	-0.041141
+	RandN	0.791831
+	RandN	0.823588
+	RandN	-1.012425
+	RandN	-0.051124
+	RandN	-0.808857
+	RandN	1.378153
+	RandN	0.577317
+	RandN	-1.196441
+
+Sequence of 20 RandU
+	RandU	0.818222
+	RandU	0.507004
+	RandU	0.157516
+	RandU	0.047084
+	RandU	0.420966
+	RandU	0.121435
+	RandU	0.602041
+	RandU	0.125630
+	RandU	0.231846
+	RandU	0.227700
+	RandU	0.542228
+	RandU	0.423082
+	RandU	0.932691
+	RandU	0.065346
+	RandU	0.613372
+	RandU	0.926564
+	RandU	0.500176
+	RandU	0.884368
+	RandU	0.527991
+	RandU	0.239702
+
+Random.C - FINISHED

@@ -1,0 +1,297 @@
+#>Rome-1-9
+stats simple {
+  { count 1000 }
+  { min 0.000873858 }
+  { max 0.999714 }
+  { mean 0.482903 }
+  { stddev 0.293014 }
+  { variance 0.0858571 }
+  { conf95 0.0181612 }
+  { total 482.903 }
+  { total_sq 319.053 }
+};
+
+stats histogram_uniform {
+  { count 1000 }
+  { min 6.75241e-05 }
+  { max 0.99997 }
+  { mean 0.496302 }
+  { stddev 0.290131 }
+  { variance 0.084176 }
+  { conf95 0.0179825 }
+  { total 496.302 }
+  { total_sq 330.492 }
+  { histogram {
+    { type uniform }
+    { low 0 }
+    { high 1 }
+    { bins 20 }
+    { binwidth 0.05 }
+    { binCounts (51 48 54 44 52 61 45 58 62 40
+                 49 44 44 62 38 40 53 46 50 59 ) } } }
+};
+
+stats histogram_log {
+  { count 1000 }
+  { min 1.00118 }
+  { max 2.71697 }
+  { mean 1.67987 }
+  { stddev 0.486429 }
+  { variance 0.236613 }
+  { conf95 0.0301492 }
+  { total 1679.87 }
+  { total_sq 3058.58 }
+  { histogram {
+    { type log }
+    { low 1 }
+    { high 2.71828 }
+    { bins 20 }
+    { binCounts (63 53 53 59 44 50 64 47 53 41
+                 50 52 53 45 45 46 46 49 50 37 ) } } }
+};
+
+stats histogram_log_accum {
+  { count 1000 }
+  { min 1.00052 }
+  { max 2.71779 }
+  { mean 1.71627 }
+  { stddev 0.492751 }
+  { variance 0.242803 }
+  { conf95 0.030541 }
+  { total 1716.27 }
+  { total_sq 3188.39 }
+  { histogram {
+    { type logAccum }
+    { low 1 }
+    { high 2.71828 }
+    { bins 20 }
+    { binCounts (57 52 44 56 34 58 54 48 50 52
+                 45 41 50 56 52 57 37 63 47 47)}
+    { binMeans (1.02594 1.07924 1.13279 1.19043 1.24915
+                1.31667 1.38827 1.4512 1.53074 1.60944
+                1.68796 1.77564 1.86469 1.96278 2.05882
+                2.17138 2.29238 2.40138 2.50925 2.65321 ) } } } 
+};
+
+stats histogram_group {
+  { count 1000 }
+  { min 0.00013326 }
+  { max 0.994048 }
+  { mean 0.507298 }
+  { stddev 0.285726 }
+  { variance 0.0816393 }
+  { conf95 0.0177095 }
+  { total 507.298 }
+  { total_sq 338.991 }
+  { histogramGroup {
+    { low {
+      { count 0 }
+    }}
+    { high {
+      { count 0 }
+    }}
+    { histograms (
+      {
+        { count 192 }
+        { min 0.00013326 }
+        { max 0.197536 }
+        { mean 0.100559 }
+        { stddev 0.0564064 }
+        { variance 0.00318168 }
+        { conf95 0.00797873 }
+        { total 19.3074 }
+        { total_sq 2.55241 }
+        { histogram {
+          { type uniform }
+          { low 0 }
+          { high 0.2 }
+          { bins 4 }
+          { binwidth 0.05 }
+          { binCounts (45 49 50 48 ) } } }
+      }
+      {
+        { count 190 }
+        { min 0.200078 }
+        { max 0.399426 }
+        { mean 0.298321 }
+        { stddev 0.0555236 }
+        { variance 0.00308287 }
+        { conf95 0.00789509 }
+        { total 56.6809 }
+        { total_sq 17.4948 }
+        { histogram {
+          { type uniform }
+          { low 0.2 }
+          { high 0.4 }
+          { bins 4 }
+          { binwidth 0.05 }
+          { binCounts (45 55 46 44 ) } } }
+      }
+      {
+        { count 206 }
+        { min 0.40122 }
+        { max 0.597754 }
+        { mean 0.502962 }
+        { stddev 0.0554768 }
+        { variance 0.00307767 }
+        { conf95 0.00757589 }
+        { total 103.61 }
+        { total_sq 52.746 }
+        { histogram {
+          { type uniform }
+          { low 0.4 }
+          { high 0.6 }
+          { bins 4 }
+          { binwidth 0.05 }
+          { binCounts (44 54 57 51 ) } } }
+      }
+      {
+        { count 208 }
+        { min 0.600005 }
+        { max 0.796099 }
+        { mean 0.694905 }
+        { stddev 0.0596575 }
+        { variance 0.00355902 }
+        { conf95 0.00810755 }
+        { total 144.54 }
+        { total_sq 101.182 }
+        { histogram {
+          { type uniform }
+          { low 0.6 }
+          { high 0.8 }
+          { bins 4 }
+          { binwidth 0.05 }
+          { binCounts (64 42 55 47 ) } } }
+      }
+      {
+        { count 204 }
+        { min 0.800228 }
+        { max 0.994048 }
+        { mean 0.89784 }
+        { stddev 0.0527492 }
+        { variance 0.00278248 }
+        { conf95 0.00723864 }
+        { total 183.159 }
+        { total_sq 165.015 }
+        { histogram {
+          { type uniform }
+          { low 0.8 }
+          { high 1 }
+          { bins 4 }
+          { binwidth 0.05 }
+          { binCounts (46 57 62 39 ) } } }
+      }
+   ) } } }
+};
+
+stats RW {
+  {
+    { read {
+      { count 2000 }
+      { min 0.000578776 }
+      { max 0.999714 }
+      { mean 0.488186 }
+      { stddev 0.296031 }
+      { variance 0.0876344 }
+      { conf95 0.0129741 }
+      { total 976.371 }
+      { total_sq 651.919 }
+    }}
+    { write {
+      { count 2000 }
+      { min 6.75241e-05 }
+      { max 0.99997 }
+      { mean 0.496859 }
+      { stddev 0.295035 }
+      { variance 0.0870457 }
+      { conf95 0.0129305 }
+      { total 993.718 }
+      { total_sq 667.829 }
+      { histogram {
+        { type uniform }
+        { low 0 }
+        { high 1 }
+        { bins 20 }
+        { binwidth 0.05 }
+        { binCounts (103 104 105 102 113 110 90 103 105 85
+                     104 88 86 104 82 90 106 90 100 130 ) } } }
+    }}
+    { all {
+      { count 3000 }
+      { min 0.000280766 }
+      { max 2.71697 }
+      { mean 0.890252 }
+      { stddev 0.671104 }
+      { variance 0.45038 }
+      { conf95 0.0240151 }
+      { total 2670.76 }
+      { total_sq 3728.79 }
+      { histogram {
+        { type log }
+        { low 1 }
+        { high 2.71828 }
+        { bins 20 }
+        { binCounts (2063 53 53 59 44 50 64 47 53 41
+                     50 52 53 45 45 46 46 49 50 37 ) } } }
+    }}
+  }
+};
+
+stats maker_histogram {
+  { count 1000 }
+  { min 1.07866e-05 }
+  { max 0.999037 }
+  { mean 0.484567 }
+  { stddev 0.285063 }
+  { variance 0.0812607 }
+  { conf95 0.0176684 }
+  { total 484.567 }
+  { total_sq 316.066 }
+  { histogram {
+    { type uniform }
+    { low 0 }
+    { high 1 }
+    { bins 4 }
+    { binwidth 0.25 }
+    { binCounts (264 265 237 234 ) } } }
+};
+
+stats histogram_log_scalable {
+  { count 8 }
+  { min 0.004 }
+  { max 255.9 }
+  { mean 37.3505 }
+  { stddev 82.8607 }
+  { variance 6865.89 }
+  { conf95 57.4195 }
+  { total 298.804 }
+  { total_sq 66087.6 }
+  { histogram {
+    { type log }
+    { low 0.00390625 }
+    { high 256 }
+    { bins 4 }
+    { binCounts (1 1 4 2 ) } } }
+};
+
+stats histogram_uniform_scalable {
+  { count 6 }
+  { min 2.9 }
+  { max 17 }
+  { mean 12.5667 }
+  { stddev 4.66143 }
+  { variance 21.7289 }
+  { conf95 3.72992 }
+  { total 75.4 }
+  { total_sq 1077.9 }
+  { histogram {
+    { type uniform }
+    { low 2 }
+    { high 18 }
+    { bins 16 }
+    { binwidth 1 }
+    { rescales 2 }
+    { binCounts (1 0 0 0 0 0 0 0 0 1
+                 0 0 1 2 0 1 ) } } }
+};
+

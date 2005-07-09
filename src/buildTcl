@@ -1,0 +1,1208 @@
+#!/usr/bin/awk -f
+###############################################################################
+#
+# File:         buildTcl
+# RCS:          $Header: /mount/cello/cvs/Lintel/src/buildTcl,v 1.7 2005/02/14 04:36:53 anderse Exp $
+# Description:  produce Tcl/C++ interface code
+# Author:       Alistair Veitch
+# Created:      Fri Oct  1 10:37:14 1999
+# Modified:     Tue Feb  1 21:56:07 2005 (Eric Anderson) anderse@hpl.hp.com
+# Language:     AWK
+# Package:      N/A
+# Status:       Experimental (Do Not Distribute)
+#
+# (C) Copyright 1999, Hewlett-Packard Laboratories, all rights reserved.
+#
+###############################################################################
+
+##############################################################################
+# There are a number of global variables. These are described below, in (very)
+# approximate order of importance and interest.
+#
+# classCount - number of classes processed
+# classes[n] - name of n'th class
+# libClass[class] - is it a library defined class (ie don't generate code)
+# abstract[class] - true of class is an abstract class
+# baseCount[class] - number of base classes for class
+# bases[class, n] - name of classes n'th base class
+# methods[class, n] - name of classes n'th method
+# derivedCount[class] - number of methods derived from base classes
+# derivedClass[class, n] - name of n'th derived class
+# derivedMethod[class, n] - name of n'th derived method
+# hasConstructor[class] - true if the class has a (non-default) constructor
+# constructorArgCount[class] - number of arguments constructor has
+# constructorArgDesc[class, n] - descriptor of n'th constrcutor argument
+# methodCount[class] - number of TIF methods in class
+# methodArgCount[class, method] - number of args method has
+# methodArgDesc[class, method, n] - descriptor of n'th method argument
+# methodReturnDesc[class, method] - type of returned value
+# methodCustom[class, method] - user will provide their own custom code
+# methodUsage[class, method] - usage string for method
+# functionCount: number of functions processed
+# functionArgCount[function] - number of arguments function has
+# functionArgDesc[function, n] - descriptor of n'th function argument
+# functionReturnDesc[function] - descriptor of functions return type
+# functionCustom[function] - user will provide their own custom code
+# functionUsage[function] - usage string for function
+# enums[name] - exists if enum name has been seen
+# enumVal[name] - value for the designated enum
+#
+# simpleTypeMap[name] - the simple type this name maps onto
+#
+# these variables are mostly used only during .H file processing
+# currentClass: name of current class definition
+# nextIsMethod: next line is a method definition
+# nextIsFunction: next line is a function definition
+# watching: currently in a class definition (watching for TIFmethods)
+# nest: current {} nesting level
+# usageString: usage information for fn/method currently being processed
+# wantCustom: true if fn/method being processed will have custom code
+# outHeader: file current header (.H) is being written to
+# outSource: file generated C++ will be written to
+# defunOnly: true if currently processing library headers
+# firstRegular: name of first non-library header file in input list
+# methodIsVirtual: current method is virtual
+# stderr: used to output to stderr
+# errExit: value for exit
+# debugLevel: controls the amount of debug information printed. Bigger => more
+#
+##############################################################################
+# type descriptors:
+# a single string, fields seperated by ':' characters. There are a variable
+# number of fields.
+# field 1: const or non_const
+# field 2: void | int | enum | unsigned | double | charptr | objref | string |
+#          objptr | list | objdptr
+# field 3: if f2 is enum, then f3 is the name of the enum
+#          if f2 is objref or objptr, then f3 is the object type
+#          if f2 is list, then f3-5 are repeats of f1-3 for the list contents
+#
+# some examples might make this clearer. 
+#     for arg type "int": "non_const:int"
+#     for arg type "const int": "const:int"
+#     for arg type "object &": "non_const:objref:object"
+#     for arg type "const list<string>": "const:list:non_const:string"
+#############################################################################
+
+############################################################################
+# utility functions                                                        #
+############################################################################
+
+# print debug message
+function debugMsg(level, msg) {
+    if (DebugLevel >= level) {
+        printf("%s\n", msg) | stderr;
+    }
+}
+
+# print error mesg and exit
+function errorMsg(msg) {
+    printf("error: %s\n    %s, line %d\n", msg, FILENAME, FNR) | stderr;
+    errExit = 2;
+    exit;
+}
+
+# get the last character of a string
+function last_char(str) {
+  return substr(str, length(str), 1);
+}
+
+# strip selected trailing characters off string
+function strip_trailing(input, regexp) {
+    while (last_char(input) ~ regexp) {
+        input = substr(input,1, length(input)-1);
+    }
+    return input;
+}
+
+# strip selected leading characters off string
+function strip_leading(input, regexp) {
+    while (substr(input, 1, 1) ~ regexp) {
+        input = substr(input, 2);
+    }
+    return input;
+}
+
+# strip selected leading and trailing characters off string
+function strip_lead_trail(input, regexp) {
+    input = strip_leading(input, regexp);
+    input = strip_trailing(input, regexp);
+    return input;
+}
+
+# strip C++ // comments from string
+function strip_comment(input,      offset) {
+    offset = index(input, "//");
+    if (offset == 0) return input;
+    return substr(input, 1, offset-1);
+}
+
+# let a string be put into a C++ string, by protecting double quotes
+# Thus: "..."foo"..." -> "...\"foo\"..."
+function protect_string(input) {
+    gsub("\"", "\\\"", input);
+    return input;
+}
+
+# copy files
+function copy_file(newFile, oldFile) {
+    # only copy if files differ
+    if (system("diff " newFile " " oldFile " > /dev/null")) {
+        # make backup before replacing
+	system("cp -f " oldFile " " oldFile "~");
+	system("mv -f " newFile " " oldFile);
+    }
+    else {
+	system("rm -f " newFile);
+    }
+}
+
+# If we need to switch output streams, do so
+function flush_output() {
+    if (realHeader != FILENAME) { # changed files
+        debugMsg(2, "closing '" outHeader "'");
+        close(outHeader);
+	if (!defunOnly) {
+            copy_file(outHeader, realHeader);
+        }
+        if (FILENAME == firstRegular) {
+            defunOnly = 0;
+        }
+	realHeader = FILENAME;
+        if (defunOnly) {
+            outHeader = "/dev/null";
+        }
+        else {
+            outHeader = FILENAME ".new";
+        }
+	printf("") > outHeader;  # make sure file is truncated
+    }
+}
+
+# discard n'th argument (will normally be an option, e.g. -t)
+function moveArgsDown(n,    i) {
+    for (i = n; i < ARGC-1; i++) {
+        ARGV[i] = ARGV[i+1];
+    }
+    ARGC--;
+}
+
+# get the n'th argument
+function getArg(n) {
+    if (n >= ARGC) {
+        print "error: missing argument" | stderr;
+        usage();
+    }
+    return ARGV[n];    
+}
+
+# print usage information and exit
+function usage() {
+    print "usage: buildTcl -- -o outputfile [-l headerfiles] -t headerfiles" | stderr;
+    errExit = 1;
+    exit;
+}
+
+BEGIN {
+    stderr = "cat 1>&2";
+    DebugLevel = 0;
+    errExit = 0;
+    WHITE = "[ \t]"; # matches white space
+    ALNUM = "[a-zA-Z0-9_\-]"
+
+    if (ARGC < 4) {
+        usage();
+    }
+
+    # perform manipulations on the ARGC/ARGV parameters. We want to ensure
+    # that:
+    # a) We don't process any files named '-l' or '-t'
+    # b) We don't process the output (source) file
+    # c) We keep track of where to change from library file processing to
+    #    regular file processing. We record the name of the first regular
+    #    file in firstRegular
+    # there are several subtleties in this code. You have been warned... 
+    firstRegular = "";
+    defunOnly = 0;
+    for (currentArg = 1; currentArg != ARGC; ) {
+        if (ARGV[currentArg] == "-o") {
+            moveArgsDown(currentArg);
+            outSource = getArg(currentArg);
+            moveArgsDown(currentArg);
+            continue;
+        }
+        if (ARGV[currentArg] == "-l") {
+            if (firstRegular != "") {
+                print "error: -l option must be before -t" | stderr;
+                usage();
+            }
+            defunOnly = 1;
+            moveArgsDown(currentArg);
+            continue;
+        }
+        if (ARGV[currentArg] == "-t") {
+            moveArgsDown(currentArg);
+            firstRegular = getArg(currentArg);
+            continue;
+        }
+        if ((firstRegular == "") && (defunOnly == 0)) {
+            print "error: no -t option before file " ARGV[currentArg] | stderr;
+            usage();
+        }
+        currentArg++;
+    }
+    if (outSource == "") {
+        print "error: no output file specified" | stderr;
+        usage();
+    }
+    realHeader = ARGV[1];
+    if (defunOnly) {
+        outHeader = "/dev/null";
+    }
+    else {
+        outHeader = realHeader ".new";
+    }
+    printf("") > outHeader;
+
+    # counts of classes/functions encountered
+    classCount = 0;
+    functionCount = 0;
+
+    nest = 0;     # nesting level 
+    watching = 0; # currently watching for method definitions?
+
+    # is next line a method or function definition?
+    nextIsMethod = 0;
+    nextIsFunction = 0;
+}
+
+#############################################################################
+# patterns and supporting functions (.H file processing)		    #
+#############################################################################
+
+# 2 patterns to make sure we only see first level class def'ns
+/\{/ {
+    nest++;
+}
+
+/\}/ {
+    nest--;
+    if (nest < 0) {
+        errorMsg("more }'s than {'s");
+    }
+    if (nest == 0) {
+	currentClass = "";
+	watching = 0;
+    }
+}
+
+# pick out class definitions
+/^class / {
+    if (nest > 1) {	# no nested classes please!
+        print $0 >> outHeader;
+        next;
+    }
+    if ($0 ~ /;/) {	# simple test for opaque def'n
+        print $0 >> outHeader;
+	next;
+    }
+    watching = 1;
+    currentClass = $2;
+    if (index(currentClass, ":") > 0) {
+        currentClass = substr(currentClass, 1, index(currentClass,":")-1);
+    }
+    baseCount[currentClass] = 0;
+    hasConstructor[currentClass] = 0;
+    methodCount[currentClass] = 0;
+
+    colonIndex = index($0, ":");
+    if (colonIndex != 0) {
+	if ($0 !~ /\{/) {
+	    nest++;
+        }
+        # base_classes - all of the base class names, made into one string
+        base_classes = substr($0, colonIndex + 1);
+        # read lines until we reach the end of the base classes
+        while (base_classes !~ /\{/) {
+            print $0 >> outHeader;
+            getline;
+	    base_classes = base_classes $0;
+        }
+
+        # tidy up - remove { on end, make sure spaces between base class names
+        base_classes = substr(base_classes, 1, index(base_classes, "{") - 1);
+        gsub(",", " ", base_classes);
+
+        # process and record base classes
+        nbases = split(base_classes, args, " ");
+        for (i = 1; i <= nbases; i++) {
+            base = strip_lead_trail(args[i], " ");
+            if ((length(base) > 0) && (base != "public") && (base != "private") && (base != "protected") && (base != "virtual") && (base != "TclInterface")) {
+                bases[currentClass, baseCount[currentClass]++] = base;
+	        debugMsg(2, "base " currentClass " -> " base);
+            }
+        }
+    }
+}
+
+# TIFclass directive
+/\/\/TIFclass/ {
+    # figure out which is the field with the directive
+    for (dirf = 1; dirf < NF; dirf++) {
+        if ($dirf ~ "TIFclass") break;
+    }
+
+    # record abstract status
+    if ($(dirf+1) == "abstract") {
+        class = $(dirf + 2);
+        abstract[class] = 1;
+        debugMsg(2, "Add abstract class " class);
+    }
+    else {
+        class = $(dirf + 1);
+        abstract[class] = 0;
+        debugMsg(2, "Add class " class);
+    }
+    libClass[class] = defunOnly;
+    classes[classCount++] = class;
+
+    # insert function definitions
+    print $0 >> outHeader;
+    printf("/* DO NOT REMOVE THIS SECTION - AUTOMATICALLY GENERATED CODE */\n\n") >> outHeader;
+    printf("int Tcl_Get%sFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, %s **ppt);\n", class, class) >> outHeader;
+    printf("void Tcl_Declare_%s(Tcl_Interp *, %s *);\n", class, class) >> outHeader;
+    printf("\n/* END OF AUTOMATICALLY GENERATED CODE */\n") >> outHeader;
+
+    # make sure any previously inserted lines are skipped
+    getline nextline;
+    if (nextline ~ "SECTION - AUTOMATICALLY GENERATED") {  
+        while (getline == 1) {
+            if ($0 ~ "END OF AUTOMATICALLY") {
+	        next;
+            }
+        }
+    }
+    else {
+	if (nextline != "") {
+	    errorMsg("Must have an empty line right after //TIFclass");
+	}
+        printf("%s\n", nextline) >> outHeader;
+    }
+    next; # skip the rest of the patterns
+}
+
+#
+# parse a type string, putting the results in the typeDesc variable. Return
+# the remainder of the argument after parsing (this should be either a
+# function/method name or argument name, depending on context)
+# There is a special check for potential constructors. In this case, the
+# variable isConstructor is set to true.
+# The second argument should be set to true if the type being parsed is the
+# return type of a method
+#
+function parseType(arg, isMethResult) {
+    debugMsg(5, "parseType(" arg ", " isMethResult ")");
+    # check for no return type (ie possible constructor)
+    if ((arg !~ "[\*& \t]") && (isMethResult == 1)) {
+        if (arg != currentClass) {
+		print "current class " currentClass " X";
+            errorMsg("method has no return type");
+        }
+        isConstructor = 1;
+        return arg;
+    }
+
+    # check for and strip leading virtual, if any
+    methodIsVirtual = 0;
+    if (match(arg, "virtual" WHITE "*") == 1) {
+        if (isMethResult) {
+            methodIsVirtual = 1;
+        }
+        sub("virtual" WHITE "*", "", arg);
+    }
+
+    # leading const?
+    typeDesc = "const";
+    if (match(arg, "const" WHITE "*") == 1) {
+        sub("const" WHITE "*", "", arg);
+    }
+    else {
+        typeDesc = "non_" typeDesc;
+    }
+
+    # start trying to figure out the type
+    # if list, call ourselves recursively to parse list type
+    if (match(arg, "(std::)?list" WHITE "*<") != 0) {
+        tdSave = typeDesc; # since typeDesc will be overwritten by rec. call
+        sub("(std::)?list" WHITE "*<" WHITE "*", "", arg);
+        arg = parseType(arg, 0);
+        typeDesc = tdSave ":list:" typeDesc;
+        if (sub(">" WHITE "*", "", arg) == 0) {
+            errorMsg("incorrect list specification");
+        }
+    }
+    # N.B. we're trying to match *just* the type string.
+    else if ((index(arg, "void") == 1) && (match(arg, "void[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":void";
+        sub("void" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "int") == 1) && (match(arg, "int[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":int";
+        sub("int" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "unsigned") == 1) && (match(arg, "unsigned[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":unsigned";
+        sub("unsigned" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "uint32_t") == 1) && (match(arg, "uint32_t[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":unsigned";
+        sub("unsigned" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "count_t") == 1) && (match(arg, "count_t[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":int";
+        sub("count_t" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "byte_t") == 1) && (match(arg, "byte_t[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":int";
+        sub("byte_t" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "double") == 1) && (match(arg, "double[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":double";
+        sub("double" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "LintelTime") == 1) && (match(arg, "LintelTime[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":double";
+        sub("LintelTime" WHITE "*", "", arg);
+    }
+    else if ((index(arg, "bool") == 1) && (match(arg, "bool[a-zA-Z0-9_\-].") != 1)) {
+        typeDesc = typeDesc ":bool";
+        sub("bool" WHITE "*", "", arg);
+    }
+    else if ((match(arg, "(std::)?string") == 1) && (match(arg, "string" ALNUM) == 0)) {
+        typeDesc = typeDesc ":string";
+        sub("(std::)?string" WHITE "*", "", arg);
+    }
+    else if (match(arg, "char" WHITE "*\*") != 0) {
+        typeDesc = typeDesc ":charptr";
+        sub("char" WHITE "*\*" WHITE "*", "", arg);
+    }
+    else {  # last alternatives are object or enum
+        match(arg, "[a-zA-Z_]*[:a-zA-Z0-9_\-]*");
+        if (RSTART != 1) {
+            errorMsg("Unknown argument type: " arg);
+        }
+        theType = substr(arg, 1, RLENGTH);
+	debugMsg(6, "extracted type " theType);
+        sub("[a-zA-Z_]*[:a-zA-Z0-9_\-]*" WHITE "*", "", arg);
+	if (theType in enums) {
+	    typeDesc = typeDesc ":enum:" theType;
+	}
+        else if (theType in simpleTypeMap) {
+            typeDesc = typeDesc ":" simpleTypeMap[theType];
+	    if (index(arg, "*") == 1) {
+		typeDesc = typeDesc ":objptr";
+	    }
+        }
+	else if (index(arg, "**") == 1) {
+            typeDesc = typeDesc ":objdptr";
+        }
+	else if (index(arg, "*") == 1) {
+            typeDesc = typeDesc ":objptr";
+        }
+        else if (index(arg, "&") == 1) {
+            typeDesc = typeDesc ":objref";
+        }
+        else {
+            errorMsg("objects must be pointers or references (arg " arg ")");
+        }
+        typeDesc = typeDesc ":" theType;
+        sub("[\*&]" WHITE "*", "", arg);
+    }
+    return arg;
+}
+
+#
+# process arguments in a TIFmethod or TIFfunction. Many of the variables
+# referenced in this function are initialised in the patterns for these
+# directives (immediately following this)
+#
+function parseArgs(arglist, isMethod) {
+    debugMsg(5, "parseArgs(\"" arglist "\", " isMethod ")");
+    if (arglist == "void") arglist = "";  # no arg. special case e.g. foo(void)
+    nargs = split(arglist, args, ",");  # args separated by commas
+    if (isMethod) {
+        if (isConstructor) {
+            constructorArgCount[currentClass] = nargs;
+        }
+        else {
+            methodArgCount[currentClass, methodName] = nargs;
+        }
+    }
+    else {
+        functionArgCount[functionName] = nargs;
+    }
+    debugStr = debugStr " " nargs " arguments: ";
+
+    # process each argument
+    for (i = 1; i <= nargs; i++) {
+        parseType(strip_lead_trail(args[i], WHITE), 0);
+
+	if (isMethod) {
+            if (isConstructor) {
+                constructorArgDesc[currentClass, i-1] = typeDesc;
+            }
+            else {
+                methodArgDesc[currentClass, methodName, i-1] = typeDesc;
+            }
+	}
+	else {
+            functionArgDesc[functionName, i-1] = typeDesc;
+	}
+        debugStr = debugStr typeDesc ", ";
+    }
+}
+
+# does a type descriptor refer to an object reference?
+function isRefType(type) {
+   split(type, td, ":");
+   return (td[2] == "objref");
+}
+
+# get the usage and optional custom information that follows a TIF directive
+function setUsageAndCustom() {
+    wantCustom = 0;
+    match($0, "TIF[a-z]+[ \t]*");
+    if (RSTART == 0) {
+        usageString = "";
+    }
+    else {
+        usageString = substr($0, RSTART+RLENGTH, length($0));
+        # if first part is "custom", then user will write their own fn/method
+        match(usageString, "custom[ \t]*");
+        if (RSTART == 1) {
+            wantCustom = 1;
+            usageString = substr(usageString, RSTART+RLENGTH, length(usageString));
+        }
+    }
+}
+
+# TIFmethod directive - just set nextIsMethod
+/\/\/TIFmethod/ {
+    if (!watching) {  # must be in class definition
+        errorMsg("not in class");
+    }
+    nextIsMethod = 1;
+    setUsageAndCustom();
+    print $0 >> outHeader;
+    next;
+}
+
+
+# TIFfunction directive
+/\/\/TIFfunction/ {
+    if (!defunOnly) {
+        nextIsFunction = 1;
+        setUsageAndCustom();
+        print $0 >> outHeader;
+        next;
+    }
+}
+
+# TIFtype directive
+/\/\/TIFtype/ {
+    if ($3 in simpleTypeMap) {
+        if ($2 != simpleTypeMap[$3]) {
+            errorMsg("redefined simple type " $2);
+        }
+    } else if (($2 == "unsigned") && (($3 == "long") || ($3 == "int"))) {
+	simpleTypeMap[$4] = $2 " " $3;
+	debugMsg(5,"processing TIFtype: " $2 " " $3 " -> " $4);
+    } else {
+	simpleTypeMap[$3] = $2;
+	debugMsg(5,"processing TIFtype: " $2 " -> " $3);
+    }
+    print $0 >> outHeader;
+    next;
+}
+
+# TIFenumVal directive
+/\/\/TIFenumVal / {
+    enumVal[$2] = $3;
+    print $0 >> outHeader;
+    next;
+}
+
+# parse enums
+/[ \t]*enum[ \t]*[a-zA-Z0-9_]*[ \t]*\{/ {
+    enums[$2] = "";
+}
+
+# default action. 
+// {
+    flush_output();
+    print $0 >> outHeader;
+
+    if (nextIsMethod) {
+        # read lines till end of method signature
+        defn = strip_comment($0);
+        while (defn !~ "\)") {
+            getline;
+            print $0 >> outHeader;
+            defn = defn " " strip_comment($0);
+        }
+        isConstructor = 0;
+
+        # get method name, return type, and determine if it's a constructor
+        argindex = index(defn, "(");  # start of arguments
+        methodName = parseType(strip_lead_trail(substr(defn, 1, argindex - 1), WHITE), 1);
+
+        if (isConstructor) {
+            hasConstructor[currentClass] = 1;
+            debugStr = "class " currentClass " constructor";
+        }
+        else {
+            methodReturnDesc[currentClass, methodName] = typeDesc;
+            methodCustom[currentClass, methodName] = wantCustom;
+            methods[currentClass, methodCount[currentClass]] = methodName;
+            methodCount[currentClass]++;
+            debugStr = "class " currentClass "/" methodName " returns " typeDesc;
+        }
+
+        if (!wantCustom) {
+            arglist = strip_lead_trail(substr(defn, argindex+1, index(defn, ")") - argindex - 1), WHITE);
+            parseArgs(arglist, 1);
+
+            if (usageString == "") {
+                if (isConstructor) {
+                    methodUsage[currentClass, currentClass] = currentClass " " arglist;
+                }
+                else {
+                    methodUsage[currentClass, methodName] = methodName " " arglist;
+                }
+            }
+            else {
+                if (isConstructor) {
+                    methodUsage[currentClass, currentClass] = usageString;
+                }
+                else {
+                    methodUsage[currentClass, methodName] = usageString;
+                }
+            }
+
+            debugMsg(2, debugStr);
+        }
+        nextIsMethod = 0;
+    }
+
+    # check for TIFfunction
+    if (nextIsFunction) {
+        defn = $0;
+        while (defn !~ "\)") {
+            getline;
+            print $0 >> outHeader;
+            defn = defn " " $0;
+        }
+
+        argindex = index(defn, "(");
+        functionName = parseType(strip_lead_trail(substr(defn, 1, argindex - 1), WHITE), 0);
+        functionReturnDesc[functionName] = typeDesc;
+        functionCustom[functionName] = wantCustom;
+        functions[functionCount++] = functionName;
+        debugStr = "function " functionName " returns " typeDesc;
+
+        if (!wantCustom) {
+            arglist = strip_lead_trail(substr(defn, argindex+1, index(defn, ")") - argindex - 1), WHITE);
+
+            parseArgs(arglist, 0);
+
+            if (usageString == "") {
+                functionUsage[functionName] = functionName " " arglist;
+            }
+            else {
+                functionUsage[functionName] = usageString;
+            }
+
+            debugMsg(2, debugStr);
+        }
+        nextIsFunction = 0;
+    }
+}
+
+
+###############################################################################
+# functions for the final production of the source (.C) file (END processing) #
+###############################################################################
+
+# given class name and a base of that class, fill in all the appropriate
+# data structures to maintain the class hierarchy. Also ensures that all
+# methods from base classes are available in the derived class.
+function addDerived(class, base,    i, j) {
+    for (i = 0; i < baseCount[base]; i++) {
+        newbase = bases[base, i];
+        seenAlready = 0;
+        for (j = 0; j < derivedCount[class]; j++) {
+            if (derivedClass[class, j] == newbase) {
+                seenAlready = 1;
+            }
+        }
+        if (!seenAlready) {
+            for (j = 0; j < methodCount[newbase]; j++) {
+                derivedClass[class, derivedCount[class]+j] = newbase;
+                derivedMethod[class, derivedCount[class]+j] = methods[newbase, j];
+	        debugMsg(2, "derived " class " -> " newbase "/" methods[newbase, j]);
+            }
+            derivedCount[class] += methodCount[newbase];
+	    # call ourselves recursively.
+            addDerived(class, newbase);
+        }
+    }
+}
+
+# turn a type descriptor into a C++ type string
+function typeDescToString(typeDesc,    res, td) {
+    debugMsg(5, "typeDescToString(" typeDesc ")");
+    res = "";
+    split(typeDesc, td, ":");
+    if (td[1] == "const") {
+        res = "const ";
+    }
+    if ((td[2] == "void") || (td[2] == "int") || (td[2] == "unsigned") || (td[2] == "double") || (td[2] == "bool") || (td[2] == "long") || (td[2] == "unsigned long") || (td[2] == "unsigned int")) {
+        res = res td[2];
+    }
+    else if (td[2] == "string") {
+	res = res "std::string";
+    }
+    else if (td[2] == "enum") {
+        res = res td[3];
+    }
+    else if (td[2] == "charptr") {
+        res = res "char *";
+    }
+    else if (td[2] == "objdptr") {
+        res = res td[3] " **";
+    }
+    else if (td[2] == "objptr") {
+        res = res td[3] " *";
+    }
+    else if (td[2] == "objref") {
+        res = res td[3] " &";
+    }
+    else if (td[2] == "list") {
+        res = res "std::list<" typeDescToString(td[3] ":" td[4] ":" td[5]) ">";
+    }
+    else {
+        errorMsg("typeDescToString: invalid type descriptor " typeDesc);
+    }
+    return res;
+}
+
+# emit code that will instantiate a C++ object from a tcl object, where
+# the type of the C++ object is specified
+# indent - current code indent level (have to be tidy now!)
+# type - type part of a type descriptor
+# objName - if type is objptr or objref, the object name
+# cppObj - name of the C++ variable
+# tclObj - name of the tcl object ptr
+function emitGetVarFromObjCode(indent, type, objName, cppObj, tclObj) {
+    if ((type == "int") || (type == "unsigned") || (type == "enum") || (type == "double") || (type == "string") || (type == "bool") || (type == "charptr") || (type == "unsigned long") || (type == "unsigned int")) {
+        # declare the variable
+        if (type == "charptr") {
+            printf("%s    char * %s;\n", indent, cppObj) >> outSource;
+        }
+        else if (type == "enum") {
+            printf("%s    %s %s;\n", indent, objName, cppObj) >> outSource;
+        }
+        else if (type == "string") {
+            printf("%s    std::string %s;\n", indent, cppObj) >> outSource;
+        }
+        else {
+            printf("%s    %s %s;\n", indent, type, cppObj) >> outSource;
+        }
+
+        # get a value
+	if (type == "int") {
+            printf("%s    error = Tcl_GetIntFromObj(interp, %s, &%s);\n", indent, tclObj, cppObj) >> outSource;
+	}
+	else if (type == "unsigned") {
+            printf("%s    error = Tcl_GetIntFromObj(interp, %s, (int *)(&%s));\n", indent, tclObj, cppObj) >> outSource;
+	}
+	else if ((type == "unsigned long") || (type == "unsigned int")) {
+            printf("%s    error = Tcl_GetIntFromObj(interp, %s, (int *)(&%s));\n", indent, tclObj, cppObj) >> outSource;
+	}
+	else if (type == "double") {
+            printf("%s    error = Tcl_GetDoubleFromObj(interp, %s, &%s);\n", indent, tclObj, cppObj) >> outSource;
+	}
+	else if (type == "bool") {
+            printf("%s    int temp%s;\n", indent, cppObj) >> outSource;
+            printf("%s    error = Tcl_GetBooleanFromObj(interp, %s, &temp%s);\n", indent, tclObj, cppObj) >> outSource;
+            printf("%s    %s = (temp%s != 0);\n", indent, cppObj, cppObj) >> outSource;
+	}
+        else if (type == "enum") {
+            printf("%s    int i%s;\n", indent, cppObj) >> outSource;
+            printf("%s    char * temp%s = Tcl_GetStringFromObj(%s, NULL);\n", indent, cppObj, tclObj) >> outSource;
+            printf("%s    Tcl_HashEntry *entryPtr%s = Tcl_FindHashEntry(&TIFenumTable, temp%s);\n", indent, cppObj, cppObj) >> outSource;
+            printf("%s    if (entryPtr%s == NULL) {\n", indent, cppObj) >> outSource;
+            printf("%s        error = Tcl_GetIntFromObj(interp, %s, &i%s);\n", indent, tclObj, cppObj) >> outSource;
+            printf("%s    }\n%s    else {\n", indent, indent) >> outSource;
+            printf("%s        i%s = reinterpret_cast<int>(Tcl_GetHashValue(entryPtr%s));\n%s    }\n", indent, cppObj, cppObj, indent) >> outSource;
+            printf("%s    %s = (%s)i%s;\n", indent, cppObj, objName, cppObj) >> outSource;
+        }
+	else { # must be string/charptr
+	    printf("%s    %s = Tcl_GetStringFromObj(%s, NULL);\n", indent, cppObj, tclObj) >> outSource;
+	}
+    }
+    else if ((type == "objptr") || (type == "objref")) {
+        printf("%s    %s *%s;\n", indent, objName, cppObj) >> outSource;
+	printf("%s    error = Tcl_Get%sFromObj(interp, %s, &%s);\n", indent, objName, tclObj, cppObj) >> outSource;
+    } 
+}
+
+# given a type descriptor, and argument index, emit code that will result in a
+# variable (name constructed from the index) getting the value from the
+# tcl object in the (C++) function arguments
+function emitArgCode(type, i) {
+    split(type, tda, ":");
+
+    # lists are a special case. emitGetVarFromObjCode handles non-lists
+    if (tda[2] == "list") {
+        printf("    %s arg%d;\n", typeDescToString(type), i) >> outSource;
+        printf("    {\n") >> outSource;
+        printf("\tint len;\n\tTcl_Obj **optrs;\n") >> outSource;
+        printf("\terror = Tcl_ListObjGetElements(interp, objv[%d], &len, &optrs);\n", i+1) >> outSource;
+        printf("\tif (error != TCL_OK) {\n\t    Tcl_AppendResult(interp, \"bad argument: \", Tcl_GetStringFromObj(objv[%d], NULL), \" (argument #%d)\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n\t    return TCL_ERROR;\n\t}\n", i+1, i+1) >> outSource;
+        printf("\tfor (int i = 0; i < len; i++) {\n") >> outSource;
+
+	debugMsg(5, "ltemparg : " tda[4] "/" tda[5] "/" type);
+        emitGetVarFromObjCode("\t", tda[4], tda[5], "ltemparg" i, "optrs[i]");
+        printf("\t    if (error != TCL_OK) {\n\t\tTcl_AppendResult(interp, \"bad argument: \", Tcl_GetStringFromObj(optrs[i], NULL), \"\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n\t\treturn TCL_ERROR;\n\t    }\n") >> outSource;
+        printf("\t    arg%d.push_back(ltemparg%d);\n", i, i) >> outSource;
+        printf("\t}\n") >> outSource;
+        printf("    }\n") >> outSource;
+    }
+    else if (tda[2] == "objdptr") {
+	debugMsg(0, "ptemparg : " tda[3] );
+
+        printf("%s    %s **arg%d;\n", indent, tda[3], i) >> outSource;
+        printf("    {\n") >> outSource;
+        printf("\tint len;\n\tTcl_Obj **optrs;\n") >> outSource;
+        printf("\terror = Tcl_ListObjGetElements(interp, objv[%d], &len, &optrs);\n", i+1) >> outSource;
+        printf("\tif (error != TCL_OK) {\n\t    Tcl_AppendResult(interp, \"bad argument: \", Tcl_GetStringFromObj(objv[%d], NULL), \" (argument #%d)\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n\t    return TCL_ERROR;\n\t}\n", i+1, i+1) >> outSource;
+
+	printf("%s    arg%d = new %s*[len];\n", indent, i, tda[3]) >> outSource;
+        printf("\tfor (int j = 0; j < len; j++) {\n") >> outSource;
+        emitGetVarFromObjCode("\t", "objptr", tda[3], "ptemparg" i, "optrs[j]");
+        printf("\t    if (error != TCL_OK) {\n\t\tTcl_AppendResult(interp, \"bad argument: \", Tcl_GetStringFromObj(optrs[j], NULL), \"\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n\t\treturn TCL_ERROR;\n\t    }\n") >> outSource;
+
+        printf("\t    arg%d[j] = ptemparg%d;\n", i, i) >> outSource;
+        printf("\t}\n") >> outSource;
+        printf("    }\n") >> outSource;
+    }
+    else {
+        emitGetVarFromObjCode("", tda[2], tda[3], "arg" i, "objv[" i+1 "]");
+    }
+    printf("    if (error != TCL_OK) {\n\tTcl_AppendResult(interp, \"bad argument: \", Tcl_GetStringFromObj(objv[%d], NULL), \" (argument #%d)\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n\treturn TCL_ERROR;\n    }\n", i+1, i+1) >> outSource;
+}
+
+# this function is analagous to emitGetVarFromObjCode, except it reverses the
+# flow - ie the tcl object is instantiated from the C++ object
+function emitSetArgCode(indent, cppObj, tclObj, type, objName) {
+    if (type == "void") {
+        printf("%sTcl_SetStringObj(%s, const_cast<char *>(\"\"), -1);\n", indent, tclObj) >> outSource;
+    }
+    else if ((type == "int") || (type == "enum") || (type == "unsigned")) {
+        printf("%sTcl_SetIntObj(%s, %s);\n", indent, tclObj, cppObj) >> outSource;
+    }
+    else if (type == "double") {
+        printf("%sTcl_SetDoubleObj(%s, %s);\n", indent, tclObj, cppObj) >> outSource;
+    }
+    else if (type == "bool") {
+        printf("%sTcl_SetBooleanObj(%s, %s);\n", indent, tclObj, cppObj) >> outSource;
+    }
+    else if (type == "string") {
+        printf("%sTcl_SetStringObj(%s, const_cast<char *>(%s.c_str()), -1);\n", indent, tclObj, cppObj) >> outSource;
+    }
+    else if (type == "charptr") {
+        printf("%sTcl_SetStringObj(%s, %s, -1);\n", indent, tclObj, cppObj) >> outSource;
+    }
+    else if (type == "objptr") {
+        printf("%sif (%s == NULL) {\n", indent, cppObj) >> outSource;
+        printf("%s    Tcl_SetStringObj(%s, const_cast<char *>(\"\"), -1);\n    }\n    else {\n", indent, tclObj) >> outSource;
+        printf("%s    Tcl_Declare_%s(interp, %s);\n    }\n", indent, objName, cppObj) >> outSource;
+    }
+    else if (type == "objref") {
+        printf("%sTcl_Declare_%s(interp, &%s);\n", indent, objName, cppObj) >> outSource;
+    }
+    else {
+        errorMsg("emitSetArgCode: unknown argument type " type);
+    }
+}
+
+# write out code for a given procedure. If it's a method, the class and a
+# base class are supplied. The base class is relevant if it's a derived method
+function writeCmd(proc, class, base,      i) {
+    debugMsg(5, "writeCmd(" proc ", " class ", " base ")");
+    # is this a method or function?
+    isMethod = 1;
+    if (class == "") {
+        isMethod = 0;
+    }
+
+    if (isMethod) {
+        usageString = methodUsage[base, proc];
+    }
+    else {
+        usageString = functionUsage[proc];
+    }
+
+    if (isMethod) {
+        returnType = methodReturnDesc[base, proc];
+	printf("int %s%sCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {\n", class, proc) >> outSource;
+	printf("    %s *op = (%s *)clientData;\n", class, class) >> outSource;
+	nargs = methodArgCount[base, proc];
+    }
+    else {
+        returnType = functionReturnDesc[proc];
+	printf("static int %sCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {\n", proc) >> outSource;
+	nargs = functionArgCount[proc];
+    }
+
+    # check # of args
+    printf("    TIFusage = \"usage: %s\";\n", protect_string(usageString)) >> outSource;
+    printf("    if (objc != %d) {\n", nargs+1) >> outSource;
+    printf("\tTcl_WrongNumArgs(interp, 0, objv, const_cast<char *>(TIFusage.c_str()));\n") >> outSource;
+    printf("\treturn TCL_ERROR;\n    }\n") >> outSource;
+
+    # declare & obtain each argument
+    if (nargs != 0) {
+        printf("    int error = TCL_OK;\n") >> outSource;
+    }
+    for (i = 0; i < nargs; i++) {
+        if (isMethod) {
+	    emitArgCode(methodArgDesc[base, proc, i], i);
+	}
+	else {
+            emitArgCode(functionArgDesc[proc, i], i);
+	}
+    }
+
+    # call the proc
+    procPrefix = isMethod ? "op->" : "";
+    split(returnType, rtd, ":");
+    if (rtd[2] == "void") {
+        printf("    %s%s(", procPrefix, proc) >> outSource;
+    }
+    else {
+        printf("    %s returnVal = %s%s(", typeDescToString(returnType), procPrefix, proc) >> outSource;
+    }
+
+    for (i = 0; i < nargs; i++) {
+        if (i != 0) {
+            printf(", ") >> outSource;
+        }
+        if (isMethod) {
+	    reft = isRefType(methodArgDesc[base, proc, i]);
+	}
+	else {
+            reft = isRefType(functionArgDesc[proc, i]);
+	}
+        if (reft) {
+            printf("*") >> outSource;
+        }
+        printf("arg%d", i) >> outSource;
+    }
+    printf(");\n") >> outSource;
+
+    # now make sure the tcl result gets set up
+    printf("    Tcl_Obj *tresult = Tcl_GetObjResult(interp);\n") >> outSource;
+    if (rtd[2] != "list") {
+        emitSetArgCode("    ", "returnVal", "tresult", rtd[2], rtd[3]);
+    }
+    else {
+        printf("    for (%s::iterator i = returnVal.begin(); i != returnVal.end(); i++) {\n", typeDescToString(returnType)) >> outSource;
+        printf("\tTcl_Obj *tempelem = Tcl_NewObj();\n") >> outSource;
+	emitSetArgCode("\t", "(*i)", "tempelem", rtd[4], rtd[5]);
+        printf("\tif (Tcl_ListObjAppendElement(interp, tresult, tempelem) != TCL_OK) {\n") >> outSource;
+        printf("\t     Tcl_AppendResult(interp, \"internal list append error in %s\", NULL);\n", proc) >> outSource;
+        printf("\t    return TCL_ERROR;\n\t}\n    }\n") >> outSource;
+    } 
+    printf("    return TCL_OK;\n}\n\n") >> outSource;
+}
+
+# writeDerivedCmd - like writeCmd, except for derived procedures only. In this
+# case we can skip the argument processing, and call the next Cmd function
+# directly. Works for virtual functions as well, as no matter how down the
+# class hierarchy we go, we still get the right method (due to virtualness!)
+function writeDerivedCmd(method, class, base) {
+    printf("int %s%sCmd(ClientData clientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {\n", class, method) >> outSource;
+    printf("    %s *op = (%s *)clientData;\n", class, class) >> outSource;
+
+    # add a forward declaration, in case the function is defined later
+    printf("    %sint %s%sCmd(ClientData,Tcl_Interp *,int,Tcl_Obj *CONST[]);\n",
+	   (libClass[base] ? "extern " : ""), base, method) >> outSource;
+    # now the actual call ...
+    printf("    return %s%sCmd((%s *)op, interp, objc, objv);\n}\n\n", base, method, base) >> outSource;
+}
+
+# END - drives the production of the generated source
+END {
+    close(outHeader); # make sure last header file is closed
+
+    # awk is unlike every other language, in that exit means "goto END"
+    # rather than exit. If we do exit earlier in the script, we don't want
+    # to do any more here. Thus, errExit is always set before calling exit
+    if (errExit) {
+        exit errExit; # really exit, since we're calling from within END
+    }
+
+    copy_file(outHeader, realHeader);
+    
+    # make sure headers for functions we may call are included
+    print "#include <list>" >> outSource;
+    print "#include <stdlib.h>" >> outSource;
+    print "#include <string.h>" >> outSource;
+    print "#include <tcl.h>" >> outSource;
+    print "#include \"streamcompat.H\"" >> outSource;
+    print "#include \"TclInterface.H\"" >> outSource;
+    for (i = 1; i < ARGC; i++) {
+        printf("#include \"%s\"\n", ARGV[i]) >> outSource;
+    }
+    print "" >> outSource;
+    
+    # define a "getObj" function for each class
+    for (i = 0; i < classCount; i++) {
+	class = classes[i];
+        if (!libClass[class]) {
+	    printf("int Tcl_Get%sFromObj(Tcl_Interp *interp, Tcl_Obj *objPtr, %s **ppt) {\n", class, class) >> outSource;
+	    printf("    if (TIFsetFromAnyProc(interp, objPtr) != TCL_OK) {\n") >> outSource;
+            printf("\tTcl_AppendResult(interp, Tcl_GetStringFromObj(objPtr, NULL), \" is not a TclInterface object\", \"\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n") >> outSource;
+	    printf("\treturn TCL_ERROR;\n    }\n\n") >> outSource;
+	    printf("    TclInterface *tip = (TclInterface *)objPtr->internalRep.otherValuePtr;\n") >> outSource;
+	    printf("    *ppt = dynamic_cast<%s *>(tip);\n", class) >> outSource;
+	    printf("    if (*ppt == NULL) {\n") >> outSource;
+            printf("\tTcl_AppendResult(interp, Tcl_GetStringFromObj(objPtr, NULL), \" is not a %s object\", \"\\n    \", const_cast<char *>(TIFusage.c_str()), NULL);\n", class) >> outSource;
+	    printf("\treturn TCL_ERROR;\n    }\n\n") >> outSource;
+	    printf("    return TCL_OK;\n}\n\n") >> outSource;
+        }
+    }
+
+    # expand the set of callable methods by adding those for the base classes
+    for (i = 0; i < classCount; i++) {
+        class = classes[i];
+        derivedCount[class] = 0;
+        addDerived(class, class);
+    }
+
+    # define a declaration for each (non-library) class. The real function
+    # is generated later, but we may need these forward declarations in the
+    # code implementing commands
+    for (i = 0; i < classCount; i++) {
+	class = classes[i];
+        if (!libClass[class]) {
+            printf("void Tcl_Declare_%s(Tcl_Interp *, %s *);\n", class, class) >> outSource;
+        }
+    }
+    printf("\n") >> outSource;
+
+    # define the commands for each of the "methods"
+    for (i = 0; i < classCount; i++) {
+	class = classes[i];
+        if (!libClass[class]) {
+	    for (j = 0; j < methodCount[class]; j++) {
+	        method = methods[class, j];
+                if (!methodCustom[class, method]) {
+                    writeCmd(method, class, class);
+                }
+	    }
+            for (j = 0; j < derivedCount[class]; j++) {
+                writeDerivedCmd(derivedMethod[class, j], class, derivedClass[class, j]);
+            }
+        }
+    }
+
+    # similarly, define the commands for each of the functions
+    for (i = 0; i < functionCount; i++) {
+        if (!functionCustom[functions[i]]) {
+            writeCmd(functions[i], "", "");
+        }
+    }
+
+    # define a "declarator" for each class, and a "constructor" for each
+    # non-abstract class
+    for (i = 0; i < classCount; i++) {
+	class = classes[i];
+        if (!libClass[class]) {
+            printf("void Tcl_Declare_%s(Tcl_Interp *interp, %s *obj) {\n", class, class) >> outSource;
+	    printf("    Tcl_Obj *result = Tcl_GetObjResult(interp);\n") >> outSource;
+	    printf("    result->bytes = NULL;\n") >> outSource;
+	    printf("    result->typePtr = Tcl_GetObjType(const_cast<char *>(\"TclInterface\"));\n") >> outSource;
+	    printf("    result->internalRep.otherValuePtr = (char *)((TclInterface *)obj);\n\n") >> outSource;
+	    if ((methodCount[class] != 0) || (derivedCount[class] != 0)) {
+	        printf("    char cmdName[100];\n") >> outSource;
+	    }
+	    for (j = 0; j < methodCount[class]; j++) {
+	        method = methods[class, j];
+	        printf("    sprintf(cmdName, \"TclInterface@%%x.%s\", (int)result->internalRep.otherValuePtr);\n", method) >> outSource;
+	        printf("    Tcl_CreateObjCommand(interp, cmdName, %s%sCmd, obj, NULL);\n", class, method) >> outSource;
+	    }
+            for (j = 0; j < derivedCount[class]; j++) {
+                dclass = derivedClass[class, j];
+                method = derivedMethod[class, j];
+	        printf("    sprintf(cmdName, \"TclInterface@%%x.%s\", (int)result->internalRep.otherValuePtr);\n", method) >> outSource;
+	        printf("    Tcl_CreateObjCommand(interp, cmdName, %s%sCmd, obj, NULL);\n", class, method) >> outSource;
+            }
+	    printf("}\n\n") >> outSource;
+        }
+
+        if (!abstract[class] && !libClass[class]) {
+	    printf("static int %sCmd(ClientData, Tcl_Interp *interp, int objc, Tcl_Obj *CONST objv[]) {\n", class) >> outSource;
+            printf("    %s *obj;\n", class) >> outSource;
+            printf("    TIFusage = \"%s\";\n", protect_string(methodUsage[class, class])) >> outSource;
+            print "    int error = TCL_OK;" >> outSource;
+            if (hasConstructor[class]) {
+                nargs = constructorArgCount[class];
+                printf("    if (objc != %d) {\n", nargs+1) >> outSource;
+                printf("\tTcl_WrongNumArgs(interp, 0, objv, const_cast<char *>(TIFusage.c_str()));\n") >> outSource;
+                printf("\treturn TCL_ERROR;\n    }\n") >> outSource;
+                for (j = 0; j < nargs; j++) {
+                    emitArgCode(constructorArgDesc[class, j], j);
+                }
+                printf("    obj = new %s(", class, class) >> outSource;
+                for (j = 0; j < nargs; j++) {
+                    if (j != 0) {
+                        printf(", ") >> outSource;
+                    }
+                    if (isRefType(constructorArgDesc[class, j])) {
+                        printf("*") >> outSource;
+                    }
+                    printf("arg%d", j) >> outSource;
+                }
+                printf(");\n") >> outSource;
+            }
+            else {
+                printf("    if (objc != 1) {\n") >> outSource;
+                printf("\tTcl_WrongNumArgs(interp, 0, objv, const_cast<char *>(TIFusage.c_str()));\n") >> outSource;
+                printf("\treturn TCL_ERROR;\n    }\n") >> outSource;
+	        printf("    obj = new %s;\n\n", class) >> outSource;
+            }
+	    printf("    Tcl_Declare_%s(interp, obj);\n", class) >> outSource;
+	    printf("    return error;\n}\n\n") >> outSource;
+        }
+    }
+
+    # create the objects which make the commands visible
+    for (i = 0; i < classCount; i++) {
+	class = classes[i];
+        if (!abstract[class] && !libClass[class]) {
+            printf("TclInterface TIF_DECL_%s(\"%s\", %sCmd);\n", class, class, class) >> outSource;
+        }
+    }
+    for (i = 0; i < functionCount; i++) {
+        fn = functions[i];
+        printf("TclInterface TIF_DECL_%s(\"%s\", %sCmd);\n", fn, fn, fn) >> outSource;
+    }
+
+    # create the enum translations
+    for (ename in enumVal) {
+        printf("TclEnum TIF_ENUM_DECL_%s(\"%s\", %d);\n", ename, ename, enumVal[ename]) >> outSource;
+    }
+}

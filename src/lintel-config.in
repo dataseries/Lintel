@@ -1,0 +1,75 @@
+#!/bin/sh
+
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+includedir=@includedir@
+libdir=@libdir@
+
+usage()
+{
+    cat <<EOF
+Usage: lintel-config <OPTION>
+
+Valid options:
+  --cflags	       show needed compiler flags
+  --libtool-libs       show link options for libtool
+  --libs	       show library link options
+  --mustgclibs         show library link options for programs requiring garbage collection
+  --nogclibs           show library linnk options for programs that don't need gc libraries
+  --help               show these options
+  --version            show lintel version
+EOF
+exit 1
+}
+
+if test $# -ne 1; then
+   usage
+fi
+
+case "$1" in
+    --cflags)
+    	echo "-I${includedir}/Lintel @TCL_CFLAGS@ @GC_CFLAGS@"
+	exit 0
+    	;;
+    --libtool-libs)
+	echo ${libdir}/libLintel.la
+	exit 0
+	;;
+    --libs)
+        if test $libdir = '/usr/lib'; then
+	    echo "-lLintel @TCL_LIBS@"
+        else
+	    echo "-L$libdir -lLintel @TCL_LIBS@"
+	fi
+	exit 0
+	;;
+    --mustgclibs)
+    	@WITH_GC_TRUE@ if test $libdir = '/usr/lib'; then
+    	@WITH_GC_TRUE@ 	   echo "@GC_LIBS@"
+    	@WITH_GC_TRUE@ else
+    	@WITH_GC_TRUE@ 	   echo "-L$libdir @GC_LIBS@"
+    	@WITH_GC_TRUE@ fi
+    	@WITH_GC_TRUE@ exit 0
+    	@WITH_GC_FALSE@ echo "-lno-gc-lib-configured-in-lintel-but-required-by-program"
+    	@WITH_GC_FALSE@ exit 1
+	;;
+    --nogclibs)
+        if test $libdir = '/usr/lib'; then
+	    echo "-lnogc"
+        else
+	    echo "-L$libdir -lnogc"
+	fi
+	exit 0
+	;;
+    --help)
+        usage
+	;;
+    --version)
+    	echo @VERSION@;
+    	exit 0
+    	;;
+    *)
+        echo "unknown option $1"
+	usage
+	;;
+esac

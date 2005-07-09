@@ -1,0 +1,557 @@
+/* -*-C++-*-
+*******************************************************************************
+*
+* File:         StatsQuantile.C
+* RCS:          $Header: /mount/cello/cvs/Lintel/src/StatsQuantile.C,v 1.14 2005/02/14 04:36:52 anderse Exp $
+* Modified:     Mon Jan 31 18:21:32 2005 (Eric Anderson) anderse@hpl.hp.com
+* Language:     C++
+* Package:      N/A
+* Status:       Experimental (Do Not Distribute)
+*
+* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
+*
+*******************************************************************************
+*/
+
+#include <algorithm>
+
+#include <Double.H>
+#include <StatsQuantile.H>
+#include <LintelAssert.H>
+
+static double fact(double a) 
+{
+    double ret = 1.0;
+    for(double i = 2;i<=a;i++) {
+	ret *= i;
+    }
+    return ret;
+}
+
+static double choose(int b, int a) // b choose a
+{
+    double ret = fact(b) / (fact(b-a) * fact(a));
+    return ret;
+}
+
+StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _print_nrange)
+    : quantile_error(_quantile_error), 
+    print_nrange(_print_nrange)
+{
+    // sanity check that we haven't been called in a weird/wrong way.
+    AssertAlways(quantile_error < 0.2,
+		 ("whoa, quantile_error %.3g >= 0.2??",quantile_error));
+    double Nbound = _Nbound; // easy for calculations
+    if (Nbound < 10000) { Nbound = 10000; } // smallest N with entries in table in the paper
+    // The hunt for b = nbuffers, and k = buffer_size is on, following 
+    // section 4.5 in the paper
+
+    int best_b = -1, best_k = -1;
+    const int max_b = 30;
+    const int max_h = 40;
+    for(int b=2;b<max_b;b++) {
+	int h = 3;
+	for(;h < max_h;h++) {
+	    double v = (h-2) * choose(b+h-2,h-1) - choose(b+h-3,h-3) + choose(b+h-3,h-2);
+	    if (v > 2 * quantile_error * Nbound) {
+		--h; // this one is too high
+		break;
+	    }
+	}
+	double k = ceil(Nbound / choose(b+h-2,h-1));
+	if (b * k < 1.0e9) {
+	    if (best_b == -1 || b * k < best_b * best_k) {
+		best_b = b;
+		best_k = (int)k;
+	    } 
+	}
+    }
+    
+    AssertAlways(best_b > 0 && best_k > 0,
+		 ("unable to find b/k for %.8g %.8gn",
+		  quantile_error,Nbound));
+    // lower bound sanity value
+    if (best_k < 10) best_k = 10;
+    // First requirement makes the logic setting the buffer_level faster
+    // second one just seems sane.
+    init(best_b, best_k);
+}
+
+StatsQuantile::StatsQuantile(const std::string &type_disambiguate,
+			     int _nbuffers, int _buffer_size, int _print_nrange)
+    : quantile_error(Double::NaN), print_nrange(_print_nrange)
+{
+    init(_nbuffers, _buffer_size);
+}
+
+void 
+StatsQuantile::init(int _nbuffers, int _buffer_size)
+{
+    nbuffers = _nbuffers;
+    buffer_size = _buffer_size;
+    AssertAlways(nbuffers > 1,
+		 ("need at least two buffers for code to work correctly\n"));
+    AssertAlways(buffer_size >= 10,
+		 ("buffers smaller than 10 don't make sense.\n"));
+    all_buffers = new one_buffer[nbuffers];
+    buffer_weight = new int[nbuffers];
+    buffer_level = new int[nbuffers];
+    buffer_sorted = new bool[nbuffers];
+    tmp_buffer = new double[buffer_size];
+    collapse_pos = new int[buffer_size];
+    init_buffers();
+}
+
+void 
+StatsQuantile::init_buffers()
+{
+    for(int i=0;i<nbuffers;i++) {
+	all_buffers[i] = new double[buffer_size];
+	// touch all the space to make sure it is allocated; necessary
+	// to avoid demand allocation (which can create long delays
+	// when used in Buttress2)
+	for(int j=0;j<buffer_size;j+=32) {
+	    all_buffers[i][j] = 0.0;
+	}
+	buffer_weight[i] = -1;
+	buffer_level[i] = -1;
+	buffer_sorted[i] = false;
+    }
+    cur_buffer = 0;
+    cur_buffer_pos = 0;
+    buffer_weight[cur_buffer] = 1;
+    buffer_level[cur_buffer] = 0;
+    collapse_even_low = true;
+}
+
+StatsQuantile::~StatsQuantile()
+{
+    for(int i=0;i<nbuffers;i++) {
+	delete[] all_buffers[i];
+    }
+    delete[] all_buffers;
+    delete[] buffer_weight;
+    delete[] buffer_level;
+    delete[] tmp_buffer;
+    delete[] collapse_pos;
+}
+
+void
+StatsQuantile::reset()
+{
+    Stats::reset();
+    init_buffers();
+}
+
+class doubleOrder {
+public:
+    inline bool operator() (double a, double b) {
+	return a < b;
+    }
+};
+
+void
+StatsQuantile::add(const double value)
+{
+    Stats::add(value);
+    if (cur_buffer_pos >= buffer_size) {
+	cur_buffer += 1;
+	cur_buffer_pos = 0;
+	if (cur_buffer == nbuffers) {
+	    collapse();
+	} else {
+#if 1
+	    // do the sort here to amortize the work
+	    std::sort(all_buffers[cur_buffer - 1],
+		      all_buffers[cur_buffer - 1]+buffer_size,
+		      doubleOrder());
+	    buffer_sorted[cur_buffer-1] = true;
+#endif
+	}
+	buffer_weight[cur_buffer] = 1;
+	buffer_level[cur_buffer] = 0;
+	if (cur_buffer == nbuffers - 1) {
+	    buffer_level[cur_buffer] = buffer_level[cur_buffer - 1];
+	}
+    }
+    buffer_sorted[cur_buffer] = false;
+    all_buffers[cur_buffer][cur_buffer_pos] = value;
+    cur_buffer_pos += 1;
+}
+
+// getQuantile is quite expensive for the upper quantiles; in theory
+// we ought to be able to do some sort of binary-like search in that case,
+// skipping by a lot of the lower quantiles in a batch rather than 
+// ratcheting through them one by one as in the paper, and the current
+// implementation
+
+#if STATSQUANTILE_TIMING
+#define SQTIMING(x) x
+#else
+#define SQTIMING(x) 
+#endif
+
+// const because the only operation on class variables is a sort of buffers
+double
+StatsQuantile::getQuantile(double quantile) const
+{
+    if (count() == 0) {
+	return Double::NaN;
+    }
+    SQTIMING(Clock::T gq_time_0 = Clock::now();)
+    AssertAlways(quantile >= 0.0 && quantile <= 1.0,
+		 ("quantile out of bounds\n"));
+    // this is slightly different than the algorithm in the paper; the 
+    // goal is to allow people to calculate quantiles while the algorithm
+    // is running without having to add in and remove the +-\Inf entries
+    // that would be needed to make the last buffer have integral size
+    // I think this change is correct
+
+    AssertAlways(count() < 2000000000,
+		 ("Not going to correctly handle over two billion entries\n"));
+    if (count() == 0)
+	return 0.0;
+
+    for(int i = 0; i <= cur_buffer; i++) {
+	collapse_pos[i] = 0;
+	if (!buffer_sorted[i]) {
+	    if (i < cur_buffer) {
+		std::sort(all_buffers[i],all_buffers[i] + buffer_size,
+			  doubleOrder());
+	    } else {
+		// only sort part that has values in it.
+		std::sort(all_buffers[i],all_buffers[i] + cur_buffer_pos,
+			  doubleOrder());
+		// Fill the rest with Inf's so that we don't have to
+		// do any special logic when choosing the "smallest"
+		// next value, all of the Inf's will come at the end, and
+		// if we get to an Inf, then we are done anyway and it
+		// doesn't matter if we take one that doesn't actually exist.
+		for(int j=cur_buffer_pos;j<buffer_size;j++) {
+		    all_buffers[i][j] = Double::Inf;
+		}
+	    }
+	    buffer_sorted[i] = true;
+	}
+    }
+    SQTIMING(Clock::T gq_time_1 = Clock::now(); 
+	     // accum_gq_init += gq_time_1 - gq_time_0;
+	     )
+    double prev_val = -Double::Inf;
+    // the 1e-15 accounts for a minor rounding error that seems to occur
+    // when doing division, e.g. ceil(150000.0 * (131058.0 / 150000.0)) on
+    // linux = 131059.0; the current code is limited to 2e9 values, and
+    // even after fixing that, I'd imagine we'd never see 1e+15 values
+    // wherein this adjustment would make a difference
+    int target_index = (int)ceil((double)count() * (quantile - 1e-15));
+    if (target_index == (int)count()) {
+	target_index = count() - 1;
+    }
+    int cur_index = 0;
+
+    double second_min_val = Double::Inf;
+    int second_min_buffer = -1;
+    SQTIMING(Clock::T gq_time_searchstart = Clock::now();)
+    while(1) {
+	SQTIMING(Clock::T gq_time_2 = Clock::now();
+		 accum_gq_nelem += 1;)
+	double min_val = Double::Inf;
+	int min_buffer = -1;
+	// find the buffer with the next smallest entry remaining
+	// tried using the Buttress2 priority queue to do this, but it
+	// turned out to take about the same time as just doing the
+	// scan on a 12x229 set, adding the second min buffer trick
+	// got about 25% performance improvement, but adding in the
+	// third min val tracking would be obnoxiously complicated, so
+	// we're not going to do that.
+	if (second_min_buffer >= 0) {
+	    min_val = second_min_val;
+	    min_buffer = second_min_buffer;
+	    second_min_buffer = -1;
+	} else {
+	    second_min_val = Double::Inf;
+	    second_min_buffer = -1;
+	    for(int i=0;i<=cur_buffer;i++) {
+		if (collapse_pos[i] < buffer_size) {
+		    double v = all_buffers[i][collapse_pos[i]];
+		    if (v < min_val) {
+			second_min_val = min_val;
+			second_min_buffer = min_buffer;
+			min_val = v;
+			min_buffer = i;
+		    } else if (v < second_min_val) {
+			second_min_val = v;
+			second_min_buffer = i;
+		    }
+		}
+	    }
+	    int x = collapse_pos[min_buffer] + 1;
+	    if (x < buffer_size &&
+		all_buffers[min_buffer][x] < second_min_val) {
+		second_min_val = all_buffers[min_buffer][x];
+		second_min_buffer = min_buffer;
+	    }
+	    //	    second_min_buffer = -1;
+	}
+	collapse_pos[min_buffer] += 1;
+	AssertAlways(min_buffer >= 0,
+		     ("Whoa, no minimal buffer?!; searching for posn %d, cur %d\n",
+		      target_index,cur_index));
+	AssertAlways(min_val >= prev_val,("Whoa, sort order error?!\n"));
+	SQTIMING(Clock::T gq_time_3 = Clock::now(); 
+		 accum_gq_inner += gq_time_3 - gq_time_2;)
+	// this entry occupies sorted order positions
+	// [cur_index .. cur_index + buffer_weight[min_buffer] - 1]
+	// so the check is for cur_index > target_index
+	// need to think about the logic for this in collapse()
+	cur_index += buffer_weight[min_buffer];
+	if (cur_index > target_index) {
+	    SQTIMING(Clock::T gq_time_4 = Clock::now();
+		     accum_gq_search += gq_time_4 - gq_time_searchstart;
+		     accum_gq_all += gq_time_4 - gq_time_0;)
+	    return min_val;
+	}
+	SQTIMING(accum_gq_init += Clock::now() - gq_time_3;)
+    }
+    return Double::NaN;
+}
+
+void
+StatsQuantile::collapse()
+{
+    // could do a more "in-place" collapse by first doing the walk, and
+    // for every entry which is not going to go into the final collation,
+    // replace it with a NaN; then move all the entries in the output 
+    // bucket which are not NaN's to the end, then collate again in order
+    // filling into the output location; this does in-place, but requires
+    // two walks over the larger data, and so may very well be slower
+    // it's also a lot more complex
+    AssertAlways(count() < 2000000000,
+		 ("Not going to correctly handle over two billion entries\n"));
+    int first_buffer;
+    for(first_buffer = nbuffers - 1;first_buffer > 0; --first_buffer) {
+	if (buffer_level[first_buffer - 1] != buffer_level[first_buffer]) {
+	    break;
+	}
+    }
+    AssertAlways(first_buffer < nbuffers - 1,
+		 ("Whoa, collapse should always operate on at least two buffers\n"));
+    AssertAlways(buffer_level[first_buffer] >= 0,
+		 ("Whoa, buffer level should be positive\n"));
+    // first, sort each of the unsorted input buffers 
+    int total_weight = 0;
+    for(int i=first_buffer;i<nbuffers;i++) {
+	total_weight += buffer_weight[i];
+	AssertAlways(buffer_weight[i] > 0,("Whoa, buffer_weight should be at least 1\n"));
+	collapse_pos[i] = 0;
+	if (buffer_sorted[i]) {
+	    // could check for sortedness here, but we'll probably catch it
+	    // later
+	} else {
+	    AssertAlways(i == (nbuffers - 1) || buffer_weight[i] == 1,
+			 ("Huh %d != %d // %d\n",i,nbuffers - 1, buffer_weight[i]));
+	    // sort the buffer
+	    std::sort(all_buffers[i],all_buffers[i] + buffer_size,
+		      doubleOrder());
+	    buffer_sorted[i] = true;
+	} 
+    }
+    
+    int next_quantile_offset = 0;
+    if ((total_weight % 2) == 0) {
+	if (collapse_even_low) {
+	    next_quantile_offset = total_weight / 2;
+	    collapse_even_low = false;
+	} else {
+	    next_quantile_offset = (total_weight + 2) / 2;
+	    collapse_even_low = true;
+	}
+    } else if ((total_weight % 2) == 1) {
+	next_quantile_offset = (total_weight + 1) / 2;
+    } else {
+	AssertFatal(("Huh?\n"));
+    }
+
+    // Since we start counting at offset 0 (the paper starts at 1), we 
+    // subtract one from the starting offset
+    next_quantile_offset -= 1;
+    Assert(2,next_quantile_offset >= 0);
+
+    int cur_quantile_offset = 0;
+    int next_output_pos = 0;
+    double prev_val = -Double::Inf;
+
+    while(next_output_pos < buffer_size) {
+	double min_val = Double::Inf;
+	int min_buffer = -1;
+	// find the buffer with the next smallest entry remaining
+	for(int i=first_buffer;i<nbuffers;i++) {
+	    if (collapse_pos[i] < buffer_size &&
+		all_buffers[i][collapse_pos[i]] < min_val) {
+		min_val = all_buffers[i][collapse_pos[i]];
+		min_buffer = i;
+	    }
+	}
+	AssertAlways(min_buffer >= 0,("Whoa, no minimal buffer?!\n"));
+	AssertAlways(min_val >= prev_val,("Whoa, sort order error?!\n"));
+	prev_val = min_val;
+	collapse_pos[min_buffer] += 1;
+	// same logic as for output(), this entry is in positions
+	// [cur_quantile_offset .. cur_quantile_offset + bw[mb] - 1]
+	// so if after adding in bw[mb], cqo > nqo then we just passed
+	// nqo, so it should be used as the value to fit into the
+	// new list
+	cur_quantile_offset += buffer_weight[min_buffer];
+	if (cur_quantile_offset > next_quantile_offset) {
+	    tmp_buffer[next_output_pos] = min_val;
+	    next_output_pos += 1;
+	    next_quantile_offset += total_weight;
+	}
+    }
+    AssertAlways(next_quantile_offset / total_weight == buffer_size,
+		 ("Huh, didn't get to correct quantile offset %d/%d != %d?!\n",
+		  next_quantile_offset, total_weight, buffer_size));
+
+    // update all_buffers[first_buffer]
+    memcpy(all_buffers[first_buffer],tmp_buffer, buffer_size * sizeof(double));
+    buffer_level[first_buffer] = buffer_level[first_buffer] + 1;
+    buffer_weight[first_buffer] = total_weight;
+    buffer_sorted[first_buffer] = true;
+
+    // clean up buffer weights
+    for(int i=first_buffer + 1;i<nbuffers;i++) {
+	buffer_weight[i] = -1;
+	buffer_level[i] = -1;
+	buffer_sorted[i] = false;
+    }
+    cur_buffer = first_buffer + 1;
+}
+
+void
+StatsQuantile::dumpState()
+{
+    printf("%d buffers, each containing %d entries\n",
+	   nbuffers,buffer_size);
+    printf("cur buffer is %d, cur buffer pos is %d\n",
+	   cur_buffer,cur_buffer_pos);
+
+    for(int i=0;i<=cur_buffer;i++) {
+	printf("  buffer %d, level %d, weight %d:\n    ",i,buffer_level[i],
+	       buffer_weight[i]);
+	int max = i == cur_buffer ? cur_buffer_pos : buffer_size;
+	for(int j=0;j<max;j++) {
+	    printf("%.4g, ",all_buffers[i][j]);
+	    if ((j%10) == 9) {
+		printf("\n    ");
+	    }
+	}
+	printf("\n");
+    }
+}
+
+void 
+StatsQuantile::printRome(int depth, std::ostream &out) const
+{
+    Stats::printRome(depth,out);
+    std::string spaces;
+    for(int i = 0; i < depth; i++) {
+	spaces += " ";
+    }
+    if (count() > 0) {
+	out << spaces << "{ quantiles (\n";
+	double step = 1.0 / (double)print_nrange;
+	int nquantiles = 0;
+	for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
+	    double quantile_value = getQuantile(quantile);
+	    out << spaces << "  { " << quantile*100 << " " << quantile_value << " }\n";
+	    ++nquantiles;
+	}
+	for(double tail_frac = 0.1; (tail_frac * count()) >= 1.0;) {
+	    double quantile_value = getQuantile(1-tail_frac);
+	    out << spaces << "  { " << 100*(1-tail_frac) << " " << quantile_value << " }\n";
+	    tail_frac /= 2.0;
+	    quantile_value = getQuantile(1-tail_frac);
+	    out << spaces << "  { " << 100*(1-tail_frac) << " " << quantile_value << " }\n";
+	    tail_frac /= 5.0;
+	}
+	out << spaces << ") }\n";
+    }
+}
+
+void
+StatsQuantile::printFile(FILE *out, int nranges)
+{
+    nranges = (nranges == -1 ? print_nrange : nranges);
+    fprintf(out,"%ld data points, mean %.6g +- %.6g [%.6g,%.6g]\n",
+	    count(), mean(), stddev(), min(), max());
+    if (count() == 0) return;
+    fprintf(out,"    quantiles every %ld data points:",
+	    (long)(count()/nranges));
+    double step = 1.0 / (double)nranges;
+    int nquantiles = 0;
+    for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
+	if ((nquantiles % 10) == 0) {
+	    printf("\n    %.3g%%: ",quantile * 100);
+	} else {
+	    printf(", ");
+	}
+
+	printf("%.6g",getQuantile(quantile));
+	++nquantiles;
+    }
+    printf("\n");
+}
+
+void
+StatsQuantile::printTail(FILE *out)
+{
+    printf("  tails: ");
+    for(double tail_frac = 0.1; (tail_frac * count()) >= 1.0;) {
+	if (tail_frac < 0.05) {
+	    printf(", ");
+	}
+	printf("%.8g%%: %.6g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	tail_frac /= 2.0;
+	printf(", %.8g%%: %.6g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	tail_frac /= 5.0;
+    }
+    printf("\n");
+}
+
+////////////////////////////////////////////////////////////////
+// Regression tests
+////////////////////////////////////////////////////////////////
+//
+#ifdef REGRESSION_TEST
+
+// XXX this include might break HP-UX's compiler. 
+#include <sstream>
+
+int
+main(int, char *[])
+{
+    StatsQuantile *s = new StatsQuantile(0.0001, 20000000, 10);
+
+    double data[] = {
+	10, 15, 20, 25, 10, 25, 10, 25, 30, 10,
+    };
+    int nr_data = 10;
+
+    std::ostringstream buf1;
+    for (int i = 0; i < nr_data; i++)
+	s->add(data[i]);
+    s->printRome(0, buf1);
+    std::string str1 = buf1.str();
+    
+    std::ostringstream buf2;
+    s->reset();
+    for (int i = 0; i < nr_data; i++)
+	s->add(data[i]);
+    s->printRome(0, buf2);
+    std::string str2 = buf2.str();
+    if (str1 != str2) {
+	std::cout << " output mismatch: str1=" << str1 << std::endl;
+	std::cout << " str1=" << str2 << std::endl;
+    }
+}
+#endif // REGRESSION_TEST

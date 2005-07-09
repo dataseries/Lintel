@@ -1,0 +1,29 @@
+Short compilation instructions, see doc/building.html for more
+complete instructions, including how to compile so you can add
+sources, binaries, etc.
+
+* Simplest:
+
+  ./configure && make && make check
+
+  Note in this case make install will probably not work unless you are root.
+
+
+* Simple:
+
+  ./configure --enable-optmode=optimize && make && make check && make install
+
+  This should automatically set the install prefix to .. if you are in
+  the source directory, so a make install will put files under
+  ../{bin,include,lib}
+
+* Standard
+
+  mkdir ~/build/optimize  (or debug, profile)
+  cd ~/build/optimize
+  .../Lintel/configure --enable-optmode=optimize (or debug, profile)
+  make && make check && make install
+
+  This is the standard way of building, it allows you to have Lintel 
+  compiled in multiple different ways at the same time using the same
+  source tree.
