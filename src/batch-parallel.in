@@ -249,7 +249,7 @@ sub batch_submit {
 }
 
 sub write_joblist {
-    my ($basedir) = @ARGV; # optional
+    my ($basedir) = @_; # optional
 
     my $hostname = `hostname`;
     chomp($hostname);

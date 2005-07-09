@@ -13,7 +13,7 @@ if test "$USE_MAINTAINER_MODE" = yes; then
     for i in $1; do
 	if test -f $srcdir/com_hp_hpl_$i.m4; then
 	    cat $srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
-	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $srcdir/com_hp_hpl_$i.m4"
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
 	elif test -f $expanded_datadir/aclocal/com_hp_hpl_$i.m4; then
 	    cat $expanded_datadir/aclocal/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $expanded_datadir/aclocal/com_hp_hpl_$i.m4"
