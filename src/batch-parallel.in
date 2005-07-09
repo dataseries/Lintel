@@ -217,7 +217,7 @@ sub local_parallel {
 	}
 
 	if ($no_exec) {
-	    $module->rebuild_thing_messsage($rebuild);
+	    $module->rebuild_thing_message($rebuild);
 	} else {
 	    my $pid = fork;
 	    die "fork failed: $!" unless defined $pid && $pid >= 0;
@@ -292,11 +292,11 @@ sub write_joblist {
 sub codine_submit {
     die "queue option not supported" if defined $queue;
     print "Running using Codine with $batch_jobwidth job-width, ";
-    my ($workdir, $batch_size) = write_joblist(Cwd::getcwd());
+    my ($workdir, $batch_size) = write_joblist(); # Cwd::getcwd());
     print "and batch size $batch_size\n";
     my $njobs = ceil(@things_to_build / $batch_size);
     my $cmd_args = join(' ', $bp_fullpath,map { quotemeta $_ } @bp_args, "--",$workdir);
-    my $cmd = "qsub -b y -r y -t 1-$njobs -o $workdir/'log.\$TASK_ID' -j y $0 --codineexec=$batch_size $cmd_args";
+    my $cmd = "qsub -b y -r y -cwd -t 1-$njobs -o $workdir/'log.\$TASK_ID' -j y $0 --codineexec=$batch_size $cmd_args";
     if ($no_exec) {
 	print "should run $cmd\n";
     } else {
@@ -371,7 +371,6 @@ sub lsfexec {
 
 sub codineexec {
     die "wrong number of arguments" unless @dirs == 1;
-    print join(", ", keys %ENV), "\n";
     my $base_index = $ENV{SGE_TASK_ID};
     die "Don't have \$ENV{SGE_TASK_ID}"
 	unless defined $base_index;

@@ -1,7 +1,5 @@
 package BatchParallel::jobsfile;
 
-use POSIX;
-
 die "module version mismatch" 
     unless $BatchParallel::common::interface_version < 2;
 
@@ -68,7 +66,11 @@ sub find_things_to_build {
     }
     close(JOBSLIST) or die "close failed: $!";
     print "done.\n";
-    my $outfile_fmt = "%0" . POSIX::ceil(1+log($linenum)/log(10)) . "d";
+    my $digits = 1;
+    while((10 ** ($digits)-1) < $linenum) { 
+	++$digits;
+    }
+    my $outfile_fmt = "%0${digits}d";
     
     print "checking for existing jobs...";
     my @jobs;
@@ -98,6 +100,7 @@ sub rebuild_thing_do {
 
     my($outfile,$cmd) = @$thing_info;
 
+    $cmd = "($cmd)";
     my $hostname = `hostname`;chomp($hostname);
     my $tmpoutfile = "$outfile-$hostname-$$";
     if ($this->{printcommand}) {
