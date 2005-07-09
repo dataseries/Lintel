@@ -103,6 +103,7 @@ sub determine_things_to_build {
 	    push(@things_to_build, [ $prefix, $fullpath, $destfile ]);
 	} 
     }
+    return @things_to_build;
 }
 
 sub find_things_to_build {
