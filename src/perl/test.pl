@@ -1,3 +1,9 @@
+#
+#  (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+
 # Before `make install' is performed this script should be runnable with
 # `make test'. After `make install' it should work as `perl test.pl'
 

@@ -1,20 +1,13 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         MemoryTrack.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/MemoryTrack.C,v 1.1 2001/05/25 16:26:20 anderse Exp $
-* Description:  Simple replacement for malloc which lets us try to figure out
-*               where memory is going
-* Author:       Eric Anderson
-* Created:      Sun May 20 15:01:08 2001
-* Modified:     Sun May 20 16:45:18 2001 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Simple replacement for malloc which lets us try to figure out
+    where memory is going
 */
 
 #include <malloc.h>

@@ -1,19 +1,9 @@
 <!--
-###############################################################################
 #
-# File:         building.html
-# RCS:          $Header: /mount/cello/cvs/Lintel/doc/building.html,v 1.1 2005/02/14 04:36:51 anderse Exp $
-# Description:  
-# Author:       Eric Anderson
-# Created:      Sat Jan  8 22:06:06 2005
-# Modified:     Wed Jan 26 23:47:59 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     HTML helper
-# Package:      Lintel
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
-###############################################################################
 -->
 
 These instructions assume that you are going to work with the
@@ -186,7 +176,7 @@ There are three options for doing this:
 	   OPTFLAGS="-O2 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
 </PRE>
-  <LI> in the Lintel directory, run aclocal && autoconf, and re-run your configure step.
+  <LI> in the Lintel directory, run <CODE> cp com_hp_hpl_lintel.m4 acinclude.m4 && aclocal && autoconf</CODE>, and re-run your configure step.
   <LI> for other packages, you will need to run configure with --enable-maintainer-mode, and then run aclocal && autoconf, or just make to rebuild the configure script using the macros installed earlier by your install of the Lintel package
 </UL>
 
@@ -240,8 +230,6 @@ There are three options for doing this:
        special rule
   <LI> added WITHLIB_PCAP to control pcap library
   <LI> rename lsfconvert to bacct2ds
-  <LI> copy over the dreamworks rr/rj conversion programs, update
-       src/Makefile.am
   <LI> copy over nfsextract, job-{list,report,trace}, decrypt scripts;
        remove the .pl on the scripts.
   <LI> a bunch of magic added to Lintel/com_hp_hpl_lintel.m4 in order to do perl substitutions so that we can

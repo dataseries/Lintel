@@ -1,18 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Random.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Random.C,v 1.49 2005/02/14 04:36:52 anderse Exp $
-* Description:  Class for random-number generation
-* Author:       John Wilkes
-* Created:      Wed Oct 12 16:51:21 1994
-* Modified:     Sun Dec 26 07:39:26 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1994-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Class for random-number generation
 */
 
 #include <time.h>

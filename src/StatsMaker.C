@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsMaker.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/StatsMaker.C,v 1.12 2005/01/20 22:56:29 wilkes Exp $
-* Description:  
-* Author:       Eric Anderson
-* Created:      Wed Aug 22 14:10:24 2001
-* Modified:     Fri Nov 28 20:41:14 2003 (John Wilkes) wilkes@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    StatsMaker implementation
 */
 
 #include <StatsMaker.H>

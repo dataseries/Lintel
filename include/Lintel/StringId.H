@@ -1,20 +1,15 @@
 /*
-*******************************************************************************
-* 
-* File:         StringId.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/StringId.H,v 1.3 2003/07/30 00:17:18 anderse Exp $
-* Description:  String to small integer mapping
-* Author:       Eric Anderson
-* Created:      Thu Jan 20 21:35:20 2000
-* Modified:     Wed Jul  9 23:11:03 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
-#ifndef __ERGASTULUM_STRINGID_H
-#define __ERGASTULUM_STRINGID_H
+
+/** @file
+    String to small integer mapping
+*/
+
+#ifndef __STRINGID_H
+#define __STRINGID_H
 
 #include <string>
 #include <map>

@@ -1,19 +1,15 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         LintelAssert.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/LintelAssert.H,v 1.20 2005/02/14 04:39:59 anderse Exp $
-* Description:  Provides an assert function with one that
-*		calls user-supplied function(s) first if things are
-*		going wrong.  This is only usable from C++.
-* Author:       John Wilkes
-* Created:      Wed Oct 12 12:39:44 1994
-* Modified:     Mon Dec 27 11:43:31 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
+/*
+   (c) Copyright 1994-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    enhanced assert functionality
+*/
+
+/*
 *******************************************************************************
 * Usage:
 *	Assert(level, claim);

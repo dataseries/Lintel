@@ -1,26 +1,16 @@
 #                                               -*- Autoconf -*-
+#
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
 # Process this file with autoconf to produce a configure script.
-###############################################################################
-#
-# File:         configure.ac
-# RCS:          $Header: /mount/cello/cvs/Lintel/configure.ac,v 1.2 2005/05/15 01:31:42 wilkes Exp $
-# Description:  input file for producing configure
-# Author:       Eric Anderson
-# Created:      Sun Jan  2 14:07:39 2005
-# Modified:     
-# Language:     Parindent
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
-#
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
-#
-###############################################################################
 
 AC_INIT(Lintel, 1.0, [software@cello.hpl.hp.com])
 
 AC_PREREQ(2.57)
 
-AC_REVISION($Revision: 1.2 $)
+AC_REVISION($Revision: 1.3 $)
 AC_CANONICAL_SYSTEM
 AM_SANITY_CHECK
 AM_INIT_AUTOMAKE

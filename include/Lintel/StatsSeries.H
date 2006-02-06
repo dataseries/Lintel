@@ -1,18 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsSeries.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/StatsSeries.H,v 1.9 2003/07/30 00:17:18 anderse Exp $
-* Description:  Collect statistics on a time series
-* Author:       Richard Golding
-* Created:      Mon Jun 10 16:16:21 1996
-* Modified:     Thu Aug 23 14:27:39 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1996, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1996-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Collect statistics on a time series
 */
 
 #ifndef _LINTEL_STATSSERIES_H_INCLUDED

@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         PriorityQueue.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/PriorityQueue.C,v 1.1 2003/10/27 04:09:29 anderse Exp $
-* Description:  Priority queue implementation
-* Author:       Eric Anderson
-* Created:      Tue Feb 25 17:03:48 2003
-* Modified:     Tue Feb 25 17:03:53 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Priority queue implementation
 */
 
 #include <PriorityQueue.H>

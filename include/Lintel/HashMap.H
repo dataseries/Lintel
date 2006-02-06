@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         HashMap.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/HashMap.H,v 1.4 2004/09/28 01:20:18 anderse Exp $
-* Description:  A "map" using the HashTable class
-* Author:       Eric Anderson
-* Created:      Wed Nov  5 09:59:30 2003
-* Modified:     Sun Sep 26 22:41:34 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    A "map" using the HashTable class
 */
 
 #ifndef __HASH_MAP

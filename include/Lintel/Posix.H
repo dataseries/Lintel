@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Posix.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Posix.H,v 1.2 2005/02/14 04:39:59 anderse Exp $
-* Description:  utility wrappers for POSIX functions
-* Author:       Alistair Veitch
-* Created:      Tue Jul 23 17:06:02 2002
-* Modified:     Mon Dec 27 11:06:30 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    utility wrappers for POSIX functions
 */
 
 #ifndef _LINTEL_POSIX_H

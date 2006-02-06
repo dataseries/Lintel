@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Nameable.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Nameable.C,v 1.7 2003/07/30 00:17:17 anderse Exp $
-* Description:  Functions for nameable objects
-* Author:       John Wilkes
-* Created:      Sun Apr  5 23:18:17 1998
-* Modified:     Thu Aug 23 14:52:45 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 1998, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1998-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Functions for nameable objects
 */
 
 #include "LintelAssert.H"

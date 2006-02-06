@@ -1,20 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Stats.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Stats.C,v 1.30 2005/02/14 04:36:52 anderse Exp $
-* Description:  Simple statistics functions for single variables
-* Author:       John Wilkes
-* Created:      Fri Nov 12 16:57:10 1993
-* Modified:     Sun Jan 30 14:41:03 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-* Derived from an original version by Chris Ruemmler and Richard Golding.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1993-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Simple statistics functions for single variables
 */
 
 #include <stdlib.h>

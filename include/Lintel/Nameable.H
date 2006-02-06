@@ -1,18 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Nameable.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Nameable.H,v 1.19 2003/07/30 00:17:17 anderse Exp $
-* Description:  Simple names for objects
-* Author:       Richard Golding
-* Created:      Mon Jul 11 12:08:12 1994
-* Modified:     Thu Aug 23 14:54:17 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1994-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Simple names for objects
 */
 
 #ifndef _LINTEL_NAMEABLE_H_INCLUDED

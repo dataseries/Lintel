@@ -1,18 +1,9 @@
-###############################################################################
 #
-# File:         Make.common
-# RCS:          $Header: /mount/cello/cvs/Lintel/src/Make.common,v 1.40 2004/09/28 03:57:26 anderse Exp $
-# Description:  Common Makefile constructs
-# Author:       Eric Anderson
-# Created:      Mon Nov  1 11:50:05 1999
-# Modified:     Mon Sep 27 20:51:19 2004 (Eric Anderson) anderse@hpl.hp.com
-# Language:     Makefile
-# Package:      Lintel
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 1999-2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 1999, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
-###############################################################################
+# Common Makefile constructs
 
 ### Need to use gmake on this makefile
 

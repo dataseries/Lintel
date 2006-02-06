@@ -1,22 +1,17 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsQuantile.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/StatsQuantile.H,v 1.11 2005/02/14 04:39:59 anderse Exp $
-* Description:  Non-sampled quantile statistics based on the paper:
-*               "Approximate medians and other quantiles in one pass with limited memory"
-*               by G. Manku and S. Rajagopalan and B. Lindsay
-*               Proceedings of the ACM SIGMOD, 1998. 
-* Author:       Eric Anderson
-* Created:      Fri Feb 22 22:44:04 2002
-* Modified:     Mon Jan 31 23:50:12 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Non-sampled quantile statistics
+
+    Based on the paper:
+    "Approximate medians and other quantiles in one pass with limited memory"
+    by G. Manku and S. Rajagopalan and B. Lindsay
+    Proceedings of the ACM SIGMOD, 1998. 
 */
 
 #ifndef __STATSQUANTILE_H

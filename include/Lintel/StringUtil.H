@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StringUtil.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/StringUtil.H,v 1.3 2004/07/08 20:30:46 popovici Exp $
-* Description:  Utilities for dealing with strings
-* Author:       Eric Anderson
-* Created:      Tue Apr 27 22:54:29 2004
-* Modified:     Wed Jul  7 19:38:02 2004 (Florentina Popovici) popovici@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Utilities for dealing with strings
 */
 
 #ifndef __STRINGUTIL_H

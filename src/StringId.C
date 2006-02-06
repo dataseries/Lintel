@@ -1,18 +1,13 @@
 /*
-*******************************************************************************
-* 
-* File:         StringId.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/StringId.C,v 1.3 2003/07/30 00:17:18 anderse Exp $
-* Description:  String to small integer mapping
-* Author:       Eric Anderson
-* Created:      Sat Mar 11 19:35:04 2000
-* Modified:     Wed Jul  9 23:12:17 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    String to small integer mapping
+*/
+
 #include <StringId.H>
 #include <LintelAssert.H>
 

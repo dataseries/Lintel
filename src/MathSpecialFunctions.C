@@ -1,18 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         MathSpecialFunctions.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/MathSpecialFunctions.C,v 1.5 2001/08/30 16:29:52 aveitch Exp $
-* Description:  Special math functions code
-* Author:       Arif merchant
-* Created:      Fri May 24 10:39:39 1996
-* Modified:     Tue Aug 21 10:21:33 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1996-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Special math functions code
 */
 
 #include <stdlib.h>

@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         TclInterface.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/TclInterface.C,v 1.10 2005/02/14 04:36:52 anderse Exp $
-* Description:  Tcl/C++ interface functions
-* Author:       Alistair Veitch
-* Created:      Fri Feb 18 14:42:39 2000
-* Modified:     Thu Jan 20 13:28:35 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Tcl/C++ interface functions
 */
 
 #include <list>

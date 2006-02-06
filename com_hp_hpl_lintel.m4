@@ -1,3 +1,9 @@
+#
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+
 AC_DEFUN([COM_HP_HPL_ACINCLUDE],
 [
 ACINCLUDE_DEPENDENCIES=
@@ -42,7 +48,7 @@ AC_ARG_WITH(tcl,
   [with_tcl=$withval],
   [with_tcl='yes'])
 
-# check for tcl...; glad to have a better method for doing this bit of goo
+# check for tcl...; like to have a better method for doing this bit of goo
 have_tcl_hdr='no'
 have_tcl_lib='no'
 TCL_CFLAGS=''
@@ -364,6 +370,9 @@ else
   	   ;;
 	i686-pc-linux-gnu::*IntelXeon*::gcc-3.3*)
 	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
+	   ;;
+	i686-pc-linux-gnu::*IntelXeon*::gcc-3.4*)
+	   OPTFLAGS="-O3 -march=pentium4 -D__pentium4__ -g"
 	   ;;
 	i686-pc-linux-gnu::*PentiumM*::gcc-2.95*)
 	   OPTFLAGS="-O3 -march=i686 -msse2 -D__pentiumpro__ -g"

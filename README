@@ -3,8 +3,9 @@ IMPORTANT INFORMATION
 This package is referred to as Lintel.  It originates from the Storage
 Systems Department (SSD, or SSP) of Hewlett-Packard Laboratories, Palo
 Alto, CA 94304.  IT IS PROVIDED TO YOU SOLELY UNDER THE TERMS OF THE
-FOLLOWING AGREEMENT.  If you do not agree to any of these terms, you
-must delete this software, and any copies you may have made of it.
+AGREEMENTS DETAILED IN THE COPYING FILE.  If you do not agree to any of 
+these terms, you must delete this software, and any copies you may have 
+made of it.
 
 
 DEFECT REPORTS
@@ -16,93 +17,6 @@ C++ knowledge.
 In return, we would greatly appreciate any bug fixes or enhancements -
 or even simply hearing about how you are using the package.
 
+BUILDING
 
-AGREEMENT
-
-This Agreement applies to this software package (Lintel).  It, and any
-derivative works thereof, will be referred to below using the term
-"software."  The person reading this agreement, on whom these terms
-are binding, is referred to as "you".
-
-Before you may use, distribute, read, compile, execute, link to, or
-otherwise access this software, you must accept and agree to each of
-the following.  Failing to do so implies that you do not accept these
-terms, and you must delete this software, and any copies you may have
-made of it.
-
- 
-Hewlett-Packard Company ("HP") is agreeing to let you download and use
-the software listed above without any financial charge to you.  You
-THEREFORE AGREE TO WAIVE ANY AND ALL DAMAGES AGAINST HP RELATING TO MY
-DOWNLOAD OR USE OF THE SOFTWARE, OR TO ANY ACT OR OMISSION ON THE PART
-OF HP, ITS OFFICERS, DIRECTORS, VENDORS, SUPPLIERS, EMPLOYEES OR
-AGENTS IN CONNECTION WITH THE SOFTWARE.  You agree that the bargain
-basis for HP's agreement to let you download or use the software does
-not reflect any assumption of liability or damages on HP's behalf and
-if you do not agree to this condition and the other terms and
-conditions of this Agreement, your sole remedy is to not download the
-software, or to delete any copies you may have made, or both.
- 
-
-You may use the software as you see fit, at your sole risk and
-discretion.  You acknowledge that the software is not intended for
-distribution as a product or for any particular application or
-purpose.  The software is experimental in nature, and it shall be up
-to you only to determine whether the software is suitable for use for
-your intended purpose.  These conditions, as well as all of the
-conditions stated below, are of material inducement for HP to release
-the software; that is to say, without a damages release and release
-and disclaimer of other rights and remedies, HP represents that it
-would not release the software to you.
- 
-
-HP shall have no obligation to provide support or maintenance for, or
-to provide any updates to, the software.  HP shall have no obligation
-to respond to questions or to provide information regarding the
-software.
- 
-
-HP DISCLAIMS, AND YOU HEREBY WAIVE, ANY AND ALL WARRANTIES WITH
-RESPECT TO THE SOFTWARE; WITHOUT LIMITING THE GENERALITY OF THIS
-WAIVER, HP DISCLAIMS ANY WARRANTY OF FITNESS FOR A PARTICULAR PURPOSE,
-OF MERCANTABILITY, AGAINST ANY YEAR OR DATE MALFUNCTION, THAT THE
-SOFTWARE IS ERROR FREE AND THAT THE SOFTWARE OR ITS USAGE IS FREE FROM
-INTELLECTUAL PROPERTY RIGHTS OF OTHERS.  IT SHALL BE SOLELY UP TO YOU
-TO VERIFY THAT THE SOFTWARE IS VIRUS FREE AND IS OTHERWISE SAFE FOR
-USAGE.
- 
-
-This Agreement and all matters regarding the software shall be
-interpreted exclusively by applying the laws of the State of Delaware,
-USA, without regard to its conflict of laws principles.
- 
-
-Any redistribution or further distribution of the software is at your
-sole discretion and exposure.  If you redistribute the software, you
-will make any person or entity that receives it subject to the terms
-and conditions of this Agreement and will inform them of these terms.
-All of the conditions indicated above will be binding upon any
-recipient of software or any successor in interest or assignee of the
-software or this Agreement.
- 
-
-You agree that if you redistribute or further distribute software,
-that you will either (a) not place any proprietary legend,
-confidentiality notice or copyright notice on such software or (b) if
-you do place any such legend or notice on the software that you will
-clearly and unambiguously disclaim (in prominent written legend
-adjacent each reproduction of such legend or notice) any ownership or
-proprietary interest by you or your company of original works (i.e.,
-the original software) upon which your derivative work is based, and
-you will in such disclaimer refer people to the original web site from
-which you obtained the software or any successor site offered for
-download of the software as you received it.
- 
-
-Any violation of this Agreement and these terms will be deemed to
-cause HP irreparable harm, and you hereby consent to an immediate
-injunction against any such violation without any claim of offset,
-unclean hands, laches or other equitable bar that would prevent
-enforcement of these terms.
-
-----------------
+See doc/building.html

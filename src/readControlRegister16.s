@@ -1,3 +1,6 @@
+;;; (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+;;; See the file named COPYING for license details
+
 ;;; Two changes have been made to this file.
 ;;; First, the .LEVEL 2.0 directive has been added.
 ;;; Second, the stw has been changed to a std so that all 64 bits are stored.

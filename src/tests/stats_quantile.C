@@ -1,3 +1,10 @@
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+
 #include <algorithm>
 #if defined(__HP_aCC) && __HP_aCC < 35000
 #include <strstream.h>

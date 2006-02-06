@@ -1,20 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         check-Random.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/tests/check-Random.C,v 1.1 2005/02/14 04:36:54 anderse Exp $
-* Description:  random regression tests, split out from Random.C to ease 
-                use of automake
-* Author:       Eric Anderson
-* Created:      Sun Dec 26 07:39:39 2004
-* Modified:     Sun Dec 26 10:55:51 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    random regression tests
 */
 
 ////////////////////////////////////////////////////////////////

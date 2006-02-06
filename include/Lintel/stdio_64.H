@@ -1,18 +1,13 @@
 /*
-*******************************************************************************
-* 
-* File:         stdio_64.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/stdio_64.H,v 1.4 2005/02/14 04:39:59 anderse Exp $
-* Description:  stdio routines for 64 bit files.
-* Author:       Eric Anderson
-* Created:      Wed Jul 19 08:50:55 2000
-* Modified:     Fri Jan  7 23:58:40 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    stdio routines for 64 bit files.
+*/
+
 #ifndef __STDIO_64_H
 #define __STDIO_64_H
 

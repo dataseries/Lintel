@@ -1,19 +1,12 @@
 ## Process this file with automake to produce Makefile.in
-###############################################################################
 #
-# File:         Makefile.am
-# RCS:          $Header: /mount/cello/cvs/Lintel/src/Makefile.am,v 1.1 2005/02/14 04:36:52 anderse Exp $
-# Description:  Automake input file to generate Makefile.in for configure
-# Author:       Eric Anderson
-# Created:      Fri Dec 24 14:09:20 2004
-# Modified:     Wed Feb  2 12:05:19 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     Makefile
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
 #
-# (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
+#  (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 #
-###############################################################################
+#  See the file named COPYING for license details
+#
+
+# Automake input file to generate Makefile.in for configure
 
 # avoid requiring all GNUisms
 AUTOMAKE_OPTIONS = 1.7 foreign
@@ -85,7 +78,6 @@ install-exec-local::
 	$(mkinstalldirs) $(DESTDIR)$(libdir)
 	$(install_sh_DATA) $(srcdir)/Make.common $(DESTDIR)$(libdir)/Make.common
 	$(install_sh_DATA) $(srcdir)/Make.world $(DESTDIR)$(libdir)/Make.world
-	$(install_sh_DATA) $(srcdir)/Make.cvs $(DESTDIR)$(libdir)/Make.cvs
 endif
 
 bpmodulesdir = $(datadir)/bp_modules

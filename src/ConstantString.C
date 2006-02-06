@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         ConstantString.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/ConstantString.C,v 1.3 2003/07/30 00:17:16 anderse Exp $
-* Description:  Constant String implementation
-* Author:       Eric Anderson
-* Created:      Tue Mar 26 23:11:18 2002
-* Modified:     Wed Jul  9 21:17:59 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Constant String implementation
 */
 
 #include <ConstantString.H>

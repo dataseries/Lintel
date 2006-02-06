@@ -1,17 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Random.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Random.H,v 1.38 2003/07/30 00:17:18 anderse Exp $
-* Description:  Random number generation
-* Author:       John Wilkes
-* Modified:     Mon Jan  7 13:39:30 2002 (Zachary Kurmas) zachary@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1998-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Random number generation
 */
 
 #ifndef _LINTEL_RANDOM_H_INCLUDED

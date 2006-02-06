@@ -1,18 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         LintelAssert.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/LintelAssert.C,v 1.27 2005/02/14 04:36:52 anderse Exp $
-* Description:  Body of Assert functionality
-* Author:       John Wilkes
-* Created:      Wed Oct 12 16:03:36 1994
-* Modified:     Mon Dec 27 11:43:25 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1994-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Body of Assert functionality
 */
 
 #include <stdarg.h>

@@ -1,21 +1,12 @@
 #!/usr/bin/awk -f
-###############################################################################
 #
-# File:         buildTcl
-# RCS:          $Header: /mount/cello/cvs/Lintel/src/buildTcl,v 1.7 2005/02/14 04:36:53 anderse Exp $
-# Description:  produce Tcl/C++ interface code
-# Author:       Alistair Veitch
-# Created:      Fri Oct  1 10:37:14 1999
-# Modified:     Tue Feb  1 21:56:07 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     AWK
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 1999-2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 1999, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
 ###############################################################################
-
-##############################################################################
+# produce Tcl/C++ interface code
+#
 # There are a number of global variables. These are described below, in (very)
 # approximate order of importance and interest.
 #

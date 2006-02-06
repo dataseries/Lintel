@@ -1,3 +1,9 @@
+Add more external documentation (use doxygen?)
+
+There are many things in Lintel that should be replaced with better and/or
+more standard things from (e.g.) boost or std::tr1. For data structures,
+also remember to check relative performance first.
+
 add a test that checks whether or not we need '-Dstd=' rather than
 guessing based on HP-UX compiler version
 

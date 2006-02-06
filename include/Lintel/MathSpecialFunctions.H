@@ -1,18 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         MathSpecialFunctions.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/MathSpecialFunctions.H,v 1.8 2001/08/30 16:29:52 aveitch Exp $
-* Description:  A library of special mathematical functions not found in the standard math library.
-* Author:       Arif Merchant
-* Created:      Fri May 24 10:47:10 PDT 1996
-* Modified:     Tue Aug 21 10:11:20 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1996-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    mathematical functions not found in the standard math library.
 */
 
 #ifndef _LINTEL_MATHSPECIALFUNCTIONS_HEADER_

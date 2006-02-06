@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         check-LintelAssert.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/tests/check-LintelAssert.C,v 1.1 2005/02/14 04:36:54 anderse Exp $
-* Description:  file for verifying assertions are working correctly
-* Author:       Eric Anderson
-* Created:      Mon Dec 27 11:41:14 2004
-* Modified:     Thu Jan 20 11:28:20 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    verify assertions are working correctly
 */
 
 #include <stdlib.h>
