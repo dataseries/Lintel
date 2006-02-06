@@ -22,7 +22,7 @@
 # Package:      N/A
 # Status:       Experimental (Do Not Distribute)
 #
-# (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
+# (C) Copyright 2004, 2005 Hewlett-Packard Laboratories, all rights reserved.
 #
 ###############################################################################
 
@@ -30,18 +30,19 @@ use strict;
 use English;
 use Getopt::Long;
 use Data::Dumper;
-use POSIX;
 use Carp;
+use POSIX;
+use Cwd ();
 @PERL_MODULES_INC_UNSHIFT@
 BEGIN { unshift(@INC,"@expanded_datadir@/bp_modules"); }
 use BatchParallel::common;
 
 $|=1;
-my $bsub_jobwidth;
-my $bsub_groupsize;
-my $bsub_maxgroups;
+my $batch_jobwidth;
+my $batch_groupsize;
+my $batch_maxgroups;
 my $local_parallelism;
-my $lsfexec;
+my ($lsfexec,$codineexec);
 my $no_exec;
 my $queue;
 my $shuffle = 1;
@@ -57,13 +58,14 @@ if (@ARGV == 0) {
     @dirs = ();
 }
 
-my $ret = GetOptions('w=i' => \$bsub_jobwidth,
+my $ret = GetOptions('w=i' => \$batch_jobwidth,
 		     'q=s' => \$queue,
 		     'j=i' => \$local_parallelism,
 		     'n!' => \$no_exec,
 		     'lsfexec=i' => \$lsfexec,
-		     'groupsize=i' => \$bsub_groupsize,
-		     'maxgroups=i' => \$bsub_maxgroups,
+		     'codineexec=i' => \$codineexec,
+		     'groupsize=i' => \$batch_groupsize,
+		     'maxgroups=i' => \$batch_maxgroups,
 		     'shuffle!' => \$shuffle,
 		     'show-rebuild!' => \$show_rebuild);
 
@@ -79,7 +81,7 @@ if (defined $ENV{BP_MODULES}) {
 usage() unless $ret && @ARGV >= 1;
 
 die "can't specify both groupsize and maxgroups"
-    if defined $bsub_groupsize && defined $bsub_maxgroups;
+    if defined $batch_groupsize && defined $batch_maxgroups;
 
 my $bp_fullpath = shift @ARGV;
 my $bp_module_name;
@@ -122,7 +124,12 @@ if (defined $lsfexec) {
     exit(0);
 }
 
-unless (defined $bsub_jobwidth || defined $local_parallelism) {
+if (defined $codineexec) {
+    codineexec();
+    exit(0);
+}
+
+unless (defined $batch_jobwidth || defined $local_parallelism) {
     if (-r "/proc/cpuinfo") {
 	open(CPUINFO,"/proc/cpuinfo") || die "Can't read /proc/cpuinfo: $!";
 	$local_parallelism = 0;
@@ -166,7 +173,7 @@ $module->pre_exec_setup();
 if (defined $local_parallelism) {
     local_parallel();
 } else {
-    bsub_submit();
+    batch_submit();
 }
 
 sub usage {
@@ -179,9 +186,10 @@ sub usage {
 	    $available_modules{$file} = 1;
 	}
     }
+    delete $available_modules{'common'};
     my $mods = join(" ",sort keys %available_modules);
-    confess "Usage: $0 [-n] [-w bsub-job-width] [-j local-parallelism] 
-    [-q batch-queue] [--maxgroups=#, default min(bsub-job-width*5,2000)]
+    confess "Usage: $0 [-n] [-w batch-job-width] [-j local-parallelism] 
+    [-q batch-queue] [--maxgroups=#, default min(batch-job-width*5,2000)]
     [--groupsize=#, rebuilds/lsf-job]
     [--noshuffle # process jobs exactly in order they were found ]
     [-- (if bp args use -'s)] <bp-module> [bp-module args...] -- dir...
@@ -218,7 +226,7 @@ sub local_parallel {
 	}
 
 	if ($no_exec) {
-	    $module->rebuild_thing_messsage($rebuild);
+	    $module->rebuild_thing_message($rebuild);
 	} else {
 	    my $pid = fork;
 	    die "fork failed: $!" unless defined $pid && $pid >= 0;
@@ -239,49 +247,89 @@ sub local_parallel {
     }
 }
 
-sub bsub_submit {
-    print "Running using LSF with $bsub_jobwidth job-width, ";
+sub batch_submit {
+    if (defined $ENV{SGE_ROOT}) {
+	codine_submit();
+    } elsif (defined $ENV{LSF_ENVDIR}) {
+	lsf_submit();
+    } else {
+	die "Unable to figure out how to do the batch submission, neither \$SGE_ROOT nor \$LSF_ENVDIR are defined";
+    }
+}
+
+sub write_joblist {
+    my ($basedir) = @_; # optional
+
+    my $hostname = `hostname`;
+    chomp($hostname);
+    my $workdir = "batch-parallel.$hostname.$$";
+    $workdir = "$basedir/$workdir" if defined $basedir;
+    unless(-d $workdir) {
+	mkdir($workdir,0755) || die "can't mkdir $workdir: $!";
+    }
+
+    open(BATCH_LIST,">$workdir/joblist")
+	|| die "open($workdir/joblist) failed: $!";
+    my $str = Dumper(\@things_to_build);
+    print BATCH_LIST $str;
+    close(BATCH_LIST);
+    die "write bad $workdir/joblist" unless -s "$workdir/joblist" == length $str;
+    my $batch_size = 1;
+    if (defined $batch_groupsize) {
+	$batch_size = $batch_groupsize;
+	$batch_maxgroups = 2*@things_to_build / $batch_size;
+	$batch_maxgroups = 2000 unless defined $batch_maxgroups;
+	if (scalar @things_to_build / $batch_size > $batch_maxgroups) {
+	    print "WARNING, increasing batch size from $batch_size to ";
+	    $batch_size = ceil(scalar @things_to_build / $batch_size);
+	    print "$batch_size to keep below $batch_maxgroups groups\n";
+	}
+    } else {
+	unless (defined $batch_maxgroups) {
+	    $batch_maxgroups = $batch_jobwidth * 5;
+	    $batch_maxgroups = 2000 if $batch_maxgroups > 2000;
+	}
+	if (@things_to_build >= $batch_maxgroups) {
+	    $batch_size = ceil((scalar @things_to_build) / $batch_maxgroups);
+	}
+    }
+    return ($workdir,$batch_size);
+    print "and batch size $batch_size\n";
+	
+}
+
+sub codine_submit {
+    die "queue option not supported" if defined $queue;
+    print "Running using Codine with $batch_jobwidth job-width, ";
+    my ($workdir, $batch_size) = write_joblist(); # Cwd::getcwd());
+    print "and batch size $batch_size\n";
+    my $njobs = ceil(@things_to_build / $batch_size);
+    my $cmd_args = join(' ', $bp_fullpath,map { quotemeta $_ } @bp_args, "--",$workdir);
+    my $cmd = "qsub -b y -r y -cwd -t 1-$njobs -o $workdir/'log.\$TASK_ID' -j y $0 --codineexec=$batch_size $cmd_args";
+    if ($no_exec) {
+	print "should run $cmd\n";
+    } else {
+	print "$cmd\n";
+	my $ret = system($cmd);
+	die "submit failed ($ret)\n"
+	    unless $ret == 0;
+    }
+}
+
+sub lsf_submit {
+    print "Running using LSF with $batch_jobwidth job-width, ";
     if (defined $queue) {
 	print "queue $queue, ";
 	$queue = "-q $queue";
     } else {
 	$queue = '';
     }
-    my $hostname = `hostname`;
-    chomp($hostname);
-    my $workdir = "batch-parallel.$hostname.$$";
-    unless(-d $workdir) {
-	mkdir($workdir,0755) || die "can't mkdir $workdir: $!";
-    }
-
-    open(BSUB_LIST,">$workdir/joblist")
-	|| die "open($workdir/joblist) failed: $!";
-    my $str = Dumper(\@things_to_build);
-    print BSUB_LIST $str;
-    close(BSUB_LIST);
-    die "write bad $workdir/joblist" unless -s "$workdir/joblist" == length $str;
-    my $batch_size = 1;
-    if (defined $bsub_groupsize) {
-	$batch_size = $bsub_groupsize;
-	$bsub_maxgroups = 2*@things_to_build / $batch_size;
-	$bsub_maxgroups = 2000 unless defined $bsub_maxgroups;
-	if (scalar @things_to_build / $batch_size > $bsub_maxgroups) {
-	    print "WARNING, increasing batch size from $batch_size to ";
-	    $batch_size = ceil(scalar @things_to_build / $batch_size);
-	    print "$batch_size to keep below $bsub_maxgroups groups\n";
-	}
-    } else {
-	unless (defined $bsub_maxgroups) {
-	    $bsub_maxgroups = $bsub_jobwidth * 5;
-	    $bsub_maxgroups = 2000 if $bsub_maxgroups > 2000;
-	}
-	if (@things_to_build >= $bsub_maxgroups) {
-	    $batch_size = ceil((scalar @things_to_build) / $bsub_maxgroups);
-	}
-    }
+    my ($workdir,$batch_size) = write_joblist();
     print "and batch size $batch_size\n";
     my $njobs = ceil(@things_to_build / $batch_size);
-    my $jobname = "batch-parallel:$hostname:$$:$bp_module_name:$hostname:[1-$njobs]%$bsub_jobwidth";
+    my $hostname = `hostname`;
+    chomp($hostname);
+    my $jobname = "batch-parallel:$hostname:$$:$bp_module_name:$hostname:[1-$njobs]%$batch_jobwidth";
 
     my $cmd_args = join(' ',$bp_fullpath,map { quotemeta $_ } @bp_args, "--",$workdir);
 
@@ -318,6 +366,40 @@ sub lsfexec {
     }
     my $start_index = $base_index * $lsfexec;
     my $end_index = $start_index + $lsfexec;
+    $end_index = @$data if $end_index > @$data;
+    die "internal error" unless $end_index > $start_index;
+
+    @things_to_build = ();
+    for(my $i=$start_index;$i<$end_index;++$i) {
+	push(@things_to_build,$data->[$i]);
+    }
+
+    $local_parallelism = 1;
+    local_parallel();
+}
+
+sub codineexec {
+    die "wrong number of arguments" unless @dirs == 1;
+    my $base_index = $ENV{SGE_TASK_ID};
+    die "Don't have \$ENV{SGE_TASK_ID}"
+	unless defined $base_index;
+    die "invalid \$ENV{SGE_TASK_ID} '$base_index'"
+	unless $base_index =~ /^\d+$/o;
+
+    --$base_index;
+    open(BPENTS,"$dirs[0]/joblist") || die "can't open $dirs[0] for read: $!";
+    my $data;
+    {
+        local $/;
+	no strict;
+	my $str = <BPENTS>;
+	die "no data in $dirs[0]" unless defined $str;
+	$data = eval $str;
+	die "error in eval of $dirs[0]: $@" if $@;
+	die "error in eval of $data; wrong type" unless ref $data eq 'ARRAY';
+    }
+    my $start_index = $base_index * $codineexec;
+    my $end_index = $start_index + $codineexec;
     $end_index = @$data if $end_index > @$data;
     die "internal error" unless $end_index > $start_index;
 

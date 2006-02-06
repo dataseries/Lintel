@@ -3840,7 +3840,7 @@ echo $ECHO_N "checking if acinclude.m4 needs to be rebuilt... $ECHO_C" >&6
     for i in lintel; do
 	if test -f $srcdir/com_hp_hpl_$i.m4; then
 	    cat $srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
-	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $srcdir/com_hp_hpl_$i.m4"
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
 	elif test -f $expanded_datadir/aclocal/com_hp_hpl_$i.m4; then
 	    cat $expanded_datadir/aclocal/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $expanded_datadir/aclocal/com_hp_hpl_$i.m4"

@@ -81,7 +81,7 @@ install-exec-local::
 endif
 
 bpmodulesdir = $(datadir)/bp_modules
-nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm 
+nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchParallel/jobsfile.pm
 
 # batch-parallel: batch-parallel.in
 # 	  cd $(top_builddir) && $(SHELL) ./config.status src/$@
