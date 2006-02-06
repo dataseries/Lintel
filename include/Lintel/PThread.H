@@ -1,18 +1,13 @@
 /*
-*******************************************************************************
-* 
-* File:         PThread.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/PThread.H,v 1.11 2004/02/26 05:03:59 anderse Exp $
-* Description:  Interface to ptheads from C++
-* Author:       Eric Anderson
-* Created:      Wed Mar  8 15:19:54 2000
-* Modified:     Wed Nov 12 20:11:53 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    Interface to ptheads from C++
+*/
+
 #ifndef __PTHREAD_H
 #define __PTHREAD_H
 #include <pthread.h>

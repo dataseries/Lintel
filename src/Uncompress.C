@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         uncompress.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Uncompress.C,v 1.3 2005/02/14 04:36:52 anderse Exp $
-* Description:  
-* Author:       Alistair Veitch
-* Created:      Fri Jul  5 14:53:33 2002
-* Modified:     Mon Dec 27 11:32:07 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    file decompression 
 */
 
 #include <stdio.h>

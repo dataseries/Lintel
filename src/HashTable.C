@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         HashTable.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/HashTable.C,v 1.10 2003/08/01 17:10:01 anderse Exp $
-* Description:  prime list
-* Author:       Eric Anderson
-* Created:      Wed Mar 27 10:10:44 2002
-* Modified:     Tue Jul 29 19:53:37 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    prime list
 */
 
 #include <HashTable.H>

@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsSequence.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/StatsSequence.C,v 1.7 2003/07/30 00:17:18 anderse Exp $
-* Description:  
-* Author:       Eric Anderson
-* Created:      Wed Aug 22 12:53:50 2001
-* Modified:     Thu Nov 21 18:09:44 2002 (Mahesh Kallahalla) maheshk@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    StatsSequence implementation
 */
 
 #include "StatsSequence.H"

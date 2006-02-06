@@ -1,3 +1,9 @@
+#
+#  (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+
 require 5.005;
 use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence

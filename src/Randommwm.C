@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Randommwm.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Randommwm.C,v 1.4 2003/07/30 00:17:18 anderse Exp $
-* Description:  Class for random-number generation
-* Author:       Shriram Sarvotham
-* Created:      Jun 2001
-* Modified:     Wed Feb 27 14:09:56 2002 (Eric Anderson) anderse@hpl.hp.com
-* Modified:     
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Class for random-number generation
 */
 
 #include <time.h>

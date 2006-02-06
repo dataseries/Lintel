@@ -1,16 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsQuantile.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/StatsQuantile.C,v 1.14 2005/02/14 04:36:52 anderse Exp $
-* Modified:     Mon Jan 31 18:21:32 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    StatsQuantile implementation
 */
 
 #include <algorithm>

@@ -1,20 +1,12 @@
-/* -*-C++-*-
-*******************************************************************************
-*
-* File:         ConstantString.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/ConstantString.H,v 1.3 2003/07/30 00:17:16 anderse Exp $
-* Description:  Constant Strings encoded much more efficiently than string,
-                but not freeable after being allocated
-* Author:       Eric Anderson
-* Created:      Tue Mar 26 22:58:34 2002
-* Modified:     Wed Jul  9 21:17:48 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Constant Strings are encoded much more efficiently than string,
+    but are not freeable after being allocated
 */
 
 #ifndef __CONSTANT_STRING

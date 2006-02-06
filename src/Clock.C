@@ -1,18 +1,13 @@
 /*
-*******************************************************************************
-*
-* File:         Clock.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Clock.C,v 1.11 2003/09/26 01:07:49 anderse Exp $
-* Description:  Cycle counter and other timer support
-* Author:       Eric Anderson
-* Created:      Sat Mar 11 19:05:45 2000
-* Modified:     Wed Sep 24 21:50:54 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    Cycle counter and other timer support
+*/
+
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/time.h>

@@ -1,3 +1,10 @@
+/*
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+
 #undef bool
 
 #ifdef __hpux

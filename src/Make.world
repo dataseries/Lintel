@@ -1,16 +1,10 @@
-###############################################################################
-# 
-# File:         Make.world
-# RCS:          $Header: /mount/cello/cvs/Lintel/src/Make.world,v 1.27 2002/06/10 18:41:48 schlosse Exp $
-# Description:  Makefile for building all SSP tools
-# Author:       Eric Anderson
-# Created:      Thu Aug 31 15:59:07 2000
-# Modified:     Tue Nov  6 14:57:42 2001 (Mustafa Uysal) uysal@hpl.hp.com
-# Language:     Make
-# Package:      Lintel
-# 
-# (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-###############################################################################
+#
+#  (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# Makefile for building all SSP tools
+
 
 # Sort the subdirs in dependency order.
 BUILD_SUBDIRS ?= Lintel PantheonLintel Rome srtLite Delphi Ergastulum Panopticon \

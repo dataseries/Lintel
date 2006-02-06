@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Double.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Double.H,v 1.6 2003/07/30 00:17:16 anderse Exp $
-* Description:  Some simple functions for handling doubles
-* Author:       Eric Anderson
-* Created:      Sat Jun  2 13:36:26 2001
-* Modified:     Sat Mar 30 14:29:34 2002 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Some simple functions for handling doubles
 */
 
 #ifndef __DOUBLE_H

@@ -1,3 +1,9 @@
+/*
+   (c) Copyright 1998-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
 // This program does the following tasks:
 // - given a desired mean, sigma, and upper limit
 // - it fits a truncated log-normal distribution which has these

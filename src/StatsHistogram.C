@@ -1,17 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsHistogram.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/StatsHistogram.C,v 1.43 2005/01/20 22:56:29 wilkes Exp $
-* Description:  Statistics/Histogram source code.
-* Author:       John Wilkes
-* Created:      Fri Nov 12 17:09:05 1993
-* Modified:     Fri Nov 28 20:30:19 2003 (John Wilkes) wilkes@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1993-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Statistics/Histogram source code
 */
 
 #include <stdlib.h>

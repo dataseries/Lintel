@@ -1,20 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsHistogram.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/StatsHistogram.H,v 1.33 2003/07/30 00:17:18 anderse Exp $
-* Description:  Header file for a hisgtogram class.
-* Author:       John Wilkes
-* Created:      Fri Nov 12 16:42:07 1993
-* Modified:     Fri Dec 20 09:59:32 2002 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-*
-* (C) Copyright 1995, Hewlett-Packard Laboratories, all rights reserved.
-*
-* Derived from an original version by Chris Ruemmler and Richard Golding.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1993-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Header file for a hisgtogram class.
 */
 
 ///////////////////////////////////////////////////////////////////////////////

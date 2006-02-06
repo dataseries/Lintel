@@ -1,17 +1,9 @@
 /*
-*******************************************************************************
-* 
-* File:         MersenneTwisterRandom.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/MersenneTwisterRandom.C,v 1.8 2003/07/30 00:17:17 anderse Exp $
-* Description:  Mersenne Twister random number generator
-* Author:       Eric Anderson modifications from M. Matsumoto and T. Nishimura
-* Created:      Sat Mar 11 19:34:48 2000
-* Modified:     Sat Jan 25 13:32:37 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* See copyright at end of file, it is the BSD copyright
-*******************************************************************************
+ * See copyright at end of file, it is the BSD copyright
+ */
+
+/** @file
+    modifications from M. Matsumoto and T. Nishimura
 */
 
 #include <stdio.h>

@@ -1,20 +1,14 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         TclInterface.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/TclInterface.H,v 1.6 2003/07/30 00:17:19 anderse Exp $
-* Description:  TclInterface object definition.
-* Author:       Alistair Veitch
-* Created:      Fri Apr  2 14:21:23 1999
-* Modified:     Thu Sep 13 17:28:43 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      Rubicon
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 1999, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 1999-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    TclInterface object definition.
+*/
+
 
 #ifndef _TCL_INTERFACE_H
 #define _TCL_INTERFACE_H

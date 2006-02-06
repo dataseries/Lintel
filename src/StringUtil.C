@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StringUtil.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/StringUtil.C,v 1.5 2005/02/14 04:36:52 anderse Exp $
-* Description:  implementation
-* Author:       Eric Anderson
-* Created:      Tue Apr 27 22:55:24 2004
-* Modified:     Thu Jan 20 13:09:47 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    some string utilities
 */
 
 #include <StringUtil.H>

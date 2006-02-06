@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         stats_series_group.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/tests/stats_series_group.C,v 1.2 2003/07/30 00:17:26 anderse Exp $
-* Description:  regression test
-* Author:       Eric Anderson
-* Created:      Sun Dec 16 13:30:55 2001
-* Modified:     Mon Jun 30 10:32:33 2003 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    regression test
 */
 
 #include <StatsSeriesGroup.H>

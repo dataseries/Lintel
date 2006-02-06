@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Deque.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Deque.H,v 1.2 2004/09/28 01:20:18 anderse Exp $
-* Description:  Deque implementation that doesn't suck
-* Author:       Eric Anderson
-* Created:      Fri Nov  2 08:44:24 2001
-* Modified:     Thu Sep 23 23:13:08 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Deque implementation that doesn't suck
 */
 
 #ifndef __DEQUE_H

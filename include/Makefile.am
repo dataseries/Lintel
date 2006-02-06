@@ -1,18 +1,8 @@
-###############################################################################
 #
-# File:         Makefile.am
-# RCS:          $Header: /mount/cello/cvs/Lintel/include/Makefile.am,v 1.1 2005/02/14 04:39:58 anderse Exp $
-# Description:  input file for automake
-# Author:       Eric Anderson
-# Created:      Sat Jan  8 00:16:15 2005
-# Modified:     Sun Jan 30 13:15:42 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     Makefile
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
 #
-# (C) Copyright 2005, Hewlett-Packard Laboratories, all rights reserved.
+#  See the file named COPYING for license details
 #
-###############################################################################
 
 nobase_include_HEADERS = \
 	Lintel/Clock.H \

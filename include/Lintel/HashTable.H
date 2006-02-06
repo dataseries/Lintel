@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         HashTable.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/HashTable.H,v 1.22 2004/09/07 21:26:40 anderse Exp $
-* Description:  Simple chained hash table
-* Author:       Eric Anderson
-* Created:      Wed Mar 27 09:43:29 2002
-* Modified:     Mon Sep  6 23:43:18 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2002-2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Simple chained hash table
 */
 
 #ifndef __HASH_TABLE

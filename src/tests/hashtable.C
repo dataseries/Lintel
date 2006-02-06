@@ -1,20 +1,14 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         hashtable.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/tests/hashtable.C,v 1.4 2004/04/02 22:11:09 anderse Exp $
-* Description:  HashTable test program
-* Author:       Eric Anderson
-* Created:      Mon Jan  6 18:19:20 2003
-* Modified:     Thu Mar 18 23:13:04 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2003, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2003-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    HashTable test program
+*/
+
 #include <stdio.h>
 
 #include <HashTable.H>

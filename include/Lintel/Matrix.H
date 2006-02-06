@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Matrix.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Matrix.H,v 1.3 2003/07/30 00:17:17 anderse Exp $
-* Description:  Various useful matrix manipulation functions
-* Author:       Eric Anderson
-* Created:      Mon Jun 25 10:37:54 2001
-* Modified:     Wed Jul  9 00:06:42 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Various useful matrix manipulation functions
 */
 
 #ifndef __MATRIX_H

@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Matrix.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Matrix.C,v 1.3 2003/07/30 00:17:17 anderse Exp $
-* Description:  Matrix functions
-* Author:       Eric Anderson
-* Created:      Mon Jun 25 10:56:08 2001
-* Modified:     Wed Jul  9 00:07:26 2003 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Matrix functions
 */
 
 #include <Matrix.H>

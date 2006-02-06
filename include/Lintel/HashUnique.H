@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         HashUnique.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/HashUnique.H,v 1.1 2004/04/02 22:11:08 anderse Exp $
-* Description:  hash implementation of uniqueifying a set of values
-* Author:       Eric Anderson
-* Created:      Wed Mar 24 10:59:42 2004
-* Modified:     Wed Mar 24 12:24:25 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    hash implementation of uniqueifying a set of values
 */
 
 #ifndef __HASH_UNIQUE_H

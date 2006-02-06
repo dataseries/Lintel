@@ -1,18 +1,13 @@
 /*
-*******************************************************************************
-* 
-* File:         stdio_64.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/stdio_64.C,v 1.6 2005/02/14 23:24:03 ysaito Exp $
-* Description:  64 versions of stdio routines.
-* Author:       Eric Anderson,SSP 1U-13,857-3990,H=wilkes/S=07-1999/E=02-2000/M=eanders@cs.berkeley.edu/T=(510)642-9669
-* Created:      Wed Jul 19 08:51:23 2000
-* Modified:     Sun Jan  9 21:26:14 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* (C) Copyright 2000, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
 */
+
+/** @file
+    64bit versions of stdio routines
+*/
+
 #include <stdio_64.H>
 
 #ifdef __LP64__

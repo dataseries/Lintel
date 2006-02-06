@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         check-Uncompress.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/tests/check-Uncompress.C,v 1.1 2005/02/14 04:36:54 anderse Exp $
-* Description:  Regression tests for check-Uncompress.C
-* Author:       Eric Anderson
-* Created:      Sun Dec 26 11:15:45 2004
-* Modified:     Mon Dec 27 11:21:00 2004 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2004, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Regression tests for check-Uncompress.C
 */
 
 #include <Uncompress.H>

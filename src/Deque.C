@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         Deque.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/Deque.C,v 1.1 2003/10/27 04:09:29 anderse Exp $
-* Description:  Deque implementation
-* Author:       Eric Anderson
-* Created:      Fri Nov  2 09:01:14 2001
-* Modified:     Sat Nov  2 22:07:48 2002 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Deque implementation
 */
 
 #include <Deque.H>

@@ -1,19 +1,12 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         StatsRW.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/StatsRW.H,v 1.8 2003/07/30 00:17:18 anderse Exp $
-* Description:  
-* Author:       Eric Anderson
-* Created:      Wed Aug 22 12:59:22 2001
-* Modified:     Thu Nov 21 18:09:49 2002 (Mahesh Kallahalla) maheshk@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    StatsRW class header
 */
 
 #ifndef __STATS_RW

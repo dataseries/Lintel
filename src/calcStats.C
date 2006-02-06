@@ -1,19 +1,19 @@
 /* -*-C++-*-
-*******************************************************************************
-*
-* File:         calcStats.C
-* RCS:          $Header: /mount/cello/cvs/Lintel/src/calcStats.C,v 1.4 2001/08/30 16:30:35 aveitch Exp $
-* Description:  Calculates count, min, max, mean, stddev, 19% confidence interval, variance, and relconf95(?) of a bunch of data. The data is assumed to be in a data file (single column only), whose name is taken in on the command line. All data items are treated as doubles.
-* Author:       Mahesh Kallahalla
-* Created:      Fri Jun  1 16:26:09 2001
-* Modified:     Thu Aug 23 14:55:04 2001 (Alistair Veitch) aveitch@hpl.hp.com
-* Language:     C++
-* Package:      N/A
-* Status:       Experimental (Do Not Distribute)
-*
-* (C) Copyright 2001, Hewlett-Packard Laboratories, all rights reserved.
-*
-*******************************************************************************
+/*
+   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    calculate stats on data
+*/
+
+/*
+   Calculates count, min, max, mean, stddev, 19% confidence interval,
+   variance, and relconf95(?) of a bunch of data. The data is assumed to
+   be in a data file (single column only), whose name is taken in on the
+   command line. All data items are treated as doubles.
 */
 
 #include <stdlib.h>

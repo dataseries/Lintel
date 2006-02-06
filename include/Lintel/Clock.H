@@ -1,17 +1,11 @@
 /*
-*******************************************************************************
-* 
-* File:         Clock.H
-* RCS:          $Header: /mount/cello/cvs/Lintel/include/Lintel/Clock.H,v 1.12 2005/02/14 04:39:58 anderse Exp $
-* Description:  Header file for tod clock/cycle counter interactions
-* Author:       Eric Anderson
-* Created:      Mon Feb 21 00:24:53 2000
-* Modified:     Sun Jan  9 20:58:00 2005 (Eric Anderson) anderse@hpl.hp.com
-* Language:     C++
-* Package:      Lintel
-* 
-* (C) Copyright 2000-2001, Hewlett-Packard Laboratories, all rights reserved.
-*******************************************************************************
+   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+
+   See the file named COPYING for license details
+*/
+
+/** @file
+    Header file for tod clock/cycle counter interactions
 */
 
 #ifndef __CLOCK_H
@@ -32,7 +26,7 @@ extern "C" {
 
 class Clock {
 public:
-    // Type split as of 2003-01-30, and renamed to guarentee
+    // Type split as of 2003-01-30, and renamed to guarantee
     // compilation problems if the code is used incorrectly; after
     // June if no problems have been found, we should re-introduce the
     // T type as a synonym for Tdbl; performance measurement (see
@@ -55,7 +49,7 @@ public:
     // calibration to fail.
     static void calibrateClock(bool print_calibration_information = false,
 			       double max_conf95_rel = 0.01,
-			       int print_calibration_warnings_after_tries = 1); 
+			       int print_calibration_warnings_after_tries = 1);
 
     Clock(bool allow_calibration = false);
     static double clock_rate; // MhZ, assume SMP processors run at same rate.
