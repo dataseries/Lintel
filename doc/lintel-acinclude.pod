@@ -1,0 +1,26 @@
+=head1 NAME
+
+lintel-acinclude - Re-generate the acinclude.m4 file based on configure.ac
+
+=head1 SYNOPSIS
+
+lintel-acinclude
+
+=head1 DESCRIPTION
+
+lintel-acinclude is used when you are autoconfing a package for the
+first time, or when you have been fiddling with the various
+com_hp_hpl_*.m4 files and have managed to make it so that you can't
+run autoconf any more.
+
+lintel-acinclude finds the COM_HP_HPL_ACINCLUDE line in the
+configure.ac file and rebuilds the acinclude.m4 file based on the
+sub-modules requested by that macro expansion.  It operates in the
+same way that the macro does for rebuilding the acinclude file, except
+that the rebuild is unconditional (the macro only replaces the
+acinclude.m4 file if it has changed)
+
+=head1 AUTHOR
+
+Eric Anderson <anderse@hpl.hp.com>
+

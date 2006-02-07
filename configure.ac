@@ -77,10 +77,22 @@ AC_SYS_LARGEFILE
 #  6. If any interfaces have been removed since the last public release,
 #     then set age to 0.
 
+# Shared libraries have link dependencies for all files in the shared library.
+# this means that if we link with extra libraries, e.g. pthread, gc, etc, even
+# if an application won't use those libraries, it still has to provide the 
+# dependencies.  After a bit of discussion, it was decided that we should
+# pull out the source files that use extra libraries since linking with
+# one of the extra libraries will automatically pull in the lintel library.
+# This solution is not optimal, but is the best one we've been able to 
+# discover to date.  Pulling out the gc dependent libraries hasn't happened
+# yet.
+
 LIBLINTEL_VERSION=0:0:0
+LIBLINTELPTHREAD_VERSION=0:0:0
 LIBNOGC_VERSION=0:0:0
 
 AC_SUBST(LIBLINTEL_VERSION)
+AC_SUBST(LIBLINTELPTHREAD_VERSION)
 AC_SUBST(LIBNOGC_VERSION)
 
 ### HP-UX specific memory header replacement to make garbage collection work
@@ -118,7 +130,7 @@ esac
 
 AC_SUBST(RANDOM_COMPARETO)
 
-AC_CONFIG_FILES([Makefile src/lintel-config include/Makefile src/Makefile src/batch-parallel])
+AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel])
 
 expanded_datadir=`eval echo $datadir`
 AC_SUBST(expanded_datadir)

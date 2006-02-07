@@ -35,4 +35,7 @@ std::string hex2raw(const std::string &instr);
 /** convert instr into a raw string if it contains only hex characters */
 std::string maybehex2raw(const std::string &instr);
 
+/** determine if str starts with prefix */
+bool prefixequal(const std::string &str, const std::string &prefix);
+
 #endif

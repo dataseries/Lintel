@@ -23,6 +23,7 @@ convention of keeping convention of having your sources stored in
   <LI> <A HREF="#addoptflags">Add optimization flags</A>
   <LI> <A HREF="#update-configbits">Update the autoconf files</A>
   <LI> <A HREF="#notes-autoconf-grizzly">See the notes on autoconfig Grizzly</A>
+  <LI> <A HREF="#notes-autoconf-srtlite">See the notes on autoconfig srtLite</A>
 </UL>
 
 <A NAME="checkout"><H3>Checkout a package</H3></A>
@@ -237,4 +238,23 @@ There are three options for doing this:
        so that it will get substituted during configuring; add explicit dependency to src makefile so that if
        the source file for makeplots changes, the derived file will be rebuilt.
   <LI> add ipdsanalysis 
+</UL>
+
+<A NAME="notes-autoconf-srtlite"><H3>Notes on autoconfig srtLite</H3></A>
+
+<UL>
+  <LI> First shuffle around all of the various source, include, documentation,
+       and check-data files into the appropriate directories.
+  <LI> Move the WITHLIB_{LZF,LZO,GZ,BZ2} bits into com_hp_hpl_lintel.m4; reinstall lintel
+  <LI> copy Makefile.am, configure.ac from DataSeries directory
+  <LI> remove almost everything from the configure.ac, leaving the minimal bits of automake initialization, lintel requiring and optmode, and the maintainer bits, leave in the with_zlib, with_bz2 bits.  Change the AC_INIT, and AC_CONFIG_FILES lines, update the LIBDATASERIES -> LIBSRTLITE
+  <LI> remove the unneeded bits from Makefile.am
+  <LI> copy over the DataSeries {src,include}/Makefile.am files, edit them as appropriate -- removing unneeded bits, add in srt sources, bins, etc.
+  <LI> % lintel-acinclude; aclocal; automake -a -c -f; libtoolize --automake -c -f; autoconf; automake
+  <LI> in ~/build/debug/srtLite: ~/projects/srtLite-autoconf/configure --enable-maintainer-mode --enable-optmode=debug
+  <LI> make -- discover that we don't auto-build the srtFilterParse bit, consult with documentation, discover it will auto-build *.yy -> *.cc if we have the .yy file in the SOURCES variable.  add in AC_PROC_{YACC,LEX}, but then discover that we needed to patch other things during the conversion, so change over to using BUILT_SOURCES, and add in the custom build bits from old-Makefile
+  <LI> Test out make install, and discover that works fine for the include and library files
+  <LI> Add in all the binary programs and their sources list.  Rebuild and
+       discover that CDFcompare needed two sources rather than one as in the
+       old-Makefile (the second one was hidden)
 </UL>

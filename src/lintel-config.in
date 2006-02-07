@@ -6,7 +6,6 @@
 #  See the file named COPYING for license details
 #
 
-
 prefix=@prefix@
 exec_prefix=@exec_prefix@
 includedir=@includedir@
@@ -20,6 +19,7 @@ Usage: lintel-config <OPTION>
 Valid options:
   --cflags	       show needed compiler flags
   --libtool-libs       show link options for libtool
+  --libtool-lintelpthread show libtool link options for libLintelPThread
   --libs	       show library link options
   --mustgclibs         show library link options for programs requiring garbage collection
   --nogclibs           show library linnk options for programs that don't need gc libraries
@@ -40,6 +40,10 @@ case "$1" in
     	;;
     --libtool-libs)
 	echo ${libdir}/libLintel.la
+	exit 0
+	;;
+    --libtool-lintelpthread)
+	echo ${libdir}/libLintelPThread.la
 	exit 0
 	;;
     --libs)

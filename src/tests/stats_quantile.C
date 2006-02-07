@@ -16,6 +16,7 @@
 #include <StatsQuantile.H>
 #include <LintelAssert.H>
 #include <MersenneTwisterRandom.H>
+#include <Double.H>
 
 void
 checkQuantiles(StatsQuantile &stats,
@@ -211,6 +212,7 @@ checkRomePrint()
 int
 main()
 {
+    Double::selfCheck(); // quantile was failing because of problems checked now in here
     if (true) {
 	// Make sure that the stats object doesn't choke with no sample.
 	StatsQuantile test("",3,10);

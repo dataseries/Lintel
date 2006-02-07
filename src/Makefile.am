@@ -12,7 +12,7 @@
 AUTOMAKE_OPTIONS = 1.7 foreign
 
 bin_PROGRAMS = calcStats drawRandomLogNormal 
-bin_SCRIPTS = buildTcl batch-parallel lintel-config
+bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
 
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
@@ -21,11 +21,12 @@ LDADD = $(top_builddir)/src/libLintel.la @TCL_LIBS@ libnogc.la -lpthread
 AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
-lib_LTLIBRARIES = libLintel.la libnogc.la
+lib_LTLIBRARIES = libLintel.la libLintelPThread.la libnogc.la
 libLintel_la_LDFLAGS = -version-info @LIBLINTEL_VERSION@
 libLintel_la_LIBADD = @TCL_LIBS@
  
 libLintel_la_SOURCES = \
+	AssertException.C \
 	Clock.C \
 	Deque.C \
 	Double.C \
@@ -37,6 +38,7 @@ libLintel_la_SOURCES = \
 	MersenneTwisterRandom.C \
 	PriorityQueue.C \
 	Stats.C \
+	StatsEMA.C \
 	StatsHistogram.C \
 	StatsMaker.C \
 	StatsRW.C \
@@ -73,6 +75,11 @@ endif
 libnogc_la_LDFLAGS = -version-info @LIBNOGC_VERSION@
 libnogc_la_SOURCES = nogc.c 
 
+libLintelPThread_la_LDFLAGS = -version-info @LIBLINTELPTHREAD_VERSION@ 
+libLintelPThread_la_LIBADD = -lLintel -lpthread
+libLintelPThread_la_SOURCES = \
+	PThread.C
+
 if WITH_MAKEBITS
 install-exec-local::
 	$(mkinstalldirs) $(DESTDIR)$(libdir)
@@ -101,9 +108,15 @@ check_PROGRAMS = tests/check-Random tests/check-StatsQuantile \
 
 tests_check_Random_SOURCES = tests/check-Random.C
 
+if WITH_TCL
 tests/check_Random: tests/check-Random
 	tests/check-Random 2>&1 | diff -b $(srcdir)/@RANDOM_COMPARETO@ -
 	touch $@
+else
+tests/check_Random:
+	@echo "Unable to run Random check, need TCL library"
+	touch $@
+endif
 
 tests_check_StatsQuantile_SOURCES = tests/stats_quantile.C
 
