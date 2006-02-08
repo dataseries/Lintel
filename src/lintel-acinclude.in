@@ -1,0 +1,32 @@
+#!/bin/sh
+#
+#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+set -e
+prefix=@prefix@
+datadir=@datadir@
+
+if [ ! -f configure.ac ]; then
+   echo "Usage: $0 (in directory where configure.ac exists)"
+fi
+
+echo "building acinclude.m4:"
+ACINCLUDE=`grep COM_HP_HPL_ACINCLUDE configure.ac | sed 's/^.*(//' | sed 's/)$//'`
+[ -f acinclude.m4 ] && rm acinclude.m4
+touch acinclude.m4
+for i in $ACINCLUDE; do
+    file=com_hp_hpl_$i.m4
+    installpath=$datadir/aclocal/$file
+    if [ -f $file ]; then
+        echo "  $file..."
+	cat $file >>acinclude.m4
+    elif [ -f $installpath ]; then
+        echo "  $installpath..."
+	cat $installpath >>acinclude.m4
+    else
+        echo "missing $file and $installpath"
+	exit 1
+    fi
+done

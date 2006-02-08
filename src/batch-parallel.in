@@ -11,7 +11,7 @@
 ###############################################################################
 #
 # File:         batch-parallel.pl
-# RCS:          $Header: /mount/cello/cvs/Lintel/src/batch-parallel.in,v 1.4 2005/09/28 00:01:22 aveitch Exp $
+# RCS:          $Header: /mount/cello/cvs/Lintel/src/batch-parallel.in,v 1.5 2006/02/08 19:10:49 anderse Exp $
 # Description:  Script for running batch processing type operations, extended
 #               by a module that controls how the jobs are selected and
 #               executed
