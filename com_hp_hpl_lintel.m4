@@ -22,7 +22,11 @@ if test "$USE_MAINTAINER_MODE" = yes; then
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
 	elif test -f $srcdir/com_hp_hpl_$i.m4; then
 	    cat $srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
-	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(srcdir)/com_hp_hpl_$i.m4"
+	    # Use of top_srcdir here is intentional, some versions of 
+	    # configure don't seem to define that in the configure run, but
+            # we absolutely need this in the makefiles because srcdir is 
+   	    # in subdirectories will point to the subdirectory.
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
 	elif test -f $expanded_datadir/aclocal/com_hp_hpl_$i.m4; then
 	    cat $expanded_datadir/aclocal/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $expanded_datadir/aclocal/com_hp_hpl_$i.m4"
