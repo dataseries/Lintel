@@ -5,6 +5,7 @@
 #
 
 nobase_include_HEADERS = \
+	Lintel/AssertException.H \
 	Lintel/Clock.H \
 	Lintel/Deque.H \
 	Lintel/Double.H \
@@ -20,6 +21,7 @@ nobase_include_HEADERS = \
 	Lintel/Posix.H \
 	Lintel/PriorityQueue.H \
 	Lintel/Stats.H \
+	Lintel/StatsEMA.H \
 	Lintel/StatsHistogram.H \
 	Lintel/StatsMaker.H \
 	Lintel/StatsQuantile.H \

@@ -17,14 +17,21 @@ if test "$USE_MAINTAINER_MODE" = yes; then
     test -f $srcdir/acinclude.m4.new && rm $srcdir/acinclude.m4.new
     touch $srcdir/acinclude.m4.new
     for i in $1; do
-	if test -f $srcdir/com_hp_hpl_$i.m4; then
+	if test -f $top_srcdir/com_hp_hpl_$i.m4; then
+	    cat $top_srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
+	elif test -f $srcdir/com_hp_hpl_$i.m4; then
 	    cat $srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
-	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $srcdir/com_hp_hpl_$i.m4"
+	    # Use of top_srcdir here is intentional, some versions of 
+	    # configure don't seem to define that in the configure run, but
+            # we absolutely need this in the makefiles because srcdir is 
+   	    # in subdirectories will point to the subdirectory.
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
 	elif test -f $expanded_datadir/aclocal/com_hp_hpl_$i.m4; then
 	    cat $expanded_datadir/aclocal/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $expanded_datadir/aclocal/com_hp_hpl_$i.m4"
 	else
-	    AC_MSG_NOTICE([unable to find com_hp_hpl_$i.m4 (looked in ., $expanded_datadir/aclocal), needed for building acinclude.m4])
+	    AC_MSG_NOTICE([unable to find com_hp_hpl_$i.m4 (looked in $top_srcdir, $srcdir, $expanded_datadir/aclocal), needed for building acinclude.m4])
 	    AC_MSG_ERROR([which is needed for maintainer mode, aborting])
 	    exit 1
 	fi
@@ -41,6 +48,22 @@ fi
 AC_SUBST([CONFIG_STATUS_DEPENDENCIES],$ACINCLUDE_DEPENDENCIES)
 ])
 	
+# have to use m4_define here; tried to use AC_DEFUN, but got really weird
+# error message.  Second use of m4_define eliminates a warning from aclocal
+# about not having used HPL_$1
+
+m4_define([HPL_DEFINE_REQUIRELIB],
+[
+    m4_define(m4_format([HPL_REQUIRELIB_%s], translit($1, [a-z], [A-Z])),
+m4_format([[HPL_WITHLIB_%s]], translit($1, [a-z], [A-Z]))
+if test m4_format(["$with_%s"], translit($1, [A-Z], [a-z])) = yes; then
+	AC_MSG_NOTICE([Found required library $1])
+else
+	AC_MSG_ERROR([Could not find required library $1])
+fi
+)
+])
+
 AC_DEFUN([HPL_WITHLIB_TCL],
 [
 AC_ARG_WITH(tcl,
@@ -163,6 +186,7 @@ else
     AC_MSG_RESULT(success -- using $LINTEL_CONFIG)
     LINTEL_CFLAGS=`$LINTEL_CONFIG --cflags || exit 1`
     LINTEL_LIBTOOL=`$LINTEL_CONFIG --libtool-libs || exit 1`
+    LINTELPTHREAD_LIBTOOL=`$LINTEL_CONFIG --libtool-lintelpthread || exit 1`
     LINTEL_LIBS=`$LINTEL_CONFIG --libs || exit 1`
     LINTEL_MUSTGCLIBS=`$LINTEL_CONFIG --mustgclibs || exit 1`
     LINTEL_NOGCLIBS=`$LINTEL_CONFIG --nogclibs || exit 1`
@@ -207,6 +231,7 @@ fi
 
 AC_SUBST(LINTEL_CFLAGS)
 AC_SUBST(LINTEL_LIBTOOL)
+AC_SUBST(LINTELPTHREAD_LIBTOOL)
 AC_SUBST(LINTEL_LIBS)
 AC_SUBST(LINTEL_MUSTGCLIBS)
 AC_SUBST(LINTEL_NOGCLIBS)
@@ -247,7 +272,207 @@ AC_SUBST(XML2_LIBTOOL)
 AC_SUBST(XML2_LIBS)
 ])
 
+AC_DEFUN([HPL_WITHLIB_LZF],
+[
+AC_ARG_WITH(lzf,
+  [  --without-lzf           disable LZF compression support],
+  [with_lzf=$withval],
+  [with_lzf='yes'])
 
+LZF_LIBS=''
+if test "$with_lzf" = yes; then
+    have_lzf_hdr=no
+    have_lzf_lib=no
+    AC_LANG_ASSERT(C)
+    AC_CHECK_HEADER(lzf.h,have_lzf_hdr=yes,)
+    AC_CHECK_LIB(lzf,lzf_compress,have_lzf_lib=yes;LZF_LIBS=-llzf)
+    
+    if test $have_lzf_hdr = yes -a $have_lzf_lib = yes; then
+    	with_lzf=yes
+    else
+        with_lzf=no
+    	LZF_LIBS=''
+    fi
+fi
+AC_SUBST(LZF_LIBS)
+AM_CONDITIONAL(WITH_LZF, test $with_lzf = yes)
+])
+
+HPL_DEFINE_REQUIRELIB(lzf)
+
+AC_DEFUN([HPL_WITHLIB_LZO],
+[
+AC_ARG_WITH(lzo,
+  [  --without-lzo           disable LZO compression support],
+  [with_lzo=$withval],
+  [with_lzo='yes'])
+
+LZO_LIBS=''
+if test "$with_lzo" = yes; then
+    have_lzo_hdr=no
+    have_lzo_lib=no
+    AC_LANG_ASSERT(C)
+    AC_CHECK_HEADER(lzo1x.h,have_lzo_hdr=yes,)
+    AC_CHECK_LIB(lzo,lzo1x_999_compress_level,have_lzo_lib=yes;LZO_LIBS=-llzo)
+
+    if test $have_lzo_hdr = yes -a $have_lzo_lib = yes; then
+    	with_lzo=yes
+    else
+        with_lzo=no
+    	LZO_LIBS=''
+    fi
+fi
+AC_SUBST(LZO_LIBS)
+AM_CONDITIONAL(WITH_LZO, test $with_lzo = yes)
+])
+
+
+AC_DEFUN([HPL_WITHLIB_ZLIB],
+[
+AC_ARG_WITH(zlib,
+  [  --without-zlib           disable ZLIB compression support],
+  [with_zlib=$withval],
+  [with_zlib='yes'])
+
+ZLIB_LIBS=''
+if test "$with_zlib" = yes; then
+    have_zlib_hdr=no
+    have_zlib_lib=no
+    AC_LANG_ASSERT(C)
+    AC_CHECK_HEADER(zlib.h,have_zlib_hdr=yes,)
+    AC_CHECK_LIB(z,compress2,have_zlib_lib=yes;ZLIB_LIBS=-lz)
+    
+    if test $have_zlib_hdr = yes -a $have_zlib_lib = yes; then
+    	with_zlib=yes
+    else
+    	with_zlib=no
+    	ZLIB_LIBS=''
+    fi
+fi
+
+AC_SUBST(ZLIB_LIBS)
+AM_CONDITIONAL(WITH_ZLIB, test $with_zlib = yes)
+])
+
+HPL_DEFINE_REQUIRELIB(zlib)
+
+AC_DEFUN([HPL_WITHLIB_BZ2],
+[
+AC_ARG_WITH(bz2,
+  [  --without-bz2           disable BZ2 compression support],
+  [with_bz2=$withval],
+  [with_bz2='yes'])
+
+BZ2_LIBS=''
+if test "$with_bz2" = yes; then
+    have_bz2_hdr=no
+    have_bz2_lib=no
+    AC_LANG_ASSERT(C)
+    AC_CHECK_HEADER(bzlib.h,have_bz2_hdr=yes,)
+    AC_CHECK_LIB(bz2,BZ2_bzBuffToBuffCompress,have_bz2_lib=yes;BZ2_LIBS=-lbz2)
+    
+    if test $have_bz2_hdr = yes -a $have_bz2_lib = yes; then
+    	with_bz2=yes
+    else
+        with_bz2=no
+	BZ2_LIBS=''
+    fi
+fi
+
+AC_SUBST(BZ2_LIBS)
+AM_CONDITIONAL(WITH_BZ2, test $with_bz2 = yes)
+])
+
+HPL_DEFINE_REQUIRELIB(bz2)
+
+AC_DEFUN([HPL_WITHLIB_PCRE],
+[
+AC_ARG_WITH(pcre,
+  [  --without-pcre           disable perl compatible regular expression support],
+  [with_pcre=$withval],
+  [with_pcre='yes'])
+
+PCRE_LIBS=''
+if test "$with_pcre" = yes; then
+   have_pcre_hdr=no
+   have_pcre_lib=no
+   AC_LANG_ASSERT(C)
+   AC_CHECK_HEADER(pcre.h,have_pcre_hdr=yes,)
+   AC_CHECK_LIB(pcre,pcre_get_substring,have_pcre_lib=yes;PCRE_LIBS=-lpcre)
+
+   if test $have_pcre_hdr = yes -a $have_pcre_lib = yes; then
+      with_pcre=yes
+   else
+      with_pcre=no
+      PCRE_LIBS='' 
+   fi
+else
+   with_pcre=no
+fi
+
+AC_SUBST(PCRE_LIBS)
+AM_CONDITIONAL(WITH_PCRE, test $with_pcre = yes)
+])
+
+AC_DEFUN([HPL_WITHLIB_CRYPTO],
+[
+AC_ARG_WITH(crypto,
+  [  --without-crypto           disable OpenSSL cryptographic library support],
+  [with_crypto=$withval],
+  [with_crypto='yes'])
+
+CRYPTO_LIBS=''
+if test "$with_crypto" = yes; then
+   have_crypto_hdr=no
+   have_crypto_lib=no
+   AC_LANG_ASSERT(C)
+   AC_CHECK_HEADER(openssl/sha.h,have_crypto_hdr=yes,)
+   AC_CHECK_LIB(crypto,SHA1,have_crypto_lib=yes;CRYPTO_LIBS=-lcrypto)
+
+   if test $have_crypto_hdr = yes -a $have_crypto_lib = yes; then
+      with_crypto=yes
+   else
+      with_crypto=no
+      CRYPTO_LIBS='' 
+   fi
+else
+   with_crypto=no
+fi
+
+AC_SUBST(CRYPTO_LIBS)
+AM_CONDITIONAL(WITH_CRYPTO, test $with_crypto = yes)
+])
+
+HPL_DEFINE_REQUIRELIB(crypto)
+
+AC_DEFUN([HPL_WITHLIB_PCAP],
+[
+AC_ARG_WITH(pcap,
+  [  --without-pcap           disable libpcap support],
+  [with_pcap=$withval],
+  [with_pcap='yes'])
+
+PCAP_LIBS=''
+if test "$with_pcap" = yes; then
+   have_pcap_hdr=no
+   have_pcap_lib=no
+   AC_LANG_ASSERT(C)
+   AC_CHECK_HEADER(pcap.h,have_pcap_hdr=yes,)
+   AC_CHECK_LIB(pcap,pcap_loop,have_pcap_lib=yes;PCAP_LIBS=-lpcap)
+
+   if test $have_pcap_hdr = yes -a $have_pcap_lib = yes; then
+      with_pcap=yes
+   else
+      with_pcap=no
+      PCAP_LIBS='' 
+   fi
+else
+   with_pcap=no
+fi
+
+AC_SUBST(PCAP_LIBS)
+AM_CONDITIONAL(WITH_PCAP, test $with_pcap = yes)
+])
 
 AC_DEFUN([COM_HP_HPL_LINTEL_OPTMODE],
 [
@@ -333,7 +558,21 @@ else
 	exit 1
     fi
 
-    if test "$ac_compiler_gnu" = "yes"; then
+    ICC_help=`$CC --help 2>&1 | grep 'Intel.*Compiler' | wc -l`
+    if test $ICC_help -gt 0; then
+	# brackets get removed in the following two lines so these expand out the way we expect
+	ICC_VERSION=`$CC -dumpversion | awk '{print $[1]}'`
+	ICC_BUILD=`$CC -V 2>&1 | grep Build | sed 's/.*Build //' | awk '{print $[1]}'`
+	 LINTEL_OPTMODE_COMPILER=icc-$ICC_VERSION-$ICC_BUILD
+	 if test $GNU_dumpspecs -gt 1; then
+	     AC_MSG_ERROR([Whoa, looks like intel compiler, but has GNU dumpspecs])
+	 fi
+	 if test "`$CXX -dumpversion`" != "`$CC -dumpversion`"; then
+	     AC_MSG_ERROR(version mismatch between $CXX and $CC??)
+	 fi
+	 AC_MSG_NOTICE([Adding -lstdc++ to LDFLAGS.  icc seems to need this to correctly link files with only .o files on the link line, do not know why])
+	 LDFLAGS="$LDFLAGS -lstdc++"
+    elif test "$ac_compiler_gnu" = "yes"; then
 	if test "$CC" = ""; then
 	    AC_MSG_FAILURE(CC variable is empty?!)
 	fi
@@ -359,39 +598,51 @@ else
     esac
 
     PROFILEFLAG=-pg
+    # choices for optimization determined using doc/Performance, please 
+    # update that file as appropriate.	
     # cases are sorted alphabetically, please preserve this
     case $host::$PROCMOD::$LINTEL_OPTMODE_COMPILER in
         hppa2.0w-hp-hpux11*::PA2.0W::HPUX11)
 	   OPTFLAGS="+O3 +Onolimit +DA2.0 +Oaggressive"
 	   PROFILEFLAG="-G"
 	   ;;
-	i686-pc-linux-gnu::*PentiumIII*::gcc-3.3*)
+	i686-*::*PentiumIII*::gcc-3.[34]*)
 	   OPTFLAGS="-O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
   	   ;;
-	i686-pc-linux-gnu::*IntelXeon*::gcc-3.3*)
+	i686-*::*IntelPentium4CPU*::gcc-3.[34]*)
 	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
 	   ;;
-	i686-pc-linux-gnu::*IntelXeon*::gcc-3.4*)
+	i686-*::*IntelXeon*::gcc-3.3*)
+	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
+	   ;;
+	i686-*::*IntelXeon*::gcc-3.4*)
 	   OPTFLAGS="-O3 -march=pentium4 -D__pentium4__ -g"
 	   ;;
-	i686-pc-linux-gnu::*PentiumM*::gcc-2.95*)
+	i686-*::*PentiumM*::gcc-2.95*)
 	   OPTFLAGS="-O3 -march=i686 -msse2 -D__pentiumpro__ -g"
 	   ;;
-	i686-pc-linux-gnu::*PentiumM*::gcc-3.3*) 
-	   OPTFLAGS="-O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
+	i686-*::*PentiumM*::gcc-3.3*) 
+	   OPTFLAGS="-O3 -march=pentium4 -msse2 -D__pentiumpro__ -g"
 	   ;;
-	i686-pc-linux-gnu::*PentiumM*::gcc-3.4*) 
+	i686-*::*PentiumM*::gcc-3.4*) 
 	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
+	i686-*::*PentiumM*::gcc-4.0*) 
+	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
+	   ;;
+	i686-*::*PentiumM*::icc-8.1*)
+	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
+  	   ;;
 	*) AC_MSG_NOTICE(**************************************************)
-	   AC_MSG_NOTICE(Unknown host ($host) proctype ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination)
+	   AC_MSG_NOTICE(Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination)
 	   AC_MSG_NOTICE(Leaving optimization option alone as '$CXXFLAGS')
-	   AC_MSG_NOTICE(See doc/building.html under 'Add optimization flags' for how to fix this)
-	   AC_MSG_NOTICE(sleeping 30 seconds to make this message more obvious)
+	   AC_MSG_NOTICE(See doc/building.html under 'Add optimization flags' for how to fix)
+	   AC_MSG_NOTICE(this warning, but you can safely ignore it.)
+	   AC_MSG_NOTICE(sleeping 10 seconds to make this message more obvious)
 	   AC_MSG_NOTICE(**************************************************)
 	   OPTFLAGS="$CFLAGS"
 	   PROFILEFLAGS="$CFLAGS"
-	   sleep 30
+	   sleep 10
 	   ;;
     esac
 

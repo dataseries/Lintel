@@ -128,3 +128,8 @@ maybehex2raw(const string &in)
     return hex2raw(in);
 }
 
+bool
+prefixequal(const string &str, const string &prefix)
+{
+    return str.compare(0,prefix.size(),prefix) == 0;
+}

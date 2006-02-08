@@ -18,3 +18,10 @@ it's roughly balanced.
 
 add support for checking of the lintel version into the
 HPL_REQUIRELIB_LINTEL bit.
+
+Figure out how to make a meta-macro that generates the
+HPL_{REQUIRELIB,WITHLIB}_{XML2,LZF,LZO,...} since all of those macros
+are so similar; a generalization of HPL_DEFINE_REQUIRELIB might work,
+but we want to check for various functions being defined, see the
+example HPL_REQUIRELIB_XML2 functions.
+

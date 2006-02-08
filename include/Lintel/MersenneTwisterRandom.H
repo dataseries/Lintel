@@ -14,6 +14,7 @@
 
 // A possibly faster version may be adaptable from:
 // http://www.math.keio.ac.jp/matumoto/MT2002/emt19937ar.html
+// or from http://www-personal.engin.umich.edu/~wagnerr/MersenneTwister.html
 
 class MersenneTwisterRandom {
 public:

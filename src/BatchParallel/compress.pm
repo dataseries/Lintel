@@ -13,7 +13,7 @@ die "module version mismatch"
 
 sub usage {
     print <<END_OF_USAGE;
-batch-parallel compress [noclean] [nocheck] [gz] [bz2] [level=#]
+batch-parallel compress [noclean] [nocheck] [gz] [bz2] [7z] [level=#]
   defaults are bz2 compression at level 9 with both cleaning (removing 
   the source file), and checking (re-uncompressing and comparing data)
 END_OF_USAGE
@@ -32,6 +32,8 @@ sub new {
 	    $this->{type} = 'gz';
 	} elsif ($arg eq 'bz2') {
 	    $this->{type} = 'bz2';
+	} elsif ($arg eq '7z') {
+	    $this->{type} = '7z';
 	} elsif ($arg =~ /^level=(\d+)$/) {
 	    $this->{level} = $1;
 	} elsif ($arg eq 'help') {
@@ -99,13 +101,20 @@ sub rebuild {
     my $unpack_cmd;
 
     if ($this->{type} eq 'bz2') {
-	$pack_cmd = "bzip2 -v -$this->{level}";
-	$unpack_cmd = "bunzip2";
+	$pack_cmd = "bzip2 -v -$this->{level} >$destpath";
+	$unpack_cmd = "bunzip2 <$destpath";
     } elsif ($this->{type} eq 'gz') {
-	$pack_cmd = "gzip -v -$this->{level}";
-	$unpack_cmd = "gunzip";
+	$pack_cmd = "gzip -v -$this->{level} >$destpath";
+	$unpack_cmd = "gunzip <$destpath";
+    } elsif ($this->{type} eq '7z') {
+	$pack_cmd = "7z a -si -t7z -m0=lzma -mx=$this->{level} -mfb=64 -md=32m -ms=on $destpath";
+	$unpack_cmd = "7z x -so $destpath";
+    } else {
+	die "Unknown type $this->{type}";
     }
-    my $ret = system("$unpack_orig_cmd | $pack_cmd >$destpath");
+
+    my $ret = system("$unpack_orig_cmd | $pack_cmd");
+
     unless($ret == 0) {
 	print "$unpack_orig_cmd | $pack_cmd >$destpath failed";
 	unlink($destpath);
@@ -113,7 +122,7 @@ sub rebuild {
     }
     if ($this->{check}) {
 	open(F1,"$unpack_orig_cmd |") || fail($destpath,"can't run $unpack_orig_cmd: $!");
-	open(F2,"$unpack_cmd < $destpath |") || fail($destpath,"can't run $unpack_cmd < $destpath: $!");
+	open(F2,"$unpack_cmd |") || fail($destpath,"can't run $unpack_cmd < $destpath: $!");
 	my $bufsize = 64*1024;
 	my($f1,$f2);
 	while(1) {
