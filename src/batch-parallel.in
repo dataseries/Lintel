@@ -7,25 +7,6 @@
 # Script for running batch processing type operations, extended
 # by a module that controls how the jobs are selected and executed
 
-
-###############################################################################
-#
-# File:         batch-parallel.pl
-# RCS:          $Header: /mount/cello/cvs/Lintel/src/batch-parallel.in,v 1.4 2005/09/28 00:01:22 aveitch Exp $
-# Description:  Script for running batch processing type operations, extended
-#               by a module that controls how the jobs are selected and
-#               executed
-# Author:       Eric Anderson
-# Created:      Thu Sep 30 22:00:00 2004
-# Modified:     Wed Feb  2 12:07:39 2005 (Eric Anderson) anderse@hpl.hp.com
-# Language:     Perl
-# Package:      N/A
-# Status:       Experimental (Do Not Distribute)
-#
-# (C) Copyright 2004, 2005 Hewlett-Packard Laboratories, all rights reserved.
-#
-###############################################################################
-
 use strict;
 use English;
 use Getopt::Long;
