@@ -1,5 +1,5 @@
 /*
- * See copyright at end of file, it is the BSD copyright
+ * See copyright at top of file, it is the BSD copyright
  */
 
 /** @file

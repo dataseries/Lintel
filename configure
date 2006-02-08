@@ -465,7 +465,7 @@ ac_includes_default="\
 # include <unistd.h>
 #endif"
 
-ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXX CXXFLAGS ac_ct_CXX CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE OPTMODE_LDFLAGS MAINTAINER_MODE_TRUE MAINTAINER_MODE_FALSE MAINT CONFIG_STATUS_DEPENDENCIES EGREP LD PERL_BINARY PERL_SHAREDIR PERL_MODULES_INC_UNSHIFT LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB CPP CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL LIBTOOL_DEPS TCL_CFLAGS TCL_LIBS WITH_TCL_TRUE WITH_TCL_FALSE GC_CFLAGS GC_LIBS WITH_GC_TRUE WITH_GC_FALSE LIBLINTEL_VERSION LIBNOGC_VERSION WITH_HPUX_REPLACE_MEMORY_TRUE WITH_HPUX_REPLACE_MEMORY_FALSE WITH_MAKEBITS_TRUE WITH_MAKEBITS_FALSE RANDOM_COMPARETO expanded_datadir LIBOBJS LTLIBOBJS'
+ac_subst_vars='SHELL PATH_SEPARATOR PACKAGE_NAME PACKAGE_TARNAME PACKAGE_VERSION PACKAGE_STRING PACKAGE_BUGREPORT exec_prefix prefix program_transform_name bindir sbindir libexecdir datadir sysconfdir sharedstatedir localstatedir libdir includedir oldincludedir infodir mandir build_alias host_alias target_alias DEFS ECHO_C ECHO_N ECHO_T LIBS build build_cpu build_vendor build_os host host_cpu host_vendor host_os target target_cpu target_vendor target_os INSTALL_PROGRAM INSTALL_SCRIPT INSTALL_DATA CYGPATH_W PACKAGE VERSION ACLOCAL AUTOCONF AUTOMAKE AUTOHEADER MAKEINFO install_sh STRIP ac_ct_STRIP INSTALL_STRIP_PROGRAM mkdir_p AWK SET_MAKE am__leading_dot AMTAR am__tar am__untar CC CFLAGS LDFLAGS CPPFLAGS ac_ct_CC EXEEXT OBJEXT DEPDIR am__include am__quote AMDEP_TRUE AMDEP_FALSE AMDEPBACKSLASH CCDEPMODE am__fastdepCC_TRUE am__fastdepCC_FALSE CXX CXXFLAGS ac_ct_CXX CXXDEPMODE am__fastdepCXX_TRUE am__fastdepCXX_FALSE OPTMODE_LDFLAGS MAINTAINER_MODE_TRUE MAINTAINER_MODE_FALSE MAINT CONFIG_STATUS_DEPENDENCIES EGREP LD PERL_BINARY PERL_SHAREDIR PERL_MODULES_INC_UNSHIFT LN_S ECHO AR ac_ct_AR RANLIB ac_ct_RANLIB CPP CXXCPP F77 FFLAGS ac_ct_F77 LIBTOOL LIBTOOL_DEPS TCL_CFLAGS TCL_LIBS WITH_TCL_TRUE WITH_TCL_FALSE GC_CFLAGS GC_LIBS WITH_GC_TRUE WITH_GC_FALSE LIBLINTEL_VERSION LIBLINTELPTHREAD_VERSION LIBNOGC_VERSION WITH_HPUX_REPLACE_MEMORY_TRUE WITH_HPUX_REPLACE_MEMORY_FALSE WITH_MAKEBITS_TRUE WITH_MAKEBITS_FALSE RANDOM_COMPARETO expanded_datadir LIBOBJS LTLIBOBJS'
 ac_subst_files=''
 
 # Initialize some variables set by options.
@@ -3695,7 +3695,26 @@ See \`config.log' for more details." >&2;}
 	exit 1
     fi
 
-    if test "$ac_compiler_gnu" = "yes"; then
+    ICC_help=`$CC --help 2>&1 | grep 'Intel.*Compiler' | wc -l`
+    if test $ICC_help -gt 0; then
+	# brackets get removed in the following two lines so these expand out the way we expect
+	ICC_VERSION=`$CC -dumpversion | awk '{print $1}'`
+	ICC_BUILD=`$CC -V 2>&1 | grep Build | sed 's/.*Build //' | awk '{print $1}'`
+	 LINTEL_OPTMODE_COMPILER=icc-$ICC_VERSION-$ICC_BUILD
+	 if test $GNU_dumpspecs -gt 1; then
+	     { { echo "$as_me:$LINENO: error: Whoa, looks like intel compiler, but has GNU dumpspecs" >&5
+echo "$as_me: error: Whoa, looks like intel compiler, but has GNU dumpspecs" >&2;}
+   { (exit 1); exit 1; }; }
+	 fi
+	 if test "`$CXX -dumpversion`" != "`$CC -dumpversion`"; then
+	     { { echo "$as_me:$LINENO: error: version mismatch between $CXX and $CC??" >&5
+echo "$as_me: error: version mismatch between $CXX and $CC??" >&2;}
+   { (exit 1); exit 1; }; }
+	 fi
+	 { echo "$as_me:$LINENO: Adding -lstdc++ to LDFLAGS.  icc seems to need this to correctly link files with only .o files on the link line, do not know why" >&5
+echo "$as_me: Adding -lstdc++ to LDFLAGS.  icc seems to need this to correctly link files with only .o files on the link line, do not know why" >&6;}
+	 LDFLAGS="$LDFLAGS -lstdc++"
+    elif test "$ac_compiler_gnu" = "yes"; then
 	if test "$CC" = ""; then
 	    { { echo "$as_me:$LINENO: error: CC variable is empty?!
 See \`config.log' for more details." >&5
@@ -3729,45 +3748,58 @@ See \`config.log' for more details." >&2;}
     esac
 
     PROFILEFLAG=-pg
+    # choices for optimization determined using doc/Performance, please
+    # update that file as appropriate.
     # cases are sorted alphabetically, please preserve this
     case $host::$PROCMOD::$LINTEL_OPTMODE_COMPILER in
         hppa2.0w-hp-hpux11*::PA2.0W::HPUX11)
 	   OPTFLAGS="+O3 +Onolimit +DA2.0 +Oaggressive"
 	   PROFILEFLAG="-G"
 	   ;;
-	i686-pc-linux-gnu::*PentiumIII*::gcc-3.3*)
+	i686-*::*PentiumIII*::gcc-3.34*)
 	   OPTFLAGS="-O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
   	   ;;
-	i686-pc-linux-gnu::*IntelXeon*::gcc-3.3*)
+	i686-*::*IntelPentium4CPU*::gcc-3.34*)
 	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
 	   ;;
-	i686-pc-linux-gnu::*IntelXeon*::gcc-3.4*)
+	i686-*::*IntelXeon*::gcc-3.3*)
+	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
+	   ;;
+	i686-*::*IntelXeon*::gcc-3.4*)
 	   OPTFLAGS="-O3 -march=pentium4 -D__pentium4__ -g"
 	   ;;
-	i686-pc-linux-gnu::*PentiumM*::gcc-2.95*)
+	i686-*::*PentiumM*::gcc-2.95*)
 	   OPTFLAGS="-O3 -march=i686 -msse2 -D__pentiumpro__ -g"
 	   ;;
-	i686-pc-linux-gnu::*PentiumM*::gcc-3.3*)
-	   OPTFLAGS="-O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
+	i686-*::*PentiumM*::gcc-3.3*)
+	   OPTFLAGS="-O3 -march=pentium4 -msse2 -D__pentiumpro__ -g"
 	   ;;
-	i686-pc-linux-gnu::*PentiumM*::gcc-3.4*)
+	i686-*::*PentiumM*::gcc-3.4*)
 	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
+	i686-*::*PentiumM*::gcc-4.0*)
+	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
+	   ;;
+	i686-*::*PentiumM*::icc-8.1*)
+	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
+  	   ;;
 	*) { echo "$as_me:$LINENO: **************************************************" >&5
 echo "$as_me: **************************************************" >&6;}
-	   { echo "$as_me:$LINENO: Unknown host ($host) proctype ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination" >&5
-echo "$as_me: Unknown host ($host) proctype ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination" >&6;}
+	   { echo "$as_me:$LINENO: Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination" >&5
+echo "$as_me: Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination" >&6;}
 	   { echo "$as_me:$LINENO: Leaving optimization option alone as '$CXXFLAGS'" >&5
 echo "$as_me: Leaving optimization option alone as '$CXXFLAGS'" >&6;}
-	   { echo "$as_me:$LINENO: See doc/building.html under 'Add optimization flags' for how to fix this" >&5
-echo "$as_me: See doc/building.html under 'Add optimization flags' for how to fix this" >&6;}
-	   { echo "$as_me:$LINENO: sleeping 30 seconds to make this message more obvious" >&5
-echo "$as_me: sleeping 30 seconds to make this message more obvious" >&6;}
+	   { echo "$as_me:$LINENO: See doc/building.html under 'Add optimization flags' for how to fix" >&5
+echo "$as_me: See doc/building.html under 'Add optimization flags' for how to fix" >&6;}
+	   { echo "$as_me:$LINENO: this warning" >&5
+echo "$as_me: this warning" >&but you can safely ignore it.;}
+	   { echo "$as_me:$LINENO: sleeping 10 seconds to make this message more obvious" >&5
+echo "$as_me: sleeping 10 seconds to make this message more obvious" >&6;}
 	   { echo "$as_me:$LINENO: **************************************************" >&5
 echo "$as_me: **************************************************" >&6;}
 	   OPTFLAGS="$CFLAGS"
 	   PROFILEFLAGS="$CFLAGS"
-	   sleep 30
+	   sleep 10
 	   ;;
     esac
 
@@ -3838,15 +3870,22 @@ echo $ECHO_N "checking if acinclude.m4 needs to be rebuilt... $ECHO_C" >&6
     test -f $srcdir/acinclude.m4.new && rm $srcdir/acinclude.m4.new
     touch $srcdir/acinclude.m4.new
     for i in lintel; do
-	if test -f $srcdir/com_hp_hpl_$i.m4; then
+	if test -f $top_srcdir/com_hp_hpl_$i.m4; then
+	    cat $top_srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
+	elif test -f $srcdir/com_hp_hpl_$i.m4; then
 	    cat $srcdir/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
-	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $srcdir/com_hp_hpl_$i.m4"
+	    # Use of top_srcdir here is intentional, some versions of
+	    # configure don't seem to define that in the configure run, but
+            # we absolutely need this in the makefiles because srcdir is
+   	    # in subdirectories will point to the subdirectory.
+	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES \$(top_srcdir)/com_hp_hpl_$i.m4"
 	elif test -f $expanded_datadir/aclocal/com_hp_hpl_$i.m4; then
 	    cat $expanded_datadir/aclocal/com_hp_hpl_$i.m4 >>$srcdir/acinclude.m4.new
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $expanded_datadir/aclocal/com_hp_hpl_$i.m4"
 	else
-	    { echo "$as_me:$LINENO: unable to find com_hp_hpl_$i.m4 (looked in ., $expanded_datadir/aclocal), needed for building acinclude.m4" >&5
-echo "$as_me: unable to find com_hp_hpl_$i.m4 (looked in ., $expanded_datadir/aclocal), needed for building acinclude.m4" >&6;}
+	    { echo "$as_me:$LINENO: unable to find com_hp_hpl_$i.m4 (looked in $top_srcdir, $srcdir, $expanded_datadir/aclocal), needed for building acinclude.m4" >&5
+echo "$as_me: unable to find com_hp_hpl_$i.m4 (looked in $top_srcdir, $srcdir, $expanded_datadir/aclocal), needed for building acinclude.m4" >&6;}
 	    { { echo "$as_me:$LINENO: error: which is needed for maintainer mode, aborting" >&5
 echo "$as_me: error: which is needed for maintainer mode, aborting" >&2;}
    { (exit 1); exit 1; }; }
@@ -5036,7 +5075,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 5039 "configure"' > conftest.$ac_ext
+  echo '#line 5078 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -6140,7 +6179,7 @@ fi
 
 
 # Provide some information about the compiler.
-echo "$as_me:6143:" \
+echo "$as_me:6182:" \
      "checking for Fortran 77 compiler version" >&5
 ac_compiler=`set X $ac_compile; echo $2`
 { (eval echo "$as_me:$LINENO: \"$ac_compiler --version </dev/null >&5\"") >&5
@@ -7172,11 +7211,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7175: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7214: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7179: \$? = $ac_status" >&5
+   echo "$as_me:7218: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -7405,11 +7444,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7408: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7447: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:7412: \$? = $ac_status" >&5
+   echo "$as_me:7451: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -7465,11 +7504,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:7468: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:7507: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:7472: \$? = $ac_status" >&5
+   echo "$as_me:7511: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -9653,7 +9692,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 9656 "configure"
+#line 9695 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -9751,7 +9790,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 9754 "configure"
+#line 9793 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11928,11 +11967,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11931: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:11970: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:11935: \$? = $ac_status" >&5
+   echo "$as_me:11974: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -11988,11 +12027,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:11991: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:12030: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:11995: \$? = $ac_status" >&5
+   echo "$as_me:12034: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -13357,7 +13396,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 13360 "configure"
+#line 13399 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13455,7 +13494,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 13458 "configure"
+#line 13497 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -14282,11 +14321,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14285: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14324: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:14289: \$? = $ac_status" >&5
+   echo "$as_me:14328: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -14342,11 +14381,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:14345: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:14384: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:14349: \$? = $ac_status" >&5
+   echo "$as_me:14388: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -16387,11 +16426,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16390: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16429: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16394: \$? = $ac_status" >&5
+   echo "$as_me:16433: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -16620,11 +16659,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16623: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16662: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:16627: \$? = $ac_status" >&5
+   echo "$as_me:16666: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings
@@ -16680,11 +16719,11 @@ else
    -e 's:.*FLAGS}? :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:16683: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:16722: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:16687: \$? = $ac_status" >&5
+   echo "$as_me:16726: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -18868,7 +18907,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 18871 "configure"
+#line 18910 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -18966,7 +19005,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 18969 "configure"
+#line 19008 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -21651,8 +21690,20 @@ fi
 #  6. If any interfaces have been removed since the last public release,
 #     then set age to 0.
 
+# Shared libraries have link dependencies for all files in the shared library.
+# this means that if we link with extra libraries, e.g. pthread, gc, etc, even
+# if an application won't use those libraries, it still has to provide the
+# dependencies.  After a bit of discussion, it was decided that we should
+# pull out the source files that use extra libraries since linking with
+# one of the extra libraries will automatically pull in the lintel library.
+# This solution is not optimal, but is the best one we've been able to
+# discover to date.  Pulling out the gc dependent libraries hasn't happened
+# yet.
+
 LIBLINTEL_VERSION=0:0:0
+LIBLINTELPTHREAD_VERSION=0:0:0
 LIBNOGC_VERSION=0:0:0
+
 
 
 
@@ -21714,7 +21765,7 @@ esac
 
 
 
-                                                  ac_config_files="$ac_config_files Makefile src/lintel-config include/Makefile src/Makefile src/batch-parallel"
+                                                            ac_config_files="$ac_config_files Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel"
 
 
 expanded_datadir=`eval echo $datadir`
@@ -22346,6 +22397,7 @@ do
   # Handling of arguments.
   "Makefile" ) CONFIG_FILES="$CONFIG_FILES Makefile" ;;
   "src/lintel-config" ) CONFIG_FILES="$CONFIG_FILES src/lintel-config" ;;
+  "src/lintel-acinclude" ) CONFIG_FILES="$CONFIG_FILES src/lintel-acinclude" ;;
   "include/Makefile" ) CONFIG_FILES="$CONFIG_FILES include/Makefile" ;;
   "src/Makefile" ) CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
   "src/batch-parallel" ) CONFIG_FILES="$CONFIG_FILES src/batch-parallel" ;;
@@ -22522,6 +22574,7 @@ s,@GC_LIBS@,$GC_LIBS,;t t
 s,@WITH_GC_TRUE@,$WITH_GC_TRUE,;t t
 s,@WITH_GC_FALSE@,$WITH_GC_FALSE,;t t
 s,@LIBLINTEL_VERSION@,$LIBLINTEL_VERSION,;t t
+s,@LIBLINTELPTHREAD_VERSION@,$LIBLINTELPTHREAD_VERSION,;t t
 s,@LIBNOGC_VERSION@,$LIBNOGC_VERSION,;t t
 s,@WITH_HPUX_REPLACE_MEMORY_TRUE@,$WITH_HPUX_REPLACE_MEMORY_TRUE,;t t
 s,@WITH_HPUX_REPLACE_MEMORY_FALSE@,$WITH_HPUX_REPLACE_MEMORY_FALSE,;t t

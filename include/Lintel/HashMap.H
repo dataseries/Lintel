@@ -27,7 +27,7 @@ struct HashMap_val {
     K first;
     V second;
     HashMap_val(K &k, V &v) : first(k), second(v) { }
-    HashMap_val(const K &k) : first(k) { }
+    HashMap_val(const K &k) : first(k), second() { }
 };
 
 template <class K>
@@ -103,6 +103,10 @@ public:
 	} else {
 	    return v->second;
 	}
+    }
+
+    bool exists(const K &k) {
+	return lookup(k) != NULL;
     }
 
     void remove(K &k) {

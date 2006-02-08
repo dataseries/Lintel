@@ -72,6 +72,8 @@ public:
     // functions.  On non-linux, these routines are no-ops.
     static void setFP64BitMode();
     static void resetFPMode();
+
+    static void selfCheck();
 };
 
 #endif

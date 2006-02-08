@@ -6,7 +6,8 @@
 */
 
 /** @file
-    Deque implementation that doesn't suck
+    Deque implementation that has amortized constant-time performance,
+    rather than log(n) 
 */
 
 #ifndef __DEQUE_H
@@ -95,6 +96,10 @@ public:
 	bool operator==(const iterator &y) const {
 	    return &mydeque == &y.mydeque &&
 		cur_pos == y.cur_pos;
+	}
+	bool operator!=(const iterator &y) const {
+	    return &mydeque != &y.mydeque ||
+		cur_pos != y.cur_pos;
 	}
 	T &operator *() {
 	    AssertAlways(cur_pos >= 0 && cur_pos < mydeque.q_size,

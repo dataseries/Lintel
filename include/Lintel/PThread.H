@@ -22,7 +22,7 @@ extern "C" {
 }
 #endif
 
-class PThread {
+class PThreadMisc { // should be a namespace if we believe everyone supports those
 public:
     static int getCurrentCPU() {
 #if HPUX_ACC
@@ -36,6 +36,30 @@ public:
 #endif
     }
 };	   
+
+/** you can call the start function multiple times on this class, this
+ * is potentially useful if your threads don't have any per-thread
+ * state.  We don't bother to take out locks in these functions
+ * because it's expected people will start all their threads from a
+ * "master" thread, so the locking is unnecessary.  */
+class PThread {
+public:
+    PThread();
+    virtual ~PThread();
+
+    void setDetached(bool detached = true);
+
+    // override this function to do whatever work you want in your
+    // thread.  Return value will be provided for people joining with
+    // a thread.
+
+    virtual void *run() = 0;
+    pthread_t start();
+    void *join();
+private:
+    pthread_t last_tid;
+    pthread_attr_t attr;
+};
 
 struct PThreadMutex {
     pthread_mutex_t m;
@@ -65,7 +89,7 @@ struct PThreadMutex {
     ~PThreadMutex() {
 	int ret = pthread_mutex_destroy(&m);
 	AssertAlways(ret == 0,
-		     ("fatal: %s\n",strerror(ret)));
+		     ("unable to destroy mutex: %s\n",strerror(ret)));
     }
     void lock() {
 	if (trylock()) {
@@ -112,7 +136,8 @@ struct PThreadCond {
 	AssertAlways(pthread_cond_broadcast(&c)==0,("fatal\n"));
     }
     void wait(PThreadMutex &m) {
-	AssertAlways(pthread_cond_wait(&c,&m.m)==0,("fatal\n"));
+	int ret = pthread_cond_wait(&c,&m.m);
+	AssertAlways(ret == 0,("fatal, ret=%d: %s\n",ret,strerror(ret)));
     }
     bool timedwait(PThreadMutex &m, Clock::Tll us) { // true on timeout
         struct timespec abstime;

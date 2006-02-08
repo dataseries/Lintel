@@ -23,7 +23,14 @@
 
 double Double::default_epsilon = 1e-12;
 
-const double Double::NaN = NAN;
+// This is here because icc doesn't correctly handle the direct
+// assignment correctly; I don't know why and this problem is separate from
+// the problem in the tested revision not optimizing correctly with -xB 
+// (see com_hp_hpl_lintel.m4)
+static double work_around_icc_bug() {
+    return NAN;
+}
+const double Double::NaN = work_around_icc_bug();
 const double Double::Inf = INFINITY;
 
 /*
@@ -57,4 +64,9 @@ Double::resetFPMode()
 #endif
 }
 
-
+void
+Double::selfCheck()
+{
+    AssertAlways(isnan(NaN),("nan isn't"));
+    AssertAlways(isinf(Inf),("inf isn't"));
+}
