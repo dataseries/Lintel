@@ -58,7 +58,7 @@ public:
 	Tll ret = 0;
 #if defined(__HP_aCC)
 	readControlRegister16(&ret);
-#elif defined(__linux__) && defined(__i386__)
+#elif defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
 	__asm__ __volatile__ ("rdtsc" : "=A" (ret));
 #else
 #error "Need to define either HPUX_ACC or LINUX_GCC"
