@@ -32,6 +32,7 @@ if test "$USE_MAINTAINER_MODE" = yes; then
 	    ACINCLUDE_DEPENDENCIES="$ACINCLUDE_DEPENDENCIES $expanded_datadir/aclocal/com_hp_hpl_$i.m4"
 	else
 	    AC_MSG_NOTICE([unable to find com_hp_hpl_$i.m4 (looked in $top_srcdir, $srcdir, $expanded_datadir/aclocal), needed for building acinclude.m4])
+	    AC_MSG_NOTICE([did you run make install for $i?])
 	    AC_MSG_ERROR([which is needed for maintainer mode, aborting])
 	    exit 1
 	fi
@@ -55,6 +56,33 @@ AC_SUBST([CONFIG_STATUS_DEPENDENCIES],$ACINCLUDE_DEPENDENCIES)
 m4_define([HPL_DEFINE_REQUIRELIB],
 [
     m4_define(m4_format([HPL_REQUIRELIB_%s], translit($1, [a-z], [A-Z])),
+m4_format([[HPL_WITHLIB_%s]], translit($1, [a-z], [A-Z]))
+if test m4_format(["$with_%s"], translit($1, [A-Z], [a-z])) = yes; then
+	AC_MSG_NOTICE([Found required library $1])
+else
+	AC_MSG_ERROR([Could not find required library $1])
+	exit 1
+fi
+)
+])
+
+# using m4_define here, per comment on HPL_DEFINE_REQUIRELIB
+# This macro (HPL_DEFINE_SIMPLE_WITHLIB) is still under development, 
+# it is the intended way to make the various WITHLIB's once we get this
+# working.
+
+# usage: 
+#   HPL_DEFINE_SIMPLE_WITHLIB(withname, description, headername, fn_in_lib)
+# assumes that -l<withname> would link with the library.
+
+m4_define([HPL_DEFINE_SIMPLE_WITHLIB],
+[
+    m4_define(m4_format([HPL_WITHLIB_%s], translit($1, [a-z], [A-Z])),
+AC_ARG_WITH($1,
+  m4_format(["--without-%15s disable %s support"], $1, $2),
+  m4_format(["with_%s=$withval"], $1),
+  m4_format(["with_%s=yes"], $1))
+
 m4_format([[HPL_WITHLIB_%s]], translit($1, [a-z], [A-Z]))
 if test m4_format(["$with_%s"], translit($1, [A-Z], [a-z])) = yes; then
 	AC_MSG_NOTICE([Found required library $1])
