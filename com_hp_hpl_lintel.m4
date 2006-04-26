@@ -134,6 +134,7 @@ fi
 AC_MSG_CHECKING(for consistent TCL support)
 if test $have_tcl_hdr = no -o $have_tcl_lib = no; then
 	AC_MSG_RESULT(missing either header file or library)
+	with_tcl=no
 elif test $have_tcl_hdr != $have_tcl_lib; then
 	AC_MSG_RESULT(inconsistent header file/library $have_tcl_hdr != $have_tcl_lib)
 	TCL_LIBS=''
