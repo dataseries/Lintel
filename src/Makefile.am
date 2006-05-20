@@ -17,7 +17,7 @@ bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 
-LDADD = $(top_builddir)/src/libLintel.la @TCL_LIBS@ libnogc.la -lpthread
+LDADD = libLintel.la @TCL_LIBS@ libnogc.la -lpthread
 AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 

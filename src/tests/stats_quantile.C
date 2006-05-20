@@ -210,9 +210,56 @@ checkRomePrint()
 }
 
 int
-main()
+main(int argc, char *argv[])
 {
     Double::selfCheck(); // quantile was failing because of problems checked now in here
+    if (argc == 2 && strcmp(argv[1],"long") == 0) {
+	printf("Running long (10b entry) test (count to 100)...\n");
+	fflush(stdout);
+	StatsQuantile test(0.001,(long long)1.1e10);
+	for(double outer = 0;outer <= 100;++outer) {
+	    if (outer == 5) { // early intermediate check 
+		printf("\nIntermediate check quantiles (count to 100):\n"); 
+		double maxerror = 5*1e8*0.001;
+		for(double q = 0;q < 100;++q) {
+		    double v= test.getQuantile(q/100.0);
+		    double expect = 1e10*5.0/100.0*q/100.0;
+		    double error = fabs(v-expect);
+		    printf("  %.0f: expect=%.0f got=%.0f error=%.0f\n",q,expect,v,error);
+		    AssertAlways(error < maxerror,("maxerror exceeded.\n"));
+		}
+		printf("all ok, continuing..."); fflush(stdout);
+	    }
+	    if (outer == 30) { // intermediate check at 3billion to catch any integers that wrap
+		printf("\nIntermediate check quantiles (count to 100):\n");
+		double maxerror = 30*1e8*0.001;
+		for(double q = 0;q <= 100;++q) {
+		    double v= test.getQuantile(q/100.0);
+		    double expect = 1e10*30.0/100.0*q/100.0;
+		    double error = fabs(v-expect);
+		    printf("  %.0f: expect=%.0f got=%.0f error=%.0f\n",q,expect,v,error);
+		    AssertAlways(error < maxerror,("maxerror exceeded.\n"));
+		}
+		printf("all ok, continuing..."); fflush(stdout);
+	    }
+	    for(double i=outer*1e8;i<(outer+1)*1e8;++i) {
+		test.add(i);
+	    }
+	    printf("%.0f,",outer);
+	    fflush(stdout);
+	}
+	printf("\nCheck quantiles (count to 100):\n");
+	double maxerror = 1e10*0.001;
+	for(double q = 0;q <= 100;++q) {
+	    double v= test.getQuantile(q/100.0);
+	    double expect = 1e10*100.0/100.0*q/100.0;
+	    double error = fabs(v-expect);
+	    printf("  %.0f: expect=%.0f got=%.0f error=%.0f\n",q,expect,v,error);
+	    AssertAlways(error < maxerror,("maxerror exceeded.\n"));
+	}
+	printf("**** LONG TEST SUCCESSFUL\n");
+    }	
+
     if (true) {
 	// Make sure that the stats object doesn't choke with no sample.
 	StatsQuantile test("",3,10);
