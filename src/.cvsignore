@@ -1,0 +1,12 @@
+*.la
+*.lo
+*.o
+.deps
+.libs
+Makefile
+LintelTclCommands.C
+batch-parallel
+calcStats
+drawRandomLogNormal
+lintel-acinclude
+lintel-config
