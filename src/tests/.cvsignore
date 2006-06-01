@@ -5,3 +5,13 @@
 *.Do
 *.Po
 *.Oo
+.dirstamp
+.libs
+check-LintelAssert
+check-Random
+check-StatsQuantile
+check-Uncompress
+check_LintelAssert
+check_Random
+check_StatsQuantile
+check_Uncompress
