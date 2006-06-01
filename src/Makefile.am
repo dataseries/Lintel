@@ -17,7 +17,7 @@ bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 
-LDADD = $(top_builddir)/src/libLintel.la @TCL_LIBS@ libnogc.la -lpthread
+LDADD = libLintel.la @TCL_LIBS@ libnogc.la -lpthread
 AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
@@ -97,24 +97,22 @@ nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchP
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.
 
-check-local: tests/check_Random tests/check_StatsQuantile tests/check_Uncompress tests/check_LintelAssert
+check_PROGRAMS := tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert
+
+if WITH_TCL
+check_PROGRAMS += tests/check-Random
+endif
+
+check-local: tests/check_StatsQuantile tests/check_Uncompress tests/check_LintelAssert
 	@echo "Regression tests successful"
 
 clean-local::
 	-rm -f tests/check_Random tests/check_StatsQuantile tests/check_Uncompress tests/check_LintelAssert
-
-check_PROGRAMS = tests/check-Random tests/check-StatsQuantile \
-	tests/check-Uncompress tests/check-LintelAssert
-
+if WITH_TCL
 tests_check_Random_SOURCES = tests/check-Random.C
 
-if WITH_TCL
 tests/check_Random: tests/check-Random
 	tests/check-Random 2>&1 | diff -b $(srcdir)/@RANDOM_COMPARETO@ -
-	touch $@
-else
-tests/check_Random:
-	@echo "Unable to run Random check, need TCL library"
 	touch $@
 endif
 

@@ -191,7 +191,7 @@ StatsQuantile::add(const double value)
 double
 StatsQuantile::getQuantile(double quantile) const
 {
-    if (count() == 0) {
+    if (countll() == 0) {
 	return Double::NaN;
     }
     SQTIMING(Clock::T gq_time_0 = Clock::now();)
@@ -202,11 +202,6 @@ StatsQuantile::getQuantile(double quantile) const
     // is running without having to add in and remove the +-\Inf entries
     // that would be needed to make the last buffer have integral size
     // I think this change is correct
-
-    AssertAlways(count() < 2000000000,
-		 ("Not going to correctly handle over two billion entries\n"));
-    if (count() == 0)
-	return 0.0;
 
     for(int i = 0; i <= cur_buffer; i++) {
 	collapse_pos[i] = 0;
@@ -239,11 +234,17 @@ StatsQuantile::getQuantile(double quantile) const
     // linux = 131059.0; the current code is limited to 2e9 values, and
     // even after fixing that, I'd imagine we'd never see 1e+15 values
     // wherein this adjustment would make a difference
-    int target_index = (int)ceil((double)count() * (quantile - 1e-15));
-    if (target_index == (int)count()) {
-	target_index = count() - 1;
+    double nentries = countll();
+    AssertAlways(nentries < 1e+14,
+		 ("Rounding error adjustment may start to do something wrong around 1e+14 entries.\n"
+		  "May be safe to decrease rounding adjustment to 0.5e-15, but will be getting very\n"
+		  "close to the limit of precision in floating point.  How did you get this many\n"
+		  "entries into the table??"));
+    long long target_index = (long long)ceil(nentries * (quantile - 1e-15));
+    if (target_index == nentries) {
+	target_index = (long long)(nentries - 1);
     }
-    int cur_index = 0;
+    long long cur_index = 0;
 
     double second_min_val = Double::Inf;
     int second_min_buffer = -1;
@@ -289,10 +290,10 @@ StatsQuantile::getQuantile(double quantile) const
 	    }
 	    //	    second_min_buffer = -1;
 	}
-	collapse_pos[min_buffer] += 1;
-	AssertAlways(min_buffer >= 0,
+	AssertAlways(min_buffer >= 0 && min_buffer < buffer_size,
 		     ("Whoa, no minimal buffer?!; searching for posn %d, cur %d\n",
 		      target_index,cur_index));
+	collapse_pos[min_buffer] += 1;
 	AssertAlways(min_val >= prev_val,("Whoa, sort order error?!\n"));
 	SQTIMING(Clock::T gq_time_3 = Clock::now(); 
 		 accum_gq_inner += gq_time_3 - gq_time_2;)
@@ -322,8 +323,9 @@ StatsQuantile::collapse()
     // filling into the output location; this does in-place, but requires
     // two walks over the larger data, and so may very well be slower
     // it's also a lot more complex
-    AssertAlways(count() < 2000000000,
-		 ("Not going to correctly handle over two billion entries\n"));
+    double nentries = countll();
+    AssertAlways(nentries < 1e+14,("getQuantile will fail now.\n"));
+		 
     int first_buffer;
     for(first_buffer = nbuffers - 1;first_buffer > 0; --first_buffer) {
 	if (buffer_level[first_buffer - 1] != buffer_level[first_buffer]) {
@@ -335,7 +337,7 @@ StatsQuantile::collapse()
     AssertAlways(buffer_level[first_buffer] >= 0,
 		 ("Whoa, buffer level should be positive\n"));
     // first, sort each of the unsorted input buffers 
-    int total_weight = 0;
+    long long total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
 	total_weight += buffer_weight[i];
 	AssertAlways(buffer_weight[i] > 0,("Whoa, buffer_weight should be at least 1\n"));
@@ -353,7 +355,7 @@ StatsQuantile::collapse()
 	} 
     }
     
-    int next_quantile_offset = 0;
+    long long next_quantile_offset = 0;
     if ((total_weight % 2) == 0) {
 	if (collapse_even_low) {
 	    next_quantile_offset = total_weight / 2;
@@ -373,8 +375,8 @@ StatsQuantile::collapse()
     next_quantile_offset -= 1;
     Assert(2,next_quantile_offset >= 0);
 
-    int cur_quantile_offset = 0;
-    int next_output_pos = 0;
+    long long cur_quantile_offset = 0;
+    long long next_output_pos = 0;
     double prev_val = -Double::Inf;
 
     while(next_output_pos < buffer_size) {
@@ -453,7 +455,8 @@ StatsQuantile::printRome(int depth, std::ostream &out) const
     for(int i = 0; i < depth; i++) {
 	spaces += " ";
     }
-    if (count() > 0) {
+    double nentries = countll();
+    if (nentries > 0) {
 	out << spaces << "{ quantiles (\n";
 	double step = 1.0 / (double)print_nrange;
 	int nquantiles = 0;
@@ -462,7 +465,7 @@ StatsQuantile::printRome(int depth, std::ostream &out) const
 	    out << spaces << "  { " << quantile*100 << " " << quantile_value << " }\n";
 	    ++nquantiles;
 	}
-	for(double tail_frac = 0.1; (tail_frac * count()) >= 1.0;) {
+	for(double tail_frac = 0.1; (tail_frac * nentries) >= 1.0;) {
 	    double quantile_value = getQuantile(1-tail_frac);
 	    out << spaces << "  { " << 100*(1-tail_frac) << " " << quantile_value << " }\n";
 	    tail_frac /= 2.0;
@@ -478,21 +481,21 @@ void
 StatsQuantile::printFile(FILE *out, int nranges)
 {
     nranges = (nranges == -1 ? print_nrange : nranges);
-    fprintf(out,"%ld data points, mean %.6g +- %.6g [%.6g,%.6g]\n",
-	    count(), mean(), stddev(), min(), max());
-    if (count() == 0) return;
+    fprintf(out,"%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n",
+	    countll(), mean(), stddev(), min(), max());
+    if (countll() == 0) return;
     fprintf(out,"    quantiles every %ld data points:",
-	    (long)(count()/nranges));
+	    (long)((double)countll()/(double)nranges));
     double step = 1.0 / (double)nranges;
     int nquantiles = 0;
     for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
 	if ((nquantiles % 10) == 0) {
-	    printf("\n    %.3g%%: ",quantile * 100);
+	    printf("\n    %.4g%%: ",quantile * 100);
 	} else {
 	    printf(", ");
 	}
 
-	printf("%.6g",getQuantile(quantile));
+	printf("%.8g",getQuantile(quantile));
 	++nquantiles;
     }
     printf("\n");
@@ -502,52 +505,16 @@ void
 StatsQuantile::printTail(FILE *out)
 {
     printf("  tails: ");
-    for(double tail_frac = 0.1; (tail_frac * count()) >= 1.0;) {
+    double nentries = countll();
+    for(double tail_frac = 0.1; (tail_frac * nentries) >= 1.0;) {
 	if (tail_frac < 0.05) {
 	    printf(", ");
 	}
-	printf("%.8g%%: %.6g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	printf("%.12g%%: %.8g", 100*(1-tail_frac), getQuantile(1-tail_frac));
 	tail_frac /= 2.0;
-	printf(", %.8g%%: %.6g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	printf(", %.12g%%: %.8g", 100*(1-tail_frac), getQuantile(1-tail_frac));
 	tail_frac /= 5.0;
     }
     printf("\n");
 }
 
-////////////////////////////////////////////////////////////////
-// Regression tests
-////////////////////////////////////////////////////////////////
-//
-#ifdef REGRESSION_TEST
-
-// XXX this include might break HP-UX's compiler. 
-#include <sstream>
-
-int
-main(int, char *[])
-{
-    StatsQuantile *s = new StatsQuantile(0.0001, 20000000, 10);
-
-    double data[] = {
-	10, 15, 20, 25, 10, 25, 10, 25, 30, 10,
-    };
-    int nr_data = 10;
-
-    std::ostringstream buf1;
-    for (int i = 0; i < nr_data; i++)
-	s->add(data[i]);
-    s->printRome(0, buf1);
-    std::string str1 = buf1.str();
-    
-    std::ostringstream buf2;
-    s->reset();
-    for (int i = 0; i < nr_data; i++)
-	s->add(data[i]);
-    s->printRome(0, buf2);
-    std::string str2 = buf2.str();
-    if (str1 != str2) {
-	std::cout << " output mismatch: str1=" << str1 << std::endl;
-	std::cout << " str1=" << str2 << std::endl;
-    }
-}
-#endif // REGRESSION_TEST
