@@ -242,7 +242,7 @@ StatsQuantile::getQuantile(double quantile) const
 		  "entries into the table??"));
     long long target_index = (long long)ceil(nentries * (quantile - 1e-15));
     if (target_index == nentries) {
-	target_index = nentries - 1;
+	target_index = (long long)(nentries - 1);
     }
     long long cur_index = 0;
 
@@ -490,12 +490,12 @@ StatsQuantile::printFile(FILE *out, int nranges)
     int nquantiles = 0;
     for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
 	if ((nquantiles % 10) == 0) {
-	    printf("\n    %.3g%%: ",quantile * 100);
+	    printf("\n    %.4g%%: ",quantile * 100);
 	} else {
 	    printf(", ");
 	}
 
-	printf("%.6g",getQuantile(quantile));
+	printf("%.8g",getQuantile(quantile));
 	++nquantiles;
     }
     printf("\n");
@@ -510,9 +510,9 @@ StatsQuantile::printTail(FILE *out)
 	if (tail_frac < 0.05) {
 	    printf(", ");
 	}
-	printf("%.8g%%: %.6g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	printf("%.12g%%: %.8g", 100*(1-tail_frac), getQuantile(1-tail_frac));
 	tail_frac /= 2.0;
-	printf(", %.8g%%: %.6g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	printf(", %.12g%%: %.8g", 100*(1-tail_frac), getQuantile(1-tail_frac));
 	tail_frac /= 5.0;
     }
     printf("\n");
