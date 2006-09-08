@@ -87,11 +87,16 @@ sub rebuild {
 
     my @cmds = ("cat $fullpath");
     my $origpath = $fullpath;
+    if ($fullpath =~ s/\.7z$//o) {
+	@cmds = ("7z x -so $fullpath"); # 7z doesn't support being in a pipeline
+    }
     while(1) {
 	if ($fullpath =~ s/\.gz$//o) {
 	    push(@cmds,"gunzip");
 	} elsif ($fullpath =~ s/\.bz2$//o) {
 	    push(@cmds,"bunzip2");
+	} elsif ($fullpath =~ s/\.7z$//o) {
+	    die "7z doesn't support being in a pipeline, can't decompress a 7z archive inside another ($origpath)";
 	} else {
 	    last;
 	}
