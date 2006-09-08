@@ -2,7 +2,7 @@
 ###############################################################################
 #
 # File:         build-optimized.sh
-# RCS:          $Header: /mount/cello/cvs/Lintel/build-optimized.sh,v 1.1 2006/03/17 02:41:12 wilkes Exp $
+# RCS:          $Header$
 # Description:  Typical sequence of build steps
 #		Do this in Lintel first, then in each of the directories
 #		that depend on it.

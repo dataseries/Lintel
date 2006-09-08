@@ -10,7 +10,7 @@ AC_INIT(Lintel, 1.0, [software@cello.hpl.hp.com])
 
 AC_PREREQ(2.57)
 
-AC_REVISION($Revision: 1.4 $)
+AC_REVISION($Revision: 8589 $)
 AC_CANONICAL_SYSTEM
 AM_SANITY_CHECK
 AM_INIT_AUTOMAKE
