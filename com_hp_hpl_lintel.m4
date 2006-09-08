@@ -4,8 +4,26 @@
 #  See the file named COPYING for license details
 #
 
+AC_DEFUN([EXPAND_VARIABLE],
+[
+# recent versions of autoconf (2.60) seem to store some variables needing
+# multiple rounds of expansion to get to the fully expanded variable.
+expand_variable() {
+    ret="$[1]"
+    ev_keepgoing=true
+    while $ev_keepgoing; do
+	case "$ret" in
+	    *\$\{*) ret=`eval echo $ret` ;;
+	    *) ev_keepgoing=false
+	esac
+    done
+    echo $ret
+}
+])
+
 AC_DEFUN([COM_HP_HPL_ACINCLUDE],
 [
+EXPAND_VARIABLE
 ACINCLUDE_DEPENDENCIES=
 if test "$USE_MAINTAINER_MODE" = yes; then
     if test "$1" = ""; then
@@ -13,7 +31,7 @@ if test "$USE_MAINTAINER_MODE" = yes; then
 	exit 1
     fi
     AC_MSG_CHECKING(if acinclude.m4 needs to be rebuilt)
-    expanded_datadir=`eval echo $datadir`
+    expanded_datadir=`expand_variable $datadir`
     test -f $srcdir/acinclude.m4.new && rm $srcdir/acinclude.m4.new
     touch $srcdir/acinclude.m4.new
     for i in $1; do
@@ -656,7 +674,7 @@ else
 	i686-*::*PentiumM*::gcc-3.4*) 
 	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
-	i686-*::*PentiumM*::gcc-4.0*) 
+	i686-*::*PentiumM*::gcc-4.*) 
 	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*PentiumM*::icc-8.1*)
@@ -729,12 +747,13 @@ AC_DEFUN([COM_HP_HPL_LINTEL_OPTMODE_MESSAGES],
 
 AC_DEFUN([HPL_PERL_SUBSTS],
 [
+    EXPAND_VARIABLE
     AC_PATH_PROG([PERL_BINARY], [perl], [/no/such/file], [$PATH:/usr/bin:/usr/local/bin])
     if test "$PERL_BINARY" = "/no/such/file"; then
 	AC_MSG_FAILURE([can not find perl binary])
     fi
     AC_SUBST(PERL_BINARY)
-    expanded_datadir=`eval echo $datadir`
+    expanded_datadir=`expand_variable $datadir`
     # next line has [] around it to protect against m4 macro expansion
     [PERL_SHAREDIR=`perl -e 'foreach $i (@INC) { if ($i =~ /^$ARGV[0]\b/) { print $i;exit(0); }}; print "$ARGV[0]/perl5";' $expanded_datadir`]
     AC_SUBST(PERL_SHAREDIR)
