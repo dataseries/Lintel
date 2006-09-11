@@ -55,13 +55,8 @@ public:
     };
 
 private:
-#if 0
-    std::map<std::string,unsigned int> idmap;
-    std::map<unsigned int,std::string> revmap;
-#else
     HashTable<HTE, HTEHashStr, HTEEqualStr> idmap;
     HashTable<HTE, HTEHashId, HTEEqualId> revmap;
-#endif
 
     unsigned int nextid;
 };
