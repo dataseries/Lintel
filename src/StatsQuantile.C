@@ -484,8 +484,8 @@ StatsQuantile::printFile(FILE *out, int nranges)
     fprintf(out,"%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n",
 	    countll(), mean(), stddev(), min(), max());
     if (countll() == 0) return;
-    fprintf(out,"    quantiles every %ld data points:",
-	    (long)((double)countll()/(double)nranges));
+    fprintf(out,"    quantiles every %.0f data points:",
+	    (double)countll()/(double)nranges);
     double step = 1.0 / (double)nranges;
     int nquantiles = 0;
     for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
