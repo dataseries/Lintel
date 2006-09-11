@@ -6,7 +6,9 @@
 
 nobase_include_HEADERS = \
 	Lintel/AssertException.H \
+	Lintel/AssertBoost.H \
 	Lintel/Clock.H \
+	Lintel/CompilerMarkup.H \
 	Lintel/Deque.H \
 	Lintel/Double.H \
 	Lintel/HashMap.H \

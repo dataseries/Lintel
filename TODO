@@ -25,3 +25,5 @@ are so similar; a generalization of HPL_DEFINE_REQUIRELIB might work,
 but we want to check for various functions being defined, see the
 example HPL_REQUIRELIB_XML2 functions.
 
+HashMap.H: figure out why HashMap<const std::string, int> gives a
+compiler error with gcc-4.1

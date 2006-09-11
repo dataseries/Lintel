@@ -80,23 +80,23 @@ am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libLintel_la_DEPENDENCIES =
-am__libLintel_la_SOURCES_DIST = AssertException.C Clock.C Deque.C \
-	Double.C HashTable.C LintelAssert.C LintelVersion.C \
-	MathSpecialFunctions.C Matrix.C MersenneTwisterRandom.C \
-	PriorityQueue.C Stats.C StatsEMA.C StatsHistogram.C \
-	StatsMaker.C StatsRW.C StatsQuantile.C StatsSequence.C \
-	StatsSeries.C StatsSeriesGroup.C StringUtil.C stdio_64.C \
-	Uncompress.C LintelTclCommands.C Nameable.C Random.C \
-	Randommwm.C TclInterface.C
+am__libLintel_la_SOURCES_DIST = AssertException.C AssertBoost.C \
+	Clock.C Deque.C Double.C HashTable.C LintelAssert.C \
+	LintelVersion.C MathSpecialFunctions.C Matrix.C \
+	MersenneTwisterRandom.C PriorityQueue.C Stats.C StatsEMA.C \
+	StatsHistogram.C StatsMaker.C StatsRW.C StatsQuantile.C \
+	StatsSequence.C StatsSeries.C StatsSeriesGroup.C StringUtil.C \
+	stdio_64.C Uncompress.C LintelTclCommands.C Nameable.C \
+	Random.C Randommwm.C TclInterface.C
 @WITH_TCL_TRUE@am__objects_1 = LintelTclCommands.lo Nameable.lo \
 @WITH_TCL_TRUE@	Random.lo Randommwm.lo TclInterface.lo
-am_libLintel_la_OBJECTS = AssertException.lo Clock.lo Deque.lo \
-	Double.lo HashTable.lo LintelAssert.lo LintelVersion.lo \
-	MathSpecialFunctions.lo Matrix.lo MersenneTwisterRandom.lo \
-	PriorityQueue.lo Stats.lo StatsEMA.lo StatsHistogram.lo \
-	StatsMaker.lo StatsRW.lo StatsQuantile.lo StatsSequence.lo \
-	StatsSeries.lo StatsSeriesGroup.lo StringUtil.lo stdio_64.lo \
-	Uncompress.lo $(am__objects_1)
+am_libLintel_la_OBJECTS = AssertException.lo AssertBoost.lo Clock.lo \
+	Deque.lo Double.lo HashTable.lo LintelAssert.lo \
+	LintelVersion.lo MathSpecialFunctions.lo Matrix.lo \
+	MersenneTwisterRandom.lo PriorityQueue.lo Stats.lo StatsEMA.lo \
+	StatsHistogram.lo StatsMaker.lo StatsRW.lo StatsQuantile.lo \
+	StatsSequence.lo StatsSeries.lo StatsSeriesGroup.lo \
+	StringUtil.lo stdio_64.lo Uncompress.lo $(am__objects_1)
 libLintel_la_OBJECTS = $(am_libLintel_la_OBJECTS)
 @WITH_GC_TRUE@libLintelGC_la_DEPENDENCIES = libLintel.la
 am__libLintelGC_la_SOURCES_DIST = StringId.C ConstantString.C
@@ -324,13 +324,13 @@ bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 LDADD = libLintel.la @TCL_LIBS@ 
-AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 lib_LTLIBRARIES = libLintel.la libLintelPThread.la $(am__append_1)
 libLintel_la_LDFLAGS = -version-info @LIBLINTEL_VERSION@
 libLintel_la_LIBADD = @TCL_LIBS@
-libLintel_la_SOURCES = AssertException.C Clock.C Deque.C Double.C \
-	HashTable.C LintelAssert.C LintelVersion.C \
+libLintel_la_SOURCES = AssertException.C AssertBoost.C Clock.C Deque.C \
+	Double.C HashTable.C LintelAssert.C LintelVersion.C \
 	MathSpecialFunctions.C Matrix.C MersenneTwisterRandom.C \
 	PriorityQueue.C Stats.C StatsEMA.C StatsHistogram.C \
 	StatsMaker.C StatsRW.C StatsQuantile.C StatsSequence.C \
@@ -516,6 +516,7 @@ mostlyclean-compile:
 distclean-compile:
 	-rm -f *.tab.c
 
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AssertBoost.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/AssertException.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Clock.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/ConstantString.Plo@am__quote@

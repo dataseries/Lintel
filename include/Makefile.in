@@ -67,7 +67,8 @@ CONFIG_CLEAN_FILES =
 SOURCES =
 DIST_SOURCES =
 am__nobase_include_HEADERS_DIST = Lintel/AssertException.H \
-	Lintel/Clock.H Lintel/Deque.H Lintel/Double.H Lintel/HashMap.H \
+	Lintel/AssertBoost.H Lintel/Clock.H Lintel/CompilerMarkup.H \
+	Lintel/Deque.H Lintel/Double.H Lintel/HashMap.H \
 	Lintel/HashTable.H Lintel/HashUnique.H Lintel/LintelAssert.H \
 	Lintel/LintelVersion.H Lintel/MathSpecialFunctions.H \
 	Lintel/Matrix.H Lintel/MersenneTwisterRandom.H \
@@ -225,9 +226,10 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-nobase_include_HEADERS = Lintel/AssertException.H Lintel/Clock.H \
-	Lintel/Deque.H Lintel/Double.H Lintel/HashMap.H \
-	Lintel/HashTable.H Lintel/HashUnique.H Lintel/LintelAssert.H \
+nobase_include_HEADERS = Lintel/AssertException.H Lintel/AssertBoost.H \
+	Lintel/Clock.H Lintel/CompilerMarkup.H Lintel/Deque.H \
+	Lintel/Double.H Lintel/HashMap.H Lintel/HashTable.H \
+	Lintel/HashUnique.H Lintel/LintelAssert.H \
 	Lintel/LintelVersion.H Lintel/MathSpecialFunctions.H \
 	Lintel/Matrix.H Lintel/MersenneTwisterRandom.H \
 	Lintel/PThread.H Lintel/Posix.H Lintel/PriorityQueue.H \

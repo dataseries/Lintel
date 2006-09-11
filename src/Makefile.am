@@ -18,7 +18,7 @@ calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 
 LDADD = libLintel.la @TCL_LIBS@ 
-AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libLintel.la libLintelPThread.la 
@@ -31,6 +31,7 @@ libLintel_la_LIBADD = @TCL_LIBS@
  
 libLintel_la_SOURCES = \
 	AssertException.C \
+	AssertBoost.C \
 	Clock.C \
 	Deque.C \
 	Double.C \
