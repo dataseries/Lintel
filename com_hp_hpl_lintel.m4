@@ -244,7 +244,7 @@ else
     if test $have_lintel = yes; then
         have_lintel=no
 	save_lintel_ldflags=$LDFLAGS
-	LDFLAGS="$LDFLAGS $LINTEL_LIBS $LINTEL_NOGCLIBS"
+	LDFLAGS="$LDFLAGS $LINTEL_LIBS"
         AC_CHECK_LIB(Lintel,lintelVersion,have_lintel=yes,have_lintel=no,)
 	LDFLAGS=$save_lintel_ldflags
     fi
@@ -262,7 +262,7 @@ else
         AC_MSG_RESULT(failed)
         AC_MSG_NOTICE(found lintel-config as $LINTEL_CONFIG.)
         AC_MSG_NOTICE(cflags: $LINTEL_CFLAGS)
-        AC_MSG_NOTICE(lib: $LINTEL_LIBS $LINTEL_NOGCLIBS)
+        AC_MSG_NOTICE(lib: $LINTEL_LIBS)
         AC_MSG_FAILURE(but couldn't get compilation to work; this is broken)
         exit 1
     fi
@@ -677,6 +677,9 @@ else
 	i686-*::*PentiumM*::gcc-4.*) 
 	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
+	i686-*::*IntelCPUT2600*::gcc-4.*)
+	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
+	   ;;
 	i686-*::*PentiumM*::icc-8.1*)
 	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
   	   ;;
@@ -684,7 +687,7 @@ else
 	   AC_MSG_NOTICE(Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination)
 	   AC_MSG_NOTICE(Leaving optimization option alone as '$CXXFLAGS')
 	   AC_MSG_NOTICE(See doc/building.html under 'Add optimization flags' for how to fix)
-	   AC_MSG_NOTICE(this warning, but you can safely ignore it.)
+	   AC_MSG_NOTICE([this warning, but you can safely ignore it.])
 	   AC_MSG_NOTICE(sleeping 10 seconds to make this message more obvious)
 	   AC_MSG_NOTICE(**************************************************)
 	   OPTFLAGS="$CFLAGS"

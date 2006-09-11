@@ -19,6 +19,9 @@ Usage: lintel-config <OPTION>
 Valid options:
   --cflags	       show needed compiler flags
   --libtool-libs       show link options for libtool
+  --libtool-lintelgc   show link options for libLintelWithGC 
+    this library requires either --nogclibs or --mustgclibs, and classes may
+    assume GC exists.
   --libtool-lintelpthread show libtool link options for libLintelPThread
   --libs	       show library link options
   --mustgclibs         show library link options for programs requiring garbage collection
@@ -41,6 +44,12 @@ case "$1" in
     --libtool-libs)
 	echo ${libdir}/libLintel.la
 	exit 0
+	;;
+    --libtool-lintelgc)
+	@WITH_GC_TRUE@ echo ${libdir}/libLintelGC.la
+	@WITH_GC_TRUE@ exit 0
+	@WITH_GC_FALSE@ echo "-lmissing--with-gc-in-lintel-configure-need-dependant-bits"
+	@WITH_GC_FALSE@ exit 1
 	;;
     --libtool-lintelpthread)
 	echo ${libdir}/libLintelPThread.la
@@ -65,12 +74,14 @@ case "$1" in
     	@WITH_GC_FALSE@ exit 1
 	;;
     --nogclibs)
-        if test $libdir = '/usr/lib'; then
-	    echo "-lnogc"
-        else
-	    echo "-L$libdir -lnogc"
-	fi
-	exit 0
+        @WITH_GC_TRUE@ if test $libdir = '/usr/lib'; then
+	@WITH_GC_TRUE@     echo "-lnogc"
+        @WITH_GC_TRUE@ else
+	@WITH_GC_TRUE@     echo "-L$libdir -lnogc"
+	@WITH_GC_TRUE@ fi
+	@WITH_GC_TRUE@ exit 0
+	@WITH_GC_FALSE@ echo "-llintel-libnogc-not-needed-now-unless-using-liblintelgc"
+	@WITH_GC_FALSE@ exit 1
 	;;
     --help)
         usage

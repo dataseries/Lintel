@@ -50,10 +50,10 @@ build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
 bin_PROGRAMS = calcStats$(EXEEXT) drawRandomLogNormal$(EXEEXT)
-@WITH_TCL_TRUE@am__append_1 = LintelTclCommands.C Nameable.C \
+@WITH_GC_TRUE@am__append_1 = libLintelGC.la libnogc.la
+@WITH_TCL_TRUE@am__append_2 = LintelTclCommands.C Nameable.C \
 @WITH_TCL_TRUE@  Random.C Randommwm.C TclInterface.C 
 
-@WITH_GC_TRUE@am__append_2 = ConstantString.C
 check_PROGRAMS = tests/check-StatsQuantile$(EXEEXT) \
 	tests/check-Uncompress$(EXEEXT) \
 	tests/check-LintelAssert$(EXEEXT) $(am__EXEEXT_1)
@@ -87,55 +87,62 @@ am__libLintel_la_SOURCES_DIST = AssertException.C Clock.C Deque.C \
 	StatsMaker.C StatsRW.C StatsQuantile.C StatsSequence.C \
 	StatsSeries.C StatsSeriesGroup.C StringUtil.C stdio_64.C \
 	Uncompress.C LintelTclCommands.C Nameable.C Random.C \
-	Randommwm.C TclInterface.C ConstantString.C
+	Randommwm.C TclInterface.C
 @WITH_TCL_TRUE@am__objects_1 = LintelTclCommands.lo Nameable.lo \
 @WITH_TCL_TRUE@	Random.lo Randommwm.lo TclInterface.lo
-@WITH_GC_TRUE@am__objects_2 = ConstantString.lo
 am_libLintel_la_OBJECTS = AssertException.lo Clock.lo Deque.lo \
 	Double.lo HashTable.lo LintelAssert.lo LintelVersion.lo \
 	MathSpecialFunctions.lo Matrix.lo MersenneTwisterRandom.lo \
 	PriorityQueue.lo Stats.lo StatsEMA.lo StatsHistogram.lo \
 	StatsMaker.lo StatsRW.lo StatsQuantile.lo StatsSequence.lo \
 	StatsSeries.lo StatsSeriesGroup.lo StringUtil.lo stdio_64.lo \
-	Uncompress.lo $(am__objects_1) $(am__objects_2)
+	Uncompress.lo $(am__objects_1)
 libLintel_la_OBJECTS = $(am_libLintel_la_OBJECTS)
-libLintelPThread_la_DEPENDENCIES =
+@WITH_GC_TRUE@libLintelGC_la_DEPENDENCIES = libLintel.la
+am__libLintelGC_la_SOURCES_DIST = StringId.C ConstantString.C
+@WITH_GC_TRUE@am_libLintelGC_la_OBJECTS = StringId.lo \
+@WITH_GC_TRUE@	ConstantString.lo
+libLintelGC_la_OBJECTS = $(am_libLintelGC_la_OBJECTS)
+@WITH_GC_TRUE@am_libLintelGC_la_rpath = -rpath $(libdir)
+libLintelPThread_la_DEPENDENCIES = libLintel.la
 am_libLintelPThread_la_OBJECTS = PThread.lo
 libLintelPThread_la_OBJECTS = $(am_libLintelPThread_la_OBJECTS)
 libnogc_la_LIBADD =
-am_libnogc_la_OBJECTS = nogc.lo
+am__libnogc_la_SOURCES_DIST = nogc.c
+@WITH_GC_TRUE@am_libnogc_la_OBJECTS = nogc.lo
 libnogc_la_OBJECTS = $(am_libnogc_la_OBJECTS)
+@WITH_GC_TRUE@am_libnogc_la_rpath = -rpath $(libdir)
 binPROGRAMS_INSTALL = $(INSTALL_PROGRAM)
 @WITH_TCL_TRUE@am__EXEEXT_1 = tests/check-Random$(EXEEXT)
 PROGRAMS = $(bin_PROGRAMS)
 am_calcStats_OBJECTS = calcStats.$(OBJEXT)
 calcStats_OBJECTS = $(am_calcStats_OBJECTS)
 calcStats_LDADD = $(LDADD)
-calcStats_DEPENDENCIES = libLintel.la libnogc.la
+calcStats_DEPENDENCIES = libLintel.la
 am_drawRandomLogNormal_OBJECTS = drawRandomLogNormal.$(OBJEXT)
 drawRandomLogNormal_OBJECTS = $(am_drawRandomLogNormal_OBJECTS)
 drawRandomLogNormal_LDADD = $(LDADD)
-drawRandomLogNormal_DEPENDENCIES = libLintel.la libnogc.la
+drawRandomLogNormal_DEPENDENCIES = libLintel.la
 am_tests_check_LintelAssert_OBJECTS = check-LintelAssert.$(OBJEXT)
 tests_check_LintelAssert_OBJECTS =  \
 	$(am_tests_check_LintelAssert_OBJECTS)
 tests_check_LintelAssert_LDADD = $(LDADD)
-tests_check_LintelAssert_DEPENDENCIES = libLintel.la libnogc.la
+tests_check_LintelAssert_DEPENDENCIES = libLintel.la
 am__dirstamp = $(am__leading_dot)dirstamp
 am__tests_check_Random_SOURCES_DIST = tests/check-Random.C
 @WITH_TCL_TRUE@am_tests_check_Random_OBJECTS = check-Random.$(OBJEXT)
 tests_check_Random_OBJECTS = $(am_tests_check_Random_OBJECTS)
 tests_check_Random_LDADD = $(LDADD)
-tests_check_Random_DEPENDENCIES = libLintel.la libnogc.la
+tests_check_Random_DEPENDENCIES = libLintel.la
 am_tests_check_StatsQuantile_OBJECTS = stats_quantile.$(OBJEXT)
 tests_check_StatsQuantile_OBJECTS =  \
 	$(am_tests_check_StatsQuantile_OBJECTS)
 tests_check_StatsQuantile_LDADD = $(LDADD)
-tests_check_StatsQuantile_DEPENDENCIES = libLintel.la libnogc.la
+tests_check_StatsQuantile_DEPENDENCIES = libLintel.la
 am_tests_check_Uncompress_OBJECTS = check-Uncompress.$(OBJEXT)
 tests_check_Uncompress_OBJECTS = $(am_tests_check_Uncompress_OBJECTS)
 tests_check_Uncompress_LDADD = $(LDADD)
-tests_check_Uncompress_DEPENDENCIES = libLintel.la libnogc.la
+tests_check_Uncompress_DEPENDENCIES = libLintel.la
 binSCRIPT_INSTALL = $(INSTALL_SCRIPT)
 SCRIPTS = $(bin_SCRIPTS)
 DEFAULT_INCLUDES = -I. -I$(srcdir)
@@ -157,15 +164,16 @@ LTCOMPILE = $(LIBTOOL) --tag=CC --mode=compile $(CC) $(DEFS) \
 CCLD = $(CC)
 LINK = $(LIBTOOL) --tag=CC --mode=link $(CCLD) $(AM_CFLAGS) $(CFLAGS) \
 	$(AM_LDFLAGS) $(LDFLAGS) -o $@
-SOURCES = $(libLintel_la_SOURCES) $(libLintelPThread_la_SOURCES) \
-	$(libnogc_la_SOURCES) $(calcStats_SOURCES) \
-	$(drawRandomLogNormal_SOURCES) \
+SOURCES = $(libLintel_la_SOURCES) $(libLintelGC_la_SOURCES) \
+	$(libLintelPThread_la_SOURCES) $(libnogc_la_SOURCES) \
+	$(calcStats_SOURCES) $(drawRandomLogNormal_SOURCES) \
 	$(tests_check_LintelAssert_SOURCES) \
 	$(tests_check_Random_SOURCES) \
 	$(tests_check_StatsQuantile_SOURCES) \
 	$(tests_check_Uncompress_SOURCES)
 DIST_SOURCES = $(am__libLintel_la_SOURCES_DIST) \
-	$(libLintelPThread_la_SOURCES) $(libnogc_la_SOURCES) \
+	$(am__libLintelGC_la_SOURCES_DIST) \
+	$(libLintelPThread_la_SOURCES) $(am__libnogc_la_SOURCES_DIST) \
 	$(calcStats_SOURCES) $(drawRandomLogNormal_SOURCES) \
 	$(tests_check_LintelAssert_SOURCES) \
 	$(am__tests_check_Random_SOURCES_DIST) \
@@ -208,12 +216,14 @@ F77 = @F77@
 FFLAGS = @FFLAGS@
 GC_CFLAGS = @GC_CFLAGS@
 GC_LIBS = @GC_LIBS@
+GREP = @GREP@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
 LD = @LD@
 LDFLAGS = @LDFLAGS@
+LIBLINTELGC_VERSION = @LIBLINTELGC_VERSION@
 LIBLINTELPTHREAD_VERSION = @LIBLINTELPTHREAD_VERSION@
 LIBLINTEL_VERSION = @LIBLINTEL_VERSION@
 LIBNOGC_VERSION = @LIBNOGC_VERSION@
@@ -255,12 +265,9 @@ WITH_MAKEBITS_FALSE = @WITH_MAKEBITS_FALSE@
 WITH_MAKEBITS_TRUE = @WITH_MAKEBITS_TRUE@
 WITH_TCL_FALSE = @WITH_TCL_FALSE@
 WITH_TCL_TRUE = @WITH_TCL_TRUE@
-ac_ct_AR = @ac_ct_AR@
 ac_ct_CC = @ac_ct_CC@
 ac_ct_CXX = @ac_ct_CXX@
 ac_ct_F77 = @ac_ct_F77@
-ac_ct_RANLIB = @ac_ct_RANLIB@
-ac_ct_STRIP = @ac_ct_STRIP@
 am__fastdepCC_FALSE = @am__fastdepCC_FALSE@
 am__fastdepCC_TRUE = @am__fastdepCC_TRUE@
 am__fastdepCXX_FALSE = @am__fastdepCXX_FALSE@
@@ -277,6 +284,9 @@ build_cpu = @build_cpu@
 build_os = @build_os@
 build_vendor = @build_vendor@
 datadir = @datadir@
+datarootdir = @datarootdir@
+docdir = @docdir@
+dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 expanded_datadir = @expanded_datadir@
 host = @host@
@@ -284,17 +294,21 @@ host_alias = @host_alias@
 host_cpu = @host_cpu@
 host_os = @host_os@
 host_vendor = @host_vendor@
+htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
 libdir = @libdir@
 libexecdir = @libexecdir@
+localedir = @localedir@
 localstatedir = @localstatedir@
 mandir = @mandir@
 mkdir_p = @mkdir_p@
 oldincludedir = @oldincludedir@
+pdfdir = @pdfdir@
 prefix = @prefix@
 program_transform_name = @program_transform_name@
+psdir = @psdir@
 sbindir = @sbindir@
 sharedstatedir = @sharedstatedir@
 sysconfdir = @sysconfdir@
@@ -309,10 +323,10 @@ AUTOMAKE_OPTIONS = 1.7 foreign
 bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
-LDADD = libLintel.la @TCL_LIBS@ libnogc.la -lpthread
+LDADD = libLintel.la @TCL_LIBS@ 
 AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
-lib_LTLIBRARIES = libLintel.la libLintelPThread.la libnogc.la
+lib_LTLIBRARIES = libLintel.la libLintelPThread.la $(am__append_1)
 libLintel_la_LDFLAGS = -version-info @LIBLINTEL_VERSION@
 libLintel_la_LIBADD = @TCL_LIBS@
 libLintel_la_SOURCES = AssertException.C Clock.C Deque.C Double.C \
@@ -321,15 +335,21 @@ libLintel_la_SOURCES = AssertException.C Clock.C Deque.C Double.C \
 	PriorityQueue.C Stats.C StatsEMA.C StatsHistogram.C \
 	StatsMaker.C StatsRW.C StatsQuantile.C StatsSequence.C \
 	StatsSeries.C StatsSeriesGroup.C StringUtil.C stdio_64.C \
-	Uncompress.C $(am__append_1) $(am__append_2)
+	Uncompress.C $(am__append_2)
 @WITH_TCL_TRUE@BUILT_SOURCES = LintelTclCommands.C
 
 # Headers for classes which define Tcl-accesible functions:
 @WITH_TCL_TRUE@TCL_HDRS = $(top_srcdir)/include/Lintel/Random.H
-libnogc_la_LDFLAGS = -version-info @LIBNOGC_VERSION@
-libnogc_la_SOURCES = nogc.c 
+@WITH_GC_TRUE@libLintelGC_la_LDFLAGS = -version-info @LIBLINTELGC_VERSION@ 
+@WITH_GC_TRUE@libLintelGC_la_LIBADD = libLintel.la
+@WITH_GC_TRUE@libLintelGC_la_SOURCES = \
+@WITH_GC_TRUE@	StringId.C \
+@WITH_GC_TRUE@	ConstantString.C
+
+@WITH_GC_TRUE@libnogc_la_LDFLAGS = -version-info @LIBNOGC_VERSION@
+@WITH_GC_TRUE@libnogc_la_SOURCES = nogc.c 
 libLintelPThread_la_LDFLAGS = -version-info @LIBLINTELPTHREAD_VERSION@ 
-libLintelPThread_la_LIBADD = -lLintel -lpthread
+libLintelPThread_la_LIBADD = libLintel.la -lpthread
 libLintelPThread_la_SOURCES = \
 	PThread.C
 
@@ -408,10 +428,12 @@ clean-libLTLIBRARIES:
 	done
 libLintel.la: $(libLintel_la_OBJECTS) $(libLintel_la_DEPENDENCIES) 
 	$(CXXLINK) -rpath $(libdir) $(libLintel_la_LDFLAGS) $(libLintel_la_OBJECTS) $(libLintel_la_LIBADD) $(LIBS)
+libLintelGC.la: $(libLintelGC_la_OBJECTS) $(libLintelGC_la_DEPENDENCIES) 
+	$(CXXLINK) $(am_libLintelGC_la_rpath) $(libLintelGC_la_LDFLAGS) $(libLintelGC_la_OBJECTS) $(libLintelGC_la_LIBADD) $(LIBS)
 libLintelPThread.la: $(libLintelPThread_la_OBJECTS) $(libLintelPThread_la_DEPENDENCIES) 
 	$(CXXLINK) -rpath $(libdir) $(libLintelPThread_la_LDFLAGS) $(libLintelPThread_la_OBJECTS) $(libLintelPThread_la_LIBADD) $(LIBS)
 libnogc.la: $(libnogc_la_OBJECTS) $(libnogc_la_DEPENDENCIES) 
-	$(LINK) -rpath $(libdir) $(libnogc_la_LDFLAGS) $(libnogc_la_OBJECTS) $(libnogc_la_LIBADD) $(LIBS)
+	$(LINK) $(am_libnogc_la_rpath) $(libnogc_la_LDFLAGS) $(libnogc_la_OBJECTS) $(libnogc_la_LIBADD) $(LIBS)
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(mkdir_p) "$(DESTDIR)$(bindir)"
@@ -520,6 +542,7 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StatsSequence.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StatsSeries.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StatsSeriesGroup.Plo@am__quote@
+@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StringId.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/StringUtil.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/TclInterface.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/Uncompress.Plo@am__quote@

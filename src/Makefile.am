@@ -17,11 +17,15 @@ bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 
-LDADD = libLintel.la @TCL_LIBS@ libnogc.la -lpthread
+LDADD = libLintel.la @TCL_LIBS@ 
 AM_CPPFLAGS = -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
-lib_LTLIBRARIES = libLintel.la libLintelPThread.la libnogc.la
+lib_LTLIBRARIES = libLintel.la libLintelPThread.la 
+if WITH_GC
+lib_LTLIBRARIES += libLintelGC.la libnogc.la
+endif
+
 libLintel_la_LDFLAGS = -version-info @LIBLINTEL_VERSION@
 libLintel_la_LIBADD = @TCL_LIBS@
  
@@ -69,14 +73,18 @@ LintelTclCommands.C: $(top_srcdir)/include/Lintel/TclInterface.H $(TCL_HDRS) $(t
 endif
 
 if WITH_GC
-libLintel_la_SOURCES += ConstantString.C
-endif
+libLintelGC_la_LDFLAGS = -version-info @LIBLINTELGC_VERSION@ 
+libLintelGC_la_LIBADD = libLintel.la
+libLintelGC_la_SOURCES = \
+	StringId.C \
+	ConstantString.C
 
 libnogc_la_LDFLAGS = -version-info @LIBNOGC_VERSION@
 libnogc_la_SOURCES = nogc.c 
+endif
 
 libLintelPThread_la_LDFLAGS = -version-info @LIBLINTELPTHREAD_VERSION@ 
-libLintelPThread_la_LIBADD = -lLintel -lpthread
+libLintelPThread_la_LIBADD = libLintel.la -lpthread
 libLintelPThread_la_SOURCES = \
 	PThread.C
 
