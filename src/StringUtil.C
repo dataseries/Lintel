@@ -133,3 +133,17 @@ prefixequal(const string &str, const string &prefix)
 {
     return str.compare(0,prefix.size(),prefix) == 0;
 }
+
+
+string
+ipv4tostring(unsigned long val)
+{
+    char buf[50];
+    sprintf(buf,"%d.%d.%d.%d",
+	    (unsigned int)(val >> 24) & 0xFF,
+	    (unsigned int)(val >> 16) & 0xFF,
+	    (unsigned int)(val >> 8) & 0xFF,
+	    (unsigned int)(val >> 0) & 0xFF);
+    return string(buf);
+}
+

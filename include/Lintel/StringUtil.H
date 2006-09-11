@@ -38,4 +38,7 @@ std::string maybehex2raw(const std::string &instr);
 /** determine if str starts with prefix */
 bool prefixequal(const std::string &str, const std::string &prefix);
 
+/** convert an ipv4 32 bit value into a string, first octet is first byte */
+std::string ipv4tostring(unsigned long val);
+
 #endif
