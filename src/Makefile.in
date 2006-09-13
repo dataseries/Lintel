@@ -86,8 +86,8 @@ am__libLintel_la_SOURCES_DIST = AssertException.C AssertBoost.C \
 	MersenneTwisterRandom.C PriorityQueue.C Stats.C StatsEMA.C \
 	StatsHistogram.C StatsMaker.C StatsRW.C StatsQuantile.C \
 	StatsSequence.C StatsSeries.C StatsSeriesGroup.C StringUtil.C \
-	stdio_64.C Uncompress.C LintelTclCommands.C Nameable.C \
-	Random.C Randommwm.C TclInterface.C
+	Uncompress.C LintelTclCommands.C Nameable.C Random.C \
+	Randommwm.C TclInterface.C
 @WITH_TCL_TRUE@am__objects_1 = LintelTclCommands.lo Nameable.lo \
 @WITH_TCL_TRUE@	Random.lo Randommwm.lo TclInterface.lo
 am_libLintel_la_OBJECTS = AssertException.lo AssertBoost.lo Clock.lo \
@@ -96,7 +96,7 @@ am_libLintel_la_OBJECTS = AssertException.lo AssertBoost.lo Clock.lo \
 	MersenneTwisterRandom.lo PriorityQueue.lo Stats.lo StatsEMA.lo \
 	StatsHistogram.lo StatsMaker.lo StatsRW.lo StatsQuantile.lo \
 	StatsSequence.lo StatsSeries.lo StatsSeriesGroup.lo \
-	StringUtil.lo stdio_64.lo Uncompress.lo $(am__objects_1)
+	StringUtil.lo Uncompress.lo $(am__objects_1)
 libLintel_la_OBJECTS = $(am_libLintel_la_OBJECTS)
 @WITH_GC_TRUE@libLintelGC_la_DEPENDENCIES = libLintel.la
 am__libLintelGC_la_SOURCES_DIST = StringId.C ConstantString.C
@@ -211,6 +211,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_STDIO64_FALSE = @ENABLE_STDIO64_FALSE@
+ENABLE_STDIO64_TRUE = @ENABLE_STDIO64_TRUE@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
@@ -334,8 +336,8 @@ libLintel_la_SOURCES = AssertException.C AssertBoost.C Clock.C Deque.C \
 	MathSpecialFunctions.C Matrix.C MersenneTwisterRandom.C \
 	PriorityQueue.C Stats.C StatsEMA.C StatsHistogram.C \
 	StatsMaker.C StatsRW.C StatsQuantile.C StatsSequence.C \
-	StatsSeries.C StatsSeriesGroup.C StringUtil.C stdio_64.C \
-	Uncompress.C $(am__append_2)
+	StatsSeries.C StatsSeriesGroup.C StringUtil.C Uncompress.C \
+	$(am__append_2)
 @WITH_TCL_TRUE@BUILT_SOURCES = LintelTclCommands.C
 
 # Headers for classes which define Tcl-accesible functions:
@@ -554,7 +556,6 @@ distclean-compile:
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/drawRandomLogNormal.Po@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/nogc.Plo@am__quote@
 @AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stats_quantile.Po@am__quote@
-@AMDEP_TRUE@@am__include@ @am__quote@./$(DEPDIR)/stdio_64.Plo@am__quote@
 
 .C.o:
 @am__fastdepCXX_TRUE@	if $(CXXCOMPILE) -MT $@ -MD -MP -MF "$(DEPDIR)/$*.Tpo" -c -o $@ $<; \
@@ -869,6 +870,8 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	uninstall-binSCRIPTS uninstall-info-am \
 	uninstall-libLTLIBRARIES uninstall-nobase_bpmodulesDATA
 
+
+@ENABLE_STDIO64_TRUE@	libLintel_la_SOURCES += stdio_64.C
 
 # TODO: I think this is a broken way of doing things and that we should
 # always rebuild LintelTclCommands.C into the build directory

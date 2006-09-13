@@ -77,10 +77,10 @@ am__nobase_include_HEADERS_DIST = Lintel/AssertException.H \
 	Lintel/StatsMaker.H Lintel/StatsQuantile.H Lintel/StatsRW.H \
 	Lintel/StatsSequence.H Lintel/StatsSeries.H \
 	Lintel/StatsSeriesGroup.H Lintel/StringUtil.H \
-	Lintel/stdio_64.H Lintel/streamcompat.H Lintel/Uncompress.H \
-	Lintel/Nameable.H Lintel/Random.H Lintel/Randommwm.H \
-	Lintel/TclInterface.H Lintel/ConstantString.H \
-	Lintel/GC_Alloc.H Lintel/hp_replace/memory
+	Lintel/streamcompat.H Lintel/Uncompress.H Lintel/Nameable.H \
+	Lintel/Random.H Lintel/Randommwm.H Lintel/TclInterface.H \
+	Lintel/ConstantString.H Lintel/GC_Alloc.H \
+	Lintel/hp_replace/memory
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -120,6 +120,8 @@ ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
 EGREP = @EGREP@
+ENABLE_STDIO64_FALSE = @ENABLE_STDIO64_FALSE@
+ENABLE_STDIO64_TRUE = @ENABLE_STDIO64_TRUE@
 EXEEXT = @EXEEXT@
 F77 = @F77@
 FFLAGS = @FFLAGS@
@@ -237,8 +239,8 @@ nobase_include_HEADERS = Lintel/AssertException.H Lintel/AssertBoost.H \
 	Lintel/StatsMaker.H Lintel/StatsQuantile.H Lintel/StatsRW.H \
 	Lintel/StatsSequence.H Lintel/StatsSeries.H \
 	Lintel/StatsSeriesGroup.H Lintel/StringUtil.H \
-	Lintel/stdio_64.H Lintel/streamcompat.H Lintel/Uncompress.H \
-	$(am__append_1) $(am__append_2) $(am__append_3)
+	Lintel/streamcompat.H Lintel/Uncompress.H $(am__append_1) \
+	$(am__append_2) $(am__append_3)
 all: all-am
 
 .SUFFIXES:
@@ -467,6 +469,8 @@ uninstall-am: uninstall-info-am uninstall-nobase_includeHEADERS
 	tags uninstall uninstall-am uninstall-info-am \
 	uninstall-nobase_includeHEADERS
 
+
+@ENABLE_STDIO64_TRUE@	nobase_include_HEADERS += Lintel/stdio_64.H 
 
 @WITH_GC_TRUE@Lintel/GC_Alloc.H: make_gcalloc_h.pl
 @WITH_GC_TRUE@	[ -d Lintel ] || mkdir Lintel

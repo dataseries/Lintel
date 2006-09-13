@@ -52,8 +52,11 @@ libLintel_la_SOURCES = \
 	StatsSeries.C \
 	StatsSeriesGroup.C \
 	StringUtil.C \
-	stdio_64.C \
 	Uncompress.C
+
+if ENABLE_STDIO64
+	libLintel_la_SOURCES += stdio_64.C
+endif
 
 if WITH_TCL
 BUILT_SOURCES = LintelTclCommands.C

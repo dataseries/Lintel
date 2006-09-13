@@ -32,9 +32,12 @@ nobase_include_HEADERS = \
 	Lintel/StatsSeries.H \
 	Lintel/StatsSeriesGroup.H \
 	Lintel/StringUtil.H \
-	Lintel/stdio_64.H \
 	Lintel/streamcompat.H \
 	Lintel/Uncompress.H 
+
+if ENABLE_STDIO64
+	nobase_include_HEADERS += Lintel/stdio_64.H 
+endif
 
 if WITH_TCL
 nobase_include_HEADERS += \

@@ -116,6 +116,12 @@ AC_ARG_WITH(makebits,
 
 AM_CONDITIONAL(WITH_MAKEBITS, test $with_makebits = yes)
 
+AC_ARG_ENABLE(stdio64,
+  [  --enable-stdio64 enable the stdio64 routines on platforms that left them out ]
+  [enable_stdio64=$enableval],
+  [enable_stdio64=no])
+AM_CONDITIONAL(ENABLE_STDIO64, test $enable_stdio64 = yes)
+
 ### The Random regression tests generates different output on different 
 ### machines (and possibly compilers) -- pick the appropriate file.
 

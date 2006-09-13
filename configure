@@ -884,6 +884,8 @@ WITH_HPUX_REPLACE_MEMORY_TRUE
 WITH_HPUX_REPLACE_MEMORY_FALSE
 WITH_MAKEBITS_TRUE
 WITH_MAKEBITS_FALSE
+ENABLE_STDIO64_TRUE
+ENABLE_STDIO64_FALSE
 RANDOM_COMPARETO
 expanded_datadir
 LIBOBJS
@@ -1494,6 +1496,8 @@ Optional Features:
                           optimize for fast installation [default=yes]
   --disable-libtool-lock  avoid locking (might break parallel builds)
   --disable-largefile     omit support for large files
+  --enable-stdio64 enable the stdio64 routines on platforms that left them out
+  enable_stdio64=$enableval
 
 Optional Packages:
   --with-PACKAGE[=ARG]    use PACKAGE [ARG=yes]
@@ -6026,7 +6030,7 @@ ia64-*-hpux*)
   ;;
 *-*-irix6*)
   # Find out which ABI we are using.
-  echo '#line 6029 "configure"' > conftest.$ac_ext
+  echo '#line 6033 "configure"' > conftest.$ac_ext
   if { (eval echo "$as_me:$LINENO: \"$ac_compile\"") >&5
   (eval $ac_compile) 2>&5
   ac_status=$?
@@ -8449,11 +8453,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8452: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8456: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8456: \$? = $ac_status" >&5
+   echo "$as_me:8460: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8717,11 +8721,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8720: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8724: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:8724: \$? = $ac_status" >&5
+   echo "$as_me:8728: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -8821,11 +8825,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:8824: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:8828: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:8828: \$? = $ac_status" >&5
+   echo "$as_me:8832: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -11262,7 +11266,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 11265 "configure"
+#line 11269 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -11362,7 +11366,7 @@ else
   lt_dlunknown=0; lt_dlno_uscore=1; lt_dlneed_uscore=2
   lt_status=$lt_dlunknown
   cat > conftest.$ac_ext <<EOF
-#line 11365 "configure"
+#line 11369 "configure"
 #include "confdefs.h"
 
 #if HAVE_DLFCN_H
@@ -13730,11 +13734,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13733: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13737: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:13737: \$? = $ac_status" >&5
+   echo "$as_me:13741: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -13834,11 +13838,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:13837: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:13841: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:13841: \$? = $ac_status" >&5
+   echo "$as_me:13845: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -15395,11 +15399,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15398: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15402: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:15402: \$? = $ac_status" >&5
+   echo "$as_me:15406: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -15499,11 +15503,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:15502: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:15506: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:15506: \$? = $ac_status" >&5
+   echo "$as_me:15510: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -17718,11 +17722,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17721: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17725: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17725: \$? = $ac_status" >&5
+   echo "$as_me:17729: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -17986,11 +17990,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:17989: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:17993: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>conftest.err)
    ac_status=$?
    cat conftest.err >&5
-   echo "$as_me:17993: \$? = $ac_status" >&5
+   echo "$as_me:17997: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s "$ac_outfile"; then
      # The compiler can only warn and ignore the option if not recognized
      # So say no if there are warnings other than the usual output.
@@ -18090,11 +18094,11 @@ else
    -e 's:.*FLAGS}\{0,1\} :&$lt_compiler_flag :; t' \
    -e 's: [^ ]*conftest\.: $lt_compiler_flag&:; t' \
    -e 's:$: $lt_compiler_flag:'`
-   (eval echo "\"\$as_me:18093: $lt_compile\"" >&5)
+   (eval echo "\"\$as_me:18097: $lt_compile\"" >&5)
    (eval "$lt_compile" 2>out/conftest.err)
    ac_status=$?
    cat out/conftest.err >&5
-   echo "$as_me:18097: \$? = $ac_status" >&5
+   echo "$as_me:18101: \$? = $ac_status" >&5
    if (exit $ac_status) && test -s out/conftest2.$ac_objext
    then
      # The compiler can only warn and ignore the option if not recognized
@@ -22774,6 +22778,22 @@ else
 fi
 
 
+# Check whether --enable-stdio64 was given.
+if test "${enable_stdio64+set}" = set; then
+  enableval=$enable_stdio64; enable_stdio64=no
+fi
+
+
+
+if test $enable_stdio64 = yes; then
+  ENABLE_STDIO64_TRUE=
+  ENABLE_STDIO64_FALSE='#'
+else
+  ENABLE_STDIO64_TRUE='#'
+  ENABLE_STDIO64_FALSE=
+fi
+
+
 ### The Random regression tests generates different output on different
 ### machines (and possibly compilers) -- pick the appropriate file.
 
@@ -22982,6 +23002,13 @@ if test -z "${WITH_MAKEBITS_TRUE}" && test -z "${WITH_MAKEBITS_FALSE}"; then
   { { echo "$as_me:$LINENO: error: conditional \"WITH_MAKEBITS\" was never defined.
 Usually this means the macro was only invoked conditionally." >&5
 echo "$as_me: error: conditional \"WITH_MAKEBITS\" was never defined.
+Usually this means the macro was only invoked conditionally." >&2;}
+   { (exit 1); exit 1; }; }
+fi
+if test -z "${ENABLE_STDIO64_TRUE}" && test -z "${ENABLE_STDIO64_FALSE}"; then
+  { { echo "$as_me:$LINENO: error: conditional \"ENABLE_STDIO64\" was never defined.
+Usually this means the macro was only invoked conditionally." >&5
+echo "$as_me: error: conditional \"ENABLE_STDIO64\" was never defined.
 Usually this means the macro was only invoked conditionally." >&2;}
    { (exit 1); exit 1; }; }
 fi
@@ -23662,13 +23689,15 @@ WITH_HPUX_REPLACE_MEMORY_TRUE!$WITH_HPUX_REPLACE_MEMORY_TRUE$ac_delim
 WITH_HPUX_REPLACE_MEMORY_FALSE!$WITH_HPUX_REPLACE_MEMORY_FALSE$ac_delim
 WITH_MAKEBITS_TRUE!$WITH_MAKEBITS_TRUE$ac_delim
 WITH_MAKEBITS_FALSE!$WITH_MAKEBITS_FALSE$ac_delim
+ENABLE_STDIO64_TRUE!$ENABLE_STDIO64_TRUE$ac_delim
+ENABLE_STDIO64_FALSE!$ENABLE_STDIO64_FALSE$ac_delim
 RANDOM_COMPARETO!$RANDOM_COMPARETO$ac_delim
 expanded_datadir!$expanded_datadir$ac_delim
 LIBOBJS!$LIBOBJS$ac_delim
 LTLIBOBJS!$LTLIBOBJS$ac_delim
 _ACEOF
 
-  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 37; then
+  if test `sed -n "s/.*$ac_delim\$/X/p" conf$$subs.sed | grep -c X` = 39; then
     break
   elif $ac_last_try; then
     { { echo "$as_me:$LINENO: error: could not make $CONFIG_STATUS" >&5
