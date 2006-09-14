@@ -288,6 +288,30 @@ public:
 	return assign(__in);
     }
     
+    void reserve(unsigned expected_entries) {
+	// assertion lets us resize the entry points without thinking about
+	// handling existing bits.
+	AssertAlways(chains.size() == 0,
+		     ("have to reserve() before putting anything in hash table"));
+	chains.reserve(expected_entries);
+	unsigned new_entry_size = (unsigned)(expected_entries / target_chain_length);
+	unsigned i;
+	for(i=0; HashTable_prime_list[i] < new_entry_size; ++i) {
+	    AssertAlways(HashTable_prime_list[i] != 0,("Fatal Error"));
+	}
+	unsigned new_size = HashTable_prime_list[i];
+
+	entry_points.resize(new_size, -1);
+    }
+
+    // this is useful if you want to build up a big table of data, but then
+    // want to store it on disk sorted, of course once you sort the vector,
+    // you've just destroyed the hash table, but the only other choice
+    // is to hash pointers to the data, which loses more memory space.
+
+    hte_vectorT &unsafeGetRawDataVector() {
+	return chains;
+    }
 private:
     void init(double _tcl) {
 	free_list = -1;
