@@ -41,4 +41,14 @@ bool prefixequal(const std::string &str, const std::string &prefix);
 /** convert an ipv4 32 bit value into a string, first octet is first byte */
 std::string ipv4tostring(unsigned long val);
 
+/** same as strtod, but bails out if the string isn't valid */
+double stringToDouble(const std::string &str);
+
+/** same as strtol, but bails out if the string isn't valid */
+long stringToLong(const std::string &str, int base = 10);
+
+/** same as strtoll, but bails out if the string isn't valid */
+long long stringToLongLong(const std::string &str, int base = 10);
+
 #endif
+

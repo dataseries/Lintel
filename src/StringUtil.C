@@ -9,6 +9,8 @@
     some string utilities
 */
 
+#include <stdlib.h>
+
 #include <StringUtil.H>
 #include <LintelAssert.H>
 
@@ -147,3 +149,38 @@ ipv4tostring(unsigned long val)
     return string(buf);
 }
 
+double
+stringToDouble(const std::string &str)
+{
+    char *endptr = NULL;
+    AssertAlways(str.size() > 0, 
+		 ("zero length string not valid in conversion to double"));
+    double ret = strtod(str.c_str(),&endptr);
+    AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a double",
+				  str.c_str()));
+    return ret;
+}
+
+long
+stringToLong(const std::string &str, int base)
+{
+    char *endptr = NULL;
+    AssertAlways(str.size() > 0, 
+		 ("zero length string not valid in conversion to double"));
+    long ret = strtol(str.c_str(),&endptr, base);
+    AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a long long",
+				  str.c_str()));
+    return ret;
+}
+
+long long
+stringToLongLong(const std::string &str, int base)
+{
+    char *endptr = NULL;
+    AssertAlways(str.size() > 0, 
+		 ("zero length string not valid in conversion to double"));
+    long long ret = strtoll(str.c_str(),&endptr, base);
+    AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a long long",
+				  str.c_str()));
+    return ret;
+}
