@@ -66,6 +66,10 @@ public:
 	hashtable = __in.hashtable;
 	return *this;
     }
+
+    void clear() {
+	hashtable.clear();
+    }
 private:
     HashTableT hashtable;
 };
