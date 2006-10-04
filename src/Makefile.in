@@ -76,7 +76,8 @@ am__vpath_adj = case $$p in \
   esac;
 am__strip_dir = `echo $$p | sed -e 's|^.*/||'`;
 am__installdirs = "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" \
-	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(bpmodulesdir)"
+	"$(DESTDIR)$(bindir)" "$(DESTDIR)$(bpmodulesdir)" \
+	"$(DESTDIR)$(perllibdir)"
 libLTLIBRARIES_INSTALL = $(INSTALL)
 LTLIBRARIES = $(lib_LTLIBRARIES)
 libLintel_la_DEPENDENCIES =
@@ -180,7 +181,8 @@ DIST_SOURCES = $(am__libLintel_la_SOURCES_DIST) \
 	$(tests_check_StatsQuantile_SOURCES) \
 	$(tests_check_Uncompress_SOURCES)
 nobase_bpmodulesDATA_INSTALL = $(install_sh_DATA)
-DATA = $(nobase_bpmodules_DATA)
+nobase_perllibDATA_INSTALL = $(install_sh_DATA)
+DATA = $(nobase_bpmodules_DATA) $(nobase_perllib_DATA)
 ETAGS = etags
 CTAGS = ctags
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
@@ -357,6 +359,8 @@ libLintelPThread_la_SOURCES = \
 
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchParallel/jobsfile.pm
+perllibdir = $(datadir)/perl5
+nobase_perllib_DATA = Text/ExpandInt.pm
 @WITH_TCL_TRUE@tests_check_Random_SOURCES = tests/check-Random.C
 tests_check_StatsQuantile_SOURCES = tests/stats_quantile.C
 tests_check_Uncompress_SOURCES = tests/check-Uncompress.C
@@ -683,6 +687,25 @@ uninstall-nobase_bpmodulesDATA:
 	  echo " rm -f '$(DESTDIR)$(bpmodulesdir)/$$f'"; \
 	  rm -f "$(DESTDIR)$(bpmodulesdir)/$$f"; \
 	done
+install-nobase_perllibDATA: $(nobase_perllib_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(perllibdir)" || $(mkdir_p) "$(DESTDIR)$(perllibdir)"
+	@$(am__vpath_adj_setup) \
+	list='$(nobase_perllib_DATA)'; for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  $(am__vpath_adj) \
+	  echo " $(nobase_perllibDATA_INSTALL) '$$d$$p' '$(DESTDIR)$(perllibdir)/$$f'"; \
+	  $(nobase_perllibDATA_INSTALL) "$$d$$p" "$(DESTDIR)$(perllibdir)/$$f"; \
+	done
+
+uninstall-nobase_perllibDATA:
+	@$(NORMAL_UNINSTALL)
+	@$(am__vpath_adj_setup) \
+	list='$(nobase_perllib_DATA)'; for p in $$list; do \
+	  $(am__vpath_adj) \
+	  echo " rm -f '$(DESTDIR)$(perllibdir)/$$f'"; \
+	  rm -f "$(DESTDIR)$(perllibdir)/$$f"; \
+	done
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -768,7 +791,7 @@ all-am: Makefile $(LTLIBRARIES) $(PROGRAMS) $(SCRIPTS) $(DATA)
 install-binPROGRAMS: install-libLTLIBRARIES
 
 installdirs:
-	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bpmodulesdir)"; do \
+	for dir in "$(DESTDIR)$(libdir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bindir)" "$(DESTDIR)$(bpmodulesdir)" "$(DESTDIR)$(perllibdir)"; do \
 	  test -z "$$dir" || $(mkdir_p) "$$dir"; \
 	done
 install: $(BUILT_SOURCES)
@@ -820,7 +843,8 @@ info: info-am
 
 info-am:
 
-install-data-am: install-nobase_bpmodulesDATA
+install-data-am: install-nobase_bpmodulesDATA \
+	install-nobase_perllibDATA
 
 install-exec-am: install-binPROGRAMS install-binSCRIPTS \
 	install-exec-local install-libLTLIBRARIES
@@ -851,7 +875,7 @@ ps-am:
 
 uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	uninstall-info-am uninstall-libLTLIBRARIES \
-	uninstall-nobase_bpmodulesDATA
+	uninstall-nobase_bpmodulesDATA uninstall-nobase_perllibDATA
 
 .PHONY: CTAGS GTAGS all all-am check check-am check-local clean \
 	clean-binPROGRAMS clean-checkPROGRAMS clean-generic \
@@ -862,13 +886,14 @@ uninstall-am: uninstall-binPROGRAMS uninstall-binSCRIPTS \
 	install-data install-data-am install-exec install-exec-am \
 	install-exec-local install-info install-info-am \
 	install-libLTLIBRARIES install-man \
-	install-nobase_bpmodulesDATA install-strip installcheck \
-	installcheck-am installdirs maintainer-clean \
-	maintainer-clean-generic mostlyclean mostlyclean-compile \
-	mostlyclean-generic mostlyclean-libtool pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-binPROGRAMS \
-	uninstall-binSCRIPTS uninstall-info-am \
-	uninstall-libLTLIBRARIES uninstall-nobase_bpmodulesDATA
+	install-nobase_bpmodulesDATA install-nobase_perllibDATA \
+	install-strip installcheck installcheck-am installdirs \
+	maintainer-clean maintainer-clean-generic mostlyclean \
+	mostlyclean-compile mostlyclean-generic mostlyclean-libtool \
+	pdf pdf-am ps ps-am tags uninstall uninstall-am \
+	uninstall-binPROGRAMS uninstall-binSCRIPTS uninstall-info-am \
+	uninstall-libLTLIBRARIES uninstall-nobase_bpmodulesDATA \
+	uninstall-nobase_perllibDATA
 
 
 @ENABLE_STDIO64_TRUE@	libLintel_la_SOURCES += stdio_64.C

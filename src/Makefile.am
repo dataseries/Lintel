@@ -102,8 +102,8 @@ endif
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchParallel/jobsfile.pm
 
-# batch-parallel: batch-parallel.in
-# 	  cd $(top_builddir) && $(SHELL) ./config.status src/$@
+perllibdir = $(datadir)/perl5
+nobase_perllib_DATA = Text/ExpandInt.pm
 
 ## TODO: ought to move all this regression stuff to a dejagnu style
 ## regression test, which is hopefully sufficiently flexible to handle
