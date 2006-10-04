@@ -550,7 +550,8 @@ no-execute mode.
 =head1 TODO
 
 Ought to have a function that lets rebuild_thing_fail decide to stop
-rebuilding on failure.
+rebuilding on failure, but not have other processes continue in the
+background.
 
 =head1 BUGS
 
