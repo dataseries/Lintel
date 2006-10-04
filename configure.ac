@@ -140,7 +140,8 @@ AC_SUBST(RANDOM_COMPARETO)
 
 AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel])
 
-expanded_datadir=`eval echo $datadir`
+EXPAND_VARIABLE
+expanded_datadir=`expand_variable $datadir`
 AC_SUBST(expanded_datadir)
 
 AC_OUTPUT

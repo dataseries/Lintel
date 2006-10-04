@@ -22809,7 +22809,22 @@ esac
 ac_config_files="$ac_config_files Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel"
 
 
-expanded_datadir=`eval echo $datadir`
+
+# recent versions of autoconf (2.60) seem to store some variables needing
+# multiple rounds of expansion to get to the fully expanded variable.
+expand_variable() {
+    ret="$1"
+    ev_keepgoing=true
+    while $ev_keepgoing; do
+	case "$ret" in
+	    *\$\{*) ret=`eval echo $ret` ;;
+	    *) ev_keepgoing=false
+	esac
+    done
+    echo $ret
+}
+
+expanded_datadir=`expand_variable $datadir`
 
 
 cat >confcache <<\_ACEOF

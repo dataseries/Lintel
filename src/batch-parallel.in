@@ -1,4 +1,5 @@
 #!@PERL_BINARY@ -w
+# -*- Perl -*-
 #
 #  (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 #
@@ -14,11 +15,13 @@ use Data::Dumper;
 use Carp;
 use POSIX;
 use Cwd ();
+use Pod::Usage;
 @PERL_MODULES_INC_UNSHIFT@
 BEGIN { unshift(@INC,"@expanded_datadir@/bp_modules"); }
 use BatchParallel::common;
 
 $|=1;
+my $print_manpage;
 my $batch_jobwidth;
 my $batch_groupsize;
 my $batch_maxgroups;
@@ -39,7 +42,8 @@ if (@ARGV == 0) {
     @dirs = ();
 }
 
-my $ret = GetOptions('w=i' => \$batch_jobwidth,
+my $ret = GetOptions('man!' => \$print_manpage,
+		     'w=i' => \$batch_jobwidth,
 		     'q=s' => \$queue,
 		     'j=i' => \$local_parallelism,
 		     'n!' => \$no_exec,
@@ -59,6 +63,7 @@ if (defined $ENV{BP_MODULES}) {
     unshift(@INC,split(/:/o,$ENV{BP_MODULES}));
 }
 
+pod2usage(-verbose => 2) if $print_manpage;
 usage() unless $ret && @ARGV >= 1;
 
 die "can't specify both groupsize and maxgroups"
@@ -169,15 +174,12 @@ sub usage {
     }
     delete $available_modules{'common'};
     my $mods = join(" ",sort keys %available_modules);
-    confess "Usage: $0 [-n] [-w batch-job-width] [-j local-parallelism] 
-    [-q batch-queue] [--maxgroups=#, default min(batch-job-width*5,2000)]
-    [--groupsize=#, rebuilds/lsf-job]
-    [--noshuffle # process jobs exactly in order they were found ]
-    [-- (if bp args use -'s)] <bp-module> [bp-module args...] -- dir...
-    bp modules: $mods
+    pod2usage( -exitval => 'NOEXIT' );
+    print "    bp modules: $mods
     looked in: @bp_module_dirs
     you can define \$BP_MODULES to add directories
- "; # extra space to get the line number in the die statement
+"; 
+   exit(2);
 }
     
 sub finish_child {
@@ -393,11 +395,23 @@ sub codineexec {
     local_parallel();
 }
 
+__END__
+
 =pod
 
-=head1 Usage
+=head1 NAME
 
- % batch-parallel.pl [bp-options] [--] <module> [module-args] -- [dir/file list]
+batch-parallel - a program to simplify running batch tasks in parallel 
+
+=head1 SYNOPSIS
+
+ % batch-parallel [-n] [(-w batch-job-width) | (-j local-parallelism)] 
+   [-q batch-queue] [--maxgroups=#, default min(batch-job-width*5,2000)]
+   [--groupsize=#, rebuilds/lsf-job]
+   [--noshuffle # process jobs exactly in order they were found ]
+   [-- (if bp args use -'s)] <bp-module> [bp-module args...] -- dir/file...
+
+=head1 DESCRIPTION
 
 Batch parallel is a script to run a bunch of tasks in parallel either
 on a single local machine, or against an LSF cluster.  The modules are
@@ -407,7 +421,27 @@ transform on one file to convert it to another form.  For example,
 re-compressing a bunch of files, converting dataseries files to text,
 running NFS source file conversion.
 
-=head1 Recipies
+=head1 OPTIONS
+
+=over 4
+
+=item B<-h | --help>
+
+Get help
+
+=item B<--man>
+
+Print out the manual page
+
+=item B<-n>
+
+No-execute mode.  Do not actually execute anything just say what we would do.
+
+=item ...
+
+=back
+
+=head1 RECIPIES
 
 These recipies explain how to perform certain tasks
 
@@ -425,4 +459,104 @@ are installed in the two standard paths ~/.bp_modules and
 
 This will provide whatever additional help a module has on it's particular
 usage and options.  
+
+=head1 CREATING A BATCH-PARALLEL MODULE
+
+=head2 Overview
+
+To create a batch-parallel module, you will first create a perl module
+with the package BatchParallel::I<module name>.  You will need to
+place it in an appropriate directory, you can run C<batch-parallel> to
+get the list of locations it will use.
+
+You will then define your modules parent class as
+BatchParallel::common, and populate your module with various functions
+that define how your module processes data.  Since batch-parallel uses
+the module as an object, you can override any of the standard
+methods.
+
+=head2 Finding things to process
+
+There are two ways to define how your module will find "things" to
+process.  First you can define C<sub file_is_source>, and second you
+can define C<sub find_things_to_build>.  The former is simpler to use,
+and the latter is significantly more general as it could for example
+take a trace file, determine segments of a single trace file and
+generate jobs that will process the separate segments.
+
+=head3 sub file_is_source($this, $prefix, $full_path, $file_name) 
+
+This function returns true if the file is a source file, and false
+otherwise.  The prefix is the user-specified tree under which the
+search is occurring.  It may be just a file if the user specified a
+particular file.  The full path includes the filename.  Later the
+function destination_file will be used to construct the output file
+from this source, and destfile_out_of_date to determine if it needs
+to be rebuilt.
+
+=head3 sub find_things_to_build($this, @sources)
+
+This function returns an array.  The first element is the number of
+source files that were located, and the second is a list of things to
+build.  Each thing will be passed to rebuild_thing_*.  The default
+find_things_to_build() generates a list of filenames.  If you override
+this method, then you also need to override rebuild_thing_do,
+rebuild_thing_success, rebuild_thing_fail, rebuild_thing_message.
+
+=head3 sub rebuild($this, $prefix, $filepath, $destfile)
+
+This function returns true on a successful build, and false or
+die/exit(1) on failure.  This is the function that gets called in
+order to actually convert filepath into destfile.  You do not need to
+worry about removing destfile in case of failure.  C<batch-parallel>
+will actually write to destfile-new, and on a successful rebuild, it
+will move it to destfile.  Therefore an unsuccessful build won't cause
+problems with destfile_out_of_date.  destfile-new is not removed by
+default to make debugging easier.  This function may also want to
+print out a message about what it is doing, or call an overridden
+rebuild_thing_message.
+
+=head3 sub rebuild_thing_do($this, $thing_info)
+
+This function should exit(0) on success or exit(1) on failure.  It
+will be passed a single $thing generated by find_things_to_build.  In
+the case where some rebuilds can fail and some can succeeed, the
+programmer should verify that find_things_to_build will not
+accidentally skip rebuilding things that failed to build.  This
+function should probably print some message out about what it is
+doing, or call an overridden rebuild_thing_message to give the user
+some idea as to what is happening.  This function will be called in
+a separate process.
+
+=head3 sub rebuild_thing_success($this, $thing_info) 
+
+This function will handle the case where a rebuild was successful, it
+should perform any final processing, for example moving destfile-new
+to destfile.  This function will be called in serial.
+
+=head3 sub rebuild_thing_fail($this, $thing_info)
+
+This function will handle the case where a rebuild failed, it should
+perform any final processing, for example printing out a message about
+the failed build.  If this function exits, other jobs which are
+running in parallel will continue in the background.
+
+=head3 sub rebuild_thing_message($this, $thing_info)
+
+This function should print out a message about what would be rebuild.
+By default it will only be called when C<batch-parallel> is running in
+no-execute mode.
+
+=head1 TODO
+
+Ought to have a function that lets rebuild_thing_fail decide to stop
+rebuilding on failure.
+
+=head1 BUGS
+
+Remarkably poor documentation.
+
+=head1 AUTHOR
+
+Eric Anderson <anderse@hpl.hp.com>
 

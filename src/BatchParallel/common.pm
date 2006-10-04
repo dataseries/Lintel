@@ -150,10 +150,15 @@ sub find_things_to_build {
 sub pre_exec_setup {
 }
 
+sub rebuild {
+    die "You need to override sub rebuild in your module";
+}
+
 # thing_info in all of these functions is the bit that was put in each
 # of the elements of the array returned by find_things_to_build
 
-sub rebuild_sanity_check { # attempt to verify that our find_things_to_build made the thing_info's
+# attempt to verify that our find_things_to_build made the thing_info's
+sub rebuild_sanity_check { 
     my($this,$thing_info) = @_;
 
     die "internal, mismatch of find_things_to_build and rebuild_thing_message"
@@ -209,7 +214,7 @@ sub rebuild_thing_fail {
     $this->rebuild_sanity_check($thing_info);
     my($prefix,$filepath,$destfile) = @$thing_info;
 
-    warn "child failed to make $destfile-new from $filepath\n";
+    warn "child failed to successfully make $destfile-new from $filepath\n";
 }
 
 1;

@@ -161,6 +161,9 @@ stringToDouble(const std::string &str)
     return ret;
 }
 
+// TODO: this seems to silently accept longs > 2^31-1 and truncates them to
+// 2^31-1.
+
 long
 stringToLong(const std::string &str, int base)
 {
