@@ -120,7 +120,7 @@ AC_ARG_ENABLE(stdio64,
   [  --enable-stdio64 enable the stdio64 routines on platforms that left them out ]
   [enable_stdio64=$enableval],
   [enable_stdio64=no])
-AM_CONDITIONAL(ENABLE_STDIO64, test $enable_stdio64 = yes)
+AM_CONDITIONAL(ENABLE_STDIO64, test "$enable_stdio64" = yes)
 
 ### The Random regression tests generates different output on different 
 ### machines (and possibly compilers) -- pick the appropriate file.
@@ -138,7 +138,7 @@ esac
 
 AC_SUBST(RANDOM_COMPARETO)
 
-AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel])
+AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel src/mercury-plot])
 
 EXPAND_VARIABLE
 expanded_datadir=`expand_variable $datadir`

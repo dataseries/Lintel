@@ -1,0 +1,1235 @@
+#!@PERL_BINARY@ -w
+# -*- Perl -*-
+#
+#  (c) Copyright 2004-2006, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# Script for running batch processing type operations, extended
+# by a module that controls how the jobs are selected and executed
+use strict;
+use DBI;
+use Term::ReadLine;
+use Data::ShowTable;
+use English;
+use FileHandle;
+use POSIX ":sys_wait_h";
+use Getopt::Long;
+use Safe;
+use Pod::Usage;
+@PERL_MODULES_INC_UNSHIFT@;
+use Plot::Mercury;
+
+eval "use Statistics::OLS;";
+my $have_statistics_ols = $@;
+
+$|=1;
+my $gnuplot_fifo;
+my $term = new Term::ReadLine 'Experiment Plotter';
+$term->ornaments("0");
+my $history_file = ".plot.history";
+my $user;
+my $password;
+my $db;
+my $print_manpage;
+my $success = GetOptions("dsn=s" => \$SSP::Mercury::Default_DSN,
+			 "db=s" => \$db,
+			 "user=s" => \$user,
+			 "password=s" => \$password,
+			 "history=s" => \$history_file,
+			 "man!" => \$print_manpage);
+pod2usage(-verbose => 2) if $print_manpage;
+eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
+
+die "Usage: $0 
+    [--db=<database-key>] # as specified in the file ~/.mercury-dbs or /etc/MercuryDBs
+    # with the format of each line either being a '#' comment or
+    # <key> <DSN> [user] [password]
+    [--dsn=<dbd spec, currently $SSP::Mercury::Default_DSN>]
+    # dsn can be stored in the environment variable MERCURY_DSN
+    # or in the file /etc/MercuryDSN
+    [--user=<user>] [--password=<password>]
+    [--history=<history-filename, default $history_file>]\n"
+    unless $success;
+
+if (defined $db) {
+    ($Plot::Mercury::Default_DSN,$user,$password) 
+	= getDBbykey($db,"$ENV{HOME}/.mercury-dbs");
+    ($Plot::Mercury::Default_DSN,$user,$password) 
+	= getDBbykey($db,"/etc/MercuryDBs")
+	    unless defined $Plot::Mercury::Default_DSN;
+    die "Unable to find database specification for '$db' in either $ENV{HOME}/.mercury-dbs or /etc/MercuryDBs"
+	unless defined $Plot::Mercury::Default_DSN;
+}
+
+if (defined $user) {
+  Plot::Mercury->connectToDB($Plot::Mercury::Default_DSN,$user,$password);
+}
+
+my $plotfiles = 0;
+my $command_error = 0; # Set this if there is an error evaluating a command
+		       # so that we can stop a 'history do' or other 
+		       # multi-part command; ** not completed as of 3Jan01 ** 
+
+unless (-t STDIN) {
+    # skip reading history, don't update it when done
+    while(<STDIN>) {
+	chomp;
+      	&docmd($_);
+	exit(1) if $command_error;
+    }
+    exit(0);
+}
+
+my @history;
+if (-f $history_file) {
+    open(HIST,$history_file) 
+	|| die "Unable to open $history_file for read: $!\n";
+    @history = <HIST>;
+    foreach $_ (@history) {
+	chomp;
+	$term->addhistory($_);
+    }
+    print "Loaded history from ${history_file}.\n";
+    close(HIST);
+}
+
+sub saveexit;
+sub help;
+sub sqlselect;
+sub htmlselect;
+sub sqlplot;
+sub barplot;
+sub sqlcmd;
+sub history;
+sub docmd;
+sub unplot;
+sub listplot;
+sub fnplot;
+sub replot;
+sub gnuplot;
+sub pngplot;
+sub psplot;
+sub plotwith;
+sub axplusb;
+sub default;
+sub fncmds;
+
+my $define_mode = 0;
+my @define;
+my $markerre;
+my $prompt = ">> ";
+while (defined ($_ = $term->readline($prompt))) {
+    $command_error = 0;
+    &docmd($_);
+}
+&saveexit;
+
+### QUESTION: Should this all be replaced by a bunch of objects
+### QUESTION: that have methods, so that extensibility is easier?
+
+sub docmd {
+    $_ = shift;
+    if ($define_mode) {
+	if(/^enddefine$/o) {
+	    $prompt = ">> ";
+	} else {
+	    push(@define,"$_\n");
+	    return;
+	}
+    }
+    if (defined $markerre) {
+	if ($_ =~ $markerre) {
+	    print "skip>> $_\n";
+	    $markerre = undef;
+	    $prompt = ">> ";
+	}
+	return;
+    }
+    if (/^select /o) {
+	push(@history,$_);
+	sqlselect($_);
+    } elsif (/^htmlselect /o) {
+	push(@history,$_);
+	htmlselect($_);
+    } elsif (/^sql\s+(\S.*)$/o) {
+	push(@history,$_);
+	sqlcmd($1);
+    } elsif (/^default\s+(\S.+)$/o) {
+	push(@history,$_);
+	default($1);
+    } elsif (/^plot /o) {
+	push(@history,$_);
+	sqlplot($_);
+    } elsif (/^barplot /o) {
+	push(@history,$_);
+	barplot($_);
+    } elsif (/^fnplot\s+(.+)/o) {
+	push(@history,$_);
+	fnplot($1);
+    } elsif (/^unplot\s*(\d+)?$/o) {
+	push(@history,$_);
+	unplot($1);
+    } elsif (/^replot$/o) {
+	push(@history,$_);
+	replot();
+    } elsif (/^listplot$/o) {
+	listplot;
+    } elsif (/^plotwith\s+((?:\d+)|(?:_)|(?:\*))\s+(\S.*)$/o) {
+	push(@history,$_);
+	plotwith($1,$2);
+    } elsif (/^plottitle\s+((?:\d+)|(?:_))\s+(\S.*)$/o) {
+	push(@history,$_);
+	plottitle($1,$2);
+    } elsif (/^gnuplot\s+(\S.*)$/o) {
+	push(@history,$_);
+	gnuplot($1);
+    } elsif (/^pngplot\s+(\S.*)$/o) {
+	push(@history,$_);
+	pngplot(0,$1);
+    } elsif (/^pngpsplot\s+(\S.*)$/o) {
+	push(@history,$_);
+	pngplot(1,$1);
+    } elsif (/^psplot\s+(\S.*)$/o) {
+	push(@history,$_);
+	psplot($1);
+    } elsif (/^help$/o) {
+	help;
+    } elsif (/^help\s+(.+)$/o) {
+	help($1);
+    } elsif (/^history skipto (\w+)\s*$/o) {
+	my $marker = $1;
+	$markerre = qr/^history marker $marker\s*$/;
+	print "skip>> ...\n";
+	$prompt = "skip>> ";
+    } elsif (/^history\s+(.+)$/o) {
+	push(@history,$_);
+	history($1);
+    } elsif (/^source\s+(.+)$/o) {
+	push(@history,$_);
+	history("run $1");
+    } elsif (/^exit$/o || /^quit$/o) {
+	saveexit;
+    } elsif (/^axplusb\s+(\d+)$/o) {
+	push(@history,$_);
+	axplusb($1);
+    } elsif (/^define$/o) {
+	push(@history,$_);
+	warn "Already in define mode!\n" if $define_mode;
+	$define_mode = 1;
+	$prompt = "define>> ";
+    } elsif (/^enddefine$/o) {
+	push(@history,$_);
+	if (!$define_mode) {
+	    warn "Not in define mode!\n";
+	    return;
+	}
+	eval join('',"package MercuryEval;\n",@define);
+	if ($@) {
+	    warn "Define failed: $@\n";
+	    $command_error = 1;
+	}
+	@define = ();
+	$define_mode = 0;
+    } elsif (/^fncmds\s+(\S.+)$/o) {
+	fncmds($1);
+    } elsif (/^\S.+\(.*\)/o) {
+	fncmds($_);
+    } elsif (/^\s*$/o) {
+    } elsif (/^man$/o) {
+	pod2usage(-verbose => 2, -exitval => 'NOEXIT');
+    } else {
+	print "Unknown command '$_'; try help\n";
+	$command_error = 1;
+    }
+    shift @history if @history > 100;
+}
+
+sub savehistory {
+    if (open(HIST,">$history_file")) {
+	print HIST join("\n",@history),"\n";
+	close(HIST);
+	print "Saved history to $history_file\n";
+    } else {
+	print "Warning, unable to save history to $history_file: $!\n";
+    }
+}
+
+sub history {
+    $_ = shift;
+
+    if (/^save$/o) {
+	savehistory;
+    } elsif (/^clear$/o) {
+	@history = ();
+    } elsif (/^load\s+(.+)$/o) {
+	if (open(HIST,$1)) {
+	    print "Loading history from $1\n";
+	    while(<HIST>) {
+		chomp;
+		$term->addhistory($_);
+	    }
+	} else {
+	    print "Unable to open $1: $!\n";
+	}
+    } elsif (/^run\s+(.+)$/o) {
+	if (open(HIST,$1)) {
+	    print "Running history from $1\n";
+	    while(<HIST>) {
+		next if /^#/o;
+		next if /^\s*$/o;
+		print "load>> $_" unless defined $markerre;
+		chomp;
+		&docmd($_);
+		pop(@history) if $history[$#history] eq $_;
+		last if $command_error;
+	    }
+	} else {
+	    print "Unable to open $1: $!\n";
+	}
+	close(HIST);
+    } elsif (/^marker\s+(\w+)$/o) {
+	# marker; from probably commented out skipto.
+    } else {
+	chomp;
+	print "Unknown command 'history $_'; try help history\n";
+    }
+}
+		
+sub saveexit {
+    if (defined $gnuplot_fifo) {
+	print $gnuplot_fifo "exit\n";
+    }
+    unlink("/tmp/.plot.fifo.$$");
+    for(my $i=0;$i<$plotfiles;++$i) {
+	unlink("/tmp/.plot.data.$$-$i");
+    }
+    savehistory;
+    exit(0);
+}
+	
+sub helphistory {
+    print "history save\n";
+    print "history clear\n";
+    print "history load <filename> \# loads filename into history\n";
+    print "history run <filename> \# runs comannds from filename\n";
+    print "source <filename> \# same as history run <filename>\n";
+    print "history skipto <markername> \# useful for scripts, skips ahead to a marker.\n";
+    print "history marker <markername> \# useful associated with script.\n";
+}
+
+sub help {
+    if (@_ > 0) {
+	$_ = shift;
+	if ($_ eq 'history') {
+	    helphistory;
+	} else {
+	    print "Don't have any help on '$_'; try just help\n";
+	}
+	return;
+    }
+    print "select <sql select arguments>\n";
+    print "plot <sql select arguments>, with columns named x,{y,y2}, [yerr,(ylo,yhi)]\n";
+    print "sql <sql statement>\n";
+    print "listplot\n";
+    print "unplot [<plotnum>] \# no plotnum = all\n";
+    print "fnplot <function>\n";
+    print "barplot <variable> [,<error-variable>] [,<error-variable>] major <arribute>=\{comma sep value list\} minor <arribute>=\{comma sep value list\} <sql command>\n  If there is one error varibale defined, then it is used as +- delta error. \n  If there are two variables specified, the first one is used as the \"low\" value and the second as the \"high\" value\n";
+    print "plotwith <plotnum|_ for latest,* for default> <with...>\n";
+    print "    # 'plotwith * undef' unsets the default plotwith.\n";
+    print "plottitle <plotnum|_ for latest> <title | notitle>\n";
+    print "axplusb <plotnum> \# Calculate (and graph) the best ax + b fit to the data\n";
+    print "default (table|where) <thing>\n";
+    print "psplot [--nocolor] [--mode={eps,portrait,landscape=default}] [--fontsize=<int>] <filename>\n";
+    print "pngplot {psplot args} <filename> [width height] \# default width=1024, height=768\n";
+    print "pngpsplot {psplot args} <base-filename> [width height] \# same as pngplot, but saves both .ps and .png versions of base-filename\n";
+    print "define ... enddefine \# Specify perl code to be evaluated\n";
+    print "source <filename> \# run commands from filename\n";
+    print "fncmds <code> # evaluate code, and execute the commands returned by it.\n";
+    print "help [history]\n";
+    print "exit or quit\n";
+}
+
+
+my $default_table;
+my $default_where;
+my $default_plotwith;
+
+sub MercuryEval::get_default_where {
+    return $default_where;
+}
+
+sub adjust_sql {
+    ($_) = @_;
+
+    my $start = $_;
+    # Sql form is select ... from ... where ... group ... having ... order ... limit ...
+
+    if (defined $default_table) {
+	unless(/\bfrom\b/o) {
+	    if (s/\bwhere\b/ from $default_table where/o) {
+	    } elsif (s/\bgroup\b/ from $default_table group/o) {
+	    } elsif (s/\bhaving\b/ from $default_table having/o) {
+	    } elsif (s/\border\b/ from $default_table order/o) {
+	    } elsif (s/\blimit\b/ from $default_table limit/o) {
+	    } else {
+		$_ .= " from $default_table";
+	    }
+	}
+    }
+    if (defined $default_where) {
+	if (s/\bwhere\s(.*?)(\b(group)|(having)|(order)|(limit)\b)/where ($default_where) and ($1) $2/o) {
+	} elsif (s/\bwhere\s(.*)$/where ($default_where) and ($1)/o) {
+	} elsif (s/\bgroup\b/ where ($default_where) group/o) {
+	} elsif (s/\bhaving\b/ where ($default_where) having/o) {
+	} elsif (s/\border\b/ where ($default_where) order/o) {
+	} elsif (s/\blimit\b/ where ($default_where) limit/o) {
+	} else {
+	    $_ .= " where ($default_where)";
+	}
+    }
+    print "Adjusted sql command (orig, adjusted):\n$start\n$_\n"
+	if $_ ne $start;
+    return $_;
+}
+
+sub default {
+    $_ = shift;
+
+    if (/^table\s+(\w+)$/o) {
+	$default_table = $1;
+	$default_table = undef if $default_table eq 'none';
+	print "Set Default table to $default_table\n";
+    } elsif (/^where\s+(.+)$/o) {
+	$default_where = $1;
+	$default_where = undef if $default_where eq 'none';
+    } else {
+	print "Unknown command 'default $_'
+default table <tablename|none>
+     or where <where-clause|none>
+     table will be used if no from clause exists.
+     where clause will always be added\n";
+    }
+}
+
+sub sqlselect {
+    my $cmd = shift;
+
+    $cmd = &adjust_sql($cmd);
+    my $sth = eval { sql_exec($cmd) };
+    if ($@) {
+	print "$@\n";
+	return;
+    }
+    
+    my $rows = $sth->rows;
+    my @types = map { "text" } @{$sth->{NAME}};
+    
+    my @first_rows;
+    my @widths;
+    my $fetch_initial_rows = 1000;
+    while(my @row = $sth->fetchrow_array) {
+	push(@first_rows,\@row);
+	for(my $i=0;$i<@row;++$i) {
+	    $widths[$i] ||= 0;
+	    $widths[$i] = length $row[$i] if length $row[$i] > $widths[$i];
+	}
+	last if @first_rows >= $fetch_initial_rows;
+    }
+    my $total_width = 0; map { $total_width += $_ } @widths;
+    my $lesspid;
+    if ($total_width * $rows > 50*80) {
+	open(SAVESTDOUT,">&STDOUT");
+	select(SAVESTDOUT);
+	$lesspid = open(STDOUT,"| less");
+	select(STDOUT);
+	unless (defined $lesspid && $lesspid > 0) {
+	    warn "Unable to start less; lots of output about to occur.\n";
+	    sleep(2);
+	    open(STDOUT,">&SAVESTDOUT") || die "Unable to un-redirect STDOUT: $!\n";
+	    $lesspid = undef;
+	}
+    }
+    push(@first_rows,[]) if @first_rows < $fetch_initial_rows;
+    ShowBoxTable($sth->{NAME},\@types,\@widths,
+		 sub { return undef if $_[0] == 1;
+		       return @{shift @first_rows} if @first_rows > 0;
+		       return $sth->fetchrow_array; });
+    if (defined $lesspid) {
+        close(STDOUT);
+        waitpid ($lesspid,0);
+        open(STDOUT,">&SAVESTDOUT") || die "Unable to un-redirect STDOUT: $!\n";
+        select(STDOUT);
+    }
+}
+
+sub htmlselect {
+    my $cmd = shift;
+
+    my $fh;
+    if ($cmd =~ s/^htmlselect\s*-o\s*(\S+)\s+/htmlselect /o) {
+	my $filename = $1;
+	$fh = new FileHandle ">$filename" or die "Can't open $filename for write: $!\n";
+    } else {
+	$fh = *STDOUT;
+    }
+    $cmd =~ s/^html//o;
+    $cmd = &adjust_sql($cmd);
+    my $sth = eval { sql_exec($cmd) };
+    if ($@) {
+	print "$@\n";
+	return;
+    }
+    
+    my $rows = $sth->rows;
+    my @types = map { "text" } @{$sth->{NAME}};
+    
+    my $oldfh = select($fh);
+    print "<TABLE BORDER=\"2\">\n";
+    print "  <TR>\n   ";
+    foreach my $header (@{$sth->{NAME}}) {
+	print " <TH>$header</TH>";
+    }
+    print "\n  </TR>\n";
+    while(my @row = $sth->fetchrow_array) {
+	print "  <TR>\n   ";
+	foreach my $v (@row) {
+	    print " <TD>$v</TD>";
+	}
+	print " </TR>\n";
+    }
+    print "</TABLE>\n";
+    select($oldfh);
+}
+
+sub sqlcmd {
+    my $cmd = shift;
+
+    my $sth = eval {sql_exec($cmd) };
+    if ($@) {
+	print "$@\n";
+	return;
+    }
+    print "Affected " , $sth->rows, " rows.\n";
+}
+
+my @plots;
+
+sub refresh_plot {
+    my $t;
+    my @foo = map { $t = qq!$_->{data} ! if defined $_->{data};
+		    $t = qq!$_->{function} ! if defined $_->{function};
+		    $t .= " axes $_->{axes} " if defined $_->{axes}; 
+		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle"; 
+		    $t .= " with $_->{with}" if defined $_->{with}; 
+		    $t; } @plots;
+    &start_gnuplot;
+    if (@foo == 0) {
+	print $gnuplot_fifo "plot x\n";
+    } else {
+	print $gnuplot_fifo "plot ", join(", ",@foo), "\n";
+    }
+}
+
+sub sqlplot {
+    my $cmd = shift;
+
+    $cmd = &adjust_sql($cmd);
+    if ($cmd =~ /\border\b/o) {
+	# Leave it alone, user specified order, plot goes in that order.
+    } elsif ($cmd =~ s/\blimit\b/ order by x limit /o) {
+    } else {
+	$cmd .= " order by x";
+    }
+    $cmd =~ s/^plot /select /o;
+    my $sth = eval {sql_exec($cmd) };
+    if ($@) {
+	print "$@\n";
+	$command_error = 1;
+	return;
+    }
+    if ($sth->rows == 0) {
+	print "No rows return by query $cmd\n";
+	return;
+    }
+    my @names = @{$sth->{NAME}};
+    my ($x,$y,$y2,$yerr,$ylo,$yhi);
+    my %known_columns = ( 'x' => \$x, 'y' => \$y, 'y2' => \$y2, 'yerr' => \$yerr, 'ylo' => \$ylo, 'yhi' => \$yhi);
+    my %found;
+    for(my $i=0;$i<@names;++$i) {
+	my $t;
+	if (defined $known_columns{$names[$i]}) {
+	    $sth->bind_col($i+1,$known_columns{$names[$i]});
+	    $found{$names[$i]} = $known_columns{$names[$i]};
+	} else {
+	    warn "Don't know how to plot column name $names[$i]\n";
+	}
+    }
+    my $writefn;
+    my $plotfn;
+    my $filename = "/tmp/.plot.data.$$-$plotfiles";
+    unless(open(OUT,">$filename")) {
+	print "Unable to open $filename for write: $!\n";
+	return;
+    }
+
+    if (0) {
+    } elsif ($found{x} && $found{y} && $found{yerr}) {
+	$writefn = sub { print OUT "$x $y $yerr\n"; };
+	$plotfn = \&plotxy_yerr;
+    } elsif ($found{x} && $found{y} && $found{ylo} && $found{yhi}) {
+	$writefn = sub { print OUT "$x $y $ylo $yhi\n"; };
+	$plotfn = \&plotxy_yhilo;
+    } elsif ($found{x} && $found{y}) {
+	$writefn = sub { print OUT "$x $y\n"; };
+	$plotfn = \&plotxy;
+    } elsif ($found{x} && $found{y2} ) {
+	$writefn = sub { print OUT "$x $y2\n"; };
+	$plotfn = \&plotxy2;
+    } else {
+	print "Don't know how to plot results.\n";
+	return;
+    }
+    my $warned = 0;
+    FETCH: while(defined $sth->fetch) {
+	while(my($k,$v) = each %found) {
+	    if (!defined $$v) {
+		warn "Null values returned by query.\n"
+		    unless $warned;
+		$warned = 1;
+		next FETCH;
+	    }
+	}
+	&$writefn;
+    }
+    close(OUT);
+    my $newp = &$plotfn($filename,$cmd);
+    push(@plots,$newp);
+    refresh_plot;
+    ++$plotfiles;
+}
+
+
+sub barplot {
+# plots a bar-graph with bars for each  "minor" attribute clustered togeter and the clusters for each "major" attribute seperated.
+    # some constants
+    my $box_width=0.9;
+    my $group_seperation=3;
+
+    ($_) =@_;
+    m!barplot\s+(\S+)\s+major\s+([^\s=]+)\s*=\s*\{([^\}]*)\}\s+minor\s+([^\s=]+)\s*=\s*\{([^\}]*)\}(.*)$!o;
+    my $major_attribute = $2;
+    my @major_value_list = split ',', $3;
+    my $minor_attribute = $4;
+    my @minor_value_list = split ',', $5;
+    my $cmd = "$1 $6";
+    my $major_attribute_where;
+    my $count = 0;
+    my $minor_value;
+    my $major_value;
+    foreach $major_value (@major_value_list) {
+	if ($count == 0) {
+	    $major_attribute_where = "($major_attribute = $major_value)";
+	    $count++;
+	} else {
+	    $major_attribute_where .= " or ($major_attribute = $major_value)";
+	}
+    }
+    $cmd = &adjust_sql($cmd);
+    my $minor_index = 1;
+    my $minor_length = scalar @minor_value_list;
+    foreach $minor_value (@minor_value_list) {
+	my $filename = "/tmp/.plot.data.$$-$plotfiles";
+	unless(open(OUT,">$filename")) {
+	    print "Unable to open $filename for write: $!\n";
+	    return;
+	}
+	my $this_where = "($minor_attribute = $minor_value)";
+	if ($major_attribute_where == '') {
+	    $this_where .= " and ($major_attribute_where)";
+	} 
+	my $sql_query = "select $cmd "; # space at end of $cmd important for the following inserts to proceed correctly!
+	if (/where/) {
+	    $sql_query =~ m!select\s+(\S+)\s+from\s+(\S+)\s+where(.+)$!o;
+	    $sql_query = "select $1 from $2 where $this_where and $3";
+	} else {
+	    $sql_query =~ m!select\s+(\S+)\s+from\s+(\S+)(.*)$!o;
+	    $sql_query = "select $1 from $2 where $this_where $3"; # <--- here
+	}
+  	my $sth = eval {sql_exec($sql_query) };
+  	if ($@) {
+  	    print "$@\n";
+  	    $command_error = 1;
+  	    return;
+  	}
+  	if ($sth->rows == 0) {
+  	    print "No rows return by query $sql_query\n";
+  	    return;
+  	}
+        my @names = @{$sth->{NAME}};
+	my $y='';
+	my $yerr=0.0;
+	my $yerr_hi='';
+	$sth->bind_col(1,\$y);
+	$sth->bind_col(2,\$yerr); # or yerr_lo if third column is present
+	$sth->bind_col(3,\$yerr_hi) if @names >= 3;
+  	my $warned = 0;
+	my $major_index = $minor_index;
+        FETCH: while(defined $sth->fetch) {
+	    if ($y=='') {
+		warn "Null values returned by query.\n"
+		    unless $warned;
+		$warned = 1;
+		next FETCH;
+	    }
+	    my $ylow = $y; 
+	    my $yhi = $y;
+	    if ($yerr_hi=='') {
+		$ylow -= $yerr;
+		$yhi += $yerr;
+	    } else {
+		$ylow = $yerr;
+		$yhi = $yerr_hi;
+	    }
+	    print OUT "$major_index $y $ylow $yhi $box_width\n"; 
+	    $major_index+=($minor_length + $group_seperation);
+	    $y = ''; $yerr = 0.0; $yerr_hi = ''; 
+	}
+	close(OUT);
+	my $newp = plotboxes($filename,$minor_value,$cmd);
+	push(@plots,$newp);
+	++$plotfiles;
+	$minor_index++;
+    }
+    refresh_plot;
+    my $major_xtic = ($minor_length/2.0);
+    my $xtics_cmd = '';
+    $count=0;
+    foreach $major_value (@major_value_list) {
+	if ($count == 0) {
+	    $xtics_cmd = "set xtics ($major_value $major_xtic";
+	    $count++;
+	} else {
+	    $xtics_cmd .= "\, $major_value $major_xtic";
+	}
+	$major_xtic += ($minor_length + $group_seperation);
+    }
+    $xtics_cmd .= ")";
+    gnuplot('set ticscale 0');
+    gnuplot($xtics_cmd);
+}
+
+
+sub start_gnuplot {
+    return if defined $gnuplot_fifo;
+    print "Starting Gnuplot...\n";
+    my $fifoname = "/tmp/.plot.fifo.$$";
+    system("mkfifo $fifoname")
+	unless -e $fifoname;
+    die "Couldn't make fifo $fifoname\n"
+	  unless -e $fifoname;
+    my $pid = fork;
+    if ($pid == 0) {
+	  eval {exec "gnuplot < $fifoname";};
+	  exit(1);
+    }
+    select(undef,undef,undef,0.25); # wait a little for it to start.
+    waitpid($pid,&WNOHANG);
+    unless (kill (0,$pid) == 1) {
+	  die "Unable to start gnuplot!\n";
+    }
+    print "done.\n";
+    $gnuplot_fifo = new FileHandle ">$fifoname"
+	  or die "Unable to open $fifoname: $!";
+    $gnuplot_fifo->autoflush(1);
+}
+
+sub gnuplot {
+    &start_gnuplot;
+    print $gnuplot_fifo "$_[0]\nreplot\n";
+}
+
+sub psplot {
+    my ($args) = @_;
+
+    local @ARGV = split(/\s+/o,$args);
+    my $mode = 'landscape';
+    my $color = 1;
+    my $fontsize = 18;
+    my $success = GetOptions("mode=s" => \$mode,
+			     "color!" => \$color,
+			     "fontsize=i" => \$fontsize);
+    if (@ARGV != 1 || $ARGV[0] =~ /\"/o 
+	|| $mode !~ /^(eps)|(portrait)|(landscape)$/o) {
+	print "Usage: psplot [--mode={eps,portrait,landscape=default}] [--nocolor] <filename>\n";
+	print "ARGS: '@ARGV'\n";
+	return 0;
+    }
+    
+    my $use_color = $color ? "color" : "monochrome";
+    print $gnuplot_fifo "set output \"$ARGV[0]\"\n";
+    print $gnuplot_fifo "set terminal postscript $mode enhanced $use_color solid $fontsize\n";
+    print $gnuplot_fifo "replot\n";
+    print $gnuplot_fifo "set output\n";
+    print $gnuplot_fifo "set terminal x11\n";
+    return 1;
+}
+
+sub pngplot {
+    my ($save_ps,$args) = @_;
+
+    $|=1;
+    my @args = split(/\s+/o,$args);
+    my ($width,$height) = (1024,768);
+    if (@args >= 3 && $args[@args-1] =~ /^\d+$/o &&
+	$args[@args-2] =~ /^\d+$/o) {
+	$height = pop @args;
+	$width = pop @args;
+    }
+    my $filename = pop @args;
+    my $png_filename = $filename;
+    $png_filename .= ".png" if $save_ps;
+    unshift(@args,"--mode=eps");
+    push(@args,"psplot-$$..ps");
+    print "pngplot: psplot... ";
+    unless (psplot(join(' ',@args))) {
+	print "psplot to psplot-$$..ps failed; can't pngplot.\n";
+	return 0;
+    }
+    # Wait for stability on gnuplot writing the ps file...
+    while(! -f "psplot-$$..ps") {
+	print "waiting(nops psplot-$$..ps)... ";
+	sleep(1);
+    }
+    my $cur_size = -s "psplot-$$..ps";
+    while(1) {
+	print "waiting(size $cur_size)... ";
+	sleep(5);
+	last if $cur_size > 0 && $cur_size == -s "psplot-$$..ps";
+	$cur_size = -s "psplot-$$..ps";
+    }
+    print "pstopnm... ";
+    my $dblw = $width * 2;
+    my $dblh = $height * 2;
+    my $cmd = "pstopnm -xsize $dblw -ysize $dblh -xborder .025 -yborder .025 psplot-$$..ps >err.$$ 2>&1";
+    my $ret = system($cmd);
+    if ($ret != 0) {
+	print "Error running '$cmd'\n";
+	$command_error = 1;
+	return 0;
+    }
+    if (!-f "psplot-$$.001.ppm") {
+	print "psplot or pstopnm error; didn't get psplot-$$.001.ppm\n";
+	return 0;
+    }
+    if (-s "psplot-$$.001.ppm" < $dblw * $dblh * 3) {
+	print "psplot or pstopnm error; psplot-$$.001.ppm too small\n";
+	return 0;
+    }
+    if (-f "psplot-$$.002.ppm") {
+	print "psplot or pstopnm error; got psplot-$$.002.ppm\n";
+	return 0;
+    }
+    unlink ("err.$$");
+    print "pnmscale... ";
+    $cmd = "pnmscale 0.5 psplot-$$.001.ppm >psplot-$$.001s.ppm";
+    $ret = system($cmd);
+    if ($ret != 0) {
+	print "Error running '$cmd'\n";
+	return 0;
+    }
+    if (-s "psplot-$$.001.ppm" < $width * $height * 3) {
+	print "pnmscale error; psplot-$$.001s.ppm too small\n";
+	return 0;
+    }
+    
+    print "pnmtopng... ";
+    $cmd = "pnmtopng -compression 9 psplot-$$.001s.ppm >$png_filename";
+    $ret = system($cmd);
+    if ($ret != 0) {
+	print "Error running '$cmd'\n";
+	return 0;
+    }
+    if (-s $png_filename < 1000) {
+	print "pnmtopng error; $png_filename too small\n";
+	return 0;
+    }
+    print "done.\n";
+    if ($save_ps) {
+	unless(rename("psplot-$$..ps","${filename}.ps")) {
+	    print "error in rename: $!";
+	    return 0;
+	}
+    } else {
+	unlink("psplot-$$..ps");
+    }
+    unlink("psplot-$$.001.ppm","psplot-$$.001s.ppm");
+    return 1;
+}
+
+sub replot {
+    my @save_plots = @plots;
+    @plots = ();
+    for(my $i=0;$i<@save_plots;++$i) {
+	next unless defined $save_plots[$i]->{sql};
+	sqlplot($save_plots[$i]->{sql});
+	my $file = $plots[$i]->{data};
+	$plots[$i] = $save_plots[$i];
+	$plots[$i]->{data} = $file;
+    }
+    refresh_plot;
+}
+
+sub default_plotinfo {
+    my($filename, $sql_cmd) = @_;
+
+    my $ret = { 'data' => qq!"$filename"!,
+		'sql' => $sql_cmd,
+		'title' => $sql_cmd };
+    $ret->{'with'} = $default_plotwith if defined $default_plotwith;
+    return $ret;
+}
+
+sub plotxy_yerr {
+    my($filename, $sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{with} = 'yerrorbars';
+    return $p;
+}
+
+sub plotxy_yhilo {
+    my($filename, $sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{with} = 'yerrorbars';
+    return $p;
+}
+
+sub plotxy {
+    my($filename,$sql_cmd) = @_;
+
+    return default_plotinfo($filename,$sql_cmd);
+}
+
+sub plotxy2 {
+    my($filename,$sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{axes} = 'x1y2';
+    gnuplot('set ytics nomirror');
+    gnuplot('set y2tics');
+    return $p;
+}
+
+sub plotboxes {
+    my ($filename,$minor_value,$sql_cmd) = @_;   
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{with} = 'boxerrorbars';
+    $p->{title} = $minor_value;
+    return $p;
+}
+
+sub listplot {
+    my $i = 0;
+    foreach $_ (@plots) {
+	print "$i: $_->{title}\n";
+	++$i;
+    }
+}
+
+sub unplot {
+    my ($plotnum) = @_;
+
+    &start_gnuplot;
+    if (defined $plotnum) {
+	splice(@plots,$plotnum,1);
+    } else {
+	@plots = ();
+	print $gnuplot_fifo "reset\n";
+    }
+    refresh_plot;
+}
+
+sub fnplot {
+    my ($function) = @_;
+    
+    push(@plots,{ 'function' => $function,
+		  'title' => $function });
+
+    refresh_plot;
+}
+
+sub plotwith {
+    my($plot,$with) = @_;
+
+    if ($plot eq '*') {
+	if ($with eq 'undef') {
+	    $default_plotwith = undef;
+	    return;
+	}
+	print "default_plotwith = $default_plotwith\n";
+	$default_plotwith = $with;
+	foreach my $plot (@plots) {
+	    next if defined $plot->{with};
+	    $plot->{with} = $default_plotwith;
+	}
+	refresh_plot;
+	return;
+    }
+	
+    $plot = @plots - 1 if ($plot eq '_');
+    if ($plot > @plots) {
+	print "No plot number $plot!\n";
+	return;
+    }
+    $plots[$plot]->{with} = $with;
+    refresh_plot;
+}
+
+sub plottitle {
+    my($plot,$title) = @_;
+
+    $plot = @plots - 1 if ($plot eq '_');
+    if ($plot > @plots || $plot < 0) {
+	print "No plot number $plot!\n";
+	return;
+    }
+    if ($title =~ /\"/o) {
+	print "Error: Title has \"'s in it, which will annoy gnuplot.\n";
+	$command_error = 1;
+	return 0;
+    }
+    $plots[$plot]->{title} = $title;
+    delete $plots[$plot]->{title} if $title eq 'notitle';
+    refresh_plot;
+}
+
+my $debug_axplusb = 0;
+
+sub axplusb {
+    my ($plot) = @_;
+
+    if ($have_statistics_ols) {
+	print "do not have Statistics::OLS installed, unable to perform axplusb calculation\n";
+	print "error on use was: $have_statistics_ols\n";
+	return;
+    }
+    if ($plot >= @plots) {
+	print "No plot number $plot!\n";
+	return;
+    }
+    if ($plots[$plot]->[0] !~ /^\"(.+)\"$/o) {
+	print "Plot number $plot isn't a data plot??\n";
+	return;
+    }
+    my $filename = $1;
+    if (! -r $filename) {
+	print "Plot number $plot gives filename $filename, but the file is gone??\n";
+	return;
+    }
+    open(FILE,$filename) || die "Unable to read $filename: $!\n";
+    my @x;
+    my @y;
+    while(<FILE>) {
+	if (!/^(\S+) (\S+)$/o) {
+	    chomp;
+	    print "Unknown line '$_' in $filename\n";
+	    return;
+	}
+	push(@x,$1);
+	push(@y,$2);
+    }
+
+    my $npoints = @x;
+    if ($npoints < 3) {
+	print "Not enough points to do fit.\n";
+	return;
+    }
+    $|=1;
+    my $ls = new Statistics::OLS;
+    my $best_split = -1;
+    my $best_sigma = 100;
+    my ($best_la,$best_lb,$best_ra,$best_rb);
+    for (my $i=0;$i<$npoints;++$i) {
+	# Point $i goes to the left.
+	print "Try fit with split at $i ... "
+	    if $debug_axplusb;
+	
+
+	my ($sigma_left, $l_a,$l_b);
+	my @tx = @x[0..$i];
+	my @ty = @y[0..$i];
+	if (@tx >= 3) {
+	    $ls->setData(\@tx,\@ty) || die "Failed1" . $ls->error();
+	    $ls->regress() || die "Failed2" . $ls->error();
+	    $sigma_left = $ls->sigma();
+	    ($l_b,$l_a) = $ls->coefficients();
+	    printf("left=%.6f * x + %.6f, %.6f ",$l_a,$l_b,$sigma_left)
+		if $debug_axplusb;
+	}
+
+	my ($sigma_right,$r_a,$r_b);
+	@tx = @x[$i+1..$npoints-1];
+	@ty = @y[$i+1..$npoints-1];
+	if (@tx >= 3) {
+	    $ls->setData(\@tx,\@ty) || die "Failed3";
+	    $ls->regress() || die "Failed4";
+	    $sigma_right = $ls->sigma();
+	    ($r_b,$r_a) = $ls->coefficients();
+	    printf("right=%.6f * x + %.6f, %.6f ",$r_a,$r_b,$sigma_right)
+		if $debug_axplusb;
+	} 
+
+	$sigma_left = $sigma_right unless defined $sigma_left;
+	$sigma_right = $sigma_left unless defined $sigma_right;
+	
+	my $sigma_sum = $sigma_left + $sigma_right;
+	
+	if ($sigma_sum < $best_sigma) {
+	    print "**BEST**"
+		if $debug_axplusb;
+	    $best_split = $i;
+	    $best_sigma = $sigma_sum;
+	    $best_la = $l_a;
+	    $best_lb = $l_b;
+	    $best_ra = $r_a;
+	    $best_rb = $r_b;
+	}
+	print "\n"
+	    if $debug_axplusb;
+    }
+    if ($best_split>= 0) {
+	$best_sigma = sprintf("%.6f",$best_sigma);
+	print "Found best ($best_sigma) as: ";
+	if (defined $best_la) {
+	    printf("0..$best_split = %.6f * x + %.6f ",$best_la,$best_lb);
+	} else {
+	    print "0..$best_split = n/a ";
+	}
+	if (defined $best_ra) {
+	    printf("%d..%d = %.6f * x + %.6f ",$best_split+1,$npoints-1,
+		   $best_ra,$best_rb);
+	} else {
+	    printf("%d..%d = na ",$best_split+1,$npoints-1);
+	}
+	print "\n";
+    }
+}
+
+sub fncmds {
+    my($cmd) = @_;
+
+    my $result = eval("package MercuryEval;\n$cmd");
+    if ($@) {
+	warn "fncmds ($cmd) failed: $@\n";
+	$command_error = 1;
+	return;
+    }
+    my @result = split(/\n/o,$result);
+    foreach my $i (@result) {
+	next if $i =~ /^\s*$/o;
+	print "fncmds>> $i\n";
+	&docmd($i);
+	last if $command_error;
+    }
+}
+
+sub getDBbykey {
+    my($dbkey,$file) = @_;
+
+    return () unless -r $file;
+    my $fh = new FileHandle $file
+	or die "Unable to open $file for read: $!";
+    while(<$fh>) {
+	chomp;
+	if (/^$dbkey\s+(.+)$/) {
+	    my $bits = $1;
+	    $bits =~ s/\s+$//o;
+	    my @bits = split(/\s+/,$bits);
+	    die "Invalid line in $file: '$_'"
+		if @bits < 1 || @bits > 2;
+	    die "Invalid DSN '$bits[0]' in $file"
+		unless $bits[0] =~ /^DBI:/o;
+	    return @bits;
+	}
+    }
+    return ();
+}
+
+__END__
+
+=pod
+
+=head1 NAME
+
+mercury-plot - plot data out of an SQL database
+
+=head1 SYNOPSIS
+
+% mercury-plot [--dsn=DBI dsn spec] [--db=<database-key>] 
+               [--user=<user>] [--password=<password>]
+               [--history=<history filename>]
+
+=head1 MERCURY COMMANDS
+
+Inside of a file for input to mercury, or typed in at the mercury prompt:
+
+=head2 plot I<sql statement>
+
+C<plot> is the primary command that generates plots in
+C<mercury-plot>.  It takes as an argument a generic sql statement with
+the expectation that some of the columns will have special names that
+it will use in order to generate the plot.  In this version, the
+special names are x, y, y2, yerr, ylo, yhi.  A plot with x, y will
+generate a simple scatter or line plot.  Using y2 instead of y will
+plot against the second axis on the plot.  Adding in yerr will add in
+error bars, and explicit tops and bottoms for the error bars can be
+generated with ylo and yhi.
+
+=head3 a few examples 
+
+	plot step as x, nluns as y where variant = 1
+	plot iosize as x, max(iops) as y where runcount = 1 and stripesize = 256 group by iosize
+	plot iosize as x, avg(iops) as y, stddev(iops) as yerr where runcount = 1 group by iosize
+
+=head2 psplot [--nocolor] [--mode={eps,portrait,landscape}] [--fontsize=<int>] I<filename>
+
+C<psplot> is the primary output mechanism in mercury-plot.  It
+generates an output filename based on the currently plotted data.  The
+options behave as expected; C<--nocolor> forces a monochrome plot.
+C<--mode=...> selects a mode for the plot, the default is landscape,
+and C<--fontsize=...> specifies a fontsize.
+
+=head2 pngplot I<psplot arguments> I<filename> [I<width> I<height>]
+
+C<pngplot> generates a png version of the currently displayed graph by
+first generating postscript and then converting it to png.  This
+method avoids the problem of getting different output from the ps and
+png drivers in gnuplot.  The default width x height is 1024x768
+
+=head2 pngpsplot I<psplot arguments> I<basename> [I<width> I<height>]
+
+C<pngpsplot> generates both I<basename>.ps and I<basename>.png, it is
+as if the obvious pair of pngplot and psplot commands were executed,
+but it runs more efficiently since it only has to generate the
+postscript once.
+
+=head2 default table I<tablename>
+
+Sets the default table for plot commands so that it does not need to
+be repeated on every line.
+
+=head2 default where I<sql where clause>
+
+Sets the default where clause for plot commands so that it does not
+need to be repeated on every line.  Can be combined with additional
+where clauses on the individual plot lines so that this acts as a poor
+mans table view.  For example: C<default where Disk = 6 and op = 'read'>
+
+=head2 gnuplot I<gnuplot command>
+
+Sends some command directly through to gnuplot for processing, for example:
+C<gnuplot set logscale x>, or C<gnuplot set yrange [40:600]>
+
+

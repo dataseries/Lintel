@@ -6,7 +6,7 @@
 #
 set -e
 prefix=@prefix@
-datadir=@datadir@
+datadir=@expanded_datadir@
 
 if [ ! -f configure.ac ]; then
    echo "Usage: $0 (in directory where configure.ac exists)"

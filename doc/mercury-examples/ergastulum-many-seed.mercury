@@ -1,0 +1,230 @@
+default table erg_many_seeds_derived
+plotwith * boxes lw 1.5
+
+define
+my @interesting_exps;
+
+sub init_interesting 
+{ 
+    return if @interesting_exps > 0;
+    print "Cacheing interesting experiments...\n";
+    my $sth = sql_exec("select expname, count(*) as interesting_costrats from erg_many_seeds_costrats where costrat < avg_costrat || groupcount/expcount > 0.01 group by expname having interesting_costrats > 1 order by expname");
+    while(my @row = $sth->fetchrow_array) {
+        push(@interesting_exps,$row[0]);
+    }
+    return "";
+}
+
+# two tpcd-4x, two tpcc, one openmail, three rdw, two tpcd300
+# three galaxy, six optimus2, one optimus1
+# 3 r5, 5 free, 2 r1
+
+# optimus1 turns out to be pretty uninteresting, max interesting costrat is 4
+# 3 rdw, 3 tpcd300, 2 tpcd-4x, 1 om, 1 tpcc-mid
+# 2 galaxy, 8 optimus2
+my @paper_exps_1 = (
+		    'om5-optimus2-r5', # semi-simple 
+		    'tpcc-midrange-galaxy', # trivial peak
+		    'tpcc-midrange-optimus2-r5',  # left weighted, low
+		    'rdw-r10-intense25-optimus2', # wide normal
+		    'rdw-r10-q50e25-optimus2', # very high max, highest mean
+);
+
+my @paper_exps_2 = (
+		    'tpcd-4x-galaxy', # two widely separated groups
+		    'tpcd300-1-optimus2', # left-weighted, high
+		    'tpcd-4x-optimus2-r1', # 4 step result
+		    'rdw-r10-q50e25-optimus2-r1', # two hump distribution; right heavier
+		    'tpcd300-7-optimus2-r5', # largest unique exps
+);
+
+my @default_exps = qw/tpcd-4x-optimus2 tpcd-4x-optimus2-r1 tpcd-4x-optimus2-r5
+      om1-optimus2 om1-optimus2-r1 om1-optimus2-r5
+      tpcd300-1-optimus2 tpcd300-1-optimus2-r5
+      /;
+
+sub derive_tables {
+    @interesting_exps = ();
+return "
+sql create temporary table minems select expname, min(cost) as cost, count(*) as expcount from erg_many_seeds group by expname
+sql create index erg_many_seeds_tmpidx_1 on minems(expname)
+sql drop table erg_many_seeds_derived
+sql create table erg_many_seeds_derived select ems.expname, ems.cost, ems.comparisons, ems.runtime, round(ems.cost / minems.cost,5) as costrat, minems.expcount from erg_many_seeds as ems, minems where ems.expname = minems.expname
+sql drop table minems
+sql create index erg_many_seeds_idx_2 on erg_many_seeds_derived (expname)
+
+sql create temporary table erg_many_seeds_costrats_1 select expname, cost, costrat, count(*) as groupcount, expcount from erg_many_seeds_derived group by expname,costrat
+
+sql create temporary table erg_many_seeds_costrats_2 select expname, avg(costrat) as avg_costrat from erg_many_seeds_costrats_1 group by expname
+
+sql create temporary table erg_many_seeds_costrats_3 select t1.expname,t1.cost,t1.costrat,t1.groupcount,t1.expcount,t2.avg_costrat, t1.costrat < t2.avg_costrat || t1.groupcount/t1.expcount > 0.01 as is_interesting from erg_many_seeds_costrats_1 as t1, erg_many_seeds_costrats_2 as t2 where t1.expname = t2.expname
+
+sql create temporary table erg_many_seeds_costrats_4 select expname, count(*) as interesting_costrats, 1 as is_interesting, 0.00000 as max_costrat from erg_many_seeds_costrats_3 where costrat < avg_costrat || groupcount/expcount > 0.01 group by expname having interesting_costrats > 1
+
+sql insert into erg_many_seeds_costrats_4 select expname, count(*),0, max(costrat) from erg_many_seeds_costrats_3 group by expname
+
+sql create temporary table erg_many_seeds_costrats_5 select expname, max(interesting_costrats) as interesting_costrats, max(is_interesting) as is_interesting, max(max_costrat) as max_costrat from erg_many_seeds_costrats_4 group by expname
+
+sql create temporary table erg_many_seeds_costrats_6 select expname, groupcount as perfect, round(groupcount/expcount,6) as perfectfrac from erg_many_seeds_costrats_3 where costrat = 1.0000 
+
+sql drop table erg_many_seeds_costrats
+
+sql create index ems_tmp_1 on erg_many_seeds_costrats_3 (expname)
+sql create unique index ems_tmp_2 on erg_many_seeds_costrats_5 (expname)
+sql create unique index ems_tmp_3 on erg_many_seeds_costrats_6 (expname)
+
+sql alter table erg_many_seeds_costrats_3 drop column is_interesting
+sql create table erg_many_seeds_costrats select t1.*, t2.interesting_costrats, t2.is_interesting, t2.max_costrat, t3.perfect, t3.perfectfrac from erg_many_seeds_costrats_3 as t1, erg_many_seeds_costrats_5 as t2, erg_many_seeds_costrats_6 as t3 where t1.expname = t2.expname and t2.expname = t3.expname
+
+sql drop table erg_many_seeds_costrats_1
+sql drop table erg_many_seeds_costrats_2
+sql drop table erg_many_seeds_costrats_3
+sql drop table erg_many_seeds_costrats_4
+sql drop table erg_many_seeds_costrats_5
+sql drop table erg_many_seeds_costrats_6
+fncmds init_interesting
+
+select distinct expname, interesting_costrats as icostrats, expcount, round(interesting_costrats/expcount,6) as interesting_frac from erg_many_seeds_costrats where expname not like 'sap-%' having interesting_frac >= 0.01 order by interesting_frac
+sql create temporary table ems_foo select distinct expname, interesting_costrats as icostrats, expcount, round(interesting_costrats/expcount,6) as interesting_frac from erg_many_seeds_costrats where expname not like 'sap-%' having interesting_frac >= 0.01
+select sum(icostrats * 100 - expcount) from ems_foo
+select count(*) from erg_many_seeds
+select sum(runtime)/(365.25*24*60*60) as cpu_years, sum(runtime)/(24*60*60) as cpu_days from erg_many_seeds
+sql drop table ems_foo
+";
+}
+
+sub plotexps {
+    my @tmpexps = @_;
+    @tmpexps = @default_exps if @tmpexps == 0;
+    
+    my @ret;
+    
+    my $skipsep = 1;
+    my $curskip = 0;
+    foreach my $exp (@tmpexps) {
+        my @row = sql_unique_row("select distinct interesting_costrats, expcount, avg_costrat, max_costrat from erg_many_seeds_costrats where expname = '$exp'");
+	push(@ret,"plot costrat + $curskip as x, round(count(*)/expcount,4) as y where expname = '$exp' group by costrat");
+	$row[2] = sprintf("%.3f",$row[2]);
+	$row[3] = sprintf("%.3f",$row[3]);
+	if (1) {
+	  # tech report transforms
+  	  $exp =~ s/galaxy/FC-30/o;
+  	  $exp =~ s/optimus1/FC-60-A/o;
+	  $exp =~ s/optimus2/FC-60-B/o;
+	  $exp =~ s/r10-q50e25/mixed/o;
+	  $exp =~ s/r10-intense25/intense/o;
+	  $exp =~ s/r10-medium50/medium/o;
+        } else {
+          # paper transforms
+	  $exp =~ s/galaxy/FC-30/o;
+	  $exp =~ s/optimus2/FC-60/o;
+	  $exp =~ s/r10-q50e25/mixed/o;
+	  $exp =~ s/r10-intense25/intense/o;
+	  $exp =~ s/om5/openmail/o;
+        }
+	my $nunique = $row[0] * 100 < $row[1] ? "unique=$row[0]" : "$row[0]/$row[1]";
+#	push(@ret,"plottitle _ $exp nunique=$nunique mean=$row[2], max=$row[3]");
+	my $t = pack("C",65 + $curskip);
+	push(@ret,"plottitle _ $exp $nunique, mean=$row[2], max=$row[3] ($t)");
+	$curskip += $skipsep;
+    }
+    $curskip += $skipsep;
+    push(@ret,"gnuplot set xrange [1:${curskip}]");
+    return join("\n",@ret);
+}
+
+sub selectexps {
+    my @tmpexps = @_;
+    @tmpexps = @default_exps if @tmpexps == 0;
+    my @ret;
+    
+    foreach my $exp (@tmpexps) {
+	push(@ret,"select costrat, cost, count(*), round(count(*)/expcount,4) as fraction where expname = '$exp' group by costrat");
+    }
+    return join("\n",@ret);
+}
+
+sub stats_interesting {
+    return "
+select distinct expname, interesting_costrats, round(interesting_costrats / expcount,5) as interesting_frac, perfectfrac, avg_costrat, max_costrat from erg_many_seeds_costrats where is_interesting order by expname
+";
+}
+
+sub plot_interesting {
+    my $batchsize = shift;
+
+    $batchsize ||= 5;
+
+    my @ret;
+    &init_interesting;
+    my @tmp = @interesting_exps;
+    @tmp = @_ if @_ > 0;
+    my @plotgroup;
+    my $plotnum = 0;
+    my $maxx = $batchsize + 1;
+    while(@tmp > 0) {
+	push(@plotgroup,shift @tmp);
+	if (@plotgroup >= $batchsize || @tmp == 0) {
+	    push(@ret,"unplot\ngnuplot set boxwidth 0.001");
+	    push(@ret,plotexps(@plotgroup));
+	    push(@ret,"gnuplot set xrange [1:$maxx]");
+	    push(@ret,'gnuplot set xtics ("(A)" 1, "(B)" 2, "(C)" 3, "(D)" 4, "(E)" 5)');
+	    push(@ret,"pngplot interesting-$plotnum\.png 1024 768");
+	    push(@ret,"psplot --mode=eps interesting-$plotnum\.eps");
+	    @plotgroup = ();
+	    ++$plotnum;
+	}
+    }
+    return join("\n",@ret);
+}
+
+#set xtics ("0" 0, "100" 100000000, "200" 200000000, "300" 300000000, "400" 400000000, "500
+# " 500000000, "600" 600000000, "700" 700000000, "800" 800000000)
+
+sub plot_paper {
+    my @ret;
+
+    push(@ret,"plotwith * boxes lt 1 lw 1.5");
+    push(@ret,"unplot\ngnuplot set boxwidth 0.001");
+    push(@ret,plotexps(@paper_exps_1));
+    push(@ret,"gnuplot set xrange [0.9:6.5]");
+    push(@ret,'gnuplot set xtics ("(A)" 1, "(B)" 2, "(C)" 3, "(D)" 4, "(E)" 5)');
+    push(@ret,'gnuplot set ylabel "Fraction of experiments at a given cost ratio"');
+#    push(@ret,"gnuplot set noxtics");
+    push(@ret,"psplot --nocolor --mode=eps --fontsize=16 many-seed-1.eps");
+    push(@ret,"plotwith 1 boxes lt 2 lw 1.5");
+    push(@ret,"plotwith 2 boxes lt 4 lw 1.5");
+    push(@ret,"plotwith 3 boxes lt 3 lw 1.5");
+    push(@ret,"plotwith 4 boxes lt 5 lw 1.5");
+    push(@ret,"pngplot --fontsize=16 many-seed-1.png 1024 768");
+
+    push(@ret,"unplot\ngnuplot set boxwidth 0.001");
+    push(@ret,plotexps(@paper_exps_2));
+    push(@ret,"gnuplot set xrange [0.9:6]");
+    push(@ret,'gnuplot set xtics ("(A)" 1, "(B)" 2, "(C)" 3, "(D)" 4, "(E)" 5)');
+    push(@ret,'gnuplot set ylabel "Fraction of experiments at a given cost ratio"');
+#    push(@ret,"gnuplot set noxtics");
+    push(@ret,"psplot --nocolor --mode=eps --fontsize=16 many-seed-2.eps");
+    push(@ret,"plotwith 1 boxes lt 2 lw 1.5");
+    push(@ret,"plotwith 2 boxes lt 3 lw 1.5");
+    push(@ret,"plotwith 3 boxes lt 4 lw 1.5");
+    push(@ret,"plotwith 4 boxes lt 5 lw 1.5");
+    push(@ret,"pngplot --fontsize=16 many-seed-2.png 1024 768");
+
+    return join("\n",@ret);
+}
+
+sub show_finished {
+    return "select distinct expname, expcount, round(interesting_costrats/expcount,6) as frac from erg_many_seeds_costrats where expcount >= 1000 having frac < 0.01 order by expname";
+}
+
+enddefine
+
+# fncmds derive_tables
+
+unplot
+gnuplot set boxwidth 0.001
+# fncmds plotexps
+
+# fncmds plot_interesting
+# fncmds selectexps

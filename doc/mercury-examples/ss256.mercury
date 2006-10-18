@@ -1,0 +1,8 @@
+default table exptrials_21
+default where Disk = 6 and op = 'read' and status = 'succeeded' and outstanding = 1
+plot iosize as x, max(iops) as y where runcount = 1 and stripesize = 256 group by iosize
+plot iosize as x, max(iops) as y where runcount = 2 and stripesize = 256 group by iosize
+plot iosize as x, max(iops) as y where runcount = 4 and stripesize = 256 group by iosize
+plot iosize as x, max(iops) as y where runcount = 8 and stripesize = 256 group by iosize
+gnuplot set logscale x
+gnuplot set yrange [40:600]

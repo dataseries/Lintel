@@ -61,14 +61,15 @@ check_PROGRAMS = tests/check-StatsQuantile$(EXEEXT) \
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in \
 	$(srcdir)/batch-parallel.in $(srcdir)/lintel-acinclude.in \
-	$(srcdir)/lintel-config.in
+	$(srcdir)/lintel-config.in $(srcdir)/mercury-plot.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/acinclude.m4 \
 	$(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(SHELL) $(top_srcdir)/mkinstalldirs
-CONFIG_CLEAN_FILES = lintel-config lintel-acinclude batch-parallel
+CONFIG_CLEAN_FILES = lintel-config lintel-acinclude batch-parallel \
+	mercury-plot
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
 am__vpath_adj = case $$p in \
     $(srcdir)/*) f=`echo "$$p" | sed "s|^$$srcdirstrip/||"`;; \
@@ -324,7 +325,7 @@ target_vendor = @target_vendor@
 
 # avoid requiring all GNUisms
 AUTOMAKE_OPTIONS = 1.7 foreign
-bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
+bin_SCRIPTS = buildTcl batch-parallel mercury-plot lintel-config lintel-acinclude
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 LDADD = libLintel.la @TCL_LIBS@ 
@@ -360,7 +361,7 @@ libLintelPThread_la_SOURCES = \
 bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchParallel/jobsfile.pm
 perllibdir = $(datadir)/perl5
-nobase_perllib_DATA = Text/ExpandInt.pm
+nobase_perllib_DATA = Text/ExpandInt.pm Plot/Mercury.pm
 @WITH_TCL_TRUE@tests_check_Random_SOURCES = tests/check-Random.C
 tests_check_StatsQuantile_SOURCES = tests/stats_quantile.C
 tests_check_Uncompress_SOURCES = tests/check-Uncompress.C
@@ -404,6 +405,8 @@ lintel-config: $(top_builddir)/config.status $(srcdir)/lintel-config.in
 lintel-acinclude: $(top_builddir)/config.status $(srcdir)/lintel-acinclude.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 batch-parallel: $(top_builddir)/config.status $(srcdir)/batch-parallel.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+mercury-plot: $(top_builddir)/config.status $(srcdir)/mercury-plot.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 install-libLTLIBRARIES: $(lib_LTLIBRARIES)
 	@$(NORMAL_INSTALL)

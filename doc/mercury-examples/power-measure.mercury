@@ -1,0 +1,331 @@
+define
+
+sub derive_tables {
+    my $edge_window = 60;
+    return "
+sql drop table power_eval_derived_1
+sql create table power_eval_derived_1 select a.*, b.* from power_data as a, load_gen as b where a.sample_time >= b.start_load and a.sample_time <= b.end_load
+sql drop table power_eval_derived_2
+sql create table power_eval_derived_2 select * from power_eval_derived_1 where sample_time >= start_load + $edge_window and sample_time <= end_load - $edge_window
+default table power_eval_derived_2
+"
+};
+
+sub show_avg_summary {
+    my $orderby = $_[0] || 'avg_avg_kW';
+    return "
+select experiment_name, load_type, round(avg(avg_volts),2) as avg_avg_volts, round(avg(avg_current),3) as avg_avg_amps, round(avg(avg_kW),3) as avg_avg_kW, round(avg(avg_pfcor),5) as avg_avg_pfcor, count(*) as samples from power_eval_derived_2 group by experiment_name, load_type order by experiment_name, $orderby
+"
+};
+
+sub show_max_summary {
+    my $orderby = $_[0] || 'max_avg_kW';
+    return "
+select experiment_name, load_type, max(avg_volts) as max_avg_volts, max(avg_current) as max_avg_current, max(avg_kW) as max_avg_kW, max(avg_pfcor) as max_avg_pfcor, count(*) as samples from power_eval_derived_2 group by experiment_name, load_type order by experiment_name, $orderby
+"
+};
+
+sub show_avg_watts {
+    return "
+select experiment_name, load_type, avg(avg_kW*1000) as avg_avg_watts, stddev(avg_kW*1000) as stddev_avg_watts, max(max_kW*1000) as max_max_watts, count(*) as samples from power_eval_derived_2 group by experiment_name, load_type order by experiment_name, avg_avg_watts
+";
+}
+
+sub show_avg_watts2 {
+    return "
+select experiment_name, load_type, avg(avg_kW*1000) as avg_avg_watts, stddev(avg_kW*1000) as stddev_avg_watts, avg(avg_current * avg_volts) as VI, count(*) as samples from power_eval_derived_2 group by experiment_name, load_type order by experiment_name, avg_avg_watts
+";
+}
+
+sub show_avg_amps_pf {
+return "
+select experiment_name, load_type, avg(avg_current) as avg_avg_current, max(max_current) as max_max_current, stddev(avg_current) as stddev_avg_current, avg(avg_pfcor) as avg_avg_pfcor, count(*) as samples from power_eval_derived_2 group by load_type, experiment_name order by load_type, avg_avg_current
+";
+}
+
+sub compare_experiments {
+    my($exp1,$exp2,$divexp1,$divexp2) = @_;
+    $divexp1 ||= 1;
+    $divexp2 ||= 1;
+return "
+default where none
+sql create table power_eval_compare select experiment_name, load_type, round(avg(avg_volts),2) as avg_avg_volts, round(avg(avg_current),3) as avg_avg_amps, round(avg(avg_kW*1000),2) as avg_avg_watts, round(stddev(avg_kW*1000),3) as stddev_avg_watts, round(avg(avg_pfcor),5) as avg_avg_pfcor, count(*) as samples from power_eval_derived_2 group by experiment_name, load_type
+
+sql update power_eval_compare set avg_avg_amps = avg_avg_amps / $divexp1 where experiment_name = '$exp1'
+sql update power_eval_compare set avg_avg_amps = avg_avg_amps / $divexp2 where experiment_name = '$exp2'
+sql update power_eval_compare set avg_avg_watts = avg_avg_watts / $divexp1 where experiment_name = '$exp1'
+sql update power_eval_compare set avg_avg_watts = avg_avg_watts / $divexp2 where experiment_name = '$exp2'
+
+select a.load_type as load_type, a.avg_avg_volts as exp1_V, b.avg_avg_volts as exp2_V, abs(a.avg_avg_volts - b.avg_avg_volts) as diff_V, a.avg_avg_amps as exp1_A, b.avg_avg_amps as exp2_A, abs(a.avg_avg_amps - b.avg_avg_amps) as diff_A, a.avg_avg_watts as exp1_W, b.avg_avg_watts as exp2_W, abs(a.avg_avg_watts - b.avg_avg_watts) as diff_W, if(a.stddev_avg_watts > b.stddev_avg_watts, a.stddev_avg_watts, b.stddev_avg_watts) as stddev_W, 100*abs(a.avg_avg_watts - b.avg_avg_watts)/if(a.avg_avg_watts < b.avg_avg_watts,a.avg_avg_watts,b.avg_avg_watts) as '%%diffW', a.avg_avg_pfcor as exp1_pfcor, b.avg_avg_pfcor as exp2_pfcor, abs(a.avg_avg_pfcor - b.avg_avg_pfcor) as diff_pfcor from power_eval_compare as a, power_eval_compare as b where a.experiment_name = '$exp1' and b.experiment_name = '$exp2' and a.load_type = b.load_type order by exp1_W
+
+select a.load_type as load_type, abs(a.avg_avg_volts - b.avg_avg_volts) as diff_volts, abs(a.avg_avg_amps - b.avg_avg_amps) as diff_amps, a.avg_avg_watts as exp1_watts, b.avg_avg_watts as exp2_watts, if(a.avg_avg_watts > b.avg_avg_watts,'exp1','exp2') as higher, abs(a.avg_avg_watts - b.avg_avg_watts) as diff_watts, if(a.stddev_avg_watts > b.stddev_avg_watts, a.stddev_avg_watts, b.stddev_avg_watts) as max_stddev_watts, 100*abs(a.avg_avg_watts - b.avg_avg_watts)/if(a.avg_avg_watts < b.avg_avg_watts,a.avg_avg_watts,b.avg_avg_watts) as '%%diffW', abs(a.avg_avg_pfcor - b.avg_avg_pfcor) as diff_pfcor from power_eval_compare as a, power_eval_compare as b where a.experiment_name = '$exp1' and b.experiment_name = '$exp2' and a.load_type = b.load_type order by exp1_watts
+
+sql drop table power_eval_compare
+";
+}
+
+sub get_watts {
+    my($experiment,$load) = @_;
+
+    return sql_unique_row("select avg(avg_kW*1000), stddev(avg_kW*1000) from power_eval_derived_2 where experiment_name = '$experiment' and load_type = '$load'");
+}
+
+sub range {
+    my ($min,$max) = ($_[0],$_[0]);
+
+    foreach my $val (@_) {
+        $min = $val if $val < $min;
+	$max = $val if $val > $max;
+    }
+    return ($min,$max);
+}
+
+sub max {
+    my $max = $_[0];
+
+    foreach my $val (@_) {
+	$max = $val if $val > $max;
+    }
+    return $max;
+}
+
+sub ewta_compare2 {
+    my($loadtype,$expa,$diva,$expb,$divb) = @_;
+
+    printf "| %s |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |\n", $loadtype, $expa->[0]/$diva, $expa->[1], $expb->[0]/$divb, $expb->[1], $expb->[0]/$divb - $expa->[0]/$diva;
+}
+    
+sub ewta_cmpbadgood {
+    my($loadtype, $expa, $expb) = @_;
+
+    my $VI_a = $expa->[0] * $expa->[1];
+    my $VI_b = $expb->[0] * $expb->[1];
+    my $pf_a = $VI_a == 0 ? 1 : -$expa->[2]/$VI_a;
+    my $pf_b = $VI_b == 0 ? 1 : -$expb->[2]/$VI_b;
+     
+    printf "| %s |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |  %.2f |\n",
+        $loadtype, $expa->[0], $expb->[0], $expa->[1], $expb->[1], $expa->[2], $expb->[2], $expa->[3], $expb->[3],
+	$VI_a, $VI_b, $pf_a, $pf_b;
+}
+    
+sub eric_wiki_text_analysis {
+    my @alloff = get_watts('off','power-config-2 -- 0 DL360 halted, 8 disconnected');
+    warn "WHOA ALLOFF NOT 0" unless $alloff[0] == 0;
+    my @halt1of8 = get_watts('off','power-config-2 -- 1 DL360 halted, 7 disconnected');
+    my @halt5of8 = get_watts('off','power-config-2 -- 5 DL360 halted, 3 disconnected');
+    my @halt8of8 = get_watts('off','power-config-2 -- 8 DL360 halted');
+    my @halt4of4 = get_watts('off','power-config-4 -- 4 DL360 halted all via 30A PDU');
+    my @idle8 = get_watts('8machines-a','idle');
+    my @idle4 = get_watts('4machines-30Apdu','idle');
+    my @cspin8 = get_watts('8machines-a','4x Power::spin');
+    my @cspin4 = get_watts('4machines-30Apdu','4x Power::spin');
+    my @pspin8 = get_watts('8machines-a','perl-spin @100%');
+    my @pspin4 = get_watts('4machines-30Apdu','perl-spin @100%');
+    my @matmult8 = get_watts('8machines-a','cpu-double-matmult-cache @100%');
+    my @matmult4 = get_watts('4machines-30Apdu','cpu-double-matmult-cache @100%');
+    my @sse_a8 = get_watts('8machines-a','Power::sse_misc2, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i');
+    my @sse_a4 = get_watts('4machines-30Apdu','Power::sse_misc2, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i');
+    my @sse_b8 = get_watts('8machines-a','Power::sse_misc4, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i, 4x2disk-rand');
+    my @sse_b4 = get_watts('4machines-30Apdu','Power::sse_misc4, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i, 4x2disk-rand');
+
+    my ($halt_min,$halt_max) = range($halt1of8[0],$halt5of8[0]/5,$halt8of8[0]/8,$halt4of4[0]/4);
+    my $halt_stddev = max($halt1of8[1],$halt5of8[1],$halt8of8[1],$halt4of4[1]);
+    my ($idle_min,$idle_max) = range($idle8[0]/8,$idle4[0]/4);
+    my $idle_stddev = max($idle8[1],$idle4[1]);
+    my ($cspin_min,$cspin_max) = range($cspin8[0]/8,$cspin4[0]/4);
+    my $cspin_stddev = max($cspin8[1],$cspin4[1]);
+    my ($pspin_min,$pspin_max) = range($pspin8[0]/8,$pspin4[0]/4);
+    my $pspin_stddev = max($pspin8[1],$pspin4[1]);
+    my ($matmult_min,$matmult_max) = range($matmult8[0]/8,$matmult4[0]/4);
+    my $matmult_stddev = max($matmult8[1],$matmult4[1]);
+    my ($sse_a_min,$sse_a_max) = range($sse_a8[0]/8,$sse_a4[0]/4);
+    my $sse_a_stddev = max($sse_a8[1],$sse_a4[1]);
+    my ($sse_b_min,$sse_b_max) = range($sse_b8[0]/8,$sse_b4[0]/4);
+    my $sse_b_stddev = max($sse_b8[1],$sse_b4[1]);
+    print <<'END';
+
+---### Machines directly connected to an 30A PDU into a power meter
+
+Two sets of measurements here, one with 4 machines attached to the
+power meter and one with 8 machines.  From these results we can see
+that the measurements are very consistent between the four and eight
+machine cases.  The difference between the minimum and the maximum
+average watts is significantly less than the standard deviation.  We
+can also see that the difference between the lowest "full" load, a C
+spin loop, and the highest "full" load, a complex SSE floating point
+calculation and some disk I/O is over 100W/machine.
+
+END
+    printf "| Load type | Watts/machine | Stddev W |\n";
+    printf "| Halted | %.2f .. %.2f |  %.2f |\n", $halt_min, $halt_max, $halt_stddev;
+    printf "| Idleing | %.2f .. %.2f |  %.2f |\n", $idle_min, $idle_max, $idle_stddev;
+    printf "| C spin loop | %.2f .. %.2f |  %.2f |\n", $cspin_min, $cspin_max, $cspin_stddev;
+    printf "| Perl spin loop | %.2f .. %.2f |  %.2f |\n", $pspin_min, $pspin_max, $pspin_stddev;
+    printf "| Perl Matrix Multiply | %.2f .. %.2f |  %.2f |\n", $matmult_min, $matmult_max, $matmult_stddev;
+    printf "| Highest cpu-only load | %.2f .. %.2f |  %.2f |\n", $sse_a_min, $sse_a_max, $sse_a_stddev;
+    printf "| Highest (cpu + random I/O) |  %.2f .. %.2f |  %.2f |\n", $sse_b_min, $sse_b_max, $sse_b_stddev;
+    printf "\n";
+
+    print <<'END';
+
+---### Comparison of one and two power supplies
+
+This comparison is between 1 machine w/2 power supplies and 4 machines
+w/1 power supply, but the usage by the 4 machines is divided by 4 to
+be as if it was one machine.  The standard deviation is not reduced in
+the 4 machine case. Since the error above is so small, this is
+probably an over-estimate. In both cases the machines were directly
+connected to a 30A PDU.  
+
+From these results, we can see that there is a slight penalty for
+having two power supplies, but that this penalty is reduced as the
+load on the machines increases.  At the high load, the differences are
+pretty close to the standard deviation.  When the machines are off or
+idle the difference is above the standard deviation.
+
+END
+
+    my @twops_halted = get_watts('off','power-config-3 -- 1 DL360 halted - has two power supplies');
+    my @twops_idle = get_watts('1machine-2ps-b','idle');
+    printf "| | One power supply || Two power supplies || Two PS |\n";
+    printf "| Load type | Watts/machine | Stddev W | Watts/machine | Stddev W | Penalty/machine (W) |\n";
+    ewta_compare2('Halted', \@halt4of4, 4, \@twops_halted, 1);
+
+    my @compare_plots = ( [ 'Idleing', 'idle' ],
+                        [ 'C spin loop', '4x Power::spin' ],
+			[ 'Perl spin loop', 'perl-spin @100%' ],
+			[ 'Perl Matrix Multiply', 'cpu-double-matmult-cache @100%' ],
+			[ 'Highest cpu-only load', 'Power::sse_misc2, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i' ],
+			[ 'Highest (cpu + random I/O)', 'Power::sse_misc4, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i, 4x2disk-rand' ], 
+			);
+    foreach my $ent (@compare_plots) {
+        my($title,$load) = @$ent;
+        my @twops_load = get_watts('1machine-2ps-b',$load);
+	my @fourmachines_load = get_watts('4machines-30Apdu',$load);
+	ewta_compare2($title, \@fourmachines_load, 4, \@twops_load, 1);
+    }
+
+    print "\n";
+    print <<'END';
+---### Comparison of running through APC power devices and direct into a 30A PDU
+
+This experiment compares the power configuration of having 8 machines
+directly connected into a 30A PDU, and 4 machines connected into 2 APC
+power units, and the 2 APC's connected into the 30A PDU.  From this
+experiment we can see that there is at most a small penalty for the
+APC's.  The difference is usually statistically significant in that
+the penalty should be multiplied by eight before comparing to the
+standard deviations to get the actual standard deviation, but the
+penalty is very small, and constant across load.  We performed this
+experiment because of the results that follow which indicated some
+problem with either the APC or the power meter.
+
+END
+
+    printf "| |  Direct to PDU  ||  Via APC power strips  || APC power strip |\n";
+    printf "| Load type | Watts/machine | Stddev W | Watts/machine | Stddev W | Penalty/machine (W) |\n";
+    
+    foreach my $ent (@compare_plots) {
+        my($title,$load) = @$ent;
+	my @directpdu = get_watts('8machines-a',$load);
+	my @viaapc = get_watts('8machines-with-apc',$load);
+	ewta_compare2($title, \@directpdu, 8, \@viaapc, 8);
+    }
+
+    print "\n";
+    print <<"END";
+---### Examination of the bad power meter\n
+
+One of the problems we had early on was that we happened to be working
+with a bad power meter.  It reported roughly accurate amps and
+voltage, but the watts and power factor were incorrect, but
+consistent.  The
+[[http://hyperphysics.phy-astr.gsu.edu/hbase/electric/powfac.html][power
+factor]] is an effect of AC current.  If the voltage sine wave and the
+current sine wave are somewhat out of phase, then the AC circuit
+doesn't generate as much power as it would if they were in-phase.
+abs(power factor) indicates the loss that has occured as a result of
+this lack of phase, 1 is perfect, 0 is a disaster.  All of our data
+used a negative power factor, so we preserve that in the results.
+
+\nThese measurements were inconsistent with the expectation that the
+newer machines would draw more power than the older ones. We
+eventually determined that this was likely because of bad power meter,
+but determining this was complicated by the fact that the machines
+draw a significant amount of power while halted (32W in the clean
+measurements, 50W in the unclean) which was unexpected, and that the
+machines were on a circuit with other equipment.
+
+\nIn the results, we have calculated the amps and watts used beyond
+the amount that was used with those machines disconnected from the PDU
+because there were other devices on the circuit being measured.  The
+amount that is used is what is shown with the row labeled "Disconnected."
+
+\nFrom these results we can see a number of things.  First, both the
+volts and the amps are similar between the two sets of measurements.
+Second the watts are significantly different, in particular on the bad
+power meter the watts are much lower than the on the good power
+meter. Because the power factor measurement is consistent with the
+volts and amps, the power factor is much lower on the bad power meter
+than on the good power meter.  The simple watts measure of Volts *
+Amps is very similar, given that we had standard deviations on the
+good measurements of 20-50W, these differences are within the standard
+deviation.  Finally we can see that the derived power factors are much
+lower for the bad power meter, and that the power factor is getting
+worse as the load increases.  This is exactly the reverse of what is
+expected because the power supplies are designed to be more efficient
+at higher load, in fact the power supplies on the DL360G4's are rated
+at 98% efficiency at high load, which is precicely what the
+measurements on the goot power meter achieve and not at all the
+measurements on the bad power meter.
+
+END
+
+    printf "| |  Volts  ||  Amps  ||  Watts  ||  Power Factor  ||  Volts * Amps  ||  PF=-W/(VA)  || \n";
+    printf "| Load type | Bad PM | Good PM | Bad PM | Good PM | Bad PM | Good PM | Bad PM | Good PM | Bad PM | Good PM | Bad PM | Good PM |\n";
+    my @badpm_off = sql_unique_row("select avg(avg_volts), avg(avg_current), avg(avg_kW*1000), avg(avg_pfcor) from power_eval_derived_2 where experiment_name = 'off' and load_type = '4 DL360 powered off at APC'");
+    my @goodpm_off = sql_unique_row("select avg(avg_volts), avg(avg_current), avg(avg_kW*1000), avg(avg_pfcor) from power_eval_derived_2 where experiment_name = 'off' and load_type = 'power-config-2 -- 0 DL360 halted, 8 disconnected'");
+
+    ewta_cmpbadgood('Disconnected', \@badpm_off, \@goodpm_off);
+    
+    my @gbcompare_plots = ( [ 'Idleing', 'idle' ],
+                            [ 'C spin loop', '4x Power::spin' ],
+		    	    [ 'Perl spin loop', 'perl-spin @100%' ],
+		    	    [ 'Perl Matrix Multiply', 'cpu-double-matmult-cache @100%' ],
+		    	    [ 'Highest cpu-only load', 'Power::sse_misc2, 1xlen=5,000,000f, 1xlen=256f, 2x Power::int_misc1 len=256i' ],
+		    	    );
+
+    foreach my $ent (@gbcompare_plots) {
+        my ($title,$expname) = @$ent;
+        my @badpm_load = sql_unique_row("select avg(avg_volts), avg(avg_current), avg(avg_kW*1000), avg(avg_pfcor) from power_eval_derived_2 where experiment_name = '4machines' and load_type = '$expname'");
+        my @goodpm_load = sql_unique_row("select avg(avg_volts), avg(avg_current), avg(avg_kW*1000), avg(avg_pfcor) from power_eval_derived_2 where experiment_name = '4machines-30Apdu' and load_type = '$expname'");
+	 $badpm_load[1] -= $badpm_off[1];
+	 $badpm_load[2] -= $badpm_off[2];
+	ewta_cmpbadgood($title, \@badpm_load, \@goodpm_load);
+    }
+    return '';
+}
+
+enddefine
+
+default table power_eval_derived_2
+# derive_tables()
+# show_max_summary('max_avg_current')
+# show_avg_summary()
+# show_max_summary()
+
+# compare_experiments('8machines-a','8machines-with-apc')
+# compare_experiments('8machines-a','1machine-2ps-b',8,1)
+
+eric_wiki_text_analysis()
+
+# show_avg_watts()
+#show_avg_amps_pf()
+
+# default table power_data
+# unplot
+# plot sample_time-1115274540 as x, avg_kW as y
+# plotwith _ lines
+# plot sample_time-1115274540 as x, max_kW as y
+# plotwith _ lines
+

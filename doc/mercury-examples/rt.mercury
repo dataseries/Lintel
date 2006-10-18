@@ -1,0 +1,23 @@
+define
+sub plotdata {
+    my @ret;
+    my $basetime = 1075248300 - 1.3e6;
+    my $maxtime = $basetime + 2.5e6;
+    my $groupamt = 86400/1;
+    my $grouptype = 'avg';
+#    foreach my $rack (qw/53 54 55 56 63 /) { # 
+    foreach my $rack (qw/65 66 67 68 69 70 71/) {
+	    push(@ret,"plot $groupamt * round((sample_time - $basetime)/$groupamt) as x, $grouptype(degreesC) as y where rack = 'ers$rack' and sample_time > $basetime and sample_time < $maxtime group by x");
+	    push(@ret,"plottitle _ $grouptype xx"); # temperature/day for rack $rack");
+    }
+    push(@ret,"");
+    return join("\n",@ret);
+}
+enddefine
+
+unplot
+plotdata()
+gnuplot set xlabel "time in seconds"
+gnuplot set ylabel "degrees C"
+gnuplot set title "Temperature Information on Rack Switches"
+pngplot --fontsize=14 racktemp.png 1024 768

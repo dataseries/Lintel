@@ -12,7 +12,7 @@
 AUTOMAKE_OPTIONS = 1.7 foreign
 
 bin_PROGRAMS = calcStats drawRandomLogNormal 
-bin_SCRIPTS = buildTcl batch-parallel lintel-config lintel-acinclude
+bin_SCRIPTS = buildTcl batch-parallel mercury-plot lintel-config lintel-acinclude
 
 calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
@@ -103,7 +103,7 @@ bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchParallel/jobsfile.pm
 
 perllibdir = $(datadir)/perl5
-nobase_perllib_DATA = Text/ExpandInt.pm
+nobase_perllib_DATA = Text/ExpandInt.pm Plot/Mercury.pm
 
 ## TODO: ought to move all this regression stuff to a dejagnu style
 ## regression test, which is hopefully sufficiently flexible to handle
