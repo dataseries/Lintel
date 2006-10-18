@@ -31,6 +31,7 @@ my $no_exec;
 my $queue;
 my $shuffle = 1;
 my $show_rebuild;
+my $verbose;
 
 my @dirs;
 while(@ARGV > 0 && $ARGV[@ARGV-1] ne '--') {
@@ -47,6 +48,7 @@ my $ret = GetOptions('man!' => \$print_manpage,
 		     'q=s' => \$queue,
 		     'j=i' => \$local_parallelism,
 		     'n!' => \$no_exec,
+		     'v!' => \$verbose,
 		     'lsfexec=i' => \$lsfexec,
 		     'codineexec=i' => \$codineexec,
 		     'groupsize=i' => \$batch_groupsize,
@@ -81,26 +83,28 @@ if ($bp_fullpath =~ m!^(.*)/([^/]+)$!o) {
     $bp_module_name = $bp_fullpath;
 }
 
-eval "use $bp_module_name;";
+eval "use BatchParallel::$bp_module_name;";
 if ($@ =~ /^Can\'t locate \S+ in \@INC/o) {
-    eval "use BatchParallel::$bp_module_name;";
-    unless ($@) {
-	$bp_module_name = "BatchParallel::$bp_module_name";
-    }
+    eval "use $bp_module_name;";
+    die "Using $bp_module_name and BatchParallel::$bp_module_name failed: $@" 
+	if $@;
+    print "Found module via use $bp_module_name;\n"
+	if $verbose;
 } elsif ($@) {
     die $@;
+} else {
+    print "Found module via use BatchParallel::$bp_module_name\n"
+	if $verbose;
 }
 
-die "Using $bp_module_name and BatchParallel::$bp_module_name failed: $@" 
-    if $@;
-
-my $module = new $bp_module_name(@bp_args);
+my $usename = "BatchParallel::$bp_module_name";
+my $module = new $usename(@bp_args);
 
 die "new $bp_module_name did not return a reference"
     unless defined $module && ref $module;
 
 if (@dirs == 0) {
-    @dirs = $bp_module_name->default_source_locations();
+    @dirs = $module->default_source_locations();
 }
 
 usage() unless @dirs > 0;
@@ -475,6 +479,27 @@ that define how your module processes data.  Since batch-parallel uses
 the module as an object, you can override any of the standard
 methods.
 
+=head2 Explaining your module
+
+There are two methods that explain what your module does, sub usage,
+and sub rebuild_thing_message.  rebuild_thing_message is documented
+below.
+
+=head3 sub usage
+
+This function is called to provide a usage overview of of your module.
+It should print out all of the additional options your module supports.
+
+=head2 Initializing your module
+
+=head3 sub new
+
+This function is called to create a new BatchParallel object; it
+should return a blessed object which has all the appropriate methods
+defined.  It should also process any additional options handled by the
+module.  You only have to override this message if you take options in
+addition to your directory/file arguments.
+
 =head2 Finding things to process
 
 There are two ways to define how your module will find "things" to
@@ -502,6 +527,8 @@ build.  Each thing will be passed to rebuild_thing_*.  The default
 find_things_to_build() generates a list of filenames.  If you override
 this method, then you also need to override rebuild_thing_do,
 rebuild_thing_success, rebuild_thing_fail, rebuild_thing_message.
+
+=head2 Rebuilding things 
 
 =head3 sub rebuild($this, $prefix, $filepath, $destfile)
 

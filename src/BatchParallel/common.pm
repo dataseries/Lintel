@@ -40,12 +40,16 @@ sub new {
     return $this;
 }
 
+sub usage {
+    die "you need to override sub usage in your module to give a usage message";
+}
+
 sub file_is_source {
-    die "you need to override file_is_source or find_things_to_build in your module\n";
+    die "you need to override file_is_source or find_things_to_build in your module";
 }
 
 sub default_source_locations {
-    return ();
+    die "you need to specify source locations or override default_source_locations in your module";
 }
 
 sub file_older { # true if $name_a is older than any of the later names
