@@ -1,4 +1,4 @@
-package SSP::Mercury;
+package Plot::Mercury;
 
 use strict;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK $Default_DSN $dbh);
@@ -20,20 +20,39 @@ require AutoLoader;
 $VERSION = '0.02';
 
 $Default_DSN = $ENV{MERCURY_DSN};
-if (!defined $Default_DSN && -f "/etc/MercuryDSN") {
-    if (open(F,"/etc/MercuryDSN")) {
-	$Default_DSN = <F>;
-	chomp $Default_DSN;
-    } else {
-	warn "Unable to open /etc/MercuryDSN: $!\n";
-    }
+if (!defined $Default_DSN && -f "$ENV{HOME}/.mercury-dbs") {
+    ($Default_DSN,$_,$_) = getDSNbykey("default", "$ENV{HOME}/.mercury-dbs");
+}   
+
+if (!defined $Default_DSN && -f "/etc/MercuryDBs") {
+    ($Default_DSN,$_,$_) = getDSNbykey("default", "/etc/MercuryDBs");
 }
 
 unless (defined $Default_DSN) {
-    # Remove this before shipping externally.
-    $Default_DSN = "DBI:mysql:database=ssp;host=harp";
+    $Default_DSN = "DBI:mysql:database=test;host=localhost";
 }
 
+sub getDSNbykey {
+    my($dbkey,$file) = @_;
+
+    return () unless -r $file;
+    my $fh = new FileHandle $file
+	or die "Unable to open $file for read: $!";
+    while(<$fh>) {
+	chomp;
+	if (/^$dbkey\s+(.+)$/) {
+	    my $bits = $1;
+	    $bits =~ s/\s+$//o;
+	    my @bits = split(/\s+/,$bits);
+	    die "Invalid line in $file: '$_'"
+		if @bits < 1 || @bits > 2;
+	    die "Invalid DSN '$bits[0]' in $file"
+		unless $bits[0] =~ /^DBI:/o;
+	    return @bits;
+	}
+    }
+    return ();
+}
 
 my @connect_parms;
 
@@ -79,7 +98,7 @@ sub connectToDB {
   create /etc/MercuryDSN, or run the program with a --dsn=... argument.\n"
       unless defined $dsn;
 
-    $SSP::Mercury::dbh = eval { DBI->connect(@connect_parms); };
+    $Plot::Mercury::dbh = eval { DBI->connect(@connect_parms); };
     die "Unable to connect to $dsn: $@\n"
 	unless defined $dbh;
     $dbh->{Warn} = 1;
@@ -101,14 +120,14 @@ sub add_col {
 sub sql_quote {
     my($in) = @_;
 
-  SSP::Mercury->connectToDB() unless defined $dbh;
+  Plot::Mercury->connectToDB() unless defined $dbh;
     return $dbh->quote($in);
 }
 
 sub sql_prepare {
     my($sql) = @_;
 
-  SSP::Mercury->connectToDB() unless defined $dbh;
+  Plot::Mercury->connectToDB() unless defined $dbh;
     my $sth = $dbh->prepare($sql);
     die "prepare of '$sql' failed!\n" unless defined $sth;
     return $sth;
@@ -262,37 +281,28 @@ sub reload_use {
     die "unable to find module $module_orig in @INC";
 }
 
-# Preloaded methods go here.
-
-# Autoload methods go after =cut, and are processed by the autosplit program.
-
 1;
 __END__
 # Below is the stub of documentation for your module. You better edit it!
 
 =head1 NAME
 
-SSP::Mercury - Perl extension for blah blah blah
+Plot::Mercury - Perl extension for providing features to mercury-plot scripts
 
 =head1 SYNOPSIS
 
-  use SSP::Mercury;
-  blah blah blah
+see C<mercury-plot --man>; this module is not intended to be directly used.
 
 =head1 DESCRIPTION
 
-Stub documentation for SSP::Mercury was created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+A module for internal use by mercury-plot, not for anything else
 
 =head1 AUTHOR
 
-A. U. Thor, a.u.thor@a.galaxy.far.far.away
+Eric Anderson <anderse@hpl.hp.com>
 
 =head1 SEE ALSO
 
-perl(1).
+mercury-plot(1), perl(1).
 
 =cut

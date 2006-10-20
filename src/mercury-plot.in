@@ -17,6 +17,7 @@ use POSIX ":sys_wait_h";
 use Getopt::Long;
 use Safe;
 use Pod::Usage;
+use Time::HiRes 'time';
 @PERL_MODULES_INC_UNSHIFT@;
 use Plot::Mercury;
 
@@ -32,7 +33,7 @@ my $user;
 my $password;
 my $db;
 my $print_manpage;
-my $success = GetOptions("dsn=s" => \$SSP::Mercury::Default_DSN,
+my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "db=s" => \$db,
 			 "user=s" => \$user,
 			 "password=s" => \$password,
@@ -45,7 +46,7 @@ die "Usage: $0
     [--db=<database-key>] # as specified in the file ~/.mercury-dbs or /etc/MercuryDBs
     # with the format of each line either being a '#' comment or
     # <key> <DSN> [user] [password]
-    [--dsn=<dbd spec, currently $SSP::Mercury::Default_DSN>]
+    [--dsn=<dbd spec, currently $Plot::Mercury::Default_DSN>]
     # dsn can be stored in the environment variable MERCURY_DSN
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
@@ -54,9 +55,9 @@ die "Usage: $0
 
 if (defined $db) {
     ($Plot::Mercury::Default_DSN,$user,$password) 
-	= getDBbykey($db,"$ENV{HOME}/.mercury-dbs");
+	= Plot::Mercury::getDSNbykey($db,"$ENV{HOME}/.mercury-dbs");
     ($Plot::Mercury::Default_DSN,$user,$password) 
-	= getDBbykey($db,"/etc/MercuryDBs")
+	= Plot::Mercury::getDSNbykey($db,"/etc/MercuryDBs")
 	    unless defined $Plot::Mercury::Default_DSN;
     die "Unable to find database specification for '$db' in either $ENV{HOME}/.mercury-dbs or /etc/MercuryDBs"
 	unless defined $Plot::Mercury::Default_DSN;
@@ -429,6 +430,7 @@ sub sqlselect {
     my @widths;
     my $fetch_initial_rows = 1000;
     while(my @row = $sth->fetchrow_array) {
+	@row = map { defined $_ ? $_ : '' } @row;
 	push(@first_rows,\@row);
 	for(my $i=0;$i<@row;++$i) {
 	    $widths[$i] ||= 0;
@@ -454,7 +456,7 @@ sub sqlselect {
     ShowBoxTable($sth->{NAME},\@types,\@widths,
 		 sub { return undef if $_[0] == 1;
 		       return @{shift @first_rows} if @first_rows > 0;
-		       return $sth->fetchrow_array; });
+		       return map { defined $_ ? $_ : '' } $sth->fetchrow_array; });
     if (defined $lesspid) {
         close(STDOUT);
         waitpid ($lesspid,0);
@@ -505,12 +507,14 @@ sub htmlselect {
 sub sqlcmd {
     my $cmd = shift;
 
+    my $start = time;
     my $sth = eval {sql_exec($cmd) };
     if ($@) {
 	print "$@\n";
 	return;
     }
-    print "Affected " , $sth->rows, " rows.\n";
+    my $end = time;
+    printf "Affected %d rows in %.2fs\n" , $sth->rows, $end-$start;
 }
 
 my @plots;
@@ -1133,28 +1137,6 @@ sub fncmds {
 	&docmd($i);
 	last if $command_error;
     }
-}
-
-sub getDBbykey {
-    my($dbkey,$file) = @_;
-
-    return () unless -r $file;
-    my $fh = new FileHandle $file
-	or die "Unable to open $file for read: $!";
-    while(<$fh>) {
-	chomp;
-	if (/^$dbkey\s+(.+)$/) {
-	    my $bits = $1;
-	    $bits =~ s/\s+$//o;
-	    my @bits = split(/\s+/,$bits);
-	    die "Invalid line in $file: '$_'"
-		if @bits < 1 || @bits > 2;
-	    die "Invalid DSN '$bits[0]' in $file"
-		unless $bits[0] =~ /^DBI:/o;
-	    return @bits;
-	}
-    }
-    return ();
 }
 
 __END__
