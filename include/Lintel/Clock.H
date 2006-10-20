@@ -61,7 +61,7 @@ public:
 #elif defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
 	__asm__ __volatile__ ("rdtsc" : "=A" (ret));
 #else
-#error "Need to define either HPUX_ACC or LINUX_GCC"
+#error "Do not know how to get the cycle counter on this platform"
 #endif
 	return ret;
     }
