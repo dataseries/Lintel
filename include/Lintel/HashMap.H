@@ -114,6 +114,10 @@ public:
 	hashtable.remove(fullval);
     }
 
+    void clear() {
+	hashtable.clear();
+    }
+
     int size() {
 	return hashtable.size();
     }
