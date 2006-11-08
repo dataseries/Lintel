@@ -109,7 +109,7 @@ public:
 	return lookup(k) != NULL;
     }
 
-    void remove(K &k) {
+    void remove(const (K &k) {
 	hmval fullval(k);
 	hashtable.remove(fullval);
     }
