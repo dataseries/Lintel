@@ -1149,7 +1149,7 @@ mercury-plot - plot data out of an SQL database
 
 =head1 SYNOPSIS
 
-% mercury-plot [--dsn=DBI dsn spec] [--db=<database-key>] 
+% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>] 
                [--user=<user>] [--password=<password>]
                [--history=<history filename>]
 
@@ -1240,8 +1240,4 @@ Calls a function that was defined by the user in a define
 ... enddefine block.  While you can define functions that have the
 same name as the built in commands since mercury-plot can tell the
 difference by the (), you probably shouldn't, it would be confusing.
-
-
-
-
 
