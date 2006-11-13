@@ -1214,4 +1214,34 @@ mans table view.  For example: C<default where Disk = 6 and op = 'read'>
 Sends some command directly through to gnuplot for processing, for example:
 C<gnuplot set logscale x>, or C<gnuplot set yrange [40:600]>
 
+=head2 define ... enddefine 
+
+Takes the block of code between the define and enddefine and evals it
+in a separate namespace for use in mercury.  Useful for defining
+functions that may do complicated things, or even simple ones that act
+mostly as macros.  Example:
+
+    define
+
+    sub fooplot {
+        my($where) = @_;
+        return "select speed as x, enginetemp as y from engine_measurements where $where";
+    }
+
+    enddefine
+
+    fooplot("engine = 'formula-1'")
+    fooplot("engine = 'prius'")
+    fooplot("engine = 'solid booster rocket'")
+
+=head2 I<fnname>(...)
+
+Calls a function that was defined by the user in a define
+... enddefine block.  While you can define functions that have the
+same name as the built in commands since mercury-plot can tell the
+difference by the (), you probably shouldn't, it would be confusing.
+
+
+
+
 
