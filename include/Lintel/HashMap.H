@@ -56,6 +56,20 @@ struct HashMap_hash<const int> {
     }
 };
 
+template <>
+struct HashMap_hash<const long long> {
+    unsigned operator()(const long long _a) const {
+	// doesn't increase the entropy, but shuffles the entropy across
+	// the entire integer, meaning the low bits get shuffled even if they
+	// are constant for some reason
+	long long a = _a;
+	long long b = 0xBEEFCAFE;
+	long long ret = 1972;
+	BobJenkinsHashMix(a,b,ret);
+	return ret;
+    }
+};
+
 template <class K, class V, 
           class KHash = HashMap_hash<const K>, 
           class KEqual = std::equal_to<const K> >
