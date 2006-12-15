@@ -633,12 +633,13 @@ else
     # three parts to the selection of optimization options
     # (gnu-host-type)::(processor-subtype)::(compiler+version)
     case $host in 
-	i*86-pc-linux-gnu)
+	*-linux-gnu)
 	  PROCMOD=`grep 'model name' /proc/cpuinfo | head -1 | sed 's/model name.: //' | sed 's/(R)//g' | sed 's/ //g'`
 	  ;;
 	hppa2.0w-hp-hpux11*)
 	  PROCMOD=PA2.0W
 	  ;;
+	
 	*)
 	  PROCMOD=unknown
 	  ;;
@@ -683,6 +684,9 @@ else
 	i686-*::*PentiumM*::icc-8.1*)
 	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
   	   ;;
+	x86_64-*::*AMDOpteron*::gcc-4.*)
+	   OPTFLAGS="-O3 -march=opteron -D__pentiumpro__ -g"
+	   ;;
 	*) AC_MSG_NOTICE(**************************************************)
 	   AC_MSG_NOTICE(Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination)
 	   AC_MSG_NOTICE(Leaving optimization option alone as '$CXXFLAGS')
