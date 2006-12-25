@@ -6,7 +6,6 @@
 
 nobase_include_HEADERS = \
 	Lintel/AssertException.H \
-	Lintel/AssertBoost.H \
 	Lintel/Clock.H \
 	Lintel/CompilerMarkup.H \
 	Lintel/Deque.H \
@@ -39,6 +38,10 @@ if ENABLE_STDIO64
 	nobase_include_HEADERS += Lintel/stdio_64.H 
 endif
 
+if WITH_BOOST_INCLUDES
+	nobase_include_HEADERS += Lintel/AssertBoost.H
+endif
+
 if WITH_TCL
 nobase_include_HEADERS += \
 	Lintel/Nameable.H \
@@ -48,7 +51,6 @@ nobase_include_HEADERS += \
 endif
 
 if WITH_GC
-
 nobase_include_HEADERS += \
 	Lintel/ConstantString.H \
 	Lintel/GC_Alloc.H

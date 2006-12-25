@@ -521,6 +521,32 @@ AC_SUBST(PCAP_LIBS)
 AM_CONDITIONAL(WITH_PCAP, test $with_pcap = yes)
 ])
 
+AC_DEFUN([HPL_WITH_BOOST_INCLUDES],
+[
+AC_ARG_WITH(boost-includes,
+  [  --without-boost-includes           disable boost support],
+  [with_boost_includes=$withval],
+  [with_boost_includes='yes'])
+
+if test "$with_boost_includes" = yes; then
+   AC_LANG_ASSERT(C++)
+   have_boost_format_hdr=no
+   AC_CHECK_HEADER(boost/format.hpp,have_boost_format_hdr=yes,)
+   have_boost_cstdint_hdr=no
+   AC_CHECK_HEADER(boost/cstdint.hpp,have_boost_cstdint_hdr=yes,)
+
+   if test $have_boost_format_hdr = yes -a $have_boost_cstdint_hdr = yes; then
+      with_boost_includes=yes
+   else
+      with_boost_includes=no
+   fi
+else
+   with_boost_includes=no
+fi
+
+AM_CONDITIONAL(WITH_BOOST_INCLUDES, test $with_boost_includes = yes)
+])
+
 AC_DEFUN([COM_HP_HPL_LINTEL_OPTMODE],
 [
 # make sure that any call to AC_PROG_CC/CXX occur after this macro so
@@ -576,8 +602,8 @@ else
 	    fi
 	    if test $optmode_fixa = yes -a $optmode_fixb = yes; then
 		LINTEL_OPTMODE_COMPILER=HPUX11
-		AC_MSG_NOTICE([Automatically adding -Xlinker -Wl,+vnocompatwarnings to OPTMODE_LDFLAGS])
-		OPTMODE_LDFLAGS="$LDFLAGS -Xlinker -Wl,+vnocompatwarnings"
+		AC_MSG_NOTICE([Automatically adding -Xlinker +vnocompatwarnings to OPTMODE_LDFLAGS])
+		OPTMODE_LDFLAGS="$LDFLAGS -Xlinker +vnocompatwarnings"
 	    fi
 	;;
     esac

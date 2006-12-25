@@ -67,9 +67,9 @@ CONFIG_CLEAN_FILES =
 SOURCES =
 DIST_SOURCES =
 am__nobase_include_HEADERS_DIST = Lintel/AssertException.H \
-	Lintel/AssertBoost.H Lintel/Clock.H Lintel/CompilerMarkup.H \
-	Lintel/Deque.H Lintel/Double.H Lintel/HashMap.H \
-	Lintel/HashTable.H Lintel/HashUnique.H Lintel/LintelAssert.H \
+	Lintel/Clock.H Lintel/CompilerMarkup.H Lintel/Deque.H \
+	Lintel/Double.H Lintel/HashMap.H Lintel/HashTable.H \
+	Lintel/HashUnique.H Lintel/LintelAssert.H \
 	Lintel/LintelVersion.H Lintel/MathSpecialFunctions.H \
 	Lintel/Matrix.H Lintel/MersenneTwisterRandom.H \
 	Lintel/PThread.H Lintel/Posix.H Lintel/PriorityQueue.H \
@@ -168,6 +168,8 @@ STRIP = @STRIP@
 TCL_CFLAGS = @TCL_CFLAGS@
 TCL_LIBS = @TCL_LIBS@
 VERSION = @VERSION@
+WITH_BOOST_INCLUDES_FALSE = @WITH_BOOST_INCLUDES_FALSE@
+WITH_BOOST_INCLUDES_TRUE = @WITH_BOOST_INCLUDES_TRUE@
 WITH_GC_FALSE = @WITH_GC_FALSE@
 WITH_GC_TRUE = @WITH_GC_TRUE@
 WITH_HPUX_REPLACE_MEMORY_FALSE = @WITH_HPUX_REPLACE_MEMORY_FALSE@
@@ -228,19 +230,18 @@ target_alias = @target_alias@
 target_cpu = @target_cpu@
 target_os = @target_os@
 target_vendor = @target_vendor@
-nobase_include_HEADERS = Lintel/AssertException.H Lintel/AssertBoost.H \
-	Lintel/Clock.H Lintel/CompilerMarkup.H Lintel/Deque.H \
-	Lintel/Double.H Lintel/HashMap.H Lintel/HashTable.H \
-	Lintel/HashUnique.H Lintel/LintelAssert.H \
-	Lintel/LintelVersion.H Lintel/MathSpecialFunctions.H \
-	Lintel/Matrix.H Lintel/MersenneTwisterRandom.H \
-	Lintel/PThread.H Lintel/Posix.H Lintel/PriorityQueue.H \
-	Lintel/Stats.H Lintel/StatsEMA.H Lintel/StatsHistogram.H \
-	Lintel/StatsMaker.H Lintel/StatsQuantile.H Lintel/StatsRW.H \
-	Lintel/StatsSequence.H Lintel/StatsSeries.H \
-	Lintel/StatsSeriesGroup.H Lintel/StringUtil.H \
-	Lintel/streamcompat.H Lintel/Uncompress.H $(am__append_1) \
-	$(am__append_2) $(am__append_3)
+nobase_include_HEADERS = Lintel/AssertException.H Lintel/Clock.H \
+	Lintel/CompilerMarkup.H Lintel/Deque.H Lintel/Double.H \
+	Lintel/HashMap.H Lintel/HashTable.H Lintel/HashUnique.H \
+	Lintel/LintelAssert.H Lintel/LintelVersion.H \
+	Lintel/MathSpecialFunctions.H Lintel/Matrix.H \
+	Lintel/MersenneTwisterRandom.H Lintel/PThread.H Lintel/Posix.H \
+	Lintel/PriorityQueue.H Lintel/Stats.H Lintel/StatsEMA.H \
+	Lintel/StatsHistogram.H Lintel/StatsMaker.H \
+	Lintel/StatsQuantile.H Lintel/StatsRW.H Lintel/StatsSequence.H \
+	Lintel/StatsSeries.H Lintel/StatsSeriesGroup.H \
+	Lintel/StringUtil.H Lintel/streamcompat.H Lintel/Uncompress.H \
+	$(am__append_1) $(am__append_2) $(am__append_3)
 all: all-am
 
 .SUFFIXES:
@@ -253,9 +254,9 @@ $(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__confi
 	      exit 1;; \
 	  esac; \
 	done; \
-	echo ' cd $(top_srcdir) && $(AUTOMAKE) --foreign  include/Makefile'; \
+	echo ' cd $(top_srcdir) && $(AUTOMAKE) --gnu  include/Makefile'; \
 	cd $(top_srcdir) && \
-	  $(AUTOMAKE) --foreign  include/Makefile
+	  $(AUTOMAKE) --gnu  include/Makefile
 .PRECIOUS: Makefile
 Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 	@case '$?' in \
@@ -471,6 +472,8 @@ uninstall-am: uninstall-info-am uninstall-nobase_includeHEADERS
 
 
 @ENABLE_STDIO64_TRUE@	nobase_include_HEADERS += Lintel/stdio_64.H 
+
+@WITH_BOOST_INCLUDES_TRUE@	nobase_include_HEADERS += Lintel/AssertBoost.H
 
 @WITH_GC_TRUE@Lintel/GC_Alloc.H: make_gcalloc_h.pl
 @WITH_GC_TRUE@	[ -d Lintel ] || mkdir Lintel

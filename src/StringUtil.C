@@ -14,6 +14,10 @@
 #include <StringUtil.H>
 #include <LintelAssert.H>
 
+#ifdef __HP_aCC
+#include <inttypes.h>
+#endif
+
 #if defined(__HP_aCC) && __HP_aCC < 35000
 #else
 using namespace std;
@@ -175,6 +179,10 @@ stringToLong(const std::string &str, int base)
 				  str.c_str()));
     return ret;
 }
+
+#ifdef __HP_aCC
+#define strtoll __strtoll
+#endif
 
 long long
 stringToLongLong(const std::string &str, int base)

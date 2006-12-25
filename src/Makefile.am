@@ -31,7 +31,6 @@ libLintel_la_LIBADD = @TCL_LIBS@
  
 libLintel_la_SOURCES = \
 	AssertException.C \
-	AssertBoost.C \
 	Clock.C \
 	Deque.C \
 	Double.C \
@@ -55,7 +54,11 @@ libLintel_la_SOURCES = \
 	Uncompress.C
 
 if ENABLE_STDIO64
-	libLintel_la_SOURCES += stdio_64.C
+libLintel_la_SOURCES += stdio_64.C
+endif
+
+if WITH_BOOST_INCLUDES
+libLintel_la_SOURCES += AssertBoost.C
 endif
 
 if WITH_TCL

@@ -25,7 +25,8 @@ Valid options:
   --libtool-lintelpthread show libtool link options for libLintelPThread
   --libs	       show library link options
   --mustgclibs         show library link options for programs requiring garbage collection
-  --nogclibs           show library linnk options for programs that don't need gc libraries
+  --nogclibs           show library link options for programs that don't need gc libraries
+  --built-with-boost   print string "true" or "false" as appropriate
   --help               show these options
   --version            show lintel version
 EOF
@@ -38,7 +39,7 @@ fi
 
 case "$1" in
     --cflags)
-    	echo "-I${includedir}/Lintel @TCL_CFLAGS@ @GC_CFLAGS@"
+    	echo "-I${includedir}/Lintel -I${includedir} @TCL_CFLAGS@ @GC_CFLAGS@"
 	exit 0
     	;;
     --libtool-libs)
@@ -82,6 +83,10 @@ case "$1" in
 	@WITH_GC_TRUE@ exit 0
 	@WITH_GC_FALSE@ echo "-llintel-libnogc-not-needed-now-unless-using-liblintelgc"
 	@WITH_GC_FALSE@ exit 1
+	;;
+    --built-with-boost)
+        @WITH_BOOST_INCLUDES_TRUE@ echo "true"; exit 0
+	@WITH_BOOST_INCLUDES_FALSE@ echo "false"; exit 1
 	;;
     --help)
         usage

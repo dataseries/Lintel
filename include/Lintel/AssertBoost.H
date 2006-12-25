@@ -50,6 +50,15 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 	AssertBoostFail("Fatal error", __FILE__, __LINE__, \
 		        MessagE)
         
-
+#ifdef COMPILE_DEBUG
+#define DEBUG_INVARIANT(ExpressioN, MessagE) \
+	( \
+         LIKELY(ExpressioN) ? (void)0 : \
+	 AssertBoostFail(#ExpressioN, __FILE__, __LINE__, \
+		         MessagE) \
+	)
+#else
+#define DEBUG_INVARIANT(ExpressioN, MessagE) (0)
 #endif
 
+#endif
