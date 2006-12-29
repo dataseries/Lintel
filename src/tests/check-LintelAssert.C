@@ -24,18 +24,18 @@
 //
 static void debugFunc1(const void *userdata)
 {
-  fprintf(stderr, "debugFunc1 invoked, with argument %d\n", (int)userdata);
+  fprintf(stderr, "debugFunc1 invoked, with argument %d\n", (int)(long)userdata);
 }
 
 static void debugFunc2(const void *userdata)
 {
-  fprintf(stderr, "debugFunc2 invoked, with argument %d\n", (int)userdata);
+  fprintf(stderr, "debugFunc2 invoked, with argument %d\n", (int)(long)userdata);
 }
 
 static void debugFuncRecurse(const void *userdata)
 {
   fprintf(stderr, "debugFuncRecurse invoked, with argument %d\n",
-	  (int)userdata);
+	  (int)(long)userdata);
   AssertRunDebugFunctions();
 }
 
