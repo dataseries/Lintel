@@ -35,11 +35,11 @@ nobase_include_HEADERS = \
 	Lintel/Uncompress.H 
 
 if ENABLE_STDIO64
-	nobase_include_HEADERS += Lintel/stdio_64.H 
+nobase_include_HEADERS += Lintel/stdio_64.H 
 endif
 
 if WITH_BOOST_INCLUDES
-	nobase_include_HEADERS += Lintel/AssertBoost.H
+nobase_include_HEADERS += Lintel/AssertBoost.H
 endif
 
 if WITH_TCL

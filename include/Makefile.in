@@ -43,17 +43,19 @@ POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
 target_triplet = @target@
-@WITH_TCL_TRUE@am__append_1 = \
+@ENABLE_STDIO64_TRUE@am__append_1 = Lintel/stdio_64.H 
+@WITH_BOOST_INCLUDES_TRUE@am__append_2 = Lintel/AssertBoost.H
+@WITH_TCL_TRUE@am__append_3 = \
 @WITH_TCL_TRUE@	Lintel/Nameable.H \
 @WITH_TCL_TRUE@	Lintel/Random.H \
 @WITH_TCL_TRUE@	Lintel/Randommwm.H \
 @WITH_TCL_TRUE@	Lintel/TclInterface.H
 
-@WITH_GC_TRUE@am__append_2 = \
+@WITH_GC_TRUE@am__append_4 = \
 @WITH_GC_TRUE@	Lintel/ConstantString.H \
 @WITH_GC_TRUE@	Lintel/GC_Alloc.H
 
-@WITH_HPUX_REPLACE_MEMORY_TRUE@am__append_3 = Lintel/hp_replace/memory
+@WITH_HPUX_REPLACE_MEMORY_TRUE@am__append_5 = Lintel/hp_replace/memory
 subdir = include
 DIST_COMMON = $(am__nobase_include_HEADERS_DIST) $(srcdir)/Makefile.am \
 	$(srcdir)/Makefile.in
@@ -77,8 +79,9 @@ am__nobase_include_HEADERS_DIST = Lintel/AssertException.H \
 	Lintel/StatsMaker.H Lintel/StatsQuantile.H Lintel/StatsRW.H \
 	Lintel/StatsSequence.H Lintel/StatsSeries.H \
 	Lintel/StatsSeriesGroup.H Lintel/StringUtil.H \
-	Lintel/streamcompat.H Lintel/Uncompress.H Lintel/Nameable.H \
-	Lintel/Random.H Lintel/Randommwm.H Lintel/TclInterface.H \
+	Lintel/streamcompat.H Lintel/Uncompress.H Lintel/stdio_64.H \
+	Lintel/AssertBoost.H Lintel/Nameable.H Lintel/Random.H \
+	Lintel/Randommwm.H Lintel/TclInterface.H \
 	Lintel/ConstantString.H Lintel/GC_Alloc.H \
 	Lintel/hp_replace/memory
 am__vpath_adj_setup = srcdirstrip=`echo "$(srcdir)" | sed 's|.|.|g'`;
@@ -241,7 +244,8 @@ nobase_include_HEADERS = Lintel/AssertException.H Lintel/Clock.H \
 	Lintel/StatsQuantile.H Lintel/StatsRW.H Lintel/StatsSequence.H \
 	Lintel/StatsSeries.H Lintel/StatsSeriesGroup.H \
 	Lintel/StringUtil.H Lintel/streamcompat.H Lintel/Uncompress.H \
-	$(am__append_1) $(am__append_2) $(am__append_3)
+	$(am__append_1) $(am__append_2) $(am__append_3) \
+	$(am__append_4) $(am__append_5)
 all: all-am
 
 .SUFFIXES:
@@ -470,10 +474,6 @@ uninstall-am: uninstall-info-am uninstall-nobase_includeHEADERS
 	tags uninstall uninstall-am uninstall-info-am \
 	uninstall-nobase_includeHEADERS
 
-
-@ENABLE_STDIO64_TRUE@	nobase_include_HEADERS += Lintel/stdio_64.H 
-
-@WITH_BOOST_INCLUDES_TRUE@	nobase_include_HEADERS += Lintel/AssertBoost.H
 
 @WITH_GC_TRUE@Lintel/GC_Alloc.H: make_gcalloc_h.pl
 @WITH_GC_TRUE@	[ -d Lintel ] || mkdir Lintel
