@@ -710,6 +710,9 @@ else
 	i686-*::*PentiumM*::icc-8.1*)
 	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
   	   ;;
+	x86_64-*::*AMDOpteron*::gcc-3.*)
+	   OPTFLAGS="-O3 -march=opteron -D__pentiumpro__ -g"
+	   ;;
 	x86_64-*::*AMDOpteron*::gcc-4.*)
 	   OPTFLAGS="-O3 -march=opteron -D__pentiumpro__ -g"
 	   ;;
