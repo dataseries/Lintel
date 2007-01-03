@@ -84,13 +84,7 @@ if ($bp_fullpath =~ m!^(.*)/([^/]+)$!o) {
 }
 
 eval "use BatchParallel::$bp_module_name;";
-if ($@ =~ /^Can\'t locate \S+ in \@INC/o) {
-    eval "use $bp_module_name;";
-    die "Using $bp_module_name and BatchParallel::$bp_module_name failed: $@" 
-	if $@;
-    print "Found module via use $bp_module_name;\n"
-	if $verbose;
-} elsif ($@) {
+if ($@) {
     die $@;
 } else {
     print "Found module via use BatchParallel::$bp_module_name\n"
