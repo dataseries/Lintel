@@ -19,4 +19,15 @@ or even simply hearing about how you are using the package.
 
 BUILDING
 
-See doc/building.html
+1) If you have a copy of Lintel checked out from version control, then
+   you need to run autoreconf --install in the source directory.  You
+   will need to have already installed autoconf and libtool.
+
+2) configure the package, e.g. in ~/build/optimize/Lintel:
+   .../path/to/source/Lintel/configure --enable-optmode=optimize
+
+3) compile and install the package, e.g. in ~/build/optimize/Lintel:
+   make && make check && make install
+
+For more details, see doc/building.html
+
