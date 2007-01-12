@@ -681,40 +681,40 @@ else
 	   PROFILEFLAG="-G"
 	   ;;
 	i686-*::*PentiumIII*::gcc-3.[34]*)
-	   OPTFLAGS="-O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
   	   ;;
 	i686-*::*IntelPentium4CPU*::gcc-3.[34]*)
-	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium4 -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*IntelXeon*::gcc-3.3*)
-	   OPTFLAGS="-O3 -march=pentium4 -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium4 -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*IntelXeon*::gcc-3.4*)
-	   OPTFLAGS="-O3 -march=pentium4 -D__pentium4__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium4 -D__pentium4__ -g"
 	   ;;
 	i686-*::*PentiumM*::gcc-2.95*)
-	   OPTFLAGS="-O3 -march=i686 -msse2 -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=i686 -msse2 -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*PentiumM*::gcc-3.3*) 
-	   OPTFLAGS="-O3 -march=pentium4 -msse2 -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium4 -msse2 -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*PentiumM*::gcc-3.4*) 
-	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*PentiumM*::gcc-4.*) 
-	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*IntelCPUT2600*::gcc-4.*)
-	   OPTFLAGS="-O3 -march=pentium-m -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*PentiumM*::icc-8.1*)
 	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
   	   ;;
 	x86_64-*::*AMDOpteron*::gcc-3.*)
-	   OPTFLAGS="-O3 -march=opteron -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=opteron -D__pentiumpro__ -g"
 	   ;;
 	x86_64-*::*AMDOpteron*::gcc-4.*)
-	   OPTFLAGS="-O3 -march=opteron -D__pentiumpro__ -g"
+	   OPTFLAGS="-Wall -O3 -march=opteron -D__pentiumpro__ -g"
 	   ;;
 	*) AC_MSG_NOTICE(**************************************************)
 	   AC_MSG_NOTICE(Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination)
