@@ -50,7 +50,8 @@ die "Usage: $0
     # dsn can be stored in the environment variable MERCURY_DSN
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
-    [--history=<history-filename, default $history_file>]\n"
+    [--history=<history-filename, default $history_file>]
+    [--help] [--man]\n"
     unless $success;
 
 if (defined $db) {
