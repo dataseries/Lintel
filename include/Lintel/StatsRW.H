@@ -19,7 +19,8 @@ class StatsRW {
 public:
     enum modeT { Read, Write, All };
     StatsRW(const std::string &name); // make stats objects based on StatsMaker
-    StatsRW(Stats *read, Stats *write, Stats *all); // can have null entries.
+    StatsRW(Stats *read, Stats *write, Stats *all); // can have null entries; StatsRW will delete these stats when it is deleted.
+    virtual ~StatsRW();
   
     // Stats objects which can use the time-series information will get it;
     // others will ignore it

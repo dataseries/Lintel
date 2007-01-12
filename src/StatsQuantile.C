@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -291,7 +290,7 @@ StatsQuantile::getQuantile(double quantile) const
 	    //	    second_min_buffer = -1;
 	}
 	AssertAlways(min_buffer >= 0 && min_buffer < buffer_size,
-		     ("Whoa, no minimal buffer?!; searching for posn %d, cur %d\n",
+		     ("Whoa, no minimal buffer?!; searching for posn %lldd, cur %lldd\n",
 		      target_index,cur_index));
 	collapse_pos[min_buffer] += 1;
 	AssertAlways(min_val >= prev_val,("Whoa, sort order error?!\n"));
@@ -407,7 +406,7 @@ StatsQuantile::collapse()
 	}
     }
     AssertAlways(next_quantile_offset / total_weight == buffer_size,
-		 ("Huh, didn't get to correct quantile offset %d/%d != %d?!\n",
+		 ("Huh, didn't get to correct quantile offset %lld/%lldd != %d?!\n",
 		  next_quantile_offset, total_weight, buffer_size));
 
     // update all_buffers[first_buffer]

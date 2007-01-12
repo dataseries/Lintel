@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -32,6 +31,13 @@ StatsRW::StatsRW(Stats *_read, Stats *_write, Stats *_all)
   write = _write;
   all = _all;
   finish_init();
+}
+
+StatsRW::~StatsRW()
+{
+    delete read;
+    delete write;
+    delete all;
 }
 
 void 
