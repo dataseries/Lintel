@@ -58,7 +58,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 		         MessagE) \
 	)
 #else
-#define DEBUG_INVARIANT(ExpressioN, MessagE) (0)
+#define DEBUG_INVARIANT(ExpressioN, MessagE) do { } while(0)
 #endif
 
 #endif

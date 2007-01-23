@@ -15,13 +15,17 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include <LintelAssert.H>
-#include <Stats.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Stats.H>
 
 #if __HP_aCC
 extern "C" {
     void readControlRegister16(long long *);
 };
+#endif
+
+#if defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
+#include <asm/msr.h>
 #endif
 
 class Clock {
@@ -59,7 +63,7 @@ public:
 #if defined(__HP_aCC)
 	readControlRegister16(&ret);
 #elif defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
-	__asm__ __volatile__ ("rdtsc" : "=A" (ret));
+	rdtscll(ret);
 #else
 #error "Do not know how to get the cycle counter on this platform"
 #endif

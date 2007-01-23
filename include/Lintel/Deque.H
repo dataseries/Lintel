@@ -13,7 +13,7 @@
 #ifndef __DEQUE_H
 #define __DEQUE_H
 
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
 #include <new>
 // don't use deque for runnable; it has horrid performance on
 // HP-UX (~10us / insertion to empty deque) Instead, standard

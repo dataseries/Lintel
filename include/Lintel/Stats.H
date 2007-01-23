@@ -85,7 +85,14 @@ public:
     virtual std::string debugString() const;
     virtual void printRome(int depth, std::ostream &out) const;
     virtual void printTabular(int depth, std::ostream &out) const;
+    virtual void printText(std::ostream &out) const;
+    friend std::ostream &operator<<(std::ostream &to, const Stats &s) {
+	s.printText(to);
+	return to;
+    }
+
     virtual Stats *another_new() const;
 };
+
 
 #endif

@@ -13,8 +13,9 @@
 #include <pthread.h>
 #include <errno.h>
 #include <string.h>
-#include <LintelAssert.H>
-#include <Clock.H>
+
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Clock.H>
 
 #if __linux__
 extern "C" {
