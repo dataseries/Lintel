@@ -112,34 +112,35 @@ nobase_perllib_DATA = Text/ExpandInt.pm Plot/Mercury.pm
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.
 
-check_PROGRAMS := tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert
+check_PROGRAMS := tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock
 
 if WITH_TCL
 check_PROGRAMS += tests/check-Random
 endif
 
-check-local: tests/check_StatsQuantile tests/check_Uncompress tests/check_LintelAssert
+check-local: tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock
 	@echo "Regression tests successful"
 
 clean-local::
-	-rm -f tests/check_Random tests/check_StatsQuantile tests/check_Uncompress tests/check_LintelAssert
+	-rm -f tests/checked_*
+
 if WITH_TCL
 tests_check_Random_SOURCES = tests/check-Random.C
 
-tests/check_Random: tests/check-Random
+tests/checked_Random: tests/check-Random
 	tests/check-Random 2>&1 | diff -b $(srcdir)/@RANDOM_COMPARETO@ -
 	touch $@
 endif
 
 tests_check_StatsQuantile_SOURCES = tests/stats_quantile.C
 
-tests/check_StatsQuantile: tests/check-StatsQuantile
+tests/checked_StatsQuantile: tests/check-StatsQuantile
 	tests/check-StatsQuantile | diff -c $(srcdir)/tests/stats_quantile.good -
 	touch $@
 
 tests_check_Uncompress_SOURCES = tests/check-Uncompress.C
 
-tests/check_Uncompress: tests/check-Uncompress
+tests/checked_Uncompress: tests/check-Uncompress
 	tests/check-Uncompress $(srcdir)/Uncompress.C | diff -c $(srcdir)/Uncompress.C -
 	gzip -1cv <$(srcdir)/Uncompress.C >tests/Uncompress.C.gz
 	tests/check-Uncompress tests/Uncompress.C.gz | diff -c $(srcdir)/Uncompress.C -
@@ -148,6 +149,13 @@ tests/check_Uncompress: tests/check-Uncompress
 
 tests_check_LintelAssert_SOURCES = tests/check-LintelAssert.C
 
-tests/check_LintelAssert: tests/check-LintelAssert $(srcdir)/tests/run-check-LintelAssert.sh
+tests/checked_LintelAssert: tests/check-LintelAssert $(srcdir)/tests/run-check-LintelAssert.sh
 	$(srcdir)/tests/run-check-LintelAssert.sh $(srcdir)
 	touch $@
+
+tests_check_Clock_SOURCES = tests/clock.C
+
+tests/checked_Clock: tests/check-Clock
+	tests/check-Clock
+	touch $@
+
