@@ -139,6 +139,14 @@ prefixequal(const string &str, const string &prefix)
     return str.compare(0,prefix.size(),prefix) == 0;
 }
 
+bool
+suffixequal(const string &str, const string &prefix)
+{
+    if (str.size() < prefix.size())
+	return false;
+    return str.compare(str.size() - prefix.size(),prefix.size(),prefix) == 0;
+}
+
 
 string
 ipv4tostring(unsigned long val)
