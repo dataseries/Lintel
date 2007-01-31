@@ -144,120 +144,141 @@ public:
 	}
 	return NULL;
     }
-
-    void remove(const D &key, bool must_exist = true) {
+    D *randomlookup(const int randa, const int randb) {
 	if (entry_points.size() == 0) {
-	    AssertAlways(must_exist == false,("remove failed, hash table is empty"));
-	    return;
+	    return NULL;
 	}
-	int hash = hashfn(key) % entry_points.size();
-	int loc = entry_points[hash];
-	if (loc == -1) {
-	    AssertAlways(must_exist == false,
-			 ("remove failed, value doesn't exist\n"));
-	    return;
-	}
-	if (equal(key,chains[loc].data)) {
-	    entry_points[hash] = chains[loc].next;
-	    chains[loc].next = free_list;
-	    free_list = loc;
-	} else {
-	    int prev = loc;
-	    while(true) {
-		prev = loc;
-		loc = chains[loc].next;
-		if (loc == -1) {
-		    AssertAlways(must_exist == false,
-				 ("remove failed, value doesn't exist\n"));
-		    break;
-		}
-		if (equal(key,chains[loc].data)) {
-		    chains[prev].next = chains[loc].next;
-		    chains[loc].next = free_list;
-		    free_list = loc;
-		    break;
-		}
-	    }
-	}
-    }
-	    
-    void clear() {
-	free_list = -1;
-	chains.clear();
-	for(unsigned int i=0;i<entry_points.size();i++) {
-	    entry_points[i] = -1;
-	}
-    }
+	int i, len=0;
+	for (i = randa % entry_points.size();
+	     entry_points[i] == -1;
+	     i = (i+1) % entry_points.size()){}
+	
+	 for(int j=entry_points[i];j != -1; j=chains[j].next) {
+	     len++;
+	 }
+	 int k = randb % len;
+	 for(int j=entry_points[i]; j != -1; j=chains[j].next, k--) {
+	     if (k <= 0) {
+		 return (&chains[j].data);
+	     }
+	 }
+	 AssertAlways(true, ("internal: did not find random entry"));
+	 return NULL;
+     }
 
-    class iterator {
-    public:
-	iterator(HashTable &_mytable, int start_chain = 0) 
-	    : mytable(_mytable), cur_chain(start_chain), chain_loc(-1) {
-	    findNonemptyChain();
-	}
-	iterator &operator++() { increment(); return *this; }
-	iterator operator++(int) {
-	    iterator tmp = *this;
-	    increment();
-	    return tmp;
-	}
-	bool operator==(const iterator &y) const {
-	    return &mytable == &y.mytable && 
-		cur_chain == y.cur_chain && 
-		chain_loc == y.chain_loc;
-	}
-	bool operator!=(const iterator &y) const {
-	    return !(*this == y);
-	}
-	D &operator *() { 
-	    AssertAlways(chain_loc >= 0 && 
-			 chain_loc < (int)mytable.chains.size(),
-			 ("Bad use of iterator\n"));
-	    return mytable.chains[chain_loc].data;
-	}
-	D *operator ->() {
-	    return &(operator *());
-	}	    
-	// use this while iterating over an entire hash table, but you
-	// don't want to do the entire scan as a single operation (for
-	// example for time reasons), this operation allows you to
-	// restart the scan operation partway through after doing some
-	// number of updates safely.
-	void partialReset() {
-	    if (cur_chain < (int)mytable.entry_points.size()) {
-		chain_loc = mytable.entry_points[cur_chain];
-		findNonemptyChain();
-	    } else {
-		AssertAlways(cur_chain == (int)mytable.entry_points.size(),
-			     ("internal error\n"));
-	    }
-	}
-	void reset() {
-	    cur_chain = 0;
-	    findNonemptyChain();
-	}
-	int getCurChain() {
-	    return cur_chain;
-	}
-    private:
-	void findNonemptyChain() {
-	    while(cur_chain < (int)mytable.entry_points.size() &&
-		  mytable.entry_points[cur_chain] == -1) {
-		cur_chain += 1;
-	    }
-	    if (cur_chain < (int)mytable.entry_points.size()) {
-		chain_loc = mytable.entry_points[cur_chain];
-	    }
-	}
-	void increment() {
-	    AssertAlways(chain_loc >= 0 && 
-			 chain_loc < (int)mytable.chains.size(),
-			 ("bad use of iterator\n"));
-	    chain_loc = mytable.chains[chain_loc].next;
-	    if (chain_loc == -1) {
-		cur_chain += 1;
-		findNonemptyChain();
-	    }
+     void remove(const D &key, bool must_exist = true) {
+	 if (entry_points.size() == 0) {
+	     AssertAlways(must_exist == false,("remove failed, hash table is empty"));
+	     return;
+	 }
+	 int hash = hashfn(key) % entry_points.size();
+	 int loc = entry_points[hash];
+	 if (loc == -1) {
+	     AssertAlways(must_exist == false,
+			  ("remove failed, value doesn't exist\n"));
+	     return;
+	 }
+	 if (equal(key,chains[loc].data)) {
+	     entry_points[hash] = chains[loc].next;
+	     chains[loc].next = free_list;
+	     free_list = loc;
+	 } else {
+	     int prev = loc;
+	     while(true) {
+		 prev = loc;
+		 loc = chains[loc].next;
+		 if (loc == -1) {
+		     AssertAlways(must_exist == false,
+				  ("remove failed, value doesn't exist\n"));
+		     break;
+		 }
+		 if (equal(key,chains[loc].data)) {
+		     chains[prev].next = chains[loc].next;
+		     chains[loc].next = free_list;
+		     free_list = loc;
+		     break;
+		 }
+	     }
+	 }
+     }
+
+     void clear() {
+	 free_list = -1;
+	 chains.clear();
+	 for(unsigned int i=0;i<entry_points.size();i++) {
+	     entry_points[i] = -1;
+	 }
+     }
+
+     class iterator {
+     public:
+	 iterator(HashTable &_mytable, int start_chain = 0) 
+	     : mytable(_mytable), cur_chain(start_chain), chain_loc(-1) {
+	     findNonemptyChain();
+	 }
+	 iterator &operator++() { increment(); return *this; }
+	 iterator operator++(int) {
+	     iterator tmp = *this;
+	     increment();
+	     return tmp;
+	 }
+	 bool operator==(const iterator &y) const {
+	     return &mytable == &y.mytable && 
+		 cur_chain == y.cur_chain && 
+		 chain_loc == y.chain_loc;
+	 }
+	 bool operator!=(const iterator &y) const {
+	     return !(*this == y);
+	 }
+	 D &operator *() { 
+	     AssertAlways(chain_loc >= 0 && 
+			  chain_loc < (int)mytable.chains.size(),
+			  ("Bad use of iterator\n"));
+	     return mytable.chains[chain_loc].data;
+	 }
+	 D *operator ->() {
+	     return &(operator *());
+	 }	    
+	 // use this while iterating over an entire hash table, but you
+	 // don't want to do the entire scan as a single operation (for
+	 // example for time reasons), this operation allows you to
+	 // restart the scan operation partway through after doing some
+	 // number of updates safely.
+	 void partialReset() {
+	     if (cur_chain < (int)mytable.entry_points.size()) {
+		 chain_loc = mytable.entry_points[cur_chain];
+		 findNonemptyChain();
+	     } else {
+		 AssertAlways(cur_chain == (int)mytable.entry_points.size(),
+			      ("internal error\n"));
+	     }
+	 }
+	 void reset() {
+	     cur_chain = 0;
+	     findNonemptyChain();
+	 }
+	 int getCurChain() {
+	     return cur_chain;
+	 }
+     private:
+	 void findNonemptyChain() {
+	     while(cur_chain < (int)mytable.entry_points.size() &&
+		   mytable.entry_points[cur_chain] == -1) {
+		 cur_chain += 1;
+	     }
+	     if (cur_chain < (int)mytable.entry_points.size()) {
+		 chain_loc = mytable.entry_points[cur_chain];
+	     }
+	 }
+	 void increment() {
+	     AssertAlways(chain_loc >= 0 && 
+			  chain_loc < (int)mytable.chains.size(),
+			  ("bad use of iterator\n"));
+	     chain_loc = mytable.chains[chain_loc].next;
+	     if (chain_loc == -1) {
+		 cur_chain += 1;
+		 findNonemptyChain();
+	     }
 	}
 	HashTable &mytable;
 	int cur_chain;
