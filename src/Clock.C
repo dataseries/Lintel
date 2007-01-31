@@ -8,6 +8,10 @@
     Cycle counter and other timer support
 */
 
+#include <iostream>
+
+using namespace std;
+
 #include <pthread.h>
 #include <stdio.h>
 #include <sys/time.h>
@@ -15,12 +19,13 @@
 #include <algorithm>
 #include <vector>
 
-#include <LintelAssert.H>
-#include <PThread.H>
-#include <Stats.H>
-
-#include <Clock.H>
-#include <Double.H>
+#include <Lintel/Clock.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/PThread.H>
+#include <Lintel/Stats.H>
+#include <Lintel/Double.H>
+#include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/AssertBoost.H>
 
 const int min_samples = 20;
 double Clock::clock_rate = -1;
@@ -540,3 +545,32 @@ Clock::timingTest()
 
 }
 
+void
+Clock::selfCheck()
+{
+    cout << "Checking conversion from s.us <-> Tfrac" << endl;
+    
+    MersenneTwisterRandom rand;
+
+    for(uint32_t us = 0; us < 1000000; ++us) { // test all possible us values.
+	uint32_t sec = rand.randInt();
+	Clock::Tfrac tfrac = secMicroToTfrac(sec, us);
+	uint32_t sec_test = TfracToSec(tfrac);
+	uint32_t us_test = TfracToMicroSec(tfrac);
+	INVARIANT(sec_test == sec && us_test == us,
+		  boost::format("s.us <-> Tfrac failed: %d.%d -> %lld (lowbits %lld) -> %d.%d")
+		  % sec % us % tfrac % (tfrac & 0xFFFFFFFFULL) % sec_test % us_test);
+    }
+    
+    cout << "Checking conversion from s.ns <-> Tfrac" << endl;
+    for(uint32_t testnum = 0; testnum < 20000000; ++testnum) { // sample test 2% of possible values
+	uint32_t sec = rand.randInt();
+	uint32_t ns = rand.randInt(1000000000);
+	Clock::Tfrac tfrac = secNanoToTfrac(sec, ns);
+	uint32_t sec_test = TfracToSec(tfrac);
+	uint32_t ns_test = TfracToNanoSec(tfrac);
+	INVARIANT(sec_test == sec && ns_test == ns,
+		  boost::format("s.ns <-> Tfrac failed: %d.%d -> %lld (lowbits %lld) -> %d.%d")
+		  % sec % ns % tfrac % (tfrac & 0xFFFFFFFFULL) % sec_test % ns_test);
+    }
+}

@@ -4,11 +4,12 @@
    See the file named COPYING for license details
 */
 
-#include <Clock.H>
+#include <Lintel/Clock.H>
 
 int
 main()
 {
+    Clock::selfCheck();
     Clock::timingTest();
     return 0;
 }

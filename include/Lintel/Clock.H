@@ -42,6 +42,9 @@ public:
     typedef long long Tll;
     typedef double Tdbl;
 
+    // units for this is seconds * 2^-32, such that Tfrac >> 32 == time in seconds
+    typedef unsigned long long Tfrac;
+
     // Clock cycle calibration occurs until the relative conf95 is
     // under the maximum allowed, the default of 0.01 allows for a 1%
     // error.  Calibration only happens for the first clock object
@@ -160,11 +163,45 @@ public:
     // switched CPUs or took forever to do it, thereby invalidating the
     // effort to calibrate the cycle counter to the time of day.
     int nrecalibrate, nbadgettod;
-#if 0
-    int ntodzerotime;
-    Stats badrecalibration_delta;
-#endif
     static void timingTest();
+
+    static Tfrac secMicroToTfrac(uint32_t seconds, uint32_t micro_seconds) {
+	Tfrac ret = static_cast<Tfrac>(seconds) << 32;
+	ret += (static_cast<Tfrac>(micro_seconds) << 32) / 1000000;
+	return ret;
+    }
+
+    static Tfrac secNanoToTfrac(uint32_t seconds, uint32_t nano_seconds) {
+	Tfrac ret = static_cast<Tfrac>(seconds) << 32;
+	ret += (static_cast<Tfrac>(nano_seconds) << 32) / 1000000000;
+	return ret;
+    }
+
+    static uint32_t TfracToSec(Tfrac in) {
+	return static_cast<uint32_t>(in >> 32);
+    }
+
+    static uint32_t TfracToMicroSec(Tfrac in) {
+	in = in & 0xFFFFFFFFULL;
+	// Have to convert through a double because the conversion is
+	// inexact, e.g.  1 us -> 4294 Tfrac units -> 0.99977 us
+	double tmp = static_cast<double>(in) * 1.0e6 / 4294967296.0;
+	return static_cast<uint32_t>(round(tmp));
+    }
+
+    static uint32_t TfracToNanoSec(Tfrac in) {
+	in = in & 0xFFFFFFFFULL;
+	// Have to convert through a double because the conversion is
+	// inexact, e.g.  1 us -> 4294 Tfrac units -> 0.99977 us
+	double tmp = static_cast<double>(in) * 1.0e9 / 4294967296.0;
+	return static_cast<uint32_t>(round(tmp));
+    }
+
+    static Tll TfracToTll(Tfrac in) {
+	return static_cast<Tll>(TfracToSec(in))*1000000 + TfracToMicroSec(in);
+    }
+
+    static void selfCheck();
 public:
     static double inverse_clock_rate; // us/cycle
     static Tll max_recalibrate_measure_time; // see todcc_recalibrate()
