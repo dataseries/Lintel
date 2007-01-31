@@ -193,6 +193,10 @@ public:
 	return static_cast<uint32_t>(round(tmp));
     }
 
+    static Tll TfracToTll(Tfrac in) {
+	return static_cast<Tll>(TfracToSec(in))*1000000 + TfracToMicroSec(in);
+    }
+
     static void selfCheck();
 public:
     static double inverse_clock_rate; // us/cycle

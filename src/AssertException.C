@@ -26,9 +26,10 @@ AssertExceptionT::stringPrintF(const char *format, ...)
   va_list ap;
   va_start(ap, format);
 
-  vsnprintf(&ret[0], ret.size(), format, ap);
+  int actual_size = vsnprintf(&ret[0], ret.size(), format, ap);
 
   va_end(ap);
+  ret.resize(actual_size);
   return ret;
 }
 
