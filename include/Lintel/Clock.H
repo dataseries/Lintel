@@ -14,6 +14,7 @@
 #include <math.h>
 #include <time.h>
 #include <sys/time.h>
+#include <stdint.h>
 
 #include <Lintel/LintelAssert.H>
 #include <Lintel/Stats.H>
