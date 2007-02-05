@@ -55,7 +55,7 @@ public:
     // a thread.
 
     virtual void *run() = 0;
-    pthread_t start();
+    virtual pthread_t start();
     void *join();
 private:
     pthread_t last_tid;
