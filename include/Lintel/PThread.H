@@ -122,6 +122,29 @@ struct PThreadMutex {
     int ncontention;
 };
 
+// Allocate this as an automatic in your stack frame.  It will
+// take the mutex on construction and drop it on destruction,
+// when the stack frame goes out of scope.
+class PThreadAutoLocker {
+public:
+    PThreadAutoLocker(PThreadMutex &_lock) 
+	: lock(_lock)
+    {
+	lock.lock();
+    }
+
+    ~PThreadAutoLocker()
+    {
+	lock.unlock();
+    }
+
+private:
+    PThreadMutex &lock;
+
+    PThreadAutoLocker(const PThreadAutoLocker &); // nope
+    PThreadAutoLocker &operator=(const PThreadAutoLocker &); // nope
+};
+
 struct PThreadCond {
     pthread_cond_t c;
     PThreadCond() {
