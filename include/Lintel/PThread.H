@@ -127,7 +127,7 @@ struct PThreadMutex {
 // when the stack frame goes out of scope.
 class PThreadAutoLocker {
 public:
-    PThreadAutoLocker(PThreadMutex &_lock) 
+    explicit PThreadAutoLocker(PThreadMutex &_lock) 
 	: lock(_lock)
     {
 	lock.lock();
