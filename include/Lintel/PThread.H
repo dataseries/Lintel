@@ -55,7 +55,7 @@ public:
     // a thread.
 
     virtual void *run() = 0;
-    pthread_t start();
+    virtual pthread_t start();
     void *join();
 private:
     pthread_t last_tid;
@@ -120,6 +120,29 @@ struct PThreadMutex {
     }
 #endif
     int ncontention;
+};
+
+// Allocate this as an automatic in your stack frame.  It will
+// take the mutex on construction and drop it on destruction,
+// when the stack frame goes out of scope.
+class PThreadAutoLocker {
+public:
+    PThreadAutoLocker(PThreadMutex &_lock) 
+	: lock(_lock)
+    {
+	lock.lock();
+    }
+
+    ~PThreadAutoLocker()
+    {
+	lock.unlock();
+    }
+
+private:
+    PThreadMutex &lock;
+
+    PThreadAutoLocker(const PThreadAutoLocker &); // nope
+    PThreadAutoLocker &operator=(const PThreadAutoLocker &); // nope
 };
 
 struct PThreadCond {
