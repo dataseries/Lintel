@@ -505,7 +505,7 @@ StatsQuantile::printTail(FILE *out)
 {
     printf("  tails: ");
     double nentries = countll();
-    for(double tail_frac = 0.1; (tail_frac * nentries) >= 1.0;) {
+    for(double tail_frac = 0.1; (tail_frac * nentries) >= 10.0;) {
 	if (tail_frac < 0.05) {
 	    printf(", ");
 	}

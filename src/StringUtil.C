@@ -43,12 +43,13 @@ split(const string &instr, const string &splitstr, vector<string> &bits)
 static char hextable[] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 
 string
-hexstring(const string &a)
+hexstring(const void *_data, unsigned datasize)
 {
+    const unsigned char *data = reinterpret_cast<const unsigned char *>(_data);
     string ret;
-    ret.resize(a.size()*2);
-    for(unsigned int i=0;i<a.size();++i) {
-        unsigned int c = (unsigned char)(a[i]);
+    ret.resize(datasize*2);
+    for(unsigned int i=0;i<datasize;++i) {
+        unsigned int c = (unsigned char)(data[i]);
         ret[i*2] = hextable[(c >> 4) & 0xF];
         ret[i*2+1] = hextable[c & 0xF];
     }

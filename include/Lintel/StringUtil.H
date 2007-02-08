@@ -20,8 +20,13 @@
 void split(const std::string &instr, const std::string &splitstr, 
 	   std::vector<std::string> &bits);
 
+/** convert data for size bytes into a hex string */
+std::string hexstring(const void *data, unsigned datasize);
+
 /** convert instr into a hex string */
-std::string hexstring(const std::string &instr);
+inline std::string hexstring(const std::string &instr) {
+    return hexstring(static_cast<const void *>(instr.data()), instr.size());
+}
 
 /** convert instr into a hex string if it contains non-printing characters */
 std::string maybehexstring(const std::string &instr); 
