@@ -25,8 +25,16 @@ extern "C" {
 };
 #endif
 
-#if defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
+#if defined(__linux__) && defined(__i386__)
+/* don't include <asm/msr.h>, as it fails on some platforms */
+#define rdtscll(val) \
+     __asm__ __volatile__("rdtsc" : "=A" (val))
+#define HAVE_RDTSCLL 1
+#endif
+
+#if defined(__linux__) && defined(__x86_64__)
 #include <asm/msr.h>
+#define HAVE_RDTSCLL 1
 #endif
 
 class Clock {
@@ -66,7 +74,7 @@ public:
 	Tll ret = 0;
 #if defined(__HP_aCC)
 	readControlRegister16(&ret);
-#elif defined(__linux__) && (defined(__i386__) || defined(__x86_64__))
+#elif defined(HAVE_RDTSCLL)
 	rdtscll(ret);
 #else
 #error "Do not know how to get the cycle counter on this platform"
