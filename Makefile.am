@@ -13,6 +13,11 @@ SUBDIRS = include src
 aclocaldir = $(datadir)/aclocal
 aclocal_DATA = com_hp_hpl_lintel.m4
 
+cmakemodulesdir = $(datadir)/cmake-modules
+cmakemodules_DATA = \
+	cmake-modules/FindLintel.cmake \
+	cmake-modules/FindLibXmlpp.cmake
+
 # Magic to make autoreconf find com_hp_hpl_lintel.m4
 # Sadly, we can't use this in other packages because the proper -I depends
 # on where we are installing.
