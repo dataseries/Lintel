@@ -45,28 +45,26 @@ struct HashMap_hash<const std::string> {
 template <>
 struct HashMap_hash<const int> {
     unsigned operator()(const int _a) const {
+	// This turns out to be slow, so turn it back into just using
+	// the underlying integer; if someone does put "bad" integers
+	// into the system then they can make their own hash function
+
 	// doesn't increase the entropy, but shuffles the entropy across
 	// the entire integer, meaning the low bits get shuffled even if they
 	// are constant for some reason
-	int a = _a;
-	int b = 0xBEEFCAFE;
-	int ret = 1972;
-	BobJenkinsHashMix(a,b,ret);
-	return ret;
+//	int a = _a;
+//	int b = 0xBEEFCAFE;
+//	int ret = 1972;
+//	BobJenkinsHashMix(a,b,ret);
+//	return ret;
+	return static_cast<unsigned>(_a);
     }
 };
 
 template <>
 struct HashMap_hash<const long long> {
     unsigned operator()(const long long _a) const {
-	// doesn't increase the entropy, but shuffles the entropy across
-	// the entire integer, meaning the low bits get shuffled even if they
-	// are constant for some reason
-	long long a = _a;
-	long long b = 0xBEEFCAFE;
-	long long ret = 1972;
-	BobJenkinsHashMix(a,b,ret);
-	return ret;
+	return BobJenkinsHashMixULL(_a);
     }
 };
 
@@ -123,9 +121,9 @@ public:
 	return lookup(k) != NULL;
     }
 
-    void remove(const K &k) {
+    void remove(const K &k, bool must_exist = true) {
 	hmval fullval(k);
-	hashtable.remove(fullval);
+	hashtable.remove(fullval, must_exist);
     }
 
     void clear() {
