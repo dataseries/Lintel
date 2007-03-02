@@ -5,7 +5,7 @@ Name:           Lintel
 Version:        1.0.0
 URL:            http://twiki.hpl.hp.com/bin/view/StorageSystems/TiColi
 Source:         %{name}-%{version}.tar.gz
-Release:        1
+Release:        2
 Summary:        Ticoli FUSE logging
 Group:          System Environment/Base
 License:        Closed
@@ -107,7 +107,8 @@ rm -rf $RPM_BUILD_ROOT
 /usr/lib/libLintel.so.0.0.0
 /usr/lib/libLintelPThread.a
 /usr/lib/libLintelPThread.la
-
+/usr/share/cmake-modules/FindLibXmlpp.cmake
+/usr/share/cmake-modules/FindLintel.cmake
 
 %files libs
 /usr/lib/libLintel.so.0.0.0
@@ -115,6 +116,9 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 
-* Wed Feb 14 2007 Chip Christian <chip.christian@hp.com>
+* Fri Mar 02 2007 ticoli-hp@cello.hpl.hp.com
+- cmake modules added 
+
+* Wed Feb 14 2007 ticoli-hp@cello.hpl.hp.com
 - Initial RPM release.
 make
