@@ -14,7 +14,7 @@
 
 #include <vector>
 
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
 extern unsigned int HashTable_prime_list[];
 
 // The key and value are not separate because in some cases, they are
