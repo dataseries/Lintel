@@ -123,7 +123,8 @@ my $markerre;
 my $prompt = ">> ";
 while (defined ($_ = $term->readline($prompt))) {
     $command_error = 0;
-    &docmd($_);
+    eval { &docmd($_) };
+    print "Error executing command: $@\n" if $@;
 }
 &saveexit;
 
@@ -237,11 +238,12 @@ sub docmd {
 	fncmds($1);
     } elsif (/^\S.+\(.*\)/o) {
 	fncmds($_);
-    } elsif (/^\s*$/o) {
+    } elsif (/^\s*$/o || /^\#/o) {
+	# ignore
     } elsif (/^man$/o) {
 	pod2usage(-verbose => 2, -exitval => 'NOEXIT');
     } else {
-	print "Unknown command '$_'; try help\n";
+	print "Unknown command '$_'; try help or man\n";
 	$command_error = 1;
     }
     shift @history if @history > 100;
@@ -275,17 +277,26 @@ sub history {
 	    print "Unable to open $1: $!\n";
 	}
     } elsif (/^run\s+(.+)$/o) {
-	if (open(HIST,$1)) {
-	    print "Running history from $1\n";
+	my $filename = $1;
+	if (open(HIST,$filename)) {
+	    print "Running history from $filename\n";
+	    my @save_history = @history;
+	    my $linenum = 0;
 	    while(<HIST>) {
+		++$linenum;
 		next if /^#/o;
 		next if /^\s*$/o;
 		print "load>> $_" unless defined $markerre;
 		chomp;
-		&docmd($_);
-		pop(@history) if $history[$#history] eq $_;
-		last if $command_error;
+		eval { &docmd($_); };
+		if ($@ || $command_error) {
+		    print "Error evaluating line $linenum of $filename, terminating command loading: $@\n"
+			if $@;
+		    last;
+		}
 	    }
+	    # Don't fill history with loaded data.
+	    @history = @save_history;
 	} else {
 	    print "Unable to open $1: $!\n";
 	}
@@ -336,7 +347,7 @@ sub help {
     print "listplot\n";
     print "unplot [<plotnum>] \# no plotnum = all\n";
     print "fnplot <function>\n";
-    print "barplot <variable> [,<error-variable>] [,<error-variable>] major <arribute>=\{comma sep value list\} minor <arribute>=\{comma sep value list\} <sql command>\n  If there is one error varibale defined, then it is used as +- delta error. \n  If there are two variables specified, the first one is used as the \"low\" value and the second as the \"high\" value\n";
+    print "barplot <sql select arguments>, with columns named major, [minor], y, [yerr, (ylo,yhi)]\n";
     print "plotwith <plotnum|_ for latest,* for default> <with...>\n";
     print "    # 'plotwith * undef' unsets the default plotwith.\n";
     print "plottitle <plotnum|_ for latest> <title | notitle>\n";
@@ -349,6 +360,7 @@ sub help {
     print "source <filename> \# run commands from filename\n";
     print "fncmds <code> # evaluate code, and execute the commands returned by it.\n";
     print "help [history]\n";
+    print "man \# Print the manual\n";
     print "exit or quit\n";
 }
 
@@ -619,109 +631,114 @@ sub barplot {
 # plots a bar-graph with bars for each  "minor" attribute clustered togeter and the clusters for each "major" attribute seperated.
     # some constants
     my $box_width=0.9;
-    my $group_seperation=3;
+    my $group_separation=3;
 
-    ($_) =@_;
-    m!barplot\s+(\S+)\s+major\s+([^\s=]+)\s*=\s*\{([^\}]*)\}\s+minor\s+([^\s=]+)\s*=\s*\{([^\}]*)\}(.*)$!o;
-    my $major_attribute = $2;
-    my @major_value_list = split ',', $3;
-    my $minor_attribute = $4;
-    my @minor_value_list = split ',', $5;
-    my $cmd = "$1 $6";
-    my $major_attribute_where;
-    my $count = 0;
-    my $minor_value;
-    my $major_value;
-    foreach $major_value (@major_value_list) {
-	if ($count == 0) {
-	    $major_attribute_where = "($major_attribute = $major_value)";
-	    $count++;
+    $_ = $_[0];
+    die "Bad args to barplot"
+	unless m!barplot\s+(.+)$!o;
+    my $select = $1;
+
+    my %data;
+
+    # Collect all the data we want.
+    $select = &adjust_sql("select $select");
+    my $sth = sql_exec($select);
+    my @minor_value_list;
+    my %minors;
+    my @major_value_list;
+    my %majors;
+    while(my $href = $sth->fetchrow_hashref()) {
+	my $major = $href->{major};
+	die "missing major column, or got null value from '$select'"
+	    unless defined $major;
+
+	push(@major_value_list, $major) # preserve order from query
+	    unless defined $majors{$major};
+	$majors{$major} = 1;
+	
+	my $y = $href->{y};
+	die "Missing y column, or got null value from '$select'"
+	    unless defined $y;
+
+	my ($ylow, $yhi);
+
+	if (defined $href->{yerr}) {
+	    ($ylow,$yhi) = ($y - $href->{yerr}, $y + $href->{yerr});
+	} elsif (defined $href->{ylo} || defined $href->{yhi}) {
+	    die "Missing one of ylo or yhi, or got null value from '$select'"
+		unless defined $href->{ylo} && defined $href->{yhi};
+	    ($ylow,$yhi) = ($href->{ylo}, $href->{yhi});
 	} else {
-	    $major_attribute_where .= " or ($major_attribute = $major_value)";
+	    ($ylow,$yhi) = ($y,$y);
+	}
+
+	if (defined $href->{minor}) {
+	    my $minor = $href->{minor};
+	    die "got null value in minor column from '$select'"
+		unless defined $minor;
+	    die "duplicate value for $major / $minor from '$select'?"
+		if defined $data{$major}->{$minor};
+	    $data{$major}->{$minor} = { 'y' => $y, 'ylow' => $ylow, 'yhi' => $yhi };
+	    push(@minor_value_list, $minor)
+		unless defined $minors{$minor}; # preserve order from query
+	    $minors{$minor} = 1;
+	} else {
+	    die "duplicate value for $major from '$select'?"
+		if defined $data{$major}->{y};
+	    $data{$major} = { 'y' => $y, 'ylow' => $ylow, 'yhi' => $yhi };
 	}
     }
-    $cmd = &adjust_sql($cmd);
+
+    # Make sure we got everything before starting to make plots
+    foreach my $major (@major_value_list) {
+	if (@minor_value_list) {
+	    foreach my $minor (@minor_value_list) {
+		die "Missing data for $major / $minor from '$select'"
+		    unless defined $data{$major}->{$minor}->{y};
+	    }
+	} else {
+	    die "Missing data for $major from '$select'"
+		unless defined $data{$major}->{y};
+	}
+    }
+    
+    # Make the plots...
+
+    my $have_minor = @minor_value_list;
+    @minor_value_list = ("data") 
+	unless @minor_value_list;
     my $minor_index = 1;
     my $minor_length = scalar @minor_value_list;
-    foreach $minor_value (@minor_value_list) {
+    foreach my $minor (@minor_value_list) {
 	my $filename = "/tmp/.plot.data.$$-$plotfiles";
-	unless(open(OUT,">$filename")) {
-	    print "Unable to open $filename for write: $!\n";
-	    return;
-	}
-	my $this_where = "($minor_attribute = $minor_value)";
-	if ($major_attribute_where == '') {
-	    $this_where .= " and ($major_attribute_where)";
-	} 
-	my $sql_query = "select $cmd "; # space at end of $cmd important for the following inserts to proceed correctly!
-	if (/where/) {
-	    $sql_query =~ m!select\s+(\S+)\s+from\s+(\S+)\s+where(.+)$!o;
-	    $sql_query = "select $1 from $2 where $this_where and $3";
-	} else {
-	    $sql_query =~ m!select\s+(\S+)\s+from\s+(\S+)(.*)$!o;
-	    $sql_query = "select $1 from $2 where $this_where $3"; # <--- here
-	}
-  	my $sth = eval {sql_exec($sql_query) };
-  	if ($@) {
-  	    print "$@\n";
-  	    $command_error = 1;
-  	    return;
-  	}
-  	if ($sth->rows == 0) {
-  	    print "No rows return by query $sql_query\n";
-  	    return;
-  	}
-        my @names = @{$sth->{NAME}};
-	my $y='';
-	my $yerr=0.0;
-	my $yerr_hi='';
-	$sth->bind_col(1,\$y);
-	$sth->bind_col(2,\$yerr); # or yerr_lo if third column is present
-	$sth->bind_col(3,\$yerr_hi) if @names >= 3;
-  	my $warned = 0;
-	my $major_index = $minor_index;
-        FETCH: while(defined $sth->fetch) {
-	    if ($y=='') {
-		warn "Null values returned by query.\n"
-		    unless $warned;
-		$warned = 1;
-		next FETCH;
-	    }
-	    my $ylow = $y; 
-	    my $yhi = $y;
-	    if ($yerr_hi=='') {
-		$ylow -= $yerr;
-		$yhi += $yerr;
+	die "Unable to open $filename for write: $!"
+	    unless open(OUT,">$filename");
+
+	my $major_x = $minor_index;
+	foreach my $major (@major_value_list) {
+	    my $t;
+	    if ($have_minor) {
+		$t = $data{$major}->{$minor};
 	    } else {
-		$ylow = $yerr;
-		$yhi = $yerr_hi;
+		$t = $data{$major};
 	    }
-	    print OUT "$major_index $y $ylow $yhi $box_width\n"; 
-	    $major_index+=($minor_length + $group_seperation);
-	    $y = ''; $yerr = 0.0; $yerr_hi = ''; 
+	    print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n"; 
+	    $major_x += $minor_length + $group_separation;
 	}
 	close(OUT);
-	my $newp = plotboxes($filename,$minor_value,$cmd);
+	my $newp = plotboxes($filename,$minor,$select);
 	push(@plots,$newp);
 	++$plotfiles;
 	$minor_index++;
     }
     refresh_plot;
-    my $major_xtic = ($minor_length/2.0);
-    my $xtics_cmd = '';
-    $count=0;
-    foreach $major_value (@major_value_list) {
-	if ($count == 0) {
-	    $xtics_cmd = "set xtics ($major_value $major_xtic";
-	    $count++;
-	} else {
-	    $xtics_cmd .= "\, $major_value $major_xtic";
-	}
-	$major_xtic += ($minor_length + $group_seperation);
-    }
-    $xtics_cmd .= ")";
+    my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation); 
+
+    my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; "'$_' $major_xtic" } @major_value_list);
+
     gnuplot('set ticscale 0');
-    gnuplot($xtics_cmd);
+    gnuplot("set xtics ($xtics_vals)");
+    print "VEEB $xtics_vals\n";
 }
 
 
@@ -1135,7 +1152,11 @@ sub fncmds {
     foreach my $i (@result) {
 	next if $i =~ /^\s*$/o;
 	print "fncmds>> $i\n";
-	&docmd($i);
+	eval { &docmd($i); };
+	if ($@) {
+	    print "Error executing function command: $@\n";
+	    $command_error = 1;
+	}
 	last if $command_error;
     }
 }
@@ -1158,7 +1179,7 @@ mercury-plot - plot data out of an SQL database
 
 Inside of a file for input to mercury, or typed in at the mercury prompt:
 
-=head2 plot I<sql statement>
+=head2 plot I<sql select arguments>
 
 C<plot> is the primary command that generates plots in
 C<mercury-plot>.  It takes as an argument a generic sql statement with
@@ -1175,6 +1196,24 @@ generated with ylo and yhi.
 	plot step as x, nluns as y where variant = 1
 	plot iosize as x, max(iops) as y where runcount = 1 and stripesize = 256 group by iosize
 	plot iosize as x, avg(iops) as y, stddev(iops) as yerr where runcount = 1 group by iosize
+
+=head2 barplot I<sql select arguments>
+
+C<barplot> is the command that generates bar-style plots for
+C<mercury-plot>.  It takes as an argument the part of an sql statement
+after the select.  Two columns are required, major and y.  There are a
+number of optional columns: minor, yerr, and ylo/yhi.  The major
+columns are separated and the minor columns are grouped together.  The
+barplot actually generates a series of plots, one for each of the
+minor variables, or 1 if there is no minor variable.  The bars are
+ordered in the same way that they come back from the sql query, so
+sql's order by can be used to control the order.
+
+=head3 a few examples
+
+	barplot time as y, timestddev as yerr, querygroup as major,engine as minor from tmp_ds_barplot where position > 0 order by position
+	barplot time as y, timestddev as yerr, engine as major from tmp_ds_barplot order by position
+
 
 =head2 psplot [--nocolor] [--mode={eps,portrait,landscape}] [--fontsize=<int>] I<filename>
 
@@ -1241,4 +1280,18 @@ Calls a function that was defined by the user in a define
 ... enddefine block.  While you can define functions that have the
 same name as the built in commands since mercury-plot can tell the
 difference by the (), you probably shouldn't, it would be confusing.
+
+=head1 TODO
+
+=over 4
+
+=item * Merge the barplot and plot commands since they now take the
+same style arguments and are distinguishable by the existance of a
+major column.
+
+=item * Figure out how to have man <command> work properly, and
+eventually consider replacing help with something that just extracts
+from the pod documentation.
+
+=back
 

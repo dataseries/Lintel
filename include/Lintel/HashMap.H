@@ -20,7 +20,7 @@
 #endif
 #include <functional>
 
-#include <HashTable.H>
+#include <Lintel/HashTable.H>
 
 template <class K, class V>
 struct HashMap_val {
