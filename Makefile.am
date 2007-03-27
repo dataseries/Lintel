@@ -18,6 +18,10 @@ cmakemodules_DATA = \
 	cmake-modules/FindLintel.cmake \
 	cmake-modules/FindLibXmlpp.cmake
 
+linteldocdir = $(datadir)/doc/Lintel
+linteldoc_DATA = \
+	COPYING 
+
 # Magic to make autoreconf find com_hp_hpl_lintel.m4
 # Sadly, we can't use this in other packages because the proper -I depends
 # on where we are installing.

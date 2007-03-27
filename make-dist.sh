@@ -54,8 +54,10 @@ for i in $PACKAGES; do
     [ ! -d $i-$NOW ] || rm -rf $i-$NOW
     mtn -d tmp.db co -b ssd.hpl.hp.com/$i $i-$NOW
     cd $i-$NOW
-    mtn automate get_base_revision_id >Revision
-    echo "   current revision is `cat Revision`"
+    mtn log >Changelog.mtn
+    echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
+    echo "Creation-Date: $NOW" >>Release.info
+    echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}`"
     echo "   autoreconf; logging to autoreconf.$i.log"
     [ $i = Lintel ] || /tmp/make-dist/build/bin/lintel-acinclude >../autoreconf.$i.log
     autoreconf --install >>autoreconf.$i.log 2>&1
@@ -73,7 +75,7 @@ for i in $PACKAGES; do
     make install >install.log 2>&1
     cd ../..
     echo "   tarfile; building $i-$NOW.tar.bz2; logging to tar.$i.log"
-    tar cvvfj $i-$NOW.tar.bz2 $i-$NOW >tar.$i.log 2>&1
+    tar cvvfj $i-$NOW.tar.bz2 --exclude=_MTN $i-$NOW >tar.$i.log 2>&1
     echo "   done: `ls -l $i-$NOW.tar.bz2`"
 done
 

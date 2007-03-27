@@ -2,34 +2,32 @@
 # SPEC file for Lintel
 #
 Name:           Lintel
-Version:        1.0.0
-URL:            http://twiki.hpl.hp.com/bin/view/StorageSystems/TiColi
+Version:        __VERSION__
+URL:            http://tesla.hpl.hp.com/opensource.html
 Source:         %{name}-%{version}.tar.gz
-Release:        2
-Summary:        Ticoli FUSE logging
-Group:          System Environment/Base
-License:        Closed
-Packager:	Chip Christian <chip.christian@hp.com>
+Release:        1
+Summary:        Support tools and library 
+Group:          Libraries
+License:        BSD
+Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
-Requires:	fuse
-Requires:	fuse-libs
 
 %description
-Ticoli logging package for FUSE.
+A collection of libraries and tools.
 
 %package	libs
 Summary:        Lintel library files
 Group:          Libraries
 Requires:       %{name}-libs = %{version}-%{release}
 Requires:       pkgconfig
-License:        Closed
+License:        BSD
 
 %package	devel
 Summary:        Lintel devel files
 Group:          Development/Libraries
 Requires:       %{name}-devel = %{version}-%{release}
 Requires:       pkgconfig
-License:        Closed
+License:        BSD
 
 %description	libs
 Lintel libraries
@@ -44,13 +42,15 @@ Lintel header files
 autoreconf --install
 mkdir build
 cd build
-../configure --prefix=/usr --enable-optmode=optimize --enable-maintainer-mode
+../configure --prefix=/usr --enable-optmode=optimize 
 make
 
 %install
 cd build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
+cp ../Release.info $RPM_BUILD_ROOT/usr/share/doc/Lintel/Release.info
+cp ../Changelog.mtn $RPM_BUILD_ROOT/usr/share/doc/Lintel/Changelog.mtn
 
 %clean
 rm -rf $RPM_BUILD_ROOT
@@ -68,6 +68,9 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/bp_modules/BatchParallel/jobsfile.pm
 /usr/share/perl5/Plot/Mercury.pm
 /usr/share/perl5/Text/ExpandInt.pm
+/usr/share/doc/Lintel/COPYING
+/usr/share/doc/Lintel/Release.info
+/usr/share/doc/Lintel/Changelog.mtn
 
 %files devel
 /usr/include/Lintel/AssertBoost.H
@@ -116,9 +119,12 @@ rm -rf $RPM_BUILD_ROOT
 
 %changelog
 
-* Fri Mar 02 2007 ticoli-hp@cello.hpl.hp.com
+* Thu Mar 22 2007 software@cello.hpl.hp.com
+- corrected license, changed version to datestamp
+
+* Fri Mar 02 2007 software@cello.hpl.hp.com
 - cmake modules added 
 
-* Wed Feb 14 2007 ticoli-hp@cello.hpl.hp.com
+* Wed Feb 14 2007 software@cello.hpl.hp.com
 - Initial RPM release.
 make
