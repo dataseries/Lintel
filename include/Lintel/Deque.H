@@ -24,7 +24,7 @@
 template <class T>
 class Deque {
 public:
-    Deque(int default_size = 8) 
+    Deque(unsigned default_size = 8) 
 	: q_front(0), q_back(0), q_size(default_size), is_resizeable(true) {
 	AssertAlways(q_size > 1,("Must have size at least 2\n"));
 	deque = new T[q_size];
@@ -58,7 +58,7 @@ public:
 	q_front = (q_front + 1) % q_size;
     }
     bool push_back(const T &val) { // returns false if unable to push on because it's full
-	int back_next = (q_back + 1) % q_size; 
+	unsigned back_next = (q_back + 1) % q_size; 
 	if (back_next != q_front) {
 	    deque[q_back] = val;
 	    q_back = back_next;
@@ -69,7 +69,7 @@ public:
 	}
     }
     bool empty() { return q_front == q_back;} ;
-    int size() { return (q_back + q_size - q_front) % q_size; }
+    unsigned size() { return (q_back + q_size - q_front) % q_size; }
     void reserve(int new_size) {
 	AssertAlways(is_resizeable,("This deque isn't resizeable!\n"));
 	AssertAlways(empty(),("Lame implementation only does reserve when empty\n"));
@@ -135,7 +135,7 @@ private:
     void push_expand(const T &val) {
 	AssertAlways(is_resizeable,("this deque is not resizeable, and is full with %d items\n",q_size));
 	T *new_deque = new T[q_size * 2];
-	int i = 0;
+	unsigned i = 0;
 	// copy back to 0 offset
 	if (q_front == 0) {
 	    // special case if it's already 0 offset
@@ -143,16 +143,16 @@ private:
 		new_deque[i] = deque[i];
 	    }
 	} else {
-	    for(int j=q_front; j<q_size;++j) {
+	    for(unsigned j=q_front; j<q_size;++j) {
 		new_deque[i] = deque[j];
 		++i;
 	    }
-	    for(int j=0;j<q_back;++j) {
+	    for(unsigned j=0;j<q_back;++j) {
 		new_deque[i] = deque[j];
 		++i;
 	    }
 	}
-	AssertAlways(i == q_size-1,("%d %d %d %d\n",i,q_size,
+	AssertAlways(i == q_size-1,("%u %u %u %u\n",i,q_size,
 				   q_front, q_back));
 	q_front = 0;
 	new_deque[i] = val;
@@ -162,9 +162,9 @@ private:
 	deque = new_deque;
     }
     T *deque; 
-    int q_front; 
-    int q_back;
-    int q_size;
+    unsigned q_front; 
+    unsigned q_back;
+    unsigned q_size;
 
     bool is_resizeable;
 };

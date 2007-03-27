@@ -47,6 +47,8 @@ Clock::calibrateClock(bool print_calibration_information, double max_conf95_rel,
     Tdbl clock_s, clock_e;
     Tll tick_s, tick_e;
 
+    // TODO: Check if /sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_min_freq is readable and
+    // different from cpuinfo_max_freq, and if so bail out
     double tmp_clock_rate;
     if (clock_rate == -1) {
 	bindToProcessor();
@@ -142,7 +144,8 @@ Clock::calibrateClock(bool print_calibration_information, double max_conf95_rel,
 Clock::Clock(bool allow_calibration)
     : nrecalibrate(0), nbadgettod(0),
       last_calibrate_tod(0), cycle_count_offset(0), recalibrate_interval(0),
-      last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0)
+      last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0),
+      epoch_offset(0)
       //, badrecalibration_delta(0.0), badrecalibration_delta_count(0), ntodzerotime(0)
 {
     if (clock_rate == -1) {
@@ -150,7 +153,7 @@ Clock::Clock(bool allow_calibration)
 	calibrateClock();
 	AssertAlways(clock_rate > 0,("internal error\n"));
     }
-    setRecalibrateInterval(100);
+    setRecalibrateInterval(500);
 }
 
 void
@@ -188,10 +191,10 @@ Clock::todcc_recalibrate()
     AssertAlways(clock_rate > 0,
 		 ("Doofus, you do not appear to have setup a Clock object\n"));
     Clock::Tll start_cycle = now();
-    Clock::Tdbl cur_us = tod();
+    Clock::Tdbl cur_us = tod_epoch();
     Clock::Tll end_cycle = now();
     AssertAlways(cur_us >= last_calibrate_tod,
-		 ("Whoa, tod() went backwards %.2f < %.2f\n",
+		 ("Whoa, tod_epoch() went backwards %.2f < %.2f\n",
 		  cur_us,last_calibrate_tod));
     if ((end_cycle < start_cycle) ||
 	(end_cycle - start_cycle) > max_recalibrate_measure_time) {
@@ -203,7 +206,7 @@ Clock::todcc_recalibrate()
 	badrecalibration_delta.add(last_recalibrate_cc - start_cycle - max_recalibrate_measure_time);
 #endif
 	++nbadgettod;
-	// next two lines guarentee failure next time assuming the cycle
+	// next two lines guarantee failure next time assuming the cycle
 	// counter isn't reset and booting takes a little time
 	cycle_count_offset = -Double::Inf; 
 	last_recalibrate_cc = 0; 
@@ -218,6 +221,32 @@ Clock::todcc_recalibrate()
 }
 
 void
+Clock::setRecalibrateInterval(Tdbl interval_us)
+{
+    last_cc = 0;
+    recalibrate_interval = interval_us;
+    // This check is needed so that the (int) cast in
+    // todcc_incremental is correct; and the (int) cast
+    // results in a reasonable speedup
+    AssertAlways(recalibrate_interval * clock_rate < (double)(1 << 30),
+		 ("using too large a recalibration interval on too fast a machine %.2f, %.2f\n",
+		  recalibrate_interval, clock_rate));
+    recalibrate_interval_cycles = (Tll)(recalibrate_interval  * clock_rate);
+}
+
+void 
+Clock::setTodccEpoch(unsigned seconds)
+{
+    epoch_offset = seconds;
+    
+    AssertAlways(Clock::tod() > static_cast<Tdbl>(epoch_offset) * 1.0e6,
+		 ("Specified epoch is in the future; todcc_recalibrate will fail"));
+
+    last_calibrate_tod = 0; // time needs to go forward
+    todcc_recalibrate();
+}
+
+void
 Clock::timingTest()
 {
     Clock::Tdbl measurement_time = 1000000;
@@ -225,9 +254,9 @@ Clock::timingTest()
     Clock myclock;
     myclock.setRecalibrateInterval(100);
 
-    printf("timing method           reps    elapsed us    us/fn     cycles/fn  ratio to tod\n");
+    printf("timing method           reps    elapsed us    ns/fn     cycles/fn  ratio to tod\n");
     Clock::Tdbl start = Clock::tod();
-    int nreps = 0;
+    unsigned nreps = 0;
     while(1) {
 	nreps += 1;
 	if ((Clock::tod() - start) > measurement_time) {
@@ -235,10 +264,10 @@ Clock::timingTest()
 	}
     }
     Clock::Tdbl end = Clock::tod();
-    int clock_reps = nreps;
-    double us_per_tod = (end - start)/(double)clock_reps;
+    unsigned clock_reps = nreps;
+    double ns_per_tod = 1000.0*(end - start)/(double)clock_reps;
     printf("tod()                 %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	   clock_reps, end - start, us_per_tod, us_per_tod / inverse_clock_rate,1.0);
+	   clock_reps, end - start, ns_per_tod, ns_per_tod / (1000.0*inverse_clock_rate),1.0);
 
     // Test Clock::todll()
     {
@@ -253,10 +282,10 @@ Clock::timingTest()
 	}
 	Clock::Tll endll = Clock::todll();
 	AssertAlways(endll - startll >= measurement_time_ll,("bad"));
-	double us_per_todll = (double)(endll - startll)/(double)nreps;
+	double ns_per_todll = 1000.0*(double)(endll - startll)/(double)nreps;
 	printf("todll()               %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_todll, us_per_todll / inverse_clock_rate,
-	       us_per_tod/us_per_todll);
+	       nreps, end - start, ns_per_todll, ns_per_todll / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_todll);
     }
 
     // Test Clock::todcc_direct()
@@ -273,10 +302,10 @@ Clock::timingTest()
 	end = myclock.todcc_recalibrate();
 	AssertAlways(end - start >= measurement_time,("bad"));
 	todcc_reps = nreps;
-	double us_per_todcc = (double)(end - start)/(double)nreps;
+	double ns_per_todcc = 1000.0*(double)(end - start)/(double)nreps;
 	printf("todcc_direct()        %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_todcc, us_per_todcc / inverse_clock_rate,
-	       us_per_tod/us_per_todcc);
+	       nreps, end - start, ns_per_todcc, ns_per_todcc / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_todcc);
     }
 
     // Test Clock::todcc_incremental()
@@ -291,10 +320,10 @@ Clock::timingTest()
 	}
 	end = myclock.todcc_recalibrate();
 	AssertAlways(end - start >= measurement_time,("bad"));
-	double us_per_todcc = (double)(end - start)/(double)nreps;
+	double ns_per_todcc = 1000.0*(double)(end - start)/(double)nreps;
 	printf("todcc_incremental()   %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_todcc, us_per_todcc / inverse_clock_rate,
-	       us_per_tod/us_per_todcc);
+	       nreps, end - start, ns_per_todcc, ns_per_todcc / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_todcc);
     }
 
     // Test Clock::todcc_direct() with long long cast
@@ -311,10 +340,10 @@ Clock::timingTest()
 	}
 	Clock::Tll endll = myclock.todll();
 	AssertAlways(endll - startll >= measurement_time_ll,("bad"));
-	double us_per_todcc = (double)(endll - startll)/(double)nreps;
+	double ns_per_todcc = 1000.0*(double)(endll - startll)/(double)nreps;
 	printf("todcc_direct()->ll    %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_todcc, us_per_todcc / inverse_clock_rate,
-	       us_per_tod/us_per_todcc);
+	       nreps, end - start, ns_per_todcc, ns_per_todcc / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_todcc);
     }
 
     Clock::Tdbl recalibrate_interval = myclock.recalibrate_interval_cycles * myclock.inverse_clock_rate;
@@ -347,10 +376,10 @@ Clock::timingTest()
 	}
 	end = myclock.todcc_recalibrate();
 	AssertAlways(end - start >= measurement_time,("bad"));
-	double us_per_divide = (double)(end - start)/(double)nreps;
+	double ns_per_divide = 1000.0*(double)(end - start)/(double)nreps;
 	printf("todcc_divide()        %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_divide, us_per_divide / inverse_clock_rate,
-	       us_per_tod/us_per_divide);
+	       nreps, end - start, ns_per_divide, ns_per_divide / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_divide);
     }
 
     // Test calculating times using doubles -- should be identical to todcc_direct()
@@ -371,10 +400,10 @@ Clock::timingTest()
 	}
 	end = myclock.todcc_recalibrate();
 	AssertAlways(end - start >= measurement_time,("bad"));
-	double us_per_double_mul = (double)(end - start)/(double)nreps;
+	double ns_per_double_mul = 1000.0*(double)(end - start)/(double)nreps;
 	printf("double()              %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_double_mul, us_per_double_mul / inverse_clock_rate,
-	       us_per_tod/us_per_double_mul);
+	       nreps, end - start, ns_per_double_mul, ns_per_double_mul / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_double_mul);
     }
 
     // Test calculating times by using differencing
@@ -406,10 +435,10 @@ Clock::timingTest()
 	}
 	Clock::Tll endll = myclock.todll();
 	AssertAlways(endll - startll >= measurement_time_ll,("bad"));
-	double us_per_incremental = (double)(endll - startll)/(double)nreps;
+	double ns_per_incremental = 1000.0*(double)(endll - startll)/(double)nreps;
        	printf("cc_incremental()      %9d   %8lld   %7.4g   %7.4g     %5.3g\n",
-	       nreps, endll - startll, us_per_incremental, us_per_incremental / inverse_clock_rate,
-	       us_per_tod/us_per_incremental);
+	       nreps, endll - startll, ns_per_incremental, ns_per_incremental / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_incremental);
     }
 
     // Test calculating times by using differencing result in double -- should be identical to todcc_incremental()
@@ -438,10 +467,10 @@ Clock::timingTest()
 	}
 	end = myclock.todcc_recalibrate();
 	AssertAlways(end - start >= measurement_time,("bad"));
-	double us_per_incremental = (double)(end - start)/(double)nreps;
+	double ns_per_incremental = 1000.0*(double)(end - start)/(double)nreps;
        	printf("incr_double()         %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_incremental, us_per_incremental / inverse_clock_rate,
-	       us_per_tod/us_per_incremental);
+	       nreps, end - start, ns_per_incremental, ns_per_incremental / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_incremental);
     }
 
     // Test Clock::todcc()
@@ -456,10 +485,10 @@ Clock::timingTest()
 	}
 	end = myclock.todcc_recalibrate();
 	AssertAlways(end - start >= measurement_time,("bad"));
-	double us_per_todcc = (double)(end - start)/(double)nreps;
+	double ns_per_todcc = 1000.0*(double)(end - start)/(double)nreps;
 	printf("fastest-of-above?     %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_todcc, us_per_todcc / inverse_clock_rate,
-	       us_per_tod/us_per_todcc);
+	       nreps, end - start, ns_per_todcc, ns_per_todcc / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_todcc);
     }
 
     // Test if we could just magically use the cycle counter
@@ -477,38 +506,41 @@ Clock::timingTest()
 	}
 	end = myclock.tod();
 	AssertAlways(end - start >= measurement_time*0.9,("bad"));
-	double us_per_cyclecounter = (double)(end - start)/(double)nreps;
+	double ns_per_cyclecounter = 1000.0*(double)(end - start)/(double)nreps;
        	printf("pure_cycle_counter    %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, us_per_cyclecounter, us_per_cyclecounter / inverse_clock_rate,
-	       us_per_tod/us_per_cyclecounter);
+	       nreps, end - start, ns_per_cyclecounter, ns_per_cyclecounter / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_cyclecounter);
     }
     printf("\n");
     Stats calibrate_error;
-    int count_under_10_us = 0;
-    for(int i=0;i<clock_reps;i++) {
-	Clock::Tdbl now_tod = Clock::tod();
-	Clock::Tdbl now_tod2 = Clock::tod();
-	calibrate_error.add((double)(now_tod2 - now_tod));
-	if ((now_tod2 - now_tod) < 10) {
-	    ++count_under_10_us;
+
+    {
+	int count_under_10_us = 0;
+	for(unsigned i=0;i<clock_reps;i++) {
+	    Clock::Tdbl now_tod = Clock::tod();
+	    Clock::Tdbl now_tod2 = Clock::tod();
+	    calibrate_error.add((double)(now_tod2 - now_tod));
+	    if ((now_tod2 - now_tod) < 10) {
+		++count_under_10_us;
+	    }
 	}
+	printf("Error between Clock::tod() and Clock::tod():\n");
+	printf("  [min..max] [%.5g .. %.5g] mean %.3g +- %.3g, conf95 %.4g\n",
+	       calibrate_error.min(),calibrate_error.max(),
+	       calibrate_error.mean(), calibrate_error.stddev(),
+	       calibrate_error.conf95());
+	printf("  %d/%d, %.6f%% under 10 us\n",count_under_10_us,
+	       clock_reps, 100*(double)count_under_10_us / clock_reps);
     }
-    printf("Error between Clock::tod() and Clock::tod():\n");
-    printf("  [min..max] [%.5g .. %.5g] mean %.3g +- %.3g, conf95 %.4g\n",
-	   calibrate_error.min(),calibrate_error.max(),
-	   calibrate_error.mean(), calibrate_error.stddev(),
-	   calibrate_error.conf95());
-    printf("  %d/%d, %.6f%% under 10 us\n",count_under_10_us,
-	   clock_reps, 100*(double)count_under_10_us / clock_reps);
 
     calibrate_error.reset();
-    count_under_10_us = 0;
+    unsigned count_under_1_us = 0;
     for(int i=0;i<todcc_reps;i++) {
 	Clock::Tdbl now_cc1 = myclock.todcc();
 	Clock::Tdbl now_cc2 = myclock.todcc();
 	calibrate_error.add((double)(now_cc2 - now_cc1));
-	if ((now_cc2 - now_cc1) < 10) {
-	    ++count_under_10_us;
+	if ((now_cc2 - now_cc1) < 1) {
+	    ++count_under_1_us;
 	}
     }
     printf("Error between Clock::todcc() and Clock::todcc():\n");
@@ -516,11 +548,11 @@ Clock::timingTest()
 	   calibrate_error.min(),calibrate_error.max(),
 	   calibrate_error.mean(), calibrate_error.stddev(),
 	   calibrate_error.conf95());
-    printf("  %d/%d, %.6f%% under 10 us\n",count_under_10_us,
-	   todcc_reps,100*(double)count_under_10_us / todcc_reps);
+    printf("  %d/%d, %.6f%% under 1 us\n",count_under_1_us,
+	   todcc_reps,100*(double)count_under_1_us / todcc_reps);
 
     calibrate_error.reset();
-    for(int i=0;i<clock_reps;i++) {
+    for(unsigned i=0;i<clock_reps;i++) {
 	Clock::Tdbl now_tod = Clock::tod();
 	Clock::Tdbl now_cc = myclock.todcc_direct();
 	calibrate_error.add((double)(now_cc - now_tod));
@@ -532,7 +564,7 @@ Clock::timingTest()
 	   calibrate_error.conf95());
 
     calibrate_error.reset();
-    for(int i=0;i<clock_reps;i++) {
+    for(unsigned i=0;i<clock_reps;i++) {
 	Clock::Tdbl now_tod = Clock::tod();
 	Clock::Tdbl now_cc = myclock.todcc_incremental();
 	calibrate_error.add((double)(now_cc - now_tod));
@@ -543,6 +575,73 @@ Clock::timingTest()
 	   calibrate_error.mean(), calibrate_error.stddev(),
 	   calibrate_error.conf95());
 
+    {
+	unsigned nzeros = 0;
+	nreps = 0;
+	start = myclock.todcc_recalibrate();
+	Clock::Tdbl last_todcc = start;
+	while(1) {
+	    ++nreps;
+	    Clock::Tdbl now = myclock.todcc();
+	    if (now == last_todcc) {
+		++nzeros;
+	    }
+	    last_todcc = now;
+	    if ((now - start) > measurement_time) {
+		break;
+	    }
+	}
+	end = myclock.todcc_recalibrate();
+	AssertAlways(end - start >= measurement_time,("bad"));
+	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps; %.2f%%\n",
+	       nzeros, nreps-nzeros, nreps, 100.0*nzeros/nreps);
+
+	myclock.setTodccEpoch(static_cast<unsigned>((Clock::tod()/1000000.0)-60));
+
+	myclock.nbadgettod = 0;
+	nzeros = 0;
+	nreps = 0;
+	start = myclock.todcc_recalibrate();
+	last_todcc = start;
+	Clock::Tdbl example_zeros[100];
+	while(1) {
+	    ++nreps;
+	    Clock::Tdbl now = myclock.todcc();
+	    if (now == last_todcc) {
+		if (nzeros < 100) {
+		    example_zeros[nzeros] = now;
+		}
+		++nzeros;
+	    }
+	    last_todcc = now;
+	    if ((now - start) > measurement_time) {
+		break;
+	    }
+	}
+	end = myclock.todcc_recalibrate();
+	AssertAlways(end - start >= measurement_time,("bad"));
+	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps with recent epoch; %.2f%%\n",
+	       nzeros, nreps-nzeros, nreps, 100.0*nzeros/nreps);
+	if (nzeros > 0) {
+	    printf("nbadgettod: %d\n", myclock.nbadgettod);
+	    for(unsigned i = 0; i < 100 && i < nzeros; ++i) {
+		printf("Example zero happened at %.30g\n", example_zeros[i]);
+	    }
+	}
+
+	nzeros = 0;
+	Clock::Tll last_now = Clock::now();
+	for(unsigned i = 0; i < nreps; ++i) {
+	    Clock::Tll cur_now = Clock::now();
+	    if (cur_now == last_now) {
+		++nzeros;
+	    }
+	    last_now = cur_now;
+	}
+	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps with Clock::now(); %.2f%%\n",
+	       nzeros, nreps-nzeros, nreps, 100.0*nzeros/nreps);
+    }
+    
 }
 
 void

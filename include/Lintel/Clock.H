@@ -82,37 +82,25 @@ public:
 	return ret;
     }
   
-    // Might want to switch to using clock_gettime() instead of gettimeofday()
-    // for more accuracy
     static Tll todll() {
 	struct timeval t;
-	t.tv_sec = -1;
 	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
 	return (Tll)t.tv_sec * (Tll)1000000 + (Tll)t.tv_usec;
     }
 
+    // Might want to switch to using clock_gettime() instead of gettimeofday()
+    // for more accuracy
     static Tdbl tod() {
-	struct timeval t;
-	t.tv_sec = -1;
-	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
-	return (Tdbl)t.tv_sec * (Tdbl)1000000 + (Tdbl)t.tv_usec;
+	return tod_epoch_internal(0);
     }	
 
-#if 0
-    // Unused?
-    static void future(struct timespec &ts, T us_future = 0) {
-	T t = (tod() + us_future) * 1000;
-	ts.tv_sec = (long)(t / 1000000000);
-	ts.tv_nsec = (long)(t % 1000000000);
-    }
-    static double usDiff(T start, T end) {
-	T diff = end - start;
-	return (double)diff * inverse_clock_rate;
-    }
-#endif
     static void bindToProcessor(unsigned proc = 0); // Needed on SMP machines as cycle counters aren't the same.
     static void unbindFromProcessor();
     
+    Tdbl tod_epoch() {
+	return tod_epoch_internal(epoch_offset);
+    }	
+
     Tdbl todcc_recalibrate();
 
     // Not a good idea to use the todcc from multiple threads; have a separate
@@ -120,19 +108,13 @@ public:
 
     inline Tdbl todcc_direct() {
 	Tll cur_cc = now();
-	if (cur_cc < last_cc || (cur_cc - last_recalibrate_cc) > recalibrate_interval_cycles) {
+	if (cur_cc <= last_cc || (cur_cc - last_recalibrate_cc) > recalibrate_interval_cycles) {
 	    last_cc = cur_cc;
 	    return todcc_recalibrate();
 	} else {
 	    last_cc = cur_cc;
 	    return (double)cur_cc * inverse_clock_rate + cycle_count_offset;
 	}
-//
-//	  if (cur_us < last_calibrate_tod || 
-//	      (cur_us - last_calibrate_tod) > recalibrate_interval) {
-//	      return todcc_recalibrate();
-//	  }
-//	  return cur_us;
     }
 
     inline Tdbl todcc_incremental() {
@@ -147,27 +129,36 @@ public:
 
     inline Tdbl todcc() {
 	// PIII based machines (all I have to test) are faster in 
-	// incremental mode.
+	// incremental mode.  Tested an opteron 2.8GhZ, also faster
+	// in incremental mode
 	// HPPA 2 based machines are all faster in direct mode, 
 	// probably because they can use the fused multiply-add
-#if defined(__i386__) || defined(i386) || defined(__i386)
+#if defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
 	return todcc_incremental();
 #else
 	return todcc_direct();
 #endif
     }
 
-    void setRecalibrateInterval(Tdbl interval_us) {
-	last_cc = 0;
-	recalibrate_interval = interval_us;
-	// This check is needed so that the (int) cast in
-	// todcc_incremental is correct; and the (int) cast
-	// results in a reasonable speedup
-	AssertAlways(recalibrate_interval * clock_rate < (double)(1 << 30),
-		     ("using too large a recalibration interval on too fast a machine %.2f, %.2f\n",
-		      recalibrate_interval, clock_rate));
-	recalibrate_interval_cycles = (Tll)(recalibrate_interval  * clock_rate);
+    /// How many micro seconds should elapse between recalibrations
+    void setRecalibrateInterval(Tdbl interval_us);
+
+    /// What epoch (in seconds since 1970) should be used for the
+    /// return value from todcc{,_direct,_incremental}(); this is
+    /// needed to get precision back in Tdbl as on modern (e.g. 2.8GhZ
+    /// opteron) the time to call todcc() is less than the precision
+    /// available in a Tdbl.
+    void setTodccEpoch(unsigned seconds);
+
+    void setTodccEpoch() {
+	// An hour ago
+	setTodccEpoch(static_cast<unsigned>(Clock::tod() * 1e-6) - 3600);
     }
+
+    Tdbl getTodccEpochTdbl() { 
+	return static_cast<Tdbl>(epoch_offset) * 1.0e6;
+    }
+
     // nbadgettod counts the number of times we got the time of day, but
     // switched CPUs or took forever to do it, thereby invalidating the
     // effort to calibrate the cycle counter to the time of day.
@@ -217,6 +208,22 @@ public:
     // Cycle counter calibration variables
     Tdbl last_calibrate_tod, cycle_count_offset, recalibrate_interval;
     Tll last_cc, last_recalibrate_cc, recalibrate_interval_cycles;
+private:
+    unsigned epoch_offset;
+    
+    static Tdbl tod_epoch_internal(unsigned epoch) {
+	// No point of this on linux, timer there is only doing us precision and
+	// clock_gettime() requires us to list with -lrt
+#if 0 && defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0
+	struct timespec t;
+	AssertAlways(clock_gettime(CLOCK_REALoTIME,&t)==0,("Internal error\n"));
+	return (Tdbl)(t.tv_sec - epoch) * (Tdbl)1000000 + (Tdbl)t.tv_nsec * 0.001;
+#else
+	struct timeval t;
+	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
+	return (Tdbl)(t.tv_sec - epoch) * (Tdbl)1000000 + (Tdbl)t.tv_usec;
+#endif
+    }	
 };
 
 #endif

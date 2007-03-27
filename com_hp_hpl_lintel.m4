@@ -716,6 +716,12 @@ else
 	x86_64-*::*AMDOpteron*::gcc-4.*)
 	   OPTFLAGS="-Wall -O3 -march=opteron -D__pentiumpro__ -g"
 	   ;;
+	i686-*::*AMDOpteron*::gcc-3.*)
+	   OPTFLAGS="-Wall -O3 -march=opteron -D__pentiumpro__ -g"
+	   ;;
+	i686-*::*AMDOpteron*::gcc-4.*)
+	   OPTFLAGS="-Wall -O3 -march=opteron -D__pentiumpro__ -g"
+	   ;;
 	*) AC_MSG_NOTICE(**************************************************)
 	   AC_MSG_NOTICE(Unknown host ($host) processor model ($PROCMOD) compiler ($LINTEL_OPTMODE_COMPILER) combination)
 	   AC_MSG_NOTICE(Leaving optimization option alone as '$CXXFLAGS')
