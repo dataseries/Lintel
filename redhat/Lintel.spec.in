@@ -108,6 +108,8 @@ rm -rf $RPM_BUILD_ROOT
 /usr/lib/libLintel.a
 /usr/lib/libLintel.la
 /usr/lib/libLintel.so.0.0.0
+/usr/lib/libLintel.so.0
+/usr/lib/libLintel.so
 /usr/lib/libLintelPThread.a
 /usr/lib/libLintelPThread.la
 /usr/share/cmake-modules/FindLibXmlpp.cmake
@@ -115,9 +117,16 @@ rm -rf $RPM_BUILD_ROOT
 
 %files libs
 /usr/lib/libLintel.so.0.0.0
+/usr/lib/libLintel.so.0
+/usr/lib/libLintel.so
 /usr/lib/libLintelPThread.so.0.0.0
+/usr/lib/libLintelPThread.so.0
+/usr/lib/libLintelPThread.so
 
 %changelog
+
+*Wed Mar  28 2007 software@cello.hpl.hp.com
+- added .so symlinks
 
 * Thu Mar 22 2007 software@cello.hpl.hp.com
 - corrected license, changed version to datestamp
