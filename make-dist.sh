@@ -57,7 +57,7 @@ for i in $PACKAGES; do
     mtn log >Changelog.mtn
     echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
     echo "Creation-Date: $NOW" >>Release.info
-    echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}`"
+    echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}'`"
     echo "   autoreconf; logging to autoreconf.$i.log"
     [ $i = Lintel ] || /tmp/make-dist/build/bin/lintel-acinclude >../autoreconf.$i.log
     autoreconf --install >>autoreconf.$i.log 2>&1
