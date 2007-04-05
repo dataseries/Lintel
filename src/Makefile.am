@@ -72,9 +72,9 @@ TCL_HDRS = $(top_srcdir)/include/Lintel/Random.H
 # TODO: I think this is a broken way of doing things and that we should
 # always rebuild LintelTclCommands.C into the build directory
 
-LintelTclCommands.C: $(top_srcdir)/include/Lintel/TclInterface.H $(TCL_HDRS) $(top_srcdir)/src/buildTcl
+LintelTclCommands.C: $(top_srcdir)/include/Lintel/TclInterface.H $(TCL_HDRS) $(top_builddir)/src/buildTcl
 	@[ ! -f $(top_srcdir)/src/LintelTclCommands.C ] || rm $(top_srcdir)/src/LintelTclCommands.C
-	$(top_srcdir)/src/buildTcl -- -o $@-new -t $(TCL_HDRS)
+	$(top_builddir)/src/buildTcl -- -o $@-new -t $(TCL_HDRS)
 	@echo "int UseLintelTclCommands = 1; /* here to force linking */" >>$@-new
 	mv $@-new $@
 endif
