@@ -10,6 +10,7 @@ prefix=@prefix@
 exec_prefix=@exec_prefix@
 includedir=@includedir@
 libdir=@libdir@
+datadir=@expanded_datadir@
 
 usage()
 {
@@ -28,6 +29,7 @@ Valid options:
   --nogclibs           show library link options for programs that don't need gc libraries
   --features           show the features this version of lintel was built with
   --has-feature <feature> exit true (has feature) or false (does not have feature)
+  --datadir            show the share directory lintel used for installation
   --help               show these options
   --version            show lintel version
 EOF
@@ -91,6 +93,9 @@ case "$1" in
 	    fi
 	done
 	exit 1
+	;;
+    --datadir)
+        echo $datadir
 	;;
     --help)
         usage

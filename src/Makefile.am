@@ -108,6 +108,9 @@ nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchP
 perllibdir = $(datadir)/perl5
 nobase_perllib_DATA = Text/ExpandInt.pm Plot/Mercury.pm
 
+packagingdir = $(datadir)/packaging
+packaging_DATA = redhat-rules
+
 ## TODO: ought to move all this regression stuff to a dejagnu style
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.

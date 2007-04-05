@@ -1,0 +1,101 @@
+# -*- Makefile -*-
+rpm_topdir := $(shell grep '^._topdir ' $$HOME/.rpmmacros | awk '{print $$2}')
+
+ifeq ($(REPODIR),)
+REPODIR := /var/www/redhat/hpl-custom-config
+endif
+
+TOOLSDIR := @expanded_datadir@/packaging
+
+help: 
+	@echo "make rpm | tar | repo"
+
+checkdir: FORCE
+	@dashdir=`pwd | sed 's,/,-,g'`; \
+	if echo $$dashdir | fgrep -q $(PACKAGE); then \
+		echo all-ok >/dev/null; \
+	else \
+		echo "Hmm, mismatch between current directory($$dashdir) and package name ($(PACKAGE))"; exit 1; \
+	fi
+
+tar: $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz
+
+rpm: $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz $(PACKAGE).spec $(rpm_topdir)/BUILD $(rpm_topdir)/RPMS $(rpm_topdir)/SRPMS 
+	TOOLSDIR=$(TOOLSDIR) rpmbuild --define='_initrddir /etc/rc.d/init.d' --define='_optdir /opt' -ba $(PACKAGE).spec
+
+repo: rpm
+	rsync -av --exclude=BUILD --exclude=SOURCES $(rpm_topdir)/* root@pa-install.u:$(REPODIR)
+	ssh root@pa-install.u /bin/sh -c "'cd $(REPODIR); pwd; make'"
+
+clean: 
+	rm $(PACKAGE).spec redhat/postinst
+
+all:
+	@echo "nothing to compile"
+
+FIND_SKIP := ! -name '*~' ! -name 'CVS' ! -name '\#*\#'
+
+INSTALL_PATH=$(RPM_BUILD_ROOT)
+INSTALL_PACKAGE_SHARE_PATH=$(INSTALL_PATH)/usr/share/$(PACKAGE)
+# Using a single common overwrite directory means that different
+# config packages that conflict on an overwrite file will conflict
+# with each other.  This is good because otherwise the result of
+# installing both is last one wins
+INSTALL_OVERWRITE_PATH=$(INSTALL_PATH)/usr/share/config-overwrite-files
+INSTALL_SCRIPTS_PATH=$(INSTALL_PACKAGE_SHARE_PATH)/scripts
+
+install:
+	mkdir -p $(INSTALL_PACKAGE_SHARE_PATH) $(INSTALL_OVERWRITE_PATH)
+	cp redhat/postinst $(INSTALL_PACKAGE_SHARE_PATH)/postinst
+	touch $(INSTALL_PACKAGE_SHARE_PATH)/overwrite-files
+	set -e; for i in `(cd overwrite; find . -type f $(FIND_SKIP))`; do \
+		mkdir -p `dirname $(INSTALL_OVERWRITE_PATH)/$$i`; \
+		cp -p overwrite/$$i $(INSTALL_OVERWRITE_PATH)/$$i; \
+		echo $$i >>$(INSTALL_PACKAGE_SHARE_PATH)/overwrite-files; \
+	done
+
+	set -e; for i in `(cd files; find . -type f $(FIND_SKIP))`; do \
+		mkdir -p `dirname $(RPM_BUILD_ROOT)/$$i`; \
+		cp -p files/$$i $(RPM_BUILD_ROOT)/$$i; \
+	done
+
+	if [ -f services-to-restart ]; then \
+		mkdir -p $(INSTALL_PACKAGE_SHARE_PATH); \
+		cp services-to-restart $(INSTALL_PACKAGE_SHARE_PATH)/services-to-restart; \
+	fi
+	set -e; if [ -d scripts ]; then \
+		mkdir -p $(INSTALL_SCRIPTS_PATH); \
+		for i in `(cd scripts; find . -type f -perm +100 $(FIND_SKIP))`; do \
+			cp -p scripts/$$i $(INSTALL_SCRIPTS_PATH)/$$i; \
+		done \
+	fi
+	# rmdir in case nothing was actually there
+	-@rmdir $(INSTALL_SCRIPTS_PATH) $(INSTALL_OVERWRITE_PATH) 2>/dev/null
+
+$(PACKAGE).spec: redhat/package.spec checkdir
+	sed -e 's/__PACKAGE__/$(PACKAGE)/' -e 's/__VERSION__/${VERSION}/' < $< > $@-new
+	mv $@-new $@
+
+redhat/postinst: redhat/postinst.in checkdir
+	sed -e 's/__PACKAGE__/$(PACKAGE)/' -e 's/__VERSION__/${VERSION}/' < $< > $@-new
+	mv $@-new $@
+
+$(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz: checkdir $(PACKAGE).spec redhat/postinst $(rpm_topdir)/SOURCES FORCE
+	(cwd=`pwd`;dir=`basename $$cwd`; cd ..; [ "$$dir" == "$(PACKAGE)" ] || mv $$dir $(PACKAGE); tar cvvfz $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz $(PACKAGE); [ "$$dir" == "$(PACKAGE)" ] || mv $(PACKAGE) $$dir)
+
+$(rpm_topdir)/BUILD:
+	mkdir -p $@
+
+$(rpm_topdir)/SOURCES:
+	mkdir -p $@
+
+$(rpm_topdir)/SRPMS:
+	mkdir -p $@
+
+$(rpm_topdir)/RPMS:
+	mkdir -p $@
+
+# add more directories here ...
+
+FORCE:
+

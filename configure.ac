@@ -66,6 +66,8 @@ AC_EGREP_CPP(FAST_CYCLECOUNTER,
 ], FAST_CLOCK=yes, FAST_CLOCK=no)
 CPPFLAGS=$save_CPPFLAGS
 
+AC_MSG_RESULT($FAST_CLOCK)
+
 AC_LANG(C)
 # flags
 AC_SYS_LARGEFILE
@@ -177,7 +179,7 @@ fi
 
 AC_SUBST(LINTEL_FEATURES)
 
-AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel src/mercury-plot])
+AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel src/mercury-plot src/redhat-rules])
 AC_CONFIG_FILES([src/buildTcl],[chmod +x src/buildTcl])
 
 EXPAND_VARIABLE
