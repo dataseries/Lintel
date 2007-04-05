@@ -26,16 +26,13 @@ Valid options:
   --libs	       show library link options
   --mustgclibs         show library link options for programs requiring garbage collection
   --nogclibs           show library link options for programs that don't need gc libraries
-  --built-with-boost   print string "true" or "false" as appropriate
+  --features           show the features this version of lintel was built with
+  --has-feature <feature> exit true (has feature) or false (does not have feature)
   --help               show these options
   --version            show lintel version
 EOF
 exit 1
 }
-
-if test $# -ne 1; then
-   usage
-fi
 
 case "$1" in
     --cflags)
@@ -84,9 +81,16 @@ case "$1" in
 	@WITH_GC_FALSE@ echo "-llintel-libnogc-not-needed-now-unless-using-liblintelgc"
 	@WITH_GC_FALSE@ exit 1
 	;;
-    --built-with-boost)
-        @WITH_BOOST_INCLUDES_TRUE@ echo "true"; exit 0
-	@WITH_BOOST_INCLUDES_FALSE@ echo "false"; exit 1
+    --features)
+        echo @LINTEL_FEATURES@
+	;;
+    --has-feature)
+        for i in @LINTEL_FEATURES@; do
+	    if test "$i" = "$2"; then
+		exit 0
+	    fi
+	done
+	exit 1
 	;;
     --help)
         usage

@@ -74,10 +74,14 @@ public:
 	Tll ret = 0;
 #if defined(__HP_aCC)
 	readControlRegister16(&ret);
+#define LINTEL_CLOCK_CYCLECOUNTER 1
 #elif defined(HAVE_RDTSCLL)
 	rdtscll(ret);
+#define LINTEL_CLOCK_CYCLECOUNTER 1
 #else
-#error "Do not know how to get the cycle counter on this platform"
+#warning "Do not know how to get the cycle counter on this platform, clock functions may be slow"
+#define LINTEL_CLOCK_CYCLECOUNTER 0
+	AssertFatal(("do not know how to get cycle counter on this platform"));
 #endif
 	return ret;
     }
@@ -133,7 +137,9 @@ public:
 	// in incremental mode
 	// HPPA 2 based machines are all faster in direct mode, 
 	// probably because they can use the fused multiply-add
-#if defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
+#if LINTEL_CLOCK_CYCLECOUNTER == 0
+	return tod();
+#elif defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
 	return todcc_incremental();
 #else
 	return todcc_direct();

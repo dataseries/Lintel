@@ -12,7 +12,7 @@
 #define _ISOC9X_SOURCE 1
 #endif
 
-#ifdef __linux__
+#ifdef __i386__
 #include <fpu_control.h>
 #endif
 
@@ -21,6 +21,20 @@
 #include <LintelAssert.H>
 
 double Double::default_epsilon = 1e-12;
+
+/*
+ * this is how these used to be defined, before C9X was usable. Kept in case
+ * we port to a system on which it isn't available.
+ */
+
+// The warning about dividing by zero is unavoidable, sorry
+#ifndef NAN
+#define NAN 0.0/0.0
+#endif
+#ifndef INFINITY
+#define INFINITY 1.0/0.0
+#endif
+
 
 // This is here because icc doesn't correctly handle the direct
 // assignment correctly; I don't know why and this problem is separate from
@@ -32,17 +46,10 @@ static double work_around_icc_bug() {
 const double Double::NaN = work_around_icc_bug();
 const double Double::Inf = INFINITY;
 
-/*
- * this is how these used to be defined, before C9X was usable. Kept in case
- * we port to a system on which it isn't available.
-const double Double::NaN = 0.0/0.0;
-const double Double::Inf = 1.0/0.0;
-*/
-
 void
 Double::setFP64BitMode()
 {
-#ifdef __linux__
+#ifdef __i386__
     fpu_control_t cw;
     _FPU_GETCW(cw);
     AssertAlways(cw == _FPU_IEEE,
@@ -57,7 +64,7 @@ Double::setFP64BitMode()
 void
 Double::resetFPMode()
 {
-#ifdef __linux__
+#ifdef __i386__
     fpu_control_t cw = _FPU_IEEE;
     _FPU_SETCW(cw);
 #endif

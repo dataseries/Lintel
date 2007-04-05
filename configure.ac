@@ -50,8 +50,22 @@ AC_PROG_LIBTOOL
 AC_SUBST(LIBTOOL_DEPS)
 HPL_WITHLIB_TCL()
 HPL_WITHLIB_GC()
+AC_PROG_AWK
+AC_PATH_PROG([AWK_PATH],[$AWK])
 AC_LANG(C++)
 HPL_WITH_BOOST_INCLUDES
+AC_MSG_CHECKING([if we have cycle counter access])
+
+save_CPPFLAGS=$CPPFLAGS
+CPPFLAGS="-I$srcdir/include"
+AC_EGREP_CPP(FAST_CYCLECOUNTER,
+[#include "Lintel/Clock.H"
+#if LINTEL_CLOCK_CYCLECOUNTER
+  FAST_CYCLECOUNTER
+#endif
+], FAST_CLOCK=yes, FAST_CLOCK=no)
+CPPFLAGS=$save_CPPFLAGS
+
 AC_LANG(C)
 # flags
 AC_SYS_LARGEFILE
@@ -140,7 +154,31 @@ esac
 
 AC_SUBST(RANDOM_COMPARETO)
 
+LINTEL_FEATURES=""
+if test "$FAST_CLOCK" = yes; then
+   LINTEL_FEATURES="fast_clock $LINTEL_FEATURES"
+fi
+
+if test "$with_makebits" = yes; then
+   LINTEL_FEATURES="makebits $LINTEL_FEATURES"
+fi
+
+if test "$with_tcl" = yes; then
+   LINTEL_FEATURES="tcl $LINTEL_FEATURES"
+fi
+
+if test "$with_gc" = yes; then
+   LINTEL_FEATURES="gc $LINTEL_FEATURES"
+fi
+
+if test "$with_boost_includes" = yes; then
+   LINTEL_FEATURES="boost $LINTEL_FEATURES"
+fi
+
+AC_SUBST(LINTEL_FEATURES)
+
 AC_CONFIG_FILES([Makefile src/lintel-config src/lintel-acinclude include/Makefile src/Makefile src/batch-parallel src/mercury-plot])
+AC_CONFIG_FILES([src/buildTcl],[chmod +x src/buildTcl])
 
 EXPAND_VARIABLE
 expanded_datadir=`expand_variable $datadir`
