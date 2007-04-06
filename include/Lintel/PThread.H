@@ -57,9 +57,25 @@ public:
     virtual void *run() = 0;
     virtual pthread_t start();
     void *join();
-private:
+
+protected:
     pthread_t last_tid;
     pthread_attr_t attr;
+};
+
+/** PThreadNoSignals is a sublcass of PThread that blocks all signals
+ * in created threads.  This is usually what you want -- it is often
+ * best to let one thread (e.g. the master thread) take all signals.
+ *
+ * You may enable any signals that you really do want by calling
+ * pthread_sigmask(2) in your run() method.
+ *
+ * As with PThread, it's expected people will start all their threads
+ * from a "master" thread.
+ */
+class PThreadNoSignals : public PThread {
+public:
+    virtual pthread_t start();
 };
 
 struct PThreadMutex {
@@ -175,6 +191,3 @@ struct PThreadCond {
 };
 
 #endif
-
-
-    
