@@ -738,6 +738,12 @@ else
     if test "$enable_optmode" = "debug"; then
 	CFLAGS="-g -DCOMPILE_DEBUG"
 	CXXFLAGS="-g -DCOMPILE_DEBUG"
+	case $LINTEL_OPTMODE_COMPILER in
+	    *gcc*) 
+		CFLAGS="-Wall $CFLAGS"
+		CXXFLAGS="-Wall $CXXFLAGS"
+	        ;;
+        esac
     elif test "$enable_optmode" = "optimize"; then
 	CFLAGS="$OPTFLAGS -DCOMPILE_OPTIMIZE"
 	CXXFLAGS="$OPTFLAGS -DCOMPILE_OPTIMIZE"
