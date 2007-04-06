@@ -67,12 +67,7 @@ PThreadNoSignals::start()
     // n.b. we're expecting this to be called from a master thread, 
     // so no contention for the sigmask should occur
     pthread_sigmask(SIG_BLOCK, &newset, &oldset);
-    pthread_t tid;
-    int ret = pthread_create(&tid,&attr,pthread_starter,this);
+    pthread_t tid = PThread::start();
     pthread_sigmask(SIG_SETMASK, &oldset, 0);
-
-    AssertAlways(ret == 0,("pthread_create failed: %s",strerror(ret)));
-    
-    last_tid = tid;
     return tid;
 }

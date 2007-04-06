@@ -58,7 +58,7 @@ public:
     virtual pthread_t start();
     void *join();
 
-protected:
+private:
     pthread_t last_tid;
     pthread_attr_t attr;
 };
