@@ -521,14 +521,14 @@ AC_SUBST(PCAP_LIBS)
 AM_CONDITIONAL(WITH_PCAP, test $with_pcap = yes)
 ])
 
-AC_DEFUN([HPL_WITH_BOOST_INCLUDES],
+AC_DEFUN([HPL_WITH_BOOST],
 [
-AC_ARG_WITH(boost-includes,
-  [  --without-boost-includes           disable boost support],
-  [with_boost_includes=$withval],
-  [with_boost_includes='yes'])
+AC_ARG_WITH(boost,
+  [  --without-boost           disable boost support],
+  [with_boost=$withval],
+  [with_boost='yes'])
 
-if test "$with_boost_includes" = yes; then
+if test "$with_boost" = yes; then
    AC_LANG_ASSERT(C++)
    have_boost_format_hdr=no
    AC_CHECK_HEADER(boost/format.hpp,have_boost_format_hdr=yes,)
@@ -536,15 +536,15 @@ if test "$with_boost_includes" = yes; then
    AC_CHECK_HEADER(boost/cstdint.hpp,have_boost_cstdint_hdr=yes,)
 
    if test $have_boost_format_hdr = yes -a $have_boost_cstdint_hdr = yes; then
-      with_boost_includes=yes
+      with_boost=yes
    else
-      with_boost_includes=no
+      with_boost=no
    fi
 else
-   with_boost_includes=no
+   with_boost=no
 fi
 
-AM_CONDITIONAL(WITH_BOOST_INCLUDES, test $with_boost_includes = yes)
+AM_CONDITIONAL(WITH_BOOST, test $with_boost = yes)
 ])
 
 AC_DEFUN([COM_HP_HPL_LINTEL_OPTMODE],

@@ -13,7 +13,7 @@
 PThread::PThread()
 {
     int ret = pthread_attr_init(&attr);
-    AssertAlways(ret == 0,("pthread_attr_init failed: %s\n",strerror(ret)));
+    INVARIANT(ret == 0,boost::format("pthread_attr_init failed: %s") % strerror(ret));
     memset(&last_tid,sizeof(last_tid),0);
 }
 
@@ -25,7 +25,7 @@ void
 PThread::setDetached(bool detached)
 {
     int ret = pthread_attr_setdetachstate(&attr, detached ? PTHREAD_CREATE_DETACHED : PTHREAD_CREATE_JOINABLE);
-    AssertAlways(ret == 0,("pthread_attr_setdetachstate failed: %s\n",strerror(ret)));
+    INVARIANT(ret == 0,boost::format("pthread_attr_setdetachstate failed: %s") % strerror(ret));
 }
 
 static void *
@@ -41,7 +41,7 @@ PThread::start()
     pthread_t tid;
     int ret = pthread_create(&tid,&attr,pthread_starter,this);
 
-    AssertAlways(ret == 0,("pthread_create failed: %s",strerror(ret)));
+    INVARIANT(ret == 0,boost::format("pthread_create failed: %s") % strerror(ret));
     
     last_tid = tid;
     return tid;
@@ -52,7 +52,7 @@ PThread::join()
 {
     void *retval = NULL;
     int tmp = pthread_join(last_tid, &retval);
-    AssertAlways(tmp == 0,("pthread_join failed: %s\n",strerror(tmp)));
+    INVARIANT(tmp == 0,boost::format("pthread_join failed: %s") % strerror(tmp));
     return retval;
 }
 

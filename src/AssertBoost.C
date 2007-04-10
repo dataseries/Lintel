@@ -13,7 +13,16 @@
 #include <iostream>
 #include <cstdlib>
 
+#include <boost/signal.hpp>
+
 #include <AssertBoost.H>
+
+static boost::signal<void ()> failureSignal;
+
+void AssertBoostFnAfter(void (*fn)())
+{
+    failureSignal.connect(fn);
+}
 
 void AssertBoostFail(const char *expression, const char *file, int line,
 		     const std::string &msg)
@@ -21,7 +30,6 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 
     fflush(stderr);  std::cerr.flush(); // Belts ...
     fflush(stdout);  std::cout.flush(); // ... and braces
-
 
     std::cerr << std::endl 
 	      << "**** Assertion failure in file " << file << ", line "
@@ -32,6 +40,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 	std::cerr << "**** Details: " << msg << std::endl;
     }
     std::cerr.flush();
+    failureSignal();
     abort();	 // try to die
     exit(173);   // try harder to die
     kill(getpid(), 9); // try hardest to die

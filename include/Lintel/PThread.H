@@ -14,7 +14,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 #include <Lintel/Clock.H>
 
 #if __linux__
@@ -28,9 +28,9 @@ public:
     static int getCurrentCPU() {
 #if HPUX_ACC
 	pthread_spu_t answer;
-	AssertAlways(pthread_processor_id_np(PTHREAD_GETCURRENTSPU_NP,
+	INVARIANT(pthread_processor_id_np(PTHREAD_GETCURRENTSPU_NP,
 					     &answer,0) == 0,
-		     ("Failed: %s\n",strerror(errno)));
+		  boost::format("Failed: %s") % strerror(errno));
 	return (int)answer;
 #else
 	return -1;
@@ -71,33 +71,33 @@ struct PThreadMutex {
 #endif
     PThreadMutex(bool errorcheck = DEFAULT_ERRORCHECK) : ncontention(0) {
 	pthread_mutexattr_t attr;
-	AssertAlways(pthread_mutexattr_init(&attr)==0,("fatal\n"));
+	INVARIANT(pthread_mutexattr_init(&attr)==0,"fatal");
 #if __linux__
 	if (errorcheck) {
-	    AssertAlways(pthread_mutexattr_setkind_np(&attr,
+	    INVARIANT(pthread_mutexattr_setkind_np(&attr,
 						      PTHREAD_MUTEX_ERRORCHECK_NP)==0,
-			 ("fatal\n"));
+			 "fatal");
 	}
 #endif
 #if HPUX_ACC
 	if (errorcheck) {
-	    AssertAlways(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0,
-			 ("fatal\n"));
+	    INVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0,
+			 "fatal");
 	}
 #endif
-	AssertAlways(pthread_mutex_init(&m,&attr)==0,("fatal\n"));
+	INVARIANT(pthread_mutex_init(&m,&attr)==0,"fatal");
     }
     ~PThreadMutex() {
 	int ret = pthread_mutex_destroy(&m);
-	AssertAlways(ret == 0,
-		     ("unable to destroy mutex: %s\n",strerror(ret)));
+	INVARIANT(ret == 0,
+		  boost::format("unable to destroy mutex: %s") % strerror(ret));
     }
     void lock() {
 	if (trylock()) {
 	    return;
 	}
 	int ret = pthread_mutex_lock(&m);
-	AssertAlways(ret==0,("pthread_mutex_lock failed: %s",strerror(ret)));
+	INVARIANT(ret==0,boost::format("pthread_mutex_lock failed: %s") % strerror(ret));
 	++ncontention;
     }
     bool trylock() {
@@ -105,12 +105,12 @@ struct PThreadMutex {
         if (ret == 0) {
             return true;
         }
-        AssertAlways(ret == EBUSY,
-                     ("Invalid error(%d,%s) on trylock",ret,strerror(ret)));
+        INVARIANT(ret == EBUSY,
+		  boost::format("Invalid error(%d,%s) on trylock") % ret % strerror(ret));
         return false;
     }
     void unlock() {
-	AssertAlways(pthread_mutex_unlock(&m)==0,("Fatal Error"));
+	INVARIANT(pthread_mutex_unlock(&m)==0,"Fatal Error");
     }
     
 #if HPUX_ACC
@@ -148,20 +148,20 @@ private:
 struct PThreadCond {
     pthread_cond_t c;
     PThreadCond() {
-	AssertAlways(pthread_cond_init(&c,NULL)==0,("fatal\n"));
+	INVARIANT(pthread_cond_init(&c,NULL)==0,"fatal");
     }
     ~PThreadCond() {
-	AssertAlways(pthread_cond_destroy(&c)==0,("fatal\n"));
+	INVARIANT(pthread_cond_destroy(&c)==0,"fatal");
     }
     void signal() {
-	AssertAlways(pthread_cond_signal(&c)==0,("fatal\n"));
+	INVARIANT(pthread_cond_signal(&c)==0,"fatal");
     }
     void broadcast() {
-	AssertAlways(pthread_cond_broadcast(&c)==0,("fatal\n"));
+	INVARIANT(pthread_cond_broadcast(&c)==0,"fatal");
     }
     void wait(PThreadMutex &m) {
 	int ret = pthread_cond_wait(&c,&m.m);
-	AssertAlways(ret == 0,("fatal, ret=%d: %s\n",ret,strerror(ret)));
+	INVARIANT(ret == 0,boost::format("fatal, ret=%d: %s") % ret % strerror(ret));
     }
     bool timedwait(PThreadMutex &m, Clock::Tll us) { // true on timeout
         struct timespec abstime;
@@ -169,7 +169,7 @@ struct PThreadCond {
         abstime.tv_sec = (time_t)(timeout / 1000000);
         abstime.tv_nsec = (time_t)((timeout % 1000000) * 1000);
         int ret = pthread_cond_timedwait(&c,&m.m,&abstime);
-        AssertAlways(ret == 0 || ret == ETIMEDOUT,("fatal\n"));
+        INVARIANT(ret == 0 || ret == ETIMEDOUT,"fatal");
         return ret == ETIMEDOUT ? true : false;
     }
 };
