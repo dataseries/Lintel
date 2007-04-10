@@ -53,7 +53,7 @@ HPL_WITHLIB_GC()
 AC_PROG_AWK
 AC_PATH_PROG([AWK_PATH],[$AWK])
 AC_LANG(C++)
-HPL_WITH_BOOST_INCLUDES
+HPL_WITH_BOOST
 AC_MSG_CHECKING([if we have cycle counter access])
 
 save_CPPFLAGS=$CPPFLAGS
@@ -173,7 +173,7 @@ if test "$with_gc" = yes; then
    LINTEL_FEATURES="gc $LINTEL_FEATURES"
 fi
 
-if test "$with_boost_includes" = yes; then
+if test "$with_boost" = yes; then
    LINTEL_FEATURES="boost $LINTEL_FEATURES"
 fi
 

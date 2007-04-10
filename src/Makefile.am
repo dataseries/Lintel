@@ -57,8 +57,9 @@ if ENABLE_STDIO64
 libLintel_la_SOURCES += stdio_64.C
 endif
 
-if WITH_BOOST_INCLUDES
+if WITH_BOOST
 libLintel_la_SOURCES += AssertBoost.C
+libLintel_la_LIBADD += -lboost_signals
 endif
 
 if WITH_TCL
@@ -90,10 +91,12 @@ libnogc_la_LDFLAGS = -version-info @LIBNOGC_VERSION@
 libnogc_la_SOURCES = nogc.c 
 endif
 
+if WITH_BOOST
 libLintelPThread_la_LDFLAGS = -version-info @LIBLINTELPTHREAD_VERSION@ 
 libLintelPThread_la_LIBADD = libLintel.la -lpthread
 libLintelPThread_la_SOURCES = \
 	PThread.C
+endif
 
 if WITH_MAKEBITS
 install-exec-local::
