@@ -88,27 +88,13 @@ public:
     typedef std::vector<int, AllocInt> hash_tableT;
 public:
     D *add(const D &data) {
-	// The constructor is not necessarily called before the add
-	// function can be called if adding to the hashtable before
-	// main() (for example a static ConstantString); so force
-	// initialization in this case.  Recently found a case where
-	// this can happen on Linux as well, so do this in general
-	if (entry_points.capacity() == 0) {
-	    AssertAlways(free_list == 0 && target_chain_length == 0,
-			 ("weird vector behavior %p %d %.10f",
-			  this,free_list,target_chain_length));
-	    free_list = -1;
-	    target_chain_length = 2.0;
-
-	    chains.reserve(1); // needed on HP-UX, doesn't hurt on Linux
-	}
 	if (free_list == -1 && 
 	    chains.size() >= target_chain_length * entry_points.size()) {
 	    resizeHashTable();
 	}
-#ifdef COMPILE_DEBUG
-	AssertAlways(entry_points.size() > 0,("internal"));
-#endif
+
+	AssertAlways(entry_points.size() > 0, 
+		     ("did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C"));
 	int hash = hashfn(data) % entry_points.size();
 	if (free_list == -1) {
 	    hte v(data, entry_points[hash]);
@@ -120,9 +106,7 @@ public:
 	    return &(chains.back().data);
 	} else {
 	    int loc = free_list;
-#ifdef COMPILE_DEBUG
-	    AssertAlways(loc < (int)chains.size(),("internal"));
-#endif
+	    
 	    free_list = chains[free_list].next;
 	    chains[loc].data = data;
 	    chains[loc].next = entry_points[hash];
@@ -335,14 +319,16 @@ public:
     }
 private:
     void init(double _tcl) {
-	free_list = -1;
+	AssertAlways(_tcl > 0, ("invalid target_chain_length %.6f\n",_tcl));
+
+	if (entry_points.capacity() == 0) {
+	    // only do this if we haven't already done the init in add()
+	    free_list = -1;
+	    // make the "have we initted" call in add() only have
+	    // to test a single possibility
+	    entry_points.reserve(1); 
+	}
 	target_chain_length = _tcl;
-	AssertAlways(target_chain_length > 0,
-		     ("invalid target_chain_length %.6f\n",
-		      target_chain_length));
-	entry_points.reserve(1); 
-	// make the below "have we initted" call in add() go as fast
-	// as possible
     }	
     HashTable &assign(const HashTable &__in) {
 	free_list = __in.free_list;

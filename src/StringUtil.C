@@ -40,6 +40,29 @@ split(const string &instr, const string &splitstr, vector<string> &bits)
     }
 }
 
+string
+join(const string &joinstr, vector<string> &bits)
+{
+    string ret;
+
+    unsigned size = 0;
+    for(vector<string>::iterator i = bits.begin(); i != bits.end(); ++i) {
+	if (i != bits.begin())
+	    size += joinstr.size();
+	size += i->size();
+    }
+
+    ret.reserve(size);
+
+    for(vector<string>::iterator i = bits.begin(); i != bits.end(); ++i) {
+	if (i != bits.begin())
+	    ret.append(joinstr);
+	ret.append(*i);
+    }
+    return ret;
+}
+
+
 static char hextable[] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 
 string

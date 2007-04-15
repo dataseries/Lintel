@@ -18,7 +18,7 @@ calcStats_SOURCES = calcStats.C
 drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
 
 LDADD = libLintel.la @TCL_LIBS@ 
-AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\""
+AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/include/Lintel -I$(top_builddir)/include/Lintel @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\"" 
 AM_LDFLAGS = @OPTMODE_LDFLAGS@
 
 lib_LTLIBRARIES = libLintel.la libLintelPThread.la 
@@ -118,13 +118,13 @@ packaging_DATA = redhat-rules
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.
 
-check_PROGRAMS := tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock
+check_PROGRAMS := tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister
 
 if WITH_TCL
 check_PROGRAMS += tests/check-Random
 endif
 
-check-local: tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock
+check-local: tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister
 	@echo "Regression tests successful"
 
 clean-local::
@@ -165,3 +165,14 @@ tests/checked_Clock: tests/check-Clock
 	tests/check-Clock
 	touch $@
 
+tests_check_hashtable_SOURCES = tests/hashtable.C
+
+tests/checked_hashtable: tests/check-hashtable
+	tests/check-hashtable
+	touch $@
+
+tests_check_mersenneTwister_SOURCES = tests/mersenneTwister.C
+
+tests/checked_mersenneTwister: tests/check-mersenneTwister
+	tests/check-mersenneTwister
+	touch $@
