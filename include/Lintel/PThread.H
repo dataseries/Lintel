@@ -61,6 +61,9 @@ public:
 private:
     pthread_t last_tid;
     pthread_attr_t attr;
+
+    PThread(const PThread &);		   // no copy ctor
+    PThread &operator=(const PThread &);   // no assign op
 };
 
 /** PThreadNoSignals is a sublcass of PThread that blocks all signals
@@ -136,6 +139,10 @@ struct PThreadMutex {
     }
 #endif
     int ncontention;
+
+private:
+    PThreadMutex(const PThreadMutex &);		     // no copy ctor
+    PThreadMutex &operator=(const PThreadMutex &);   // no assign op
 };
 
 // Allocate this as an automatic in your stack frame.  It will
@@ -188,6 +195,10 @@ struct PThreadCond {
         INVARIANT(ret == 0 || ret == ETIMEDOUT,"fatal");
         return ret == ETIMEDOUT ? true : false;
     }
+
+private:
+    PThreadCond(const PThreadCond &);		   // no copy ctor
+    PThreadCond &operator=(const PThreadCond &);   // no assign op
 };
 
 #endif
