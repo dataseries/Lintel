@@ -14,6 +14,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <boost/utility.hpp>
+
 #include <Lintel/AssertBoost.H>
 #include <Lintel/Clock.H>
 
@@ -42,8 +44,10 @@ public:
  * is potentially useful if your threads don't have any per-thread
  * state.  We don't bother to take out locks in these functions
  * because it's expected people will start all their threads from a
- * "master" thread, so the locking is unnecessary.  */
-class PThread {
+ * "master" thread, so the locking is unnecessary.  
+ * technically this is copyable, but it's probably not what you wanted. */
+
+class PThread : boost::noncopyable { 
 public:
     PThread();
     virtual ~PThread();
@@ -81,7 +85,7 @@ public:
     virtual pthread_t start();
 };
 
-struct PThreadMutex {
+struct PThreadMutex : boost::noncopyable {
     pthread_mutex_t m;
 #if COMPILE_DEBUG
 #define DEFAULT_ERRORCHECK true
@@ -128,8 +132,12 @@ struct PThreadMutex {
 		  boost::format("Invalid error(%d,%s) on trylock") % ret % strerror(ret));
         return false;
     }
+
     void unlock() {
-	INVARIANT(pthread_mutex_unlock(&m)==0,"Fatal Error");
+	int ret = pthread_mutex_unlock(&m);
+	INVARIANT(ret==0,
+		  boost::format("pthread_mutex_unlock failed: %s")
+		  % strerror(ret));
     }
     
 #if HPUX_ACC
@@ -140,6 +148,7 @@ struct PThreadMutex {
 #endif
     int ncontention;
 
+    std::string debugInfo();
 private:
     PThreadMutex(const PThreadMutex &);		     // no copy ctor
     PThreadMutex &operator=(const PThreadMutex &);   // no assign op
@@ -168,7 +177,7 @@ private:
     PThreadAutoLocker &operator=(const PThreadAutoLocker &); // nope
 };
 
-struct PThreadCond {
+struct PThreadCond : boost::noncopyable {
     pthread_cond_t c;
     PThreadCond() {
 	INVARIANT(pthread_cond_init(&c,NULL)==0,"fatal");

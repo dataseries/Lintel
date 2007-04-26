@@ -57,6 +57,21 @@ PThread::join()
     return retval;
 }
 
+std::string
+PThreadMutex::debugInfo()
+{
+#if defined(_BITS_PTHREADTYPES_H) 
+    // glibc...
+    return (boost::format("mutex %p: recursive-depth %d owner %p kind %d status %d spinlock %d") 
+	    % reinterpret_cast<void *>(&m) % m.__m_count 
+	    % reinterpret_cast<void *>(m.__m_owner) % m.__m_kind 
+	    % m.__m_lock.__status 
+	    % static_cast<uint32_t>(m.__m_lock.__spinlock)).str();
+#else
+    return "no debugging information available";
+#endif
+}
+
 pthread_t
 PThreadNoSignals::start()
 {
