@@ -132,8 +132,12 @@ struct PThreadMutex : boost::noncopyable {
 		  boost::format("Invalid error(%d,%s) on trylock") % ret % strerror(ret));
         return false;
     }
+
     void unlock() {
-	INVARIANT(pthread_mutex_unlock(&m)==0,"Fatal Error");
+	int ret = pthread_mutex_unlock(&m);
+	INVARIANT(ret==0,
+		  boost::format("pthread_mutex_unlock failed: %s")
+		  % strerror(ret));
     }
     
 #if HPUX_ACC
@@ -144,6 +148,7 @@ struct PThreadMutex : boost::noncopyable {
 #endif
     int ncontention;
 
+    std::string debugInfo();
 private:
     PThreadMutex(const PThreadMutex &);		     // no copy ctor
     PThreadMutex &operator=(const PThreadMutex &);   // no assign op
