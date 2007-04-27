@@ -69,12 +69,11 @@ PThread::join()
     return retval;
 }
 
-#if GLIBC_PTHREADS
+#if GLIBC_PTHREADS && GLIBC_OLD_PTHREADS
 #define PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED 1
 std::string
 PThreadMutex::debugInfo()
 {
-#if GLIBC_OLD_PTHREADS
     // this is for some version of glibc prior to 2.5 (but maybe earlier)
     // code by ea
     return (boost::format("mutex %p: recursive-depth %d owner %p kind %d status %d spinlock %d") 
@@ -82,11 +81,21 @@ PThreadMutex::debugInfo()
 	    % reinterpret_cast<void *>(m.__m_owner) % m.__m_kind 
 	    % m.__m_lock.__status 
 	    % static_cast<uint32_t>(m.__m_lock.__spinlock)).str();
-#else
-    // nothing yet for glibc 2.5 (but maybe earlier), but please
-    // implement.
-    return "no debugging information available yet (glibc 2.5)";
+}
 #endif
+
+#if GLIBC_PTHREADS && !GLIBC_OLD_PTHREADS
+#define PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED 1
+std::string
+PThreadMutex::debugInfo()
+{
+    // glibc 2.5 (but maybe earlier)
+    return (boost::format("mutex %p: recursive-depth %d owner %p kind %d lock %d") 
+	    % reinterpret_cast<void *>(&m) 
+	    % m.__data.__count 
+	    % reinterpret_cast<void *>(m.__data.__owner) 
+	    % m.__data.__kind 
+	    % m.__data.__lock).str();
 }
 #endif
 
