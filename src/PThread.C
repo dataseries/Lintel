@@ -90,6 +90,7 @@ std::string
 PThreadMutex::debugInfo()
 {
     // glibc 2.5 (but maybe earlier)
+    // code by ch
     return (boost::format("mutex %p: recursive-depth %d owner %p kind %d lock %d") 
 	    % reinterpret_cast<void *>(&m) 
 	    % m.__data.__count 
