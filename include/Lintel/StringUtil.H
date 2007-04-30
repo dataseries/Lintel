@@ -61,5 +61,11 @@ long stringToLong(const std::string &str, int base = 10);
 /** same as strtoll, but bails out if the string isn't valid */
 long long stringToLongLong(const std::string &str, int base = 10);
 
+/** returns true if the string is all blanks according to isblank(3) */
+bool stringIsBlank(const std::string &);
+
+/** returns true if the string is all spaces according to isspace(3) */
+bool stringIsSpace(const std::string &);
+
 #endif
 

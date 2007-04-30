@@ -9,6 +9,7 @@
 */
 
 #include <stdlib.h>
+#include <ctype.h>
 
 #include <StringUtil.H>
 #include <LintelAssert.H>
@@ -225,4 +226,24 @@ stringToLongLong(const std::string &str, int base)
     AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a long long",
 				  str.c_str()));
     return ret;
+}
+
+bool stringIsBlank(const std::string &str)
+{
+    size_t n = str.size();
+
+    for (size_t i = 0; i < n; i++) {
+	if (!isblank(str[i])) return false;
+    }
+    return true;
+}
+
+bool stringIsSpace(const std::string &str)
+{
+    size_t n = str.size();
+
+    for (size_t i = 0; i < n; i++) {
+	if (!isspace(str[i])) return false;
+    }
+    return true;
 }
