@@ -69,6 +69,13 @@ PThread::join()
     return retval;
 }
 
+int
+PThread::kill(int sig)
+{
+    int rc = pthread_kill(last_tid, sig);
+    return rc;
+}
+
 #if GLIBC_PTHREADS && GLIBC_OLD_PTHREADS
 #define PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED 1
 std::string

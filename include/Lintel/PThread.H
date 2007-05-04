@@ -61,13 +61,11 @@ public:
     virtual void *run() = 0;
     virtual pthread_t start();
     void *join();
+    int kill(int sig);
 
 private:
     pthread_t last_tid;
     pthread_attr_t attr;
-
-    PThread(const PThread &);		   // no copy ctor
-    PThread &operator=(const PThread &);   // no assign op
 };
 
 /** PThreadNoSignals is a sublcass of PThread that blocks all signals
@@ -149,15 +147,12 @@ struct PThreadMutex : boost::noncopyable {
     int ncontention;
 
     std::string debugInfo();
-private:
-    PThreadMutex(const PThreadMutex &);		     // no copy ctor
-    PThreadMutex &operator=(const PThreadMutex &);   // no assign op
 };
 
 // Allocate this as an automatic in your stack frame.  It will
 // take the mutex on construction and drop it on destruction,
 // when the stack frame goes out of scope.
-class PThreadAutoLocker {
+class PThreadAutoLocker : boost::noncopyable {
 public:
     explicit PThreadAutoLocker(PThreadMutex &_lock) 
 	: lock(_lock)
@@ -172,9 +167,6 @@ public:
 
 private:
     PThreadMutex &lock;
-
-    PThreadAutoLocker(const PThreadAutoLocker &); // nope
-    PThreadAutoLocker &operator=(const PThreadAutoLocker &); // nope
 };
 
 struct PThreadCond : boost::noncopyable {
@@ -204,10 +196,6 @@ struct PThreadCond : boost::noncopyable {
         INVARIANT(ret == 0 || ret == ETIMEDOUT,"fatal");
         return ret == ETIMEDOUT ? true : false;
     }
-
-private:
-    PThreadCond(const PThreadCond &);		   // no copy ctor
-    PThreadCond &operator=(const PThreadCond &);   // no assign op
 };
 
 #endif
