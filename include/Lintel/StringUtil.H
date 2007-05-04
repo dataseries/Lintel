@@ -52,6 +52,10 @@ bool suffixequal(const std::string &str, const std::string &suffix);
 /** convert an ipv4 32 bit value into a string, first octet is first byte */
 std::string ipv4tostring(unsigned long val);
 
+/** convert a string #.#.#.# to an ipv4 with the first octet as the
+    first byte; uses inet_aton, so 0## is octal and 0x## is hex */
+uint32_t stringtoipv4(const std::string &str);
+
 /** same as strtod, but bails out if the string isn't valid */
 double stringToDouble(const std::string &str);
 
