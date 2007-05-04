@@ -73,6 +73,8 @@ int
 PThread::kill(int sig)
 {
     int rc = pthread_kill(last_tid, sig);
+    INVARIANT(rc != EINVAL, 
+	      boost::format("pthread_kill failed: %s") % strerror(rc));
     return rc;
 }
 
