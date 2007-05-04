@@ -9,10 +9,14 @@
 */
 
 #include <stdlib.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 #include <ctype.h>
 
-#include <StringUtil.H>
-#include <LintelAssert.H>
+#include <Lintel/StringUtil.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 
 #ifdef __HP_aCC
 #include <inttypes.h>
@@ -183,6 +187,16 @@ ipv4tostring(unsigned long val)
 	    (unsigned int)(val >> 8) & 0xFF,
 	    (unsigned int)(val >> 0) & 0xFF);
     return string(buf);
+}
+
+uint32_t
+stringtoipv4(const string &val)
+{
+    struct in_addr addr;
+    INVARIANT(inet_aton(val.c_str(), &addr) != 0,
+	      boost::format("Unable to convert %s to inet address")
+	      % val);
+    return static_cast<uint32_t>(addr.s_addr);
 }
 
 double
