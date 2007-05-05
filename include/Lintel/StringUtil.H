@@ -51,7 +51,7 @@ bool prefixequal(const std::string &str, const std::string &prefix);
 bool suffixequal(const std::string &str, const std::string &suffix);
 
 /** convert an ipv4 32 bit value into a string, first octet is first byte */
-std::string ipv4tostring(unsigned long val);
+std::string ipv4tostring(uint32_t val);
 
 /** convert a string #.#.#.# to an ipv4 with the first octet as the
     first byte; uses inet_aton, so 0## is octal and 0x## is hex */
