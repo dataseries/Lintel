@@ -12,7 +12,7 @@
 #ifndef __HASH_UNIQUE_H
 #define __HASH_UNIQUE_H
 
-#include <HashMap.H>
+#include <Lintel/HashMap.H>
 
 template <class K,
           class KHash = HashMap_hash<const K>,
