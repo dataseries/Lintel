@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include <inttypes.h>
 
 /** split instr into all of the separate strings separated by splitstr, and
     put the results into bits */
@@ -50,7 +51,10 @@ bool prefixequal(const std::string &str, const std::string &prefix);
 bool suffixequal(const std::string &str, const std::string &suffix);
 
 /** convert an ipv4 32 bit value into a string, first octet is first byte */
-std::string ipv4tostring(unsigned long val);
+std::string ipv4tostring(uint32_t val);
+
+/** convert a string into an ipv4 32 bit value */
+uint32_t stringtoipv4(const std::string &str);
 
 /** same as strtod, but bails out if the string isn't valid */
 double stringToDouble(const std::string &str);
