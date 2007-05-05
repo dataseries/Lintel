@@ -5,6 +5,8 @@
 #
 
 package BatchParallel::compress;
+use strict;
+use vars '@ISA';
 
 die "module version mismatch" 
     unless $BatchParallel::common::interface_version < 2;
@@ -66,7 +68,7 @@ sub file_is_source {
 sub destination_file {
     my($this,$prefix,$fullpath) = @_;
 
-    while($fullpath =~ s/\.((gz)|(bz2))$//o) { 
+    while($fullpath =~ s/\.((gz)|(bz2)|(7z))$//o) { 
         # chop off all of the previous compression bits
     }
     return $fullpath . ".$this->{type}";
@@ -92,7 +94,7 @@ sub rebuild {
     my @cmds = ("cat $fullpath");
     my $origpath = $fullpath;
     if ($fullpath =~ s/\.7z$//o) {
-	@cmds = ("7z x -so $fullpath"); # 7z doesn't support being in a pipeline
+	@cmds = ("7z x -so $origpath"); # 7z doesn't support being in a pipeline
     }
     while(1) {
 	if ($fullpath =~ s/\.gz$//o) {
@@ -122,6 +124,7 @@ sub rebuild {
 	die "Unknown type $this->{type}";
     }
 
+    print "Repacking using $unpack_orig_cmd | $pack_cmd\n";
     my $ret = system("$unpack_orig_cmd | $pack_cmd");
 
     unless($ret == 0) {
@@ -144,6 +147,7 @@ sub rebuild {
 	open(F2,"$unpack_cmd |") || fail($destpath,"can't run $unpack_cmd < $destpath: $!");
 	my $bufsize = 64*1024;
 	my($f1,$f2);
+	my $total_bytes = 0;
 	while(1) {
 	    my $amt1 = read(F1,$f1,$bufsize);
 	    my $amt2 = read(F2,$f2,$bufsize);
@@ -151,7 +155,10 @@ sub rebuild {
 	    fail($destpath,"different sizes $amt1 != $amt2") unless $amt1 == $amt2;
 	    last if $amt1 == 0;
 	    fail($destpath,"read data different") unless $f1 eq $f2;
+	    $total_bytes += $amt1;
 	}
+	die "weird no bytes compressed, unknown error in unpacking??"
+	    if $total_bytes == 0;
     }
     if ($this->{clean}) {
 	unlink($origpath);
