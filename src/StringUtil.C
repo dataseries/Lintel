@@ -13,6 +13,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <netdb.h>
+#include <sys/socket.h>
 
 #include <Lintel/StringUtil.H>
 #include <Lintel/LintelAssert.H>
@@ -178,7 +180,7 @@ suffixequal(const string &str, const string &prefix)
 
 
 string
-ipv4tostring(unsigned long val)
+ipv4tostring(uint32_t val)
 {
     char buf[50];
     sprintf(buf,"%d.%d.%d.%d",
@@ -199,6 +201,40 @@ stringtoipv4(const string &val)
     return static_cast<uint32_t>(addr.s_addr);
 }
 
+uint32_t
+stringtoipv4(const std::string &str)
+{
+    const char *name = str.c_str();
+    size_t buflen = 4096;
+    char *buf = static_cast<char *>(malloc(buflen));
+    
+    AssertAlways(buf != NULL,("stringtoipv4: malloc failed"));
+
+    struct hostent ret;
+    struct hostent *result;
+    int this_h_errno = 0;
+
+    int rc = gethostbyname2_r(name, AF_INET, &ret, buf, buflen,
+			      &result, &this_h_errno); 
+
+    if (rc == 0) {
+	AssertAlways(ret.h_length == 4,("huh?  h_length !=4 for AF_INET"));
+
+	// ch presumes the result is supposed to be in native
+	// order given the definition of ipv4tostring.
+	uint32_t addr = (((unsigned) ret.h_addr_list[0][0] << 24) |
+			 ((unsigned) ret.h_addr_list[0][1] << 16) |
+			 ((unsigned) ret.h_addr_list[0][2] << 8) |
+			 ((unsigned) ret.h_addr_list[0][3] << 0));
+	    
+	free(buf);
+	return addr;
+    } else {
+	free(buf);
+	return static_cast<uint32_t>(-1);
+    }
+    
+}
 double
 stringToDouble(const std::string &str)
 {

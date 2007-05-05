@@ -14,6 +14,7 @@
 
 #include <string>
 #include <vector>
+#include <inttypes.h>
 
 /** split instr into all of the separate strings separated by splitstr, and
     put the results into bits */
