@@ -13,6 +13,8 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <netdb.h>
+#include <sys/socket.h>
 
 #include <Lintel/StringUtil.H>
 #include <Lintel/LintelAssert.H>
@@ -178,7 +180,7 @@ suffixequal(const string &str, const string &prefix)
 
 
 string
-ipv4tostring(unsigned long val)
+ipv4tostring(uint32_t val)
 {
     char buf[50];
     sprintf(buf,"%d.%d.%d.%d",
