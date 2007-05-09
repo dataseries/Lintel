@@ -198,7 +198,7 @@ stringtoipv4(const string &val)
     INVARIANT(inet_aton(val.c_str(), &addr) != 0,
 	      boost::format("Unable to convert %s to inet address")
 	      % val);
-    return static_cast<uint32_t>(addr.s_addr);
+    return static_cast<uint32_t>(ntohl(addr.s_addr));
 }
 
 double
