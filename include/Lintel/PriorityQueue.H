@@ -12,7 +12,7 @@
 #ifndef __PRIORITY_QUEUE_H
 #define __PRIORITY_QUEUE_H
 
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
 #include <new>
 
 // The priority_queue in the HPUX STL is ~4x slower than this one on

@@ -15,7 +15,7 @@
 #include <list>
 #include <map>
 #include <Stats.H>
-#include <StatsRW.H>
+#include <Lintel/StatsRW.H>
 #include <StatsHistogram.H>
 #include <StatsSequence.H>
 
