@@ -13,12 +13,12 @@
 #include "LintelAssert.H"
 #include <math.h>
 
-StatsSequence::StatsSequence(unsigned long _max_retain)
+StatsSequence::StatsSequence(unsigned long _max_retain, mode _merge_mode)
     : Stats(), max_retain(_max_retain)
 {
     AssertAlways(max_retain > 0,("Max Retain must be > 0\n"));
     AssertAlways((max_retain % 2) == 0,("Max Retain must be even!\n"));
-    merge_mode = MergeSum;
+    merge_mode = _merge_mode;
     intervalWidth = 1;
     points_per_bucket = 1;
     reset();
@@ -46,11 +46,14 @@ StatsSequence::add(const double value)
 	Assert(1,points_remain_new_bucket == points_per_bucket 
 	         && new_value == 0);
 	for(unsigned int i=0;i<max_retain/2;i++) {
+	    double x = values[2*i], y = values[2*i+1];
 	    switch(merge_mode) 
 		{
-		case MergeSum: values[i] = values[2*i] + values[2*i+1];
+		case MergeSum: values[i] = x + y;
 		    break;
-		case MergeMean: values[i] = (values[2*i] + values[2*i+1])/2;
+		case MergeMean: values[i] = (x+y) / 2;
+		    break;
+		case MergeMax: values[i] = (x>y) ? x : y;
 		    break;
 		default:
 		    AssertFatal(("I didn't get here.\n"));
@@ -60,7 +63,8 @@ StatsSequence::add(const double value)
 	points_per_bucket *= 2;
 	points_remain_new_bucket = points_per_bucket;
     }
-    new_value += value;
+    if (merge_mode == MergeMax) { new_value = (new_value > value) ? new_value : value; }
+    else { new_value += value; }
     points_remain_new_bucket -= 1;
     if (points_remain_new_bucket == 0) {
 	switch(merge_mode)
@@ -68,6 +72,8 @@ StatsSequence::add(const double value)
 	    case MergeSum: 
 		break;
 	    case MergeMean: new_value = new_value / (double)points_per_bucket;
+		break;
+	    case MergeMax: 
 		break;
 	    default:
 		AssertFatal(("I didn't get here.\n"));
@@ -96,16 +102,19 @@ StatsSequence::printRome(int depth, std::ostream &out) const
 	numrescales += 1;
     }
     out << spaces << "  { numRescales " << numrescales << " }\n";
-    out << spaces << "  { values (";
+    bool extra = (points_remain_new_bucket < points_per_bucket);
+    out << spaces << "  { values [" << values.size() + extra << "] (";
     for(unsigned int k=0;k<values.size();k++) {
 	out << values[k] << " ";
     }
-    if (points_remain_new_bucket < points_per_bucket) {
+    if (extra) {
 	switch (merge_mode) 
 	    {
 	    case MergeSum: out << new_value;
 		break;
 	    case MergeMean: out << new_value / (double)points_per_bucket;
+		break;
+	    case MergeMax: out << new_value;
 		break;
 	    default:
 		AssertFatal(("I didn't get here.\n"));
