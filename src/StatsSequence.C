@@ -103,7 +103,7 @@ StatsSequence::printRome(int depth, std::ostream &out) const
     }
     out << spaces << "  { numRescales " << numrescales << " }\n";
     bool extra = (points_remain_new_bucket < points_per_bucket);
-    out << spaces << "  { values [" << values.size() + extra << "] (";
+    out << spaces << "  { values (";
     for(unsigned int k=0;k<values.size();k++) {
 	out << values[k] << " ";
     }
