@@ -28,8 +28,10 @@ public:
     void setMergeMode(mode merge_mode);
     double get(unsigned int seqNum);
     unsigned int maxSeqNum();
+    int getPointsPerBucket() const;
+
 private:
-    const unsigned long max_retain;
+    unsigned long max_retain;
     mode merge_mode;
     std::vector<double> values;
     double intervalWidth;

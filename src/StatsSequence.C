@@ -154,5 +154,8 @@ StatsSequence::maxSeqNum()
     return values.size();
 }
 
-
-
+int
+StatsSequence::getPointsPerBucket() const
+{
+    return points_per_bucket;
+}
