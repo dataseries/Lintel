@@ -12,6 +12,8 @@
 #ifndef __HASH_TABLE
 #define __HASH_TABLE
 
+#include <inttype.h>
+
 #include <vector>
 
 #include <Lintel/LintelAssert.H>
@@ -421,17 +423,17 @@ inline unsigned int HashTable_hashbytes(const void *bytes,
   c -= a; c -= b; c ^= (b>>15); \
 }
 
-static inline unsigned int BobJenkinsHashMix3(unsigned int a, unsigned int b, unsigned int c)
+static inline unsigned int BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c)
 {
     BobJenkinsHashMix(a,b,c);
     return c;
 }
 
-static inline unsigned int BobJenkinsHashMixULL(unsigned long long v)
+static inline unsigned int BobJenkinsHashMixULL(uint64_t v)
 {
-    unsigned int a = (unsigned int)(v & 0xFFFFFFFF);
-    unsigned int b = (unsigned int)((v >> 32) & 0xFFFFFFFF);
-    unsigned int c = 1972;
+    uint32_t int a = (uint32_t)(v & 0xFFFFFFFF);
+    uint32_t int b = (uint32_t)((v >> 32) & 0xFFFFFFFF);
+    uint32_t int c = 1972;
     BobJenkinsHashMix(a,b,c);
     return c;
 }
