@@ -12,7 +12,7 @@
 #ifndef __HASH_TABLE
 #define __HASH_TABLE
 
-#include <inttype.h>
+#include <inttypes.h>
 
 #include <vector>
 
@@ -431,9 +431,9 @@ static inline unsigned int BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c
 
 static inline unsigned int BobJenkinsHashMixULL(uint64_t v)
 {
-    uint32_t int a = (uint32_t)(v & 0xFFFFFFFF);
-    uint32_t int b = (uint32_t)((v >> 32) & 0xFFFFFFFF);
-    uint32_t int c = 1972;
+    uint32_t a = static_cast<uint32_t>(v & 0xFFFFFFFF);
+    uint32_t b = static_cast<uint32_t>((v >> 32) & 0xFFFFFFFF);
+    uint32_t c = 1972;
     BobJenkinsHashMix(a,b,c);
     return c;
 }

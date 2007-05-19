@@ -7,6 +7,8 @@
 package BatchParallel::common;
 use strict;
 use warnings;
+use FileHandle;
+use Pod::Usage;
 
 # the intent is that the major version will change on incompatible
 # changes, and the minor version will change on forward-compatible
@@ -31,8 +33,11 @@ sub new {
 
     my $this = bless {}, $class;
     if (@_ != 0) {
-	if ($_[0] eq 'help') {
+	if ($_[0] eq 'help' || $_[0] eq 'usage') {
 	    $this->usage();
+	    exit(0);
+	} elsif ($_[0] eq 'man') {
+	    $this->man();
 	    exit(0);
 	}
 	die "unknown options specified for batch-parallel module $class: '@_'";
@@ -40,8 +45,39 @@ sub new {
     return $this;
 }
 
+sub find_pod {
+    my $class = ref $_[0];
+    $class =~ s!::!/!g;
+    foreach my $dir (@INC) {
+	my $fn = "$dir/${class}.pm";
+	next unless -e $fn;
+	my $fh = new FileHandle $fn
+	    or die "Can't open $fn for read: $!";
+	my $found_podstuff = 0;
+	while(<$fh>) {
+	    return $fn if /^=head1\s+SYNOPSIS/o;
+	}
+	return undef;
+    }
+    return undef;
+}
+
 sub usage {
-    die "you need to override sub usage in your module to give a usage message";
+    my $pod = $_[0]->find_pod();
+    pod2usage(-exitvalue => 0, -input => $pod)
+	if defined $pod;
+
+    die "you need to override sub usage in your module to give a usage message
+or you need to include an =head1 SYNOPSIS pod section in your module";
+}
+
+sub man {
+    my $pod = $_[0]->find_pod();
+    pod2usage(-exitvalue => 0, -verbose => 2, -input => $pod)
+	if defined $pod;
+
+    die "you need to override sub man in your module to give a manual page
+or you need to include an =head1 SYNOPSIS pod section in your module";
 }
 
 sub file_is_source {
