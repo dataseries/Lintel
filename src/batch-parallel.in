@@ -101,7 +101,6 @@ if (@dirs == 0) {
     @dirs = $module->default_source_locations();
 }
 
-usage() unless @dirs > 0;
 
 if (defined $lsfexec) {
     lsfexec();
@@ -567,6 +566,15 @@ running in parallel will continue in the background.
 This function should print out a message about what would be rebuild.
 By default it will only be called when C<batch-parallel> is running in
 no-execute mode.
+
+=head2 Utility functions
+
+=head3 sub run($this, @command)
+
+This function will execute @command using system after printing out
+the command that is about to be executed.  If the command fails, the
+function will not return.  It is therefore useful for writing
+replacement rebuild_thing_do functions.
 
 =head1 TODO
 

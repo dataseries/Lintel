@@ -9,6 +9,7 @@ use strict;
 use warnings;
 use FileHandle;
 use Pod::Usage;
+use Carp;
 
 # the intent is that the major version will change on incompatible
 # changes, and the minor version will change on forward-compatible
@@ -255,6 +256,15 @@ sub rebuild_thing_fail {
     my($prefix,$filepath,$destfile) = @$thing_info;
 
     warn "child failed to successfully make $destfile-new from $filepath\n";
+}
+
+sub run {
+    my $this = shift;
+
+    print "Running: ", join(" ", @_), "\n";
+    my $ret = system(@_);
+    confess "Command '" . join(" ", @_), "' failed; return was $ret"
+	unless $ret == 0;
 }
 
 1;
