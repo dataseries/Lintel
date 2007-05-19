@@ -17,8 +17,8 @@
 
 class StatsSequence : public Stats {
 public:
-    enum mode { MergeSum, MergeMean };
-    StatsSequence(unsigned long max_retain);
+    enum mode { MergeSum, MergeMean, MergeMax };
+    StatsSequence(unsigned long _max_retain, mode _merge_mode = MergeSum);
     virtual ~StatsSequence();
     virtual void reset();
     virtual void add(const double value);

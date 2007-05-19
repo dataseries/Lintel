@@ -4,19 +4,30 @@
 #  LINTEL_LIBRARIES   - List of libraries when using Lintel
 #  LINTEL_FOUND       - True if Lintel found.
 
-
 IF (LINTEL_INCLUDE_DIR)
   # Already in cache, be silent
   SET(LINTEL_FIND_QUIETLY TRUE)
 ENDIF (LINTEL_INCLUDE_DIR)
 
+# This is the recommended cmake idiom to use a locally built version
+# of a library in preference to the system one.
+
 FIND_PATH(LINTEL_INCLUDE_DIR Lintel/LintelAssert.H
   ${CMAKE_INSTALL_PREFIX}/include
+  NO_DEFAULT_PATH
 )
+
+FIND_PATH(LINTEL_INCLUDE_DIR Lintel/LintelAssert.H)
+
+# TODO: figure out why in some cases this complains that libLintel.so
+# can't have an absolute path, and in others it has no problem.
 
 FIND_LIBRARY(LINTEL_LIBRARY 
   NAMES Lintel 
-  PATHS ${CMAKE_INSTALL_PREFIX}/lib)
+  PATHS ${CMAKE_INSTALL_PREFIX}/lib
+  NO_DEFAULT_PATH)
+
+FIND_LIBRARY(LINTEL_LIBRARY NAMES Lintel)
 
 IF (LINTEL_INCLUDE_DIR AND LINTEL_LIBRARY)
    SET(LINTEL_FOUND TRUE)
