@@ -31,10 +31,13 @@ public:
 	return v != NULL;
     }
     
-    void add(const K &k) {
+    bool add(const K &k) {
 	K *v = hashtable.lookup(k);
 	if (v == NULL) {
 	    hashtable.add(k);
+	    return true;
+	} else {
+	    return false;
 	}
     }
     
@@ -69,6 +72,10 @@ public:
 
     void clear() {
 	hashtable.clear();
+    }
+    
+    uint32_t size() {
+	return hashtable.size();
     }
 private:
     HashTableT hashtable;
