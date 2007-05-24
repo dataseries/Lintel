@@ -72,5 +72,10 @@ bool stringIsBlank(const std::string &);
 /** returns true if the string is all spaces according to isspace(3) */
 bool stringIsSpace(const std::string &);
 
+/** returns the current host's hostname.  the function tries to return
+ * a FQDN, but this is not guaranteed -- if the effort fails, it simply
+ * returns the result of gethostname(2) as a std::string. */
+std::string getHostFQDN();
+
 #endif
 

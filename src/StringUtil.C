@@ -263,3 +263,38 @@ bool stringIsSpace(const std::string &str)
     }
     return true;
 }
+
+
+std::string getHostFQDN()
+{
+    char buf[1024];
+    buf[sizeof(buf) - 1] = '\0';
+    int rc = gethostname(buf, sizeof(buf) - 1);
+    INVARIANT(rc == 0, "gethostname failed");
+    string hostname(buf);
+
+    // Try to look up the host via netdb.  This is especially is
+    // important on any host running DHCP, where the name returned by
+    // gethostname isn't a FQDN on most configurations and usually
+    // maps to a loopback address via /etc/hosts.  What we want
+    // is a real IP address, if it exists.
+
+    struct addrinfo hints;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;	// TODO: remove and test if IPv6 works
+    hints.ai_flags = AI_CANONNAME;
+    struct addrinfo *res = 0;
+    int error = getaddrinfo(buf, NULL, &hints, &res);
+    if (error == 0) {
+	for (struct addrinfo *cur = res; cur != NULL; cur = cur->ai_next) {
+	    if (cur->ai_canonname) {
+		hostname = string(cur->ai_canonname);
+		break;
+	    }
+	}
+    }
+    
+    if (res) freeaddrinfo(res);
+
+    return hostname;
+}
