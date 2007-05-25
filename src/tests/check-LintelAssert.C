@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2004-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -10,7 +9,7 @@
 */
 
 #include <stdlib.h>
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
 
 
 ////////////////////////////////////////////////////////////////

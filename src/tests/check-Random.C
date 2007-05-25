@@ -14,8 +14,8 @@
 ////////////////////////////////////////////////////////////////
 //
 
-#include <Random.H>
-#include <Double.H>
+#include <Lintel/Double.H>
+#include <Lintel/Random.H>
 
 // number of times to call Rand.draw() for different tests
 const unsigned mean_iterations  = 100000;	// # trials for getting to mean

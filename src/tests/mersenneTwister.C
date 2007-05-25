@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -12,7 +11,7 @@
 
 #include <stdio.h>
 
-#include <MersenneTwisterRandom.H>
+#include <Lintel/MersenneTwisterRandom.H>
 
 int 
 main()

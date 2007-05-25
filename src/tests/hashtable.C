@@ -10,9 +10,9 @@
 
 #include <stdio.h>
 
-#include <HashTable.H>
-#include <HashMap.H>
-#include <ConstantString.H>
+#include <Lintel/ConstantString.H>
+#include <Lintel/HashTable.H>
+#include <Lintel/HashMap.H>
 
 // // test that hash table work done at init time is correct
 // commented out for now; don't feel like getting it to interact properly

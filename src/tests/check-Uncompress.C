@@ -9,9 +9,9 @@
     Regression tests for check-Uncompress.C
 */
 
-#include <Uncompress.H>
-#include <LintelAssert.H>
-#include <Posix.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Posix.H>
+#include <Lintel/Uncompress.H>
 
 int main(int argc, char *argv[]) {
     AssertAlways(argc == 2,("invalid args"));

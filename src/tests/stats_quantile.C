@@ -13,10 +13,11 @@
 #endif
 
 #include <algorithm>
-#include <StatsQuantile.H>
-#include <LintelAssert.H>
-#include <MersenneTwisterRandom.H>
-#include <Double.H>
+
+#include <Lintel/Double.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/StatsQuantile.H>
 
 void
 checkQuantiles(StatsQuantile &stats,
