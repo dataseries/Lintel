@@ -38,7 +38,7 @@ exit 1
 
 case "$1" in
     --cflags)
-    	echo "-I${includedir}/Lintel -I${includedir} @TCL_CFLAGS@ @GC_CFLAGS@"
+    	echo "-I${includedir} @TCL_CFLAGS@ @GC_CFLAGS@"
 	exit 0
     	;;
     --libtool-libs)

@@ -14,10 +14,11 @@
 
 #include <list>
 #include <map>
-#include <Stats.H>
+
+#include <Lintel/Stats.H>
+#include <Lintel/StatsHistogram.H>
 #include <Lintel/StatsRW.H>
-#include <StatsHistogram.H>
-#include <StatsSequence.H>
+#include <Lintel/StatsSequence.H>
 
 // make(RW) will create a stats object of the appropriate type based
 // on the name provided; It will check to see if the name was

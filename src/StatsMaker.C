@@ -8,7 +8,7 @@
     StatsMaker implementation
 */
 
-#include <StatsMaker.H>
+#include <Lintel/StatsMaker.H>
 
 std::map<std::string,StatsMaker::statDefT *> StatsMaker::statDefs;
 

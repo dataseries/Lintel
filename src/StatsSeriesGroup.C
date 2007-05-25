@@ -8,9 +8,9 @@
     StatsSeriesGroup implementation
 */
 
-#include <StatsSeriesGroup.H>
-#include <Double.H>
-#include <StatsMaker.H>
+#include <Lintel/Double.H>
+#include <Lintel/StatsMaker.H>
+#include <Lintel/StatsSeriesGroup.H>
 
 StatsSeriesGroup::StatsSeriesGroup(const std::string &_myname, double _interval) :
     interval(_interval), 

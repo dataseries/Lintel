@@ -8,10 +8,10 @@
     StatsSequence implementation
 */
 
-#include "StatsSequence.H"
-
-#include "LintelAssert.H"
 #include <math.h>
+
+#include <Lintel/LintelAssert.H>
+#include <Lintel/StatsSequence.H>
 
 StatsSequence::StatsSequence(unsigned long _max_retain, mode _merge_mode)
     : Stats(), max_retain(_max_retain)

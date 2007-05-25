@@ -12,8 +12,9 @@
 #ifndef __LINTEL_STATSSERIESGROUP_H
 
 #include <vector>
-#include <Stats.H>
-#include <LintelAssert.H>
+
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Stats.H>
 
 // Each of the stats objects in the series will be created using
 // StatsMaker.  Each object will have a name of myname-<statnum>

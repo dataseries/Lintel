@@ -12,8 +12,8 @@
 #ifndef __STATS_RW
 #define __STATS_RW
 
-#include <Stats.H>
-#include <StatsSequence.H>
+#include <Lintel/Stats.H>
+#include <Lintel/StatsSequence.H>
 
 class StatsRW {
 public:
