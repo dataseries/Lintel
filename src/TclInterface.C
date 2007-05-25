@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -14,8 +13,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <string>
-#include "streamcompat.H"
-#include "TclInterface.H"
+
+#include <Lintel/streamcompat.H>
+#include <Lintel/TclInterface.H>
 
 // ========================================================================
 // Class for storing name/procedure pairs.  These name/procedure pairs

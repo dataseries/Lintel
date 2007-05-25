@@ -8,8 +8,9 @@
     Matrix functions
 */
 
-#include <Matrix.H>
 #include <stdarg.h>
+
+#include <Lintel/Matrix.H>
 
 Matrix::Matrix(unsigned int rows, unsigned int cols)
 {

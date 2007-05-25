@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 1994-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -12,9 +11,9 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "LintelAssert.H"
-#include "Random.H"
-#include "Double.H"
+#include <Lintel/Double.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Random.H>
 
 
 //////////////////////////////////////////////////////////////////////////////

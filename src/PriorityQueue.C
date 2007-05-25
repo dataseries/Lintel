@@ -8,11 +8,12 @@
     Priority queue implementation
 */
 
-#include <PriorityQueue.H>
-#include <LintelAssert.H>
 #include <vector>
 #include <queue>
-#include <MersenneTwisterRandom.H>
+
+#include <Lintel/LintelAssert.H>
+#include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/PriorityQueue.H>
 
 class IntCompare {
 public:

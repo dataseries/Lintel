@@ -8,7 +8,7 @@
     prime list
 */
 
-#include <HashTable.H>
+#include <Lintel/HashTable.H>
 
 // Set to be about 4x increment each time; resizing the hash table is 
 // expensive, and we only pay 4 bytes/entry

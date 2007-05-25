@@ -12,8 +12,9 @@
 #ifndef LINTEL_STATSEMA_H
 #define LINTEL_STATSEMA_H
 
-#include <Stats.H>
 #include <vector>
+
+#include <Lintel/Stats.H>
 
 /** \brief A simple class that calculates multiple exponential moving averages
 

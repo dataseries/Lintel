@@ -239,7 +239,7 @@ else
     LINTEL_NOGCLIBS=`$LINTEL_CONFIG --nogclibs || exit 1`
     save_lintel_cppflags=$CPPFLAGS
     CPPFLAGS="$CPPFLAGS $LINTEL_CFLAGS"
-    AC_CHECK_HEADER(LintelAssert.H,have_lintel=yes,have_lintel=no)
+    AC_CHECK_HEADER(Lintel/LintelAssert.H,have_lintel=yes,have_lintel=no)
     CPPFLAGS=$save_lintel_cppflags
     if test $have_lintel = yes; then
         have_lintel=no

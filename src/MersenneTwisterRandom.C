@@ -11,8 +11,8 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <LintelAssert.H>
-#include <MersenneTwisterRandom.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/MersenneTwisterRandom.H>
 
 /*
    A C-program for MT19937, with initialization improved 2002/1/26.

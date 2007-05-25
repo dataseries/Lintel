@@ -14,9 +14,9 @@
 
 #include <string>
 #include <vector>
-#include <GC_Alloc.H>
 
-#include <HashTable.H>
+#include <Lintel/GC_Alloc.H>
+#include <Lintel/HashTable.H>
 
 // These are stored out here rather than as static inline methods in the 
 // class because g++ doesn't seem to succeed in inlining them otherwise

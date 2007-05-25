@@ -15,7 +15,7 @@
 
 #include <boost/signal.hpp>
 
-#include <AssertBoost.H>
+#include <Lintel/AssertBoost.H>
 
 static boost::signal<void ()> failureSignal;
 

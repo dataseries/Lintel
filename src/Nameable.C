@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 1998-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -9,8 +8,8 @@
     Functions for nameable objects
 */
 
-#include "LintelAssert.H"
-#include "Nameable.H"
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Nameable.H>
 
 std::string
 Named::debugString() const

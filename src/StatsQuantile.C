@@ -10,9 +10,9 @@
 
 #include <algorithm>
 
-#include <Double.H>
-#include <StatsQuantile.H>
-#include <LintelAssert.H>
+#include <Lintel/Double.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/StatsQuantile.H>
 
 static double fact(double a) 
 {

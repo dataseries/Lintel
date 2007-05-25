@@ -13,8 +13,8 @@
 #include <math.h>
 #include <limits.h>
 
-#include "LintelAssert.H"
-#include "MathSpecialFunctions.H"
+#include <Lintel/LintelAssert.H>
+#include <Lintel/MathSpecialFunctions.H>
 
 
 double inverseErf(double y)

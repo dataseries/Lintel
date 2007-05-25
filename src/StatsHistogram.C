@@ -12,9 +12,9 @@
 #include <stdio.h>
 #include <values.h>
 
-#include "LintelAssert.H"
-#include "StatsHistogram.H"
-#include "Double.H"
+#include <Lintel/LintelAssert.H>
+#include <Lintel/StatsHistogram.H>
+#include <Lintel/Double.H>
 
 //////////////////////////////////////////////////////////////////////////////
 // Basic StatsHistogram base class

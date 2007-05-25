@@ -13,7 +13,7 @@
 #include <stdio.h>
 #include <vector>
 
-#include "LintelAssert.H"
+#include <Lintel/LintelAssert.H>
 
 // This variable is defined here so if you link against LintelAssert.o, you
 // get a functional and self-contained package. 

@@ -12,8 +12,8 @@
 #ifndef __MATRIX_H
 #define __MATRIX_H
 
-#include <LintelAssert.H>
-#include <Double.H>
+#include <Lintel/Double.H>
+#include <Lintel/LintelAssert.H>
 
 // gcc doesn't seem to be inlining the element stuff, and as a result, the
 // performance is noticably slower for the table-based stuff.

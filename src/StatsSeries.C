@@ -11,8 +11,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "LintelAssert.H"
-#include "StatsSeries.H"
+#include <Lintel/LintelAssert.H>
+#include <Lintel/StatsSeries.H>
 
 // The code for this time series analysis was derived from _Time
 // Series Analysis: Forecasting and Control_ (3rd ed.), Box, Jenkins, and

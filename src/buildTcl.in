@@ -1052,8 +1052,8 @@ END {
     print "#include <stdlib.h>" >> outSource;
     print "#include <string.h>" >> outSource;
     print "#include <tcl.h>" >> outSource;
-    print "#include \"streamcompat.H\"" >> outSource;
-    print "#include \"TclInterface.H\"" >> outSource;
+    print "#include \"Lintel/streamcompat.H\"" >> outSource;
+    print "#include \"Lintel/TclInterface.H\"" >> outSource;
     for (i = 1; i < ARGC; i++) {
         printf("#include \"%s\"\n", ARGV[i]) >> outSource;
     }

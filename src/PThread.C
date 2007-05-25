@@ -8,8 +8,8 @@
     PThread implementation
 */
 
-#include <PThread.H>
 #include <signal.h>
+#include <Lintel/PThread.H>
 
 // Platform discrimination
 //

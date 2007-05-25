@@ -13,8 +13,9 @@
 
 #include <string>
 #include <map>
-#include <HashTable.H>
-#include <GC_Alloc.H>
+
+#include <Lintel/GC_Alloc.H>
+#include <Lintel/HashTable.H>
 
 class StringId {
 public:

@@ -18,10 +18,10 @@
 #define __STATSQUANTILE_H
 
 #include <stdio.h>
-#include <Stats.H>
+#include <Lintel/Stats.H>
 #define STATSQUANTILE_TIMING 0
 #if STATSQUANTILE_TIMING
-#include <Clock.H>
+#include <Lintel/Clock.H>
 #endif
 
 class StatsQuantile : public Stats {

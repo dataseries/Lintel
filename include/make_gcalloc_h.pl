@@ -26,7 +26,7 @@ print <<'END_OF_HEADER';
 #include <memory>
 #include <string>
 
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
 extern "C" {
 #include <gc/gc.h>
 }

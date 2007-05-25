@@ -1,5 +1,4 @@
 /* -*-C++-*-
-/*
    (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
@@ -12,8 +11,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include "LintelAssert.H"
-#include "Randommwm.H"
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Randommwm.H>
 
 void RandMwm::randn (std::vector <double>& r, long l,double sigma, double mu)
 {

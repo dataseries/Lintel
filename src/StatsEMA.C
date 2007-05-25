@@ -8,8 +8,8 @@
     StatsEMA implementation
 */
 
-#include <StatsEMA.H>
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/StatsEMA.H>
 
 using namespace std;
 

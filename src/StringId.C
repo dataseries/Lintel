@@ -8,8 +8,8 @@
     String to small integer mapping
 */
 
-#include <StringId.H>
-#include <LintelAssert.H>
+#include <Lintel/LintelAssert.H>
+#include <Lintel/StringId.H>
 
 StringId::StringId()
     : revmap(4.0) // equal is very fast, so use longer chains

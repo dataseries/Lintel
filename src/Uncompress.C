@@ -16,9 +16,10 @@
 #include <signal.h>
 #include <errno.h>
 #include <map>
-#include "LintelAssert.H"
-#include "Uncompress.H"
-#include "Posix.H"
+
+#include <Lintel/LintelAssert.H>
+#include <Lintel/Uncompress.H>
+#include <Lintel/Posix.H>
 
 class child_stuff {
 public:

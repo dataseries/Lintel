@@ -8,8 +8,8 @@
     Constant String implementation
 */
 
-#include <ConstantString.H>
-#include <LintelAssert.H>
+#include <Lintel/ConstantString.H>
+#include <Lintel/LintelAssert.H>
 
 int ConstantString::nstrings = 0;
 int ConstantString::string_bytes = 0;
