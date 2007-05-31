@@ -10,15 +10,8 @@
 
 #include <stdio.h>
 
-#include <Lintel/ConstantString.H>
 #include <Lintel/HashTable.H>
 #include <Lintel/HashMap.H>
-
-// // test that hash table work done at init time is correct
-// commented out for now; don't feel like getting it to interact properly
-// with autoconf and the only sometimes building constantstring
-// ConstantString foo("foo");
-// ConstantString bar("bar");
 
 using namespace std;
 
