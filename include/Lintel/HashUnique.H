@@ -77,6 +77,10 @@ public:
     uint32_t size() {
 	return hashtable.size();
     }
+
+    void reserve(unsigned expected_entries) {
+	hashtable.reserve(expected_entries);
+    }
 private:
     HashTableT hashtable;
 };

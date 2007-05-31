@@ -1132,13 +1132,13 @@ END {
 	    }
 	    for (j = 0; j < methodCount[class]; j++) {
 	        method = methods[class, j];
-	        printf("    sprintf(cmdName, \"TclInterface@%%x.%s\", (int)result->internalRep.otherValuePtr);\n", method) >> outSource;
+	        printf("    sprintf(cmdName, \"TclInterface@%%p.%s\", result->internalRep.otherValuePtr);\n", method) >> outSource;
 	        printf("    Tcl_CreateObjCommand(interp, cmdName, %s%sCmd, obj, NULL);\n", class, method) >> outSource;
 	    }
             for (j = 0; j < derivedCount[class]; j++) {
                 dclass = derivedClass[class, j];
                 method = derivedMethod[class, j];
-	        printf("    sprintf(cmdName, \"TclInterface@%%x.%s\", (int)result->internalRep.otherValuePtr);\n", method) >> outSource;
+	        printf("    sprintf(cmdName, \"TclInterface@%%p.%s\", result->internalRep.otherValuePtr);\n", method) >> outSource;
 	        printf("    Tcl_CreateObjCommand(interp, cmdName, %s%sCmd, obj, NULL);\n", class, method) >> outSource;
             }
 	    printf("}\n\n") >> outSource;
