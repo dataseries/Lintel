@@ -41,7 +41,7 @@ cd /tmp/make-dist
 [ -f tmp.db ] || mtn -d tmp.db db init
 touch pull.log
 for i in $PACKAGES; do
-    echo "Pulling $i from usi.hpl.hp.com; logging to pull.log..."
+    echo "Pulling $i from usi.hpl.hp.com; logging to /tmp/make-dist/pull.log..."
 
     mtn -d tmp.db pull $MTN_PULL_FROM ssd.hpl.hp.com/$i >>pull.log 2>&1
 done
@@ -58,29 +58,29 @@ for i in $PACKAGES; do
     echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
     echo "Creation-Date: $NOW" >>Release.info
     echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}'`"
-    echo "   autoreconf; logging to autoreconf.$i.log"
+    echo "   autoreconf; logging to /tmp/make-dist/autoreconf.$i.log"
     [ $i = Lintel ] || /tmp/make-dist/build/bin/lintel-acinclude >../autoreconf.$i.log
     autoreconf --install >>autoreconf.$i.log 2>&1
     cd ..
     [ ! -d build/$i ] || rm -rf build/$i
     mkdir build/$i
     cd build/$i
-    echo "   configure; logging to build/$i/configure.log"
+    echo "   configure; logging to /tmp/make-dist/build/$i/configure.log"
     ../../$i-$NOW/configure --prefix=/tmp/make-dist/build --enable-optmode=optimize >configure.log 2>&1
-    echo "   compiling (-j $PROCESSORS); logging to build/$i/compile.log"
+    echo "   compiling (-j $PROCESSORS); logging to /tmp/make-dist/build/$i/compile.log"
     make -j $PROCESSORS >compile.log 2>&1
-    echo "   checking; logging to build/$i/check.log"
+    echo "   checking; logging to /tmp/make-dist/build/$i/check.log"
     make -j $PROCESSORS check >check.log 2>&1
-    echo "   installing; logging to build/$i/install.log"
+    echo "   installing; logging to /tmp/make-dist/build/$i/install.log"
     make install >install.log 2>&1
     cd ../..
-    echo "   tarfile; building $i-$NOW.tar.bz2; logging to tar.$i.log"
+    echo "   tarfile; building $i-$NOW.tar.bz2; logging to /tmp/make-dist/tar.$i.log"
     tar cvvfj $i-$NOW.tar.bz2 --exclude=_MTN $i-$NOW >tar.$i.log 2>&1
     echo "   done: `ls -l $i-$NOW.tar.bz2`"
 done
 
 for host in $TEST_HOSTS; do
-    echo "Testing on $host; logging everything to test-$host.log:"
+    echo "Testing on $host; logging everything to /tmp/make-dist/$host.log:"
     ssh $host rm -rf /tmp/make-dist >$host.log 2>&1
     ssh $host mkdir /tmp/make-dist >>$host.log 2>&1
     scp $0 $host:/tmp/make-dist

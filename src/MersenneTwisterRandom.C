@@ -67,7 +67,7 @@ OR
 
 MersenneTwisterRandom MTRandom;
 
-MersenneTwisterRandom::MersenneTwisterRandom(uint32 seed)
+MersenneTwisterRandom::MersenneTwisterRandom(uint32_t seed)
 {
   if (seed == 0) {
     seed = getpid() ^ (getppid() << 16);
@@ -78,13 +78,13 @@ MersenneTwisterRandom::MersenneTwisterRandom(uint32 seed)
   init(seed);
 }
 
-MersenneTwisterRandom::MersenneTwisterRandom(std::vector<uint32> seed_array)
+MersenneTwisterRandom::MersenneTwisterRandom(std::vector<uint32_t> seed_array)
 {
     initArray(seed_array);
 }
 
 void
-MersenneTwisterRandom::init(uint32 seed)
+MersenneTwisterRandom::init(uint32_t seed)
 {
     seed_used = seed;
     mt[0]= seed & 0xffffffffUL;
@@ -122,7 +122,7 @@ MersenneTwisterRandom::init(uint32 seed)
 /*  (seed_array[0]&UPPER_MASK), seed_array[1], ..., seed_array[N-1]  */
 /* can take any values except all zeros.                             */
 void
-MersenneTwisterRandom::initArray(std::vector<uint32> seed_array)
+MersenneTwisterRandom::initArray(std::vector<uint32_t> seed_array)
 {
     int i, j, k;
     init(19650218UL);
@@ -176,7 +176,7 @@ MersenneTwisterRandom::reloadArray()
     static unsigned long mag01[2]={0x0, MATRIX_A};
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
 
-    uint32 y;
+    uint32_t y;
     int kk;
 
     for (kk=0;kk<N-M;kk++) {
@@ -193,7 +193,7 @@ MersenneTwisterRandom::reloadArray()
     mti = 0;
 }
 
-static MersenneTwisterRandom::uint32 arrayCheck[] = {
+static uint32_t arrayCheck[] = {
 1067595299UL,  955945823UL,  477289528UL, 4107218783UL,	4228976476UL,
 3344332714UL, 3355579695UL,  227628506UL,  810200273UL,	2591290167UL,
 2560260675UL, 3242736208UL,  646746669UL, 1479517882UL,	4245472273UL,
@@ -395,9 +395,9 @@ static MersenneTwisterRandom::uint32 arrayCheck[] = {
  988064871UL, 3515461600UL, 4089077232UL, 2225147448UL,	1249609188UL,
 2643151863UL, 3896204135UL, 2416995901UL, 1397735321UL,	3460025646UL
 };
-static int arrayCheck_count = sizeof(arrayCheck)/sizeof(MersenneTwisterRandom::uint32);
+static int arrayCheck_count = sizeof(arrayCheck)/sizeof(uint32_t);
 
-static MersenneTwisterRandom::uint32 seedCheck[] = {
+static uint32_t seedCheck[] = {
 3499211612UL,  581869302UL, 3890346734UL, 3586334585UL,	 545404204UL, 
 4161255391UL, 3922919429UL,  949333985UL, 2715962298UL,	1323567403UL, 
  418932835UL, 2350294565UL, 1196140740UL,  809094426UL,	2348838239UL, 
@@ -599,12 +599,12 @@ static MersenneTwisterRandom::uint32 seedCheck[] = {
 1787387521UL, 1861566286UL, 3616058184UL,   48071792UL,	3577350513UL, 
  297480282UL, 1101405687UL, 1473439254UL, 2634793792UL,	1341017984UL
 };
-static int seedCheck_count = sizeof(seedCheck)/sizeof(MersenneTwisterRandom::uint32);
+static int seedCheck_count = sizeof(seedCheck)/sizeof(uint32_t);
 
 void
 MersenneTwisterRandom::selfTest()
 {
-    std::vector<MersenneTwisterRandom::uint32> init_array;
+    std::vector<uint32_t> init_array;
     init_array.push_back(0x123);
     init_array.push_back(0x234);
     init_array.push_back(0x345);
@@ -613,7 +613,7 @@ MersenneTwisterRandom::selfTest()
     MersenneTwisterRandom mt(init_array);
 
     for(int i=0;i<arrayCheck_count;i++) {
-	MersenneTwisterRandom::uint32 v = mt.randInt();
+	uint32_t v = mt.randInt();
 	AssertAlways(v == arrayCheck[i],
 		     ("MersenneTwisterRandom::selfTest() %d failed %u != %u\n",
 		      i,v,arrayCheck[i]));
@@ -621,13 +621,13 @@ MersenneTwisterRandom::selfTest()
 
     mt.init(5489UL);
     for(int i=0;i<seedCheck_count;i++) {
-	MersenneTwisterRandom::uint32 v = mt.randInt();
+	uint32_t v = mt.randInt();
 	AssertAlways(v == seedCheck[i],
 		     ("MersenneTwisterRandom::selfTest() %d failed %u != %u\n",
 		      i,v,seedCheck[i]));
     }
 
-    MersenneTwisterRandom::uint32 maxint = ~0;
+    uint32_t maxint = ~0;
     double maxintplus1 = (double)maxint + 1.0;
 
     AssertAlways(maxint * MTR_int_to_open < 1,
@@ -643,8 +643,8 @@ MersenneTwisterRandom::selfTest()
     AssertAlways((maxint-1) * MTR_int_to_closed < 1,
 		 ("int_to_closed bad\n"));
 
-    MersenneTwisterRandom::uint32 a_val = (unsigned long)(~0) >> 5;
-    MersenneTwisterRandom::uint32 b_val = (unsigned long)(~0) >> 6;
+    uint32_t a_val = static_cast<uint32_t>(~0) >> 5;
+    uint32_t b_val = static_cast<uint32_t>(~0) >> 6;
     
     AssertAlways(MTR_53bits_to_open(a_val,b_val) < 1,
 		 ("MTR_53bits_to_open bad %d %d %.20g \n",
