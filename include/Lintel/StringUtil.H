@@ -60,11 +60,24 @@ uint32_t stringtoipv4(const std::string &str);
 /** same as strtod, but bails out if the string isn't valid */
 double stringToDouble(const std::string &str);
 
+// TODO: deprecate stringToLong, stringToLongLong in favor of [u]int{32,64}
 /** same as strtol, but bails out if the string isn't valid */
 long stringToLong(const std::string &str, int base = 10);
 
 /** same as strtoll, but bails out if the string isn't valid */
 long long stringToLongLong(const std::string &str, int base = 10);
+
+/// Converts a string to an int32, INVARIANT if not a valid string
+int32_t stringToInt32(const std::string &str, int base = 10);
+
+/// Converts a string to an uint32, INVARIANT if not a valid string
+uint32_t stringToUInt32(const std::string &str, int base = 10);
+
+/// Converts a string to an int32, INVARIANT if not a valid string
+int64_t stringToInt64(const std::string &str, int base = 10);
+
+/// Converts a string to an uint32, INVARIANT if not a valid string
+uint64_t stringToUInt64(const std::string &str, int base = 10);
 
 /** returns true if the string is all blanks according to isblank(3) */
 bool stringIsBlank(const std::string &);

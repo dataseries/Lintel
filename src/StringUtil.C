@@ -8,13 +8,19 @@
     some string utilities
 */
 
-#include <stdlib.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
+#define __STDC_LIMIT_MACROS
+
 #include <arpa/inet.h>
 #include <ctype.h>
+#include <errno.h>
 #include <netdb.h>
+#include <netinet/in.h>
+#include <stdint.h>
+#include <stdlib.h>
 #include <sys/socket.h>
+#include <sys/socket.h>
+
+#include <boost/static_assert.hpp>
 
 #include <Lintel/StringUtil.H>
 #include <Lintel/LintelAssert.H>
@@ -243,6 +249,95 @@ stringToLongLong(const std::string &str, int base)
 				  str.c_str()));
     return ret;
 }
+
+// FUTURE: Seems there should be some way to templatize the next 4 of
+// these since they're all the same code except substitutions of
+// [u]int{32,64}_t, and strto[u]l[l]
+
+int32_t
+stringToInt32(const std::string &str, int base)
+{
+    BOOST_STATIC_ASSERT(sizeof(long int) >= sizeof(int32_t));
+
+    errno = 0;
+    char *endptr = NULL;
+    INVARIANT(str.size() > 0,
+	      "string must not be size 0 for convertion to an int32");
+    long int v = strtol(str.c_str(), &endptr, base);
+    if (sizeof(long int) != sizeof(int32_t)) {
+	if (v > INT32_MAX || v < INT32_MIN) {
+	    errno = ERANGE;
+	}
+    }
+    INVARIANT(errno == 0, 
+	      boost::format("error in conversion of '%s' base %d to int32: %s")
+	      % str % base % strerror(errno));
+    return v;
+}
+
+uint32_t
+stringToUInt32(const std::string &str, int base)
+{
+    BOOST_STATIC_ASSERT(sizeof(unsigned long int) >= sizeof(uint32_t));
+
+    errno = 0;
+    char *endptr = NULL;
+    INVARIANT(str.size() > 0,
+	      "string must not be size 0 for convertion to an uint32");
+    unsigned long int v = strtoul(str.c_str(), &endptr, base);
+    if (sizeof(unsigned long int) != sizeof(uint32_t)) {
+	if (v > UINT32_MAX) {
+	    errno = ERANGE;
+	}
+    }
+    INVARIANT(errno == 0, 
+	      boost::format("error in conversion of '%s' base %d to uint32: %s")
+	      % str % base % strerror(errno));
+    return v;
+}
+
+int64_t
+stringToInt64(const std::string &str, int base)
+{
+    BOOST_STATIC_ASSERT(sizeof(long long int) >= sizeof(int64_t));
+
+    errno = 0;
+    char *endptr = NULL;
+    INVARIANT(str.size() > 0,
+	      "string must not be size 0 for convertion to an int64");
+    long long int v = strtoll(str.c_str(), &endptr, base);
+    if (sizeof(long int) != sizeof(int64_t)) {
+	if (v > INT64_MAX || v < INT64_MIN) {
+	    errno = ERANGE;
+	}
+    }
+    INVARIANT(errno == 0, 
+	      boost::format("error in conversion of '%s' base %d to int64: %s")
+	      % str % base % strerror(errno));
+    return v;
+}
+
+uint64_t
+stringToUInt64(const std::string &str, int base)
+{
+    BOOST_STATIC_ASSERT(sizeof(unsigned long long int) >= sizeof(uint64_t));
+
+    errno = 0;
+    char *endptr = NULL;
+    INVARIANT(str.size() > 0,
+	      "string must not be size 0 for convertion to an uint64");
+    unsigned long int v = strtoull(str.c_str(), &endptr, base);
+    if (sizeof(unsigned long int) != sizeof(uint64_t)) {
+	if (v > UINT64_MAX) {
+	    errno = ERANGE;
+	}
+    }
+    INVARIANT(errno == 0, 
+	      boost::format("error in conversion of '%s' base %d to uint64: %s")
+	      % str % base % strerror(errno));
+    return v;
+}
+	      
 
 bool stringIsBlank(const std::string &str)
 {

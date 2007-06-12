@@ -17,6 +17,12 @@ C++ knowledge.
 In return, we would greatly appreciate any bug fixes or enhancements -
 or even simply hearing about how you are using the package.
 
+PREREQUISITES
+
+libboost (http://www.boost.org/), 1.33.1 or greater has been tested  
+  On debian/ubuntu: aptitude install libboost-dev libboost-signals-dev
+  On fedora/rhel: yum install boost-devel
+
 BUILDING
 
 1a) Get source code (via version control):
@@ -25,7 +31,7 @@ BUILDING
    mtn -d ~/.monotone/Lintel.db pull usi.hpl.hp.com ssd.hpl.hp.com/Lintel\*
    [ -d ~/projects ] || mkdir ~/projects
    cd ~/projects
-   mtn -d ~/.monotone/Lintel.db co -b ssd.hpl.hp.com Lintel
+   mtn -d ~/.monotone/Lintel.db co -b ssd.hpl.hp.com/Lintel Lintel
    cd Lintel
    autoreconf --install
    # monotone intro: https://twiki.hpl.hp.com/bin/view/StorageSystems/MonotoneIntro

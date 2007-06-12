@@ -43,8 +43,8 @@ StatsSequence::add(const double value)
 {
     Stats::add(value);
     if (values.size() == max_retain) {
-	Assert(1,points_remain_new_bucket == points_per_bucket 
-	         && new_value == 0);
+	AssertAlways(points_remain_new_bucket == points_per_bucket 
+		     && new_value == 0, ("internal"));
 	for(unsigned int i=0;i<max_retain/2;i++) {
 	    double x = values[2*i], y = values[2*i+1];
 	    switch(merge_mode) 
@@ -63,8 +63,11 @@ StatsSequence::add(const double value)
 	points_per_bucket *= 2;
 	points_remain_new_bucket = points_per_bucket;
     }
-    if (merge_mode == MergeMax) { new_value = (new_value > value) ? new_value : value; }
-    else { new_value += value; }
+    if (merge_mode == MergeMax) { 
+	new_value = (new_value > value) ? new_value : value; 
+    } else { 
+	new_value += value; 
+    }
     points_remain_new_bucket -= 1;
     if (points_remain_new_bucket == 0) {
 	switch(merge_mode)
