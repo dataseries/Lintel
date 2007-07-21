@@ -99,20 +99,18 @@ void Stats::reset()
 
 void Stats::add(const double value)
 {
-    AssertMsg(1,value == value,("You tried to add a NaN to the stats object.")); 
-    Assert(1,checkInvariants());
-    number++;
+    // TODO: make this a DEBUG_INVARIANT so it goes away if debugging
+    // invariants are disabled.
+    AssertAlways(value == value,
+		 ("You tried to add a NaN to the stats object.")); 
+    ++number;
     sum += value;
     sumsq += value*value;
 
-    if (number == 1) {
-	min_value = max_value = value;
-    } else {
-	if (value < min_value)
-	    min_value = value;
-	if (value > max_value)
-	    max_value = value;
-    }
+    if (value < min_value)
+	min_value = value;
+    if (value > max_value)
+	max_value = value;
 }
 
 void

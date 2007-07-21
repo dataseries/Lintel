@@ -16,6 +16,12 @@
 #include <math.h>
 
 #undef abs
+// Performance notes for floating point: 
+// on T2600:
+//    NaN != 0 NaN >= 0, etc are really slow
+//    v >= 0 for -inf is slightly faster than !isinf
+//    isnan(NaN) and isinf(INF) are about the same speed.
+
 class Double {
 public:
     static double default_epsilon; // relative to larger of two values.
