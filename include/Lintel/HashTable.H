@@ -17,7 +17,7 @@
 #include <vector>
 
 #include <Lintel/LintelAssert.H>
-extern unsigned int HashTable_prime_list[];
+extern uint32_t HashTable_prime_list[];
 
 // The key and value are not separate because in some cases, they are
 // the same, for example for ConstantString, which wants to do a lookup to
@@ -65,8 +65,8 @@ extern unsigned int HashTable_prime_list[];
 template <class D>
 struct HashTable_hte {
     D data;
-    int next;
-    HashTable_hte(const D &d, int _next) : data(d), next(_next) {};
+    int32_t next;
+    HashTable_hte(const D &d, int32_t _next) : data(d), next(_next) {};
 };
 
 // TODO: fix this so that instead of using -1, it uses 0xFFFFFFFF as
@@ -107,13 +107,13 @@ public:
 	if (free_list == -1) {
 	    hte v(data, entry_points[hash]);
 #ifdef COMPILE_DEBUG
-	    AssertAlways(hash < (int)entry_points.size(),("internal"));
+	    AssertAlways(hash < entry_points.size(),("internal"));
 #endif
 	    entry_points[hash] = static_cast<int>(chains.size());
 	    chains.push_back(v);
 	    return &(chains.back().data);
 	} else {
-	    int loc = free_list;
+	    int32_t loc = free_list;
 	    
 	    free_list = chains[free_list].next;
 	    chains[loc].data = data;
@@ -130,7 +130,7 @@ public:
 	    return NULL;
 	}
 	uint32_t hash = hashof(key) % entry_points.size();
-	for(int i=entry_points[hash];i != -1; i=chains[i].next) {
+	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
 	    if (equal(key,chains[i].data)) {
 		return &chains[i].data;
 	    }
@@ -155,14 +155,14 @@ public:
 	}
 
 	uint32_t chain_len = 0;
-	for(int j = entry_points[chain]; j != -1; j=chains[j].next) {
+	for(int32_t j = entry_points[chain]; j != -1; j=chains[j].next) {
 	    ++chain_len;
 	}
 
 	AssertAlways(chain_len > 0, ("internal"));
 
 	uint32_t bucket = randb % chain_len;
-	for(uint32_t j = entry_points[chain]; j != -1; j=chains[j].next) {
+	for(int32_t j = entry_points[chain]; j != -1; j=chains[j].next) {
 	    if (bucket == 0) {
 		return &chains[j].data;
 	    } else {
@@ -179,7 +179,7 @@ public:
 	     return;
 	 }
 	 uint32_t hash = hashof(key) % entry_points.size();
-	 int loc = entry_points[hash];
+	 int32_t loc = entry_points[hash];
 	 if (loc == -1) {
 	     AssertAlways(must_exist == false,
 			  ("remove failed, value doesn't exist\n"));
@@ -190,7 +190,7 @@ public:
 	     chains[loc].next = free_list;
 	     free_list = loc;
 	 } else {
-	     int prev = loc;
+	     int32_t prev = loc;
 	     while(true) {
 		 prev = loc;
 		 loc = chains[loc].next;
@@ -212,14 +212,14 @@ public:
      void clear() {
 	 free_list = -1;
 	 chains.clear();
-	 for(unsigned int i=0;i<entry_points.size();i++) {
+	 for(uint32_t i=0;i<entry_points.size();i++) {
 	     entry_points[i] = -1;
 	 }
      }
 
      class iterator {
      public:
-	 iterator(HashTable &_mytable, int start_chain = 0) 
+	 iterator(HashTable &_mytable, int32_t start_chain = 0) 
 	     : mytable(_mytable), cur_chain(start_chain), chain_loc(-1) {
 	     findNonemptyChain();
 	 }
@@ -264,7 +264,7 @@ public:
 	     cur_chain = 0;
 	     findNonemptyChain();
 	 }
-	 int getCurChain() {
+	 int32_t getCurChain() {
 	     return cur_chain;
 	 }
      private:
@@ -288,20 +288,20 @@ public:
 	     }
 	}
 	HashTable &mytable;
-	int cur_chain;
-	int chain_loc;
+	int32_t cur_chain;
+	int32_t chain_loc;
     };
     
-    iterator begin(int start_chain = 0) {
+    iterator begin(int32_t start_chain = 0) {
 	return iterator(*this,start_chain);
     }
     iterator end() {
 	return iterator(*this,entry_points.size());
     }
     
-    int size() {
-	int size = chains.size();
-	for(int i = free_list; i != -1; i = chains[i].next) {
+    uint32_t size() {
+	uint32_t size = chains.size();
+	for(int32_t i = free_list; i != -1; i = chains[i].next) {
 	    size--;
 	}
 	return size;
@@ -376,9 +376,9 @@ private:
 
     void resizeHashTable() {
 	AssertAlways(free_list == -1,("?! internal error\n"));
-	unsigned int old_size = entry_points.size();
-	unsigned int new_size;
-	unsigned int i;
+	uint32_t old_size = entry_points.size();
+	uint32_t new_size;
+	uint32_t i;
 	for(i=0; HashTable_prime_list[i] <= old_size;i++) {
 	    AssertAlways(HashTable_prime_list[i] != 0,("Fatal Error"));
 	}
@@ -401,7 +401,7 @@ private:
 	}
     }
     
-    int free_list; // for chains
+    int32_t free_list; // for chains
     hte_vectorT chains;
     hash_tableT entry_points;
     double target_chain_length;

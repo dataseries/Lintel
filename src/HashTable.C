@@ -12,7 +12,7 @@
 
 // Set to be about 4x increment each time; resizing the hash table is 
 // expensive, and we only pay 4 bytes/entry
-unsigned int HashTable_prime_list[] = {
+uint32_t HashTable_prime_list[] = {
   5, 23, 107, 
   433, 1543, 6091, 24281, 100169, 487651, 1179589, 2471093, 
   7368787, 32452843, 141650939, 0
@@ -24,7 +24,7 @@ unsigned int HashTable_prime_list[] = {
 // removed the long from the ub4 typedef; changed the function
 // name.
 
-typedef  unsigned       int  ub4;   /* unsigned 4-byte quantities */
+typedef  uint32_t            ub4;   /* unsigned 4-byte quantities */
 typedef  unsigned       char ub1;   /* unsigned 1-byte quantities */
 
 #define hashsize(n) ((ub4)1<<(n))
