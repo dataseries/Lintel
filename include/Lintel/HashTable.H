@@ -69,6 +69,12 @@ struct HashTable_hte {
     HashTable_hte(const D &d, int _next) : data(d), next(_next) {};
 };
 
+// TODO: fix this so that instead of using -1, it uses 0xFFFFFFFF as
+// the sentinal value, then make sure the use of uint32_t is proper
+// through all of this so we can bump the maximum hash table size to
+// 2^32-1 entries.  Consider writing a test (64bit only) that can
+// verify proper operation at that size.
+
 template <class D, class HashFn, class Equal, 
 #ifdef RWSTD_SIMPLE_DEFAULT
     class AllocHTE RWSTD_SIMPLE_DEFAULT(allocator),
@@ -97,13 +103,13 @@ public:
 
 	AssertAlways(entry_points.size() > 0, 
 		     ("did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C"));
-	int hash = hashfn(data) % entry_points.size();
+	uint32_t hash = hashof(data) % entry_points.size();
 	if (free_list == -1) {
 	    hte v(data, entry_points[hash]);
 #ifdef COMPILE_DEBUG
 	    AssertAlways(hash < (int)entry_points.size(),("internal"));
 #endif
-	    entry_points[hash] = (int)chains.size();
+	    entry_points[hash] = static_cast<int>(chains.size());
 	    chains.push_back(v);
 	    return &(chains.back().data);
 	} else {
@@ -123,7 +129,7 @@ public:
 	if (entry_points.size() == 0) {
 	    return NULL;
 	}
-	int hash = hashfn(key) % entry_points.size();
+	uint32_t hash = hashof(key) % entry_points.size();
 	for(int i=entry_points[hash];i != -1; i=chains[i].next) {
 	    if (equal(key,chains[i].data)) {
 		return &chains[i].data;
@@ -137,24 +143,26 @@ public:
     // will be less likely to be chosen.  Unfortunately, a true random
     // lookup would be O(size) because it would have to walk all of
     // the chains to count the number of entries.
-    D *randomlookup(const int randa, const int randb) {
+    D *randomlookup(const uint32_t randa, const uint32_t randb) {
 	if (size() == 0) {
 	    return NULL;
 	}
-	int start_chain = randa % entry_points.size();
-	int chain = start_chain;
+	uint32_t start_chain = randa % entry_points.size();
+	uint32_t chain = start_chain;
 	while(entry_points[chain] == -1) {
 	    chain = (chain + 1) % entry_points.size();
 	    AssertAlways(chain != start_chain, ("unable to find a non-empty chain"));
 	}
 
-	int chain_len = 0;
+	uint32_t chain_len = 0;
 	for(int j = entry_points[chain]; j != -1; j=chains[j].next) {
 	    ++chain_len;
 	}
 
-	int bucket = randb % chain_len;
-	for(int j = entry_points[chain]; j != -1; j=chains[j].next) {
+	AssertAlways(chain_len > 0, ("internal"));
+
+	uint32_t bucket = randb % chain_len;
+	for(uint32_t j = entry_points[chain]; j != -1; j=chains[j].next) {
 	    if (bucket == 0) {
 		return &chains[j].data;
 	    } else {
@@ -170,7 +178,7 @@ public:
 	     AssertAlways(must_exist == false,("remove failed, hash table is empty"));
 	     return;
 	 }
-	 int hash = hashfn(key) % entry_points.size();
+	 uint32_t hash = hashof(key) % entry_points.size();
 	 int loc = entry_points[hash];
 	 if (loc == -1) {
 	     AssertAlways(must_exist == false,
@@ -231,7 +239,7 @@ public:
 	 }
 	 D &operator *() { 
 	     AssertAlways(chain_loc >= 0 && 
-			  chain_loc < (int)mytable.chains.size(),
+			  chain_loc < static_cast<int>(mytable.chains.size()),
 			  ("Bad use of iterator\n"));
 	     return mytable.chains[chain_loc].data;
 	 }
@@ -244,11 +252,11 @@ public:
 	 // restart the scan operation partway through after doing some
 	 // number of updates safely.
 	 void partialReset() {
-	     if (cur_chain < (int)mytable.entry_points.size()) {
+	     if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
 		 chain_loc = mytable.entry_points[cur_chain];
 		 findNonemptyChain();
 	     } else {
-		 AssertAlways(cur_chain == (int)mytable.entry_points.size(),
+		 AssertAlways(cur_chain == static_cast<int>(mytable.entry_points.size()),
 			      ("internal error\n"));
 	     }
 	 }
@@ -261,17 +269,17 @@ public:
 	 }
      private:
 	 void findNonemptyChain() {
-	     while(cur_chain < (int)mytable.entry_points.size() &&
+	     while(cur_chain < static_cast<int>(mytable.entry_points.size()) &&
 		   mytable.entry_points[cur_chain] == -1) {
 		 cur_chain += 1;
 	     }
-	     if (cur_chain < (int)mytable.entry_points.size()) {
+	     if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
 		 chain_loc = mytable.entry_points[cur_chain];
 	     }
 	 }
 	 void increment() {
 	     AssertAlways(chain_loc >= 0 && 
-			  chain_loc < (int)mytable.chains.size(),
+			  chain_loc < static_cast<int>(mytable.chains.size()),
 			  ("bad use of iterator\n"));
 	     chain_loc = mytable.chains[chain_loc].next;
 	     if (chain_loc == -1) {
@@ -333,6 +341,11 @@ public:
 	return chains;
     }
 private:
+    // force 
+    uint32_t hashof(const D &data) {
+	return static_cast<uint32_t>(hashfn(data));
+    }
+
     void init(double _tcl) {
 	AssertAlways(_tcl > 0, ("invalid target_chain_length %.6f\n",_tcl));
 
@@ -382,7 +395,7 @@ private:
 	}
 
 	for(i=0;i<chains.size();i++) {
-	    int hash = hashfn(chains[i].data) % new_size;
+	    uint32_t hash = hashof(chains[i].data) % new_size;
 	    chains[i].next = entry_points[hash];
 	    entry_points[hash] = i;
 	}
