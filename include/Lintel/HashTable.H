@@ -116,6 +116,7 @@ public:
 	    return &chains[loc].data;
 	}
     }
+
     // changing the key in the returned key/value data will of course
     // totally screw up the hash table.
     D *lookup(const D &key) {
@@ -130,27 +131,39 @@ public:
 	}
 	return NULL;
     }
+
+    // Not perfectly random, if there are biases in the hash(key)
+    // data, then some chains will be much longer than others and so
+    // will be less likely to be chosen.  Unfortunately, a true random
+    // lookup would be O(size) because it would have to walk all of
+    // the chains to count the number of entries.
     D *randomlookup(const int randa, const int randb) {
-	if (entry_points.size() == 0) {
+	if (size() == 0) {
 	    return NULL;
 	}
-	int i, len=0;
-	for (i = randa % entry_points.size();
-	     entry_points[i] == -1;
-	     i = (i+1) % entry_points.size()){}
-	
-	 for(int j=entry_points[i];j != -1; j=chains[j].next) {
-	     len++;
-	 }
-	 int k = randb % len;
-	 for(int j=entry_points[i]; j != -1; j=chains[j].next, k--) {
-	     if (k <= 0) {
-		 return (&chains[j].data);
-	     }
-	 }
-	 AssertAlways(true, ("internal: did not find random entry"));
-	 return NULL;
-     }
+	int start_chain = randa % entry_points.size();
+	int chain = start_chain;
+	while(entry_points[chain] == -1) {
+	    chain = (chain + 1) % entry_points.size();
+	    AssertAlways(chain != start_chain, ("unable to find a non-empty chain"));
+	}
+
+	int chain_len = 0;
+	for(int j = entry_points[chain]; j != -1; j=chains[j].next) {
+	    ++chain_len;
+	}
+
+	int bucket = randb % chain_len;
+	for(int j = entry_points[chain]; j != -1; j=chains[j].next) {
+	    if (bucket == 0) {
+		return &chains[j].data;
+	    } else {
+		--bucket;
+	    }
+	}
+	AssertFatal(("internal: did not find random entry"));
+	return NULL;
+    }
 
      void remove(const D &key, bool must_exist = true) {
 	 if (entry_points.size() == 0) {

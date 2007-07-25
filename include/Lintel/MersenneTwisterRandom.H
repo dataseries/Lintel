@@ -18,6 +18,10 @@
 // http://www.math.keio.ac.jp/matumoto/MT2002/emt19937ar.html
 // or from http://www-personal.engin.umich.edu/~wagnerr/MersenneTwister.html
 
+// TODO: deprecate this for the boost library implementation once we
+// figure out how to build the equivalent of the open53/closed53
+// functions and verify that the performance is comparable
+
 class MersenneTwisterRandom {
 public:
     // 0=Defaults to seeding with various system parameters
