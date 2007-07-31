@@ -83,7 +83,7 @@ public:
     typedef HashMap_val<K,V> hmval;
     struct hmvalHash {
 	KHash khash;
-	unsigned int operator()(const hmval &hmv) {
+	uint32_t operator()(const hmval &hmv) {
 	    return khash(hmv.first);
 	}
     };
@@ -137,7 +137,7 @@ public:
 	hashtable.clear();
     }
 
-    int size() {
+    uint32_t size() {
 	return hashtable.size();
     }
 

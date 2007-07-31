@@ -47,8 +47,8 @@ extern uint32_t HashTable_prime_list[];
 // 	   // use key2 as the starting hash value
 //         // could also hash 2*sizeof(int) bytes starting at key1 if you are
 //         // sure the values are consecutive
-// 	   unsigned int partial_hash = HashTable_hashbytes(&k.key1,
-// 							   sizeof(int),k.key2);
+// 	   uint32_t partial_hash = HashTable_hashbytes(&k.key1,
+// 			  			       sizeof(int),k.key2);
 // 	   return HashTable_hashbytes(k.key3.data(),k.key3.size(),
 // 				      partial_hash);
 //     };
@@ -143,6 +143,11 @@ public:
     // will be less likely to be chosen.  Unfortunately, a true random
     // lookup would be O(size) because it would have to walk all of
     // the chains to count the number of entries.
+    // 
+    // Warning: the order of evaluation for arguments to a function
+    // is not fixed.  This means that if you call randomlookup(rng(), rng())
+    // the values of randa and randb may be flipped in different
+    // compilations.
     D *randomlookup(const uint32_t randa, const uint32_t randb) {
 	if (size() == 0) {
 	    return NULL;
@@ -421,11 +426,11 @@ private:
 // previous hash
 
 
-unsigned int BobJenkinsHash(const unsigned int prev_hash,
-			    const void *bytes, const unsigned int size);
-inline unsigned int HashTable_hashbytes(const void *bytes, 
-					const unsigned int size,
-					const unsigned int prev_hash = 1972)
+uint32_t BobJenkinsHash(const uint32_t prev_hash,
+			const void *bytes, const size_t size);
+inline uint32_t HashTable_hashbytes(const void *bytes, 
+				    const size_t size,
+				    const uint32_t prev_hash = 1972)
 { 
     return BobJenkinsHash(prev_hash, bytes, size);
 }
@@ -449,13 +454,13 @@ inline unsigned int HashTable_hashbytes(const void *bytes,
   c -= a; c -= b; c ^= (b>>15); \
 }
 
-static inline unsigned int BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c)
+static inline uint32_t BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c)
 {
     BobJenkinsHashMix(a,b,c);
     return c;
 }
 
-static inline unsigned int BobJenkinsHashMixULL(uint64_t v)
+static inline uint32_t BobJenkinsHashMixULL(uint64_t v)
 {
     uint32_t a = static_cast<uint32_t>(v & 0xFFFFFFFF);
     uint32_t b = static_cast<uint32_t>((v >> 32) & 0xFFFFFFFF);

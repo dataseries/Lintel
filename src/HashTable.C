@@ -97,10 +97,10 @@ acceptable.  Do NOT use for cryptographic purposes.
 --------------------------------------------------------------------
 */
 
-unsigned int
-BobJenkinsHash(const unsigned int initval,
+uint32_t
+BobJenkinsHash(const uint32_t initval,
 	       const void *_k, 
-	       const unsigned int length)
+	       const size_t length)
 {
    register ub1 *k = (ub1 *)_k;
    register ub4 a,b,c,len;
