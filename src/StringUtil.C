@@ -306,7 +306,8 @@ stringToInt64(const std::string &str, int base)
     INVARIANT(str.size() > 0,
 	      "string must not be size 0 for convertion to an int64");
     long long int v = strtoll(str.c_str(), &endptr, base);
-    if (sizeof(long int) != sizeof(int64_t)) {
+
+    if (sizeof(long long int) != sizeof(int64_t)) {
 	if (v > INT64_MAX || v < INT64_MIN) {
 	    errno = ERANGE;
 	}
@@ -326,8 +327,9 @@ stringToUInt64(const std::string &str, int base)
     char *endptr = NULL;
     INVARIANT(str.size() > 0,
 	      "string must not be size 0 for convertion to an uint64");
-    unsigned long int v = strtoull(str.c_str(), &endptr, base);
-    if (sizeof(unsigned long int) != sizeof(uint64_t)) {
+    unsigned long long int v = strtoull(str.c_str(), &endptr, base);
+
+    if (sizeof(unsigned long long int) != sizeof(uint64_t)) {
 	if (v > UINT64_MAX) {
 	    errno = ERANGE;
 	}
