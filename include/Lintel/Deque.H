@@ -68,8 +68,8 @@ public:
 	    return true;
 	}
     }
-    bool empty() { return q_front == q_back;} ;
-    unsigned size() { return (q_back + q_size - q_front) % q_size; }
+    bool empty() const { return q_front == q_back;} ;
+    unsigned size() const { return (q_back + q_size - q_front) % q_size; }
     void reserve(int new_size) {
 	AssertAlways(is_resizeable,("This deque isn't resizeable!\n"));
 	AssertAlways(empty(),("Lame implementation only does reserve when empty\n"));
@@ -80,7 +80,7 @@ public:
 	delete [] deque;
 	deque = new T[q_size];
     }
-    int capacity() { return q_size - 1; }
+    int capacity() const { return q_size - 1; }
 
     class iterator {
     public:
