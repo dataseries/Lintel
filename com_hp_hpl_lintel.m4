@@ -444,7 +444,12 @@ if test "$with_pcre" = yes; then
    have_pcre_hdr=no
    have_pcre_lib=no
    AC_LANG_ASSERT(C)
+   PCRE_CFLAGS=""
    AC_CHECK_HEADER(pcre.h,have_pcre_hdr=yes,)
+   if test "$have_pcre_hdr" = "no" -a -f /usr/include/pcre/pcre.h; then
+      AC_CHECK_HEADER(pcre/pcre.h,have_pcre_hdr=yes,)
+      PCRE_CFLAGS="-I/usr/include/pcre"
+   fi
    AC_CHECK_LIB(pcre,pcre_get_substring,have_pcre_lib=yes;PCRE_LIBS=-lpcre)
 
    if test $have_pcre_hdr = yes -a $have_pcre_lib = yes; then
@@ -457,6 +462,7 @@ else
    with_pcre=no
 fi
 
+AC_SUBST(PCRE_CFLAGS)
 AC_SUBST(PCRE_LIBS)
 AM_CONDITIONAL(WITH_PCRE, test $with_pcre = yes)
 ])

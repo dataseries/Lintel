@@ -13,15 +13,17 @@
 #include <iostream>
 #include <cstdlib>
 
-#include <boost/signal.hpp>
+#include <boost/bind.hpp>
+#include <boost/function.hpp>
 
 #include <Lintel/AssertBoost.H>
 
-static boost::signal<void ()> failureSignal;
+typedef boost::function<void ()> failureFunction;
+static std::vector<failureFunction> failure_functions;
 
 void AssertBoostFnAfter(void (*fn)())
 {
-    failureSignal.connect(fn);
+    failure_functions.push_back(boost::bind(fn));
 }
 
 void AssertBoostFail(const char *expression, const char *file, int line,
@@ -40,7 +42,10 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 	std::cerr << "**** Details: " << msg << std::endl;
     }
     std::cerr.flush();
-    failureSignal();
+    for(std::vector<failureFunction>::iterator i = failure_functions.begin();
+	i != failure_functions.end(); ++i) {
+      (*i)();
+    }
     abort();	 // try to die
     exit(173);   // try harder to die
     kill(getpid(), 9); // try hardest to die
