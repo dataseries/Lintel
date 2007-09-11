@@ -9,7 +9,14 @@
 */
 
 #include <signal.h>
+
+#include <iostream>
+
+
 #include <Lintel/PThread.H>
+#include <Lintel/StringUtil.H>
+
+using namespace std;
 
 // Platform discrimination
 //
@@ -22,6 +29,49 @@
 #define GLIBC_PTHREADS (defined(_BITS_PTHREADTYPES_H))
 #define GLIBC_OLD_PTHREADS  (!defined(__SIZEOF_PTHREAD_MUTEX_T))
 
+int
+PThreadMisc::getCurrentCPU(bool unknown_ok)
+{
+#if HPUX_ACC
+	pthread_spu_t answer;
+	int err = pthread_processor_id_np(PTHREAD_GETCURRENTSPU_NP,
+					  &answer,0);
+	INVARIANT(err == 0,
+		  boost::format("Failed: %s") % strerror(err));
+	return static_cast<int>answer;
+#else
+	INVARIANT(unknown_ok, "Don't know how to get current cpu");
+	return -1;
+#endif
+}
+
+int
+PThreadMisc::getNCpus(bool unknown_ok)
+{
+#ifdef __linux__
+    static unsigned nprocs;
+
+    if (nprocs == 0) {
+	ifstream infile("/proc/cpuinfo");
+
+	INVARIANT(infile.good(), "unable to open /proc/cpuinfo");
+	
+	string line;
+	string processor("processor\t: ");
+	while(!infile.eof()) {
+	    getline(infile, line);
+	    if (prefixequal(line,processor)) {
+		++nprocs;
+	    }
+	}
+	INVARIANT(nprocs > 0, "no processors found in /proc/cpuinfo");
+    }
+    return nprocs;
+#endif
+
+    INVARIANT(unknown_ok, "don't know how to get the number of CPUs");
+    return -1;
+}
 
 PThread::PThread()
 {

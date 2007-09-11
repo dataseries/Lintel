@@ -84,7 +84,7 @@ public:
 
     class iterator {
     public:
-	iterator(Deque &_mydeque, int pos) 
+	iterator(Deque &_mydeque, unsigned pos) 
 	    : mydeque(_mydeque), cur_pos(pos)
 	{ }
 	iterator &operator++() { increment(); return *this; }
@@ -113,7 +113,7 @@ public:
 	    cur_pos = (cur_pos + 1) % mydeque.q_size;
 	}
 	Deque &mydeque;
-	int cur_pos;
+	unsigned cur_pos;
     };
 
     iterator begin() {

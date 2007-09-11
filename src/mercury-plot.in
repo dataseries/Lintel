@@ -22,7 +22,7 @@ use Time::HiRes 'time';
 use Plot::Mercury;
 
 eval "use Statistics::OLS;";
-my $have_statistics_ols = $@;
+my $missing_statistics_ols = $@;
 
 $|=1;
 my $gnuplot_fifo;
@@ -1032,9 +1032,9 @@ my $debug_axplusb = 0;
 sub axplusb {
     my ($plot) = @_;
 
-    if ($have_statistics_ols) {
+    if ($missing_statistics_ols) {
 	print "do not have Statistics::OLS installed, unable to perform axplusb calculation\n";
-	print "error on use was: $have_statistics_ols\n";
+	print "error on use was: $missing_statistics_ols\n";
 	return;
     }
     if ($plot >= @plots) {

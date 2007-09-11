@@ -27,17 +27,8 @@ extern "C" {
 
 class PThreadMisc { // should be a namespace if we believe everyone supports those
 public:
-    static int getCurrentCPU() {
-#if HPUX_ACC
-	pthread_spu_t answer;
-	INVARIANT(pthread_processor_id_np(PTHREAD_GETCURRENTSPU_NP,
-					     &answer,0) == 0,
-		  boost::format("Failed: %s") % strerror(errno));
-	return (int)answer;
-#else
-	return -1;
-#endif
-    }
+    static int getCurrentCPU(bool unknown_ok = false);
+    static int getNCpus(bool unknown_ok = false);
 };	   
 
 /** you can call the start function multiple times on this class, this
