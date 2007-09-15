@@ -48,29 +48,36 @@ PThreadMisc::getCurrentCPU(bool unknown_ok)
 int
 PThreadMisc::getNCpus(bool unknown_ok)
 {
-#ifdef __linux__
     static unsigned nprocs;
 
     if (nprocs == 0) {
-	ifstream infile("/proc/cpuinfo");
-
-	INVARIANT(infile.good(), "unable to open /proc/cpuinfo");
-	
-	string line;
-	string processor("processor\t: ");
-	while(!infile.eof()) {
-	    getline(infile, line);
-	    if (prefixequal(line,processor)) {
-		++nprocs;
+	if (getenv("LINTEL_NCPUS") != NULL) {
+	    nprocs = stringToUInt32(getenv("LINTEL_NCPUS"));
+	    INVARIANT(nprocs > 0, "LINTEL_NCPUS must be > 0");
+#ifdef __linux__
+	} else if (1) {
+	    ifstream infile("/proc/cpuinfo");
+	    
+	    INVARIANT(infile.good(), "unable to open /proc/cpuinfo");
+	    
+	    string line;
+	    string processor("processor\t: ");
+	    while(!infile.eof()) {
+		getline(infile, line);
+		if (prefixequal(line,processor)) {
+		    ++nprocs;
+		}
 	    }
-	}
-	INVARIANT(nprocs > 0, "no processors found in /proc/cpuinfo");
-    }
-    return nprocs;
+	    INVARIANT(nprocs > 0, "no processors found in /proc/cpuinfo");
 #endif
-
-    INVARIANT(unknown_ok, "don't know how to get the number of CPUs");
-    return -1;
+	} else {
+	    INVARIANT(unknown_ok, "don't know how to get the number of CPUs;"
+		      "fix the code or set LINTEL_NCPUS");
+	    return -1;
+	}
+    }
+    INVARIANT(nprocs > 0, "huh");
+    return nprocs;
 }
 
 PThread::PThread()

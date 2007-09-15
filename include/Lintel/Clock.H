@@ -198,7 +198,7 @@ public:
     static uint32_t TfracToNanoSec(Tfrac in) {
 	in = in & 0xFFFFFFFFULL;
 	// Have to convert through a double because the conversion is
-	// inexact, e.g.  1 us -> 4294 Tfrac units -> 0.99977 us
+	// inexact
 	double tmp = static_cast<double>(in) * 1.0e9 / 4294967296.0;
 	return static_cast<uint32_t>(round(tmp));
     }
