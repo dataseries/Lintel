@@ -13,7 +13,7 @@
 #ifndef __DEQUE_H
 #define __DEQUE_H
 
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 #include <new>
 // don't use deque for runnable; it has horrid performance on
 // HP-UX (~10us / insertion to empty deque) Instead, standard
@@ -26,7 +26,7 @@ class Deque {
 public:
     Deque(unsigned default_size = 8) 
 	: q_front(0), q_back(0), q_size(default_size), is_resizeable(true) {
-	AssertAlways(q_size > 1,("Must have size at least 2\n"));
+	INVARIANT(q_size > 1, "Must have size at least 2\n");
 	deque = new T[q_size];
     }
 
@@ -39,22 +39,22 @@ public:
 	void *_ret = shmem.alloc(sizeof(mytype));
 	
 	mytype *ret = new(_ret) Deque(shmem, final_size);
-	AssertAlways(ret == _ret && ret->is_resizeable == false,
-		     ("placement new didn't work correctly??\n"));
+	INVARIANT(ret == _ret && ret->is_resizeable == false,
+		  "placement new didn't work correctly??");
 	return ret;
     }
 #endif
 	
     T &front() {
-	Assert(2, !empty()); 
+	DEBUG_INVARIANT(!empty(), "front() on empty deque"); 
 	return deque[q_front];
     }
     T &back() {
-	Assert(2, !empty());
+	DEBUG_INVARIANT(!empty(), "back() on empty dequeue");
 	return deque[(q_back + q_size - 1) % q_size];
     }
     void pop_front() {
-	Assert(2, !empty());
+	DEBUG_INVARIANT(!empty(), "pop_front() on empty dequeue");
 	q_front = (q_front + 1) % q_size;
     }
     bool push_back(const T &val) { // returns false if unable to push on because it's full
@@ -71,9 +71,9 @@ public:
     bool empty() const { return q_front == q_back;} ;
     unsigned size() const { return (q_back + q_size - q_front) % q_size; }
     void reserve(int new_size) {
-	AssertAlways(is_resizeable,("This deque isn't resizeable!\n"));
-	AssertAlways(empty(),("Lame implementation only does reserve when empty\n"));
-	AssertAlways(new_size > 0, ("Must have size at least 1\n"));
+	INVARIANT(is_resizeable,"This deque isn't resizeable!");
+	INVARIANT(empty(),"Lame implementation only does reserve when empty");
+	INVARIANT(new_size > 0, "Must have size at least 1");
 	new_size += 1; // for the empty entry that always exists
 	q_front = q_back = 0;
 	q_size = new_size;
@@ -102,14 +102,14 @@ public:
 		cur_pos != y.cur_pos;
 	}
 	T &operator *() {
-	    AssertAlways(cur_pos >= 0 && cur_pos < mydeque.q_size,
-			 ("invalid use of iterator\n"));
+	    DEBUG_INVARIANT(cur_pos < mydeque.q_size,
+			    "invalid use of iterator");
 	    return mydeque.deque[cur_pos];
 	}
     private:
 	void increment() {
-	    AssertAlways(cur_pos >= 0 && cur_pos < mydeque.q_size,
-			 ("invalid use of iterator\n"));
+	    DEBUG_INVARIANT(cur_pos < mydeque.q_size,
+			    "invalid use of iterator");
 	    cur_pos = (cur_pos + 1) % mydeque.q_size;
 	}
 	Deque &mydeque;
@@ -133,7 +133,10 @@ private:
     }
 #endif
     void push_expand(const T &val) {
-	AssertAlways(is_resizeable,("this deque is not resizeable, and is full with %d items\n",q_size));
+	INVARIANT(is_resizeable, 
+		  boost::format("this deque is not resizeable, and is"
+				"full with %d items") % q_size);
+		  
 	T *new_deque = new T[q_size * 2];
 	unsigned i = 0;
 	// copy back to 0 offset
@@ -152,8 +155,9 @@ private:
 		++i;
 	    }
 	}
-	AssertAlways(i == q_size-1,("%u %u %u %u\n",i,q_size,
-				   q_front, q_back));
+	INVARIANT(i == q_size-1,
+		  boost::format("internal %u %u %u %u")
+		  % i % q_size % q_front % q_back);
 	q_front = 0;
 	new_deque[i] = val;
 	q_back = i + 1;
