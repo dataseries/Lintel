@@ -9,10 +9,15 @@
 */
 
 #include <algorithm>
+#include <sstream>
+
+#include <boost/format.hpp>
 
 #include <Lintel/Double.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/StatsQuantile.H>
+
+using namespace std;
 
 static double fact(double a) 
 {
@@ -72,7 +77,7 @@ StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _pri
     init(best_b, best_k);
 }
 
-StatsQuantile::StatsQuantile(const std::string &type_disambiguate,
+StatsQuantile::StatsQuantile(const string &type_disambiguate,
 			     int _nbuffers, int _buffer_size, int _print_nrange)
     : quantile_error(Double::NaN), print_nrange(_print_nrange)
 {
@@ -157,7 +162,7 @@ StatsQuantile::add(const double value)
 	} else {
 #if 1
 	    // do the sort here to amortize the work
-	    std::sort(all_buffers[cur_buffer - 1],
+	    sort(all_buffers[cur_buffer - 1],
 		      all_buffers[cur_buffer - 1]+buffer_size,
 		      doubleOrder());
 	    buffer_sorted[cur_buffer-1] = true;
@@ -206,11 +211,11 @@ StatsQuantile::getQuantile(double quantile) const
 	collapse_pos[i] = 0;
 	if (!buffer_sorted[i]) {
 	    if (i < cur_buffer) {
-		std::sort(all_buffers[i],all_buffers[i] + buffer_size,
+		sort(all_buffers[i],all_buffers[i] + buffer_size,
 			  doubleOrder());
 	    } else {
 		// only sort part that has values in it.
-		std::sort(all_buffers[i],all_buffers[i] + cur_buffer_pos,
+		sort(all_buffers[i],all_buffers[i] + cur_buffer_pos,
 			  doubleOrder());
 		// Fill the rest with Inf's so that we don't have to
 		// do any special logic when choosing the "smallest"
@@ -348,7 +353,7 @@ StatsQuantile::collapse()
 	    AssertAlways(i == (nbuffers - 1) || buffer_weight[i] == 1,
 			 ("Huh %d != %d // %d\n",i,nbuffers - 1, buffer_weight[i]));
 	    // sort the buffer
-	    std::sort(all_buffers[i],all_buffers[i] + buffer_size,
+	    sort(all_buffers[i],all_buffers[i] + buffer_size,
 		      doubleOrder());
 	    buffer_sorted[i] = true;
 	} 
@@ -447,10 +452,10 @@ StatsQuantile::dumpState()
 }
 
 void 
-StatsQuantile::printRome(int depth, std::ostream &out) const
+StatsQuantile::printRome(int depth, ostream &out) const
 {
     Stats::printRome(depth,out);
-    std::string spaces;
+    string spaces;
     for(int i = 0; i < depth; i++) {
 	spaces += " ";
     }
@@ -479,41 +484,65 @@ StatsQuantile::printRome(int depth, std::ostream &out) const
 void
 StatsQuantile::printFile(FILE *out, int nranges)
 {
+    ostringstream tmp;
+    printTextRanges(tmp, nranges);
+    fwrite(tmp.str().data(), tmp.str().size(), 1, out);
+}
+
+void
+StatsQuantile::printTextRanges(ostream &out, int nranges) const
+{
     nranges = (nranges == -1 ? print_nrange : nranges);
-    fprintf(out,"%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n",
-	    countll(), mean(), stddev(), min(), max());
+    out << boost::format("%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n")
+	% countll() % mean() % stddev() % min() % max();
     if (countll() == 0) return;
-    fprintf(out,"    quantiles every %.0f data points:",
-	    (double)countll()/(double)nranges);
+    out << boost::format("    quantiles every %.0f data points:")
+	% ((double)countll()/(double)nranges);
     double step = 1.0 / (double)nranges;
     int nquantiles = 0;
     for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
 	if ((nquantiles % 10) == 0) {
-	    printf("\n    %.4g%%: ",quantile * 100);
+	    out << boost::format("\n    %.4g%%: ") % (quantile * 100);
 	} else {
-	    printf(", ");
+	    out << ", ";
 	}
 
-	printf("%.8g",getQuantile(quantile));
+	out << boost::format("%.8g") % getQuantile(quantile);
 	++nquantiles;
     }
-    printf("\n");
+    out << "\n";
 }
 
 void
 StatsQuantile::printTail(FILE *out)
 {
-    printf("  tails: ");
+    ostringstream tmp;
+    printTextTail(tmp);
+    fwrite(tmp.str().data(), tmp.str().size(), 1, out);
+}
+
+void
+StatsQuantile::printTextTail(ostream &out) const
+{
+    out << "  tails: ";
     double nentries = countll();
     for(double tail_frac = 0.1; (tail_frac * nentries) >= 10.0;) {
 	if (tail_frac < 0.05) {
-	    printf(", ");
+	    out << ", ";
 	}
-	printf("%.12g%%: %.8g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	out << boost::format("%.12g%%: %.8g")
+	    % (100*(1-tail_frac)) % getQuantile(1-tail_frac);
 	tail_frac /= 2.0;
-	printf(", %.12g%%: %.8g", 100*(1-tail_frac), getQuantile(1-tail_frac));
+	out << boost::format(", %.12g%%: %.8g")
+	    % (100*(1-tail_frac)) % getQuantile(1-tail_frac);
 	tail_frac /= 5.0;
     }
-    printf("\n");
+    out << "\n";
 }
 
+void
+StatsQuantile::printText(ostream &out) const
+{
+    printTextRanges(out);
+    printTextTail(out);
+}

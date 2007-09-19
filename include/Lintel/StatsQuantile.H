@@ -94,12 +94,16 @@ public:
     int accum_gq_nelem;
 #endif
     void setNrange(int _print_nrange) { print_nrange = _print_nrange; }
+
+    void printTextRanges(std::ostream &out, int nranges=-1) const;
+    void printTextTail(std::ostream &out) const;
     // nranges is the number of ranges the printed quantiles will divide
     // [min .. max] into, so to get 10%, 20%, 30%..., nranges = 10
     void printFile(FILE *out, int nranges=-1); 
     // prints the 90% quantile, 95%, 99%, 99.5%, 99.9%, ...
     void printTail(FILE *out); 
     virtual void printRome(int depth, std::ostream &out) const;
+    virtual void printText(std::ostream &out) const;
 private:
     typedef double *one_buffer;
     void collapse();

@@ -16,6 +16,9 @@
 #include <sys/time.h>
 #include <stdint.h>
 
+#include <limits>
+
+#include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/Stats.H>
 
@@ -171,6 +174,21 @@ public:
     int nrecalibrate, nbadgettod;
     static void timingTest();
 
+    static Tfrac secondsToTfrac(double seconds) {
+	INVARIANT(seconds < std::numeric_limits<uint32_t>::max(), 
+		  "seconds out of bounds for conversion");
+	uint32_t sec_only = static_cast<uint32_t>(floor(seconds));
+	// lower = now - secs
+	// lower_ns = round(lower * 1e9)
+	// lower_tfrac = lower_ns << 32 / 1e9
+	//             = round(lower * 1e9) * 2^32 / 1e9
+	//             ~= round(lower * 1e9 * 2^32 / 1e9)
+	//             = round(lower * 2^32)
+	//             = round((now - secs) * 2^32) = tmp
+	double tmp = round((seconds - sec_only) * 4294967296.0);
+	uint32_t tfrac_lower = static_cast<uint32_t>(tmp);
+	return (static_cast<uint64_t>(sec_only) << 32) + tfrac_lower;	
+    }
     static Tfrac secMicroToTfrac(uint32_t seconds, uint32_t micro_seconds) {
 	Tfrac ret = static_cast<Tfrac>(seconds) << 32;
 	ret += (static_cast<Tfrac>(micro_seconds) << 32) / 1000000;
@@ -206,6 +224,12 @@ public:
     static Tll TfracToTll(Tfrac in) {
 	return static_cast<Tll>(TfracToSec(in))*1000000 + TfracToMicroSec(in);
     }
+
+    static Tfrac todTfrac() {
+	struct timeval t;
+	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
+	return secMicroToTfrac(t.tv_sec,t.tv_usec);
+    }	
 
     static void selfCheck();
 public:
