@@ -553,6 +553,33 @@ fi
 AM_CONDITIONAL(WITH_BOOST, test $with_boost = yes)
 ])
 
+AC_DEFUN([HPL_WITHLIB_DMALLOC],
+[
+AC_ARG_WITH(dmalloc,
+  [  --with-dmalloc           enable dmalloc support],
+  [with_dmalloc=$withval],
+  [with_dmalloc='no'])
+
+DMALLOC_LIBS=''
+if test "$with_dmalloc" = yes; then
+    have_dmalloc_hdr=no
+    have_dmalloc_lib=no
+    AC_LANG_ASSERT(C)
+    AC_CHECK_HEADER(dmalloc.h,have_dmalloc_hdr=yes,)
+    AC_CHECK_LIB(dmalloc,dmalloc_debug,have_dmalloc_lib=yes;DMALLOC_LIBS=-ldmalloc)
+    
+    if test $have_dmalloc_hdr = yes -a $have_dmalloc_lib = yes; then
+    	with_dmalloc=yes
+    else
+        with_dmalloc=no
+    	DMALLOC_LIBS=''
+    fi
+fi
+AC_SUBST(DMALLOC_LIBS)
+AM_CONDITIONAL(WITH_DMALLOC, test $with_dmalloc = yes)
+])
+
+
 AC_DEFUN([COM_HP_HPL_LINTEL_OPTMODE],
 [
 # make sure that any call to AC_PROG_CC/CXX occur after this macro so

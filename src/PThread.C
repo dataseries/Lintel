@@ -135,6 +135,34 @@ PThread::kill(int sig)
     return rc;
 }
 
+PThreadMutex::PThreadMutex(bool errorcheck)
+    : ncontention(0) 
+{
+    pthread_mutexattr_t attr;
+    INVARIANT(pthread_mutexattr_init(&attr)==0,"fatal");
+#if __linux__
+    if (errorcheck) {
+	INVARIANT(pthread_mutexattr_setkind_np(&attr,
+					       PTHREAD_MUTEX_ERRORCHECK_NP)==0,
+		  "fatal");
+    }
+#endif
+#if HPUX_ACC
+    if (errorcheck) {
+	INVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0,
+		  "fatal");
+    }
+#endif
+    INVARIANT(pthread_mutex_init(&m,&attr)==0,"fatal");
+}
+
+PThreadMutex::~PThreadMutex()
+{
+    int ret = pthread_mutex_destroy(&m);
+    INVARIANT(ret == 0,
+	      boost::format("unable to destroy mutex: %s") % strerror(ret));
+}
+
 #if GLIBC_PTHREADS && GLIBC_OLD_PTHREADS
 #define PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED 1
 std::string
