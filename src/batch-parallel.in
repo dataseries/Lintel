@@ -521,6 +521,19 @@ find_things_to_build() generates a list of filenames.  If you override
 this method, then you also need to override rebuild_thing_do,
 rebuild_thing_success, rebuild_thing_fail, rebuild_thing_message.
 
+=head3 sub determine_things_to_build($this, \@possibles)
+
+This function is called from find_things_to_build, it should go
+through the list of possible things to build and return the list of
+ones that need to be rebuild.  The list of possibles consists of 
+pairs [$prefix, $pathname] where the prefix is the originally specified
+prefix under which this possible entry was found.  
+
+By default this function uses the destination_file and
+destfile_out_of_date functions to determine which things to build.  If
+the standard rebuild function is to be used, the returned list should
+consist of triples of [ $prefix, $fullpath, $destpath ].
+
 =head2 Rebuilding things 
 
 =head3 sub rebuild($this, $prefix, $filepath, $destfile)

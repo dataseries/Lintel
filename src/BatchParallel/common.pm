@@ -142,11 +142,8 @@ sub determine_things_to_build {
 	my ($prefix,$fullpath) = @$ent;
 
 	my $destfile = $this->destination_file($prefix,$fullpath);
-	if (-f $destfile) {
-	    if ($this->destfile_out_of_date($prefix,$fullpath,$destfile)) {
-		push(@things_to_build, [ $prefix, $fullpath, $destfile ]);
-	    }
-	} else {
+	if (! -f $destfile ||
+	    $this->destfile_out_of_date($prefix,$fullpath,$destfile)) {
 	    push(@things_to_build, [ $prefix, $fullpath, $destfile ]);
 	} 
     }
