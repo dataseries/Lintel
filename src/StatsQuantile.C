@@ -521,11 +521,15 @@ StatsQuantile::printTail(FILE *out)
     fwrite(tmp.str().data(), tmp.str().size(), 1, out);
 }
 
+// TODO: should this print tails if we have very few data points,
+// e.g. 22 data points, should we get the 90%,95% tails?  This happens
+// in the dataseries groupby regression test, but may be otherwise
+// irrelevant.
 void
 StatsQuantile::printTextTail(ostream &out) const
 {
-    out << "  tails: ";
     double nentries = countll();
+    out << "  tails: ";
     for(double tail_frac = 0.1; (tail_frac * nentries) >= 10.0;) {
 	if (tail_frac < 0.05) {
 	    out << ", ";

@@ -341,12 +341,20 @@ public:
     // want to store it on disk sorted, of course once you sort the vector,
     // you've just destroyed the hash table, but the only other choice
     // is to hash pointers to the data, which loses more memory space.
+    // The vector needs to be dense for this to be safe.
 
+    // TODO: add a "densify" function that will go through and remove things
+    // from the end of the hash table and put them in free entries until
+    // the table is dense.
+
+    bool dense() {
+	return free_list == -1;
+    }
     hte_vectorT &unsafeGetRawDataVector() {
+	INVARIANT(dense(), "If the hash table isn't dense, then there are false values in the vector.");
 	return chains;
     }
 private:
-    // force 
     uint32_t hashof(const D &data) {
 	return static_cast<uint32_t>(hashfn(data));
     }

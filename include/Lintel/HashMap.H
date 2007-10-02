@@ -141,7 +141,8 @@ public:
 	return hashtable.size();
     }
 
-    typedef typename HashTable<hmval,hmvalHash,hmvalEqual>::iterator iterator;
+    typedef HashTable<hmval,hmvalHash,hmvalEqual> HashTableT;
+    typedef typename HashTableT::iterator iterator;
 
     iterator begin() {
 	return hashtable.begin();
@@ -162,8 +163,14 @@ public:
 	hashtable = __in.hashtable;
 	return *this;
     }
+
+    // primiarily here so that you can get at unsafeGetRawDataVector, with
+    // all the caveats that go with that function.
+    HashTableT &getHashTable() {
+	return hashtable;
+    }
 private:
-    HashTable<hmval,hmvalHash,hmvalEqual> hashtable;
+    HashTableT hashtable;
 };
 
 #endif
