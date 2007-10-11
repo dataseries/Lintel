@@ -8,6 +8,10 @@
 # Script for running batch processing type operations, extended
 # by a module that controls how the jobs are selected and executed
 
+# TODO: extend code for lsf submission to support -n minproc,maxproc
+# and use -R "span[hosts=1]" to make them all be on the same node
+# after verifying that this interacts properly with job arrays.
+
 use strict;
 use English;
 use Getopt::Long;
