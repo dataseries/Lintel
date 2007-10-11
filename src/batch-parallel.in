@@ -248,8 +248,10 @@ sub write_joblist {
 	mkdir($workdir,0755) || die "can't mkdir $workdir: $!";
     }
 
+    # TODO: consider compressing this, it can get very long in some cases.
     open(BATCH_LIST,">$workdir/joblist")
 	|| die "open($workdir/joblist) failed: $!";
+    local $Data::Dumper::Purity = 1;
     my $str = Dumper(\@things_to_build);
     print BATCH_LIST $str;
     close(BATCH_LIST);
@@ -339,8 +341,11 @@ sub lsfexec {
         local $/;
 	no strict;
 	my $str = <BPENTS>;
-	die "no data in $dirs[0]" unless defined $str;
-	$data = eval $str;
+	die "no data in $dirs[0]" unless defined $str && length $str > 0;
+	close(BPENTS);
+	# TODO: move this into a Safe so that we don't leak all of the
+	# $VAR# variables
+	$data = eval "$str; \$VAR1;";
 	die "error in eval of $dirs[0]: $@" if $@;
 	die "error in eval of $data; wrong type" unless ref $data eq 'ARRAY';
     }
