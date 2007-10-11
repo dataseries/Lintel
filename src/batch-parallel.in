@@ -589,6 +589,11 @@ the command that is about to be executed.  If the command fails, the
 function will not return.  It is therefore useful for writing
 replacement rebuild_thing_do functions.
 
+=head3 sub file_older($this, $file, @inputs)
+
+This function will determine if $file is older than any of @inputs.
+If $file doesn't exist, it is considered older.
+
 =head1 TODO
 
 Ought to have a function that lets rebuild_thing_fail decide to stop

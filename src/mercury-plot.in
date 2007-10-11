@@ -149,6 +149,7 @@ sub docmd {
 	}
 	return;
     }
+    s/^\s+//o; # allow for indendation
     if (/^select /o) {
 	push(@history,$_);
 	sqlselect($_);
@@ -202,7 +203,7 @@ sub docmd {
 	help($1);
     } elsif (/^history skipto (\w+)\s*$/o) {
 	my $marker = $1;
-	$markerre = qr/^history marker $marker\s*$/;
+	$markerre = qr/^\s*history marker $marker\s*$/;
 	print "skip>> ...\n";
 	$prompt = "skip>> ";
     } elsif (/^history\s+(.+)$/o) {
@@ -297,6 +298,11 @@ sub history {
 	    }
 	    # Don't fill history with loaded data.
 	    @history = @save_history;
+	    if (defined $markerre) {
+		print "Warning: didn't find history marker ...\n";
+		$markerre = undef;
+		$prompt = ">> ";
+	    }
 	} else {
 	    print "Unable to open $1: $!\n";
 	}
@@ -554,6 +560,11 @@ sub sqlplot {
     $cmd = &adjust_sql($cmd);
     if ($cmd =~ /\border\b/o) {
 	# Leave it alone, user specified order, plot goes in that order.
+    } elsif ($cmd =~ /\bcdf\b/o) {
+	if ($cmd =~ s/\blimit\b/ order by cdf limit /o) {
+	} else {
+	    $cmd .= " order by cdf";
+	}
     } elsif ($cmd =~ s/\blimit\b/ order by x limit /o) {
     } else {
 	$cmd .= " order by x";
@@ -570,8 +581,10 @@ sub sqlplot {
 	return;
     }
     my @names = @{$sth->{NAME}};
-    my ($x,$y,$y2,$yerr,$ylo,$yhi);
-    my %known_columns = ( 'x' => \$x, 'y' => \$y, 'y2' => \$y2, 'yerr' => \$yerr, 'ylo' => \$ylo, 'yhi' => \$yhi);
+    my ($x,$y,$y2,$yerr,$ylo,$yhi,$cdf);
+    my %known_columns = ( 'x' => \$x, 'y' => \$y, 'y2' => \$y2, 
+			  'yerr' => \$yerr, 'ylo' => \$ylo, 'yhi' => \$yhi,
+			  'cdf' => \$cdf);
     my %found;
     for(my $i=0;$i<@names;++$i) {
 	my $t;
@@ -600,9 +613,14 @@ sub sqlplot {
     } elsif ($found{x} && $found{y}) {
 	$writefn = sub { print OUT "$x $y\n"; };
 	$plotfn = \&plotxy;
-    } elsif ($found{x} && $found{y2} ) {
+    } elsif ($found{x} && $found{y2}) {
 	$writefn = sub { print OUT "$x $y2\n"; };
 	$plotfn = \&plotxy2;
+    } elsif ($found{cdf}) {
+	my $nrows = $sth->rows;
+	my $i = 0;
+	$writefn = sub { printf OUT "%.4f $cdf\n", 100*$i/$nrows; ++$i };
+	$plotfn = \&plotxy;
     } else {
 	print "Don't know how to plot results.\n";
 	return;
@@ -740,7 +758,6 @@ sub barplot {
     gnuplot("set xtics ($xtics_vals)");
     print "VEEB $xtics_vals\n";
 }
-
 
 sub start_gnuplot {
     return if defined $gnuplot_fifo;
@@ -1185,11 +1202,11 @@ C<plot> is the primary command that generates plots in
 C<mercury-plot>.  It takes as an argument a generic sql statement with
 the expectation that some of the columns will have special names that
 it will use in order to generate the plot.  In this version, the
-special names are x, y, y2, yerr, ylo, yhi.  A plot with x, y will
+special names are x, y, y2, yerr, ylo, yhi, cdf.  A plot with x, y will
 generate a simple scatter or line plot.  Using y2 instead of y will
 plot against the second axis on the plot.  Adding in yerr will add in
 error bars, and explicit tops and bottoms for the error bars can be
-generated with ylo and yhi.
+generated with ylo and yhi.  cdf will 
 
 =head3 a few examples 
 
@@ -1214,6 +1231,13 @@ sql's order by can be used to control the order.
 	barplot time as y, timestddev as yerr, querygroup as major,engine as minor from tmp_ds_barplot where position > 0 order by position
 	barplot time as y, timestddev as yerr, engine as major from tmp_ds_barplot order by position
 
+=head2 plottitle I<which> I<title>
+
+C<plottitle> is the command to set a plot's title.  I<which> can
+either be _ to specify the most recent plot or a number to specify the
+plot number (counting from 0).  Using the special value notitle for
+the I<title> will hide the title.  You can't put " in the title, as it 
+doesn't work with gnuplot.
 
 =head2 psplot [--nocolor] [--mode={eps,portrait,landscape}] [--fontsize=<int>] I<filename>
 

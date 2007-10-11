@@ -93,8 +93,9 @@ sub file_older { # true if $name_a is older than any of the later names
     my $this = shift;
     my $name_a = shift;
 
+    return 1 unless -e $name_a;
     my $time_a = -M $name_a;
-    die "internal error $name_a doesn't exist"
+    die "internal error, can't stat $name_a: $!"
 	unless defined $time_a;
     foreach my $name_b (@_) {
 	my $time_b = -M $name_b;
@@ -105,6 +106,7 @@ sub file_older { # true if $name_a is older than any of the later names
     return 0;
 }
 
+# TODO: deprecate this function and switch everyone to file_old
 sub destfile_out_of_date {
     my($this,$prefix,$fullpath,$destfile) = @_;
 
@@ -114,6 +116,7 @@ sub destfile_out_of_date {
 sub my_abs_path {
     my ($thing) = @_;
 
+    die "$thing doesn't exist??" unless -e $thing;
     return abs_path($thing) if -d $thing;
     if ($thing =~ m!^(.+)/([^/]+)$!o) {
 	my($p1,$p2) = ($1,$2);
