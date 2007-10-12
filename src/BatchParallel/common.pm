@@ -153,8 +153,8 @@ sub determine_things_to_build {
     return @things_to_build;
 }
 
-sub find_things_to_build {
-    my($this,@dirs) = @_;
+sub find_possibles {
+    my($this, @dirs) = @_;
 
     my $lastdot = time;
     my $source_count = 0;
@@ -183,8 +183,17 @@ sub find_things_to_build {
     }
 
     @possibles = sort { $a->[1] cmp $b->[1] } @possibles;
+    return @possibles;
+}
+
+sub find_things_to_build {
+    my($this,@dirs) = @_;
+
+    my @possibles = $this->find_possibles(@dirs);
+    my $source_count = @possibles;
 
     my @things_to_build = $this->determine_things_to_build(\@possibles);
+
     return ($source_count, @things_to_build);
 }
 

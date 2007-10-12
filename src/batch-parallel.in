@@ -530,6 +530,12 @@ find_things_to_build() generates a list of filenames.  If you override
 this method, then you also need to override rebuild_thing_do,
 rebuild_thing_success, rebuild_thing_fail, rebuild_thing_message.
 
+=head3 sub find_possibles($this, @dirs)
+
+This function is called from find_things_to_build, it searches through
+@dirs looking for files that return true from &file_is_source.
+It returns an array of [$prefix, $pathname] pairs.
+
 =head3 sub determine_things_to_build($this, \@possibles)
 
 This function is called from find_things_to_build, it should go
