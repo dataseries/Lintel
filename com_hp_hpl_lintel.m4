@@ -838,11 +838,18 @@ AC_DEFUN([HPL_PERL_SUBSTS],
     # next line has [] around it to protect against m4 macro expansion
     [PERL_SHAREDIR=`perl -e 'foreach $i (@INC) { if ($i =~ /^$ARGV[0]\b/) { print $i;exit(0); }}; print "$ARGV[0]/perl5";' $expanded_datadir`]
     AC_SUBST(PERL_SHAREDIR)
-    PERL_MODULES_INC_UNSHIFT="BEGIN { unshift(@INC,'$PERL_SHAREDIR') }"
+    # need to do this to pick up user installed modules.
+    # need unshift so that if we have commonly installed perl modules
+    # and user installed ones that the user installed ones take precedence.
+    PERL_MODULES_INC_UNSHIFT="BEGIN { unshift(@INC,'$PERL_SHAREDIR') };"
     # next line has [] around it to protect against m4 macro expansion
     [if perl -e 'foreach $i (@INC) { exit(0) if $i eq $ARGV[0]; }; exit(1);' $PERL_SHAREDIR; then ]
 	PERL_MODULES_INC_UNSHIFT="# in-searchpath $PERL_MODULES_INC_UNSHIFT";
     fi
+    # need this so that we can regression test without having to install first.
+    # and can't do it through the standard PERLLIB env variable as that
+    # would get overridden by the earlier unshift.
+    PERL_MODULES_INC_UNSHIFT="$PERL_MODULES_INC_UNSHIFT BEGIN { unshift(@INC, \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}) if defined \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}; };"
     AC_SUBST(PERL_MODULES_INC_UNSHIFT)
     AC_MSG_NOTICE([Using $PERL_SHAREDIR for installation of perl shared libraries])
 ])
