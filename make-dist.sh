@@ -44,6 +44,12 @@ for i in $PACKAGES; do
     echo "Pulling $i from usi.hpl.hp.com; logging to /tmp/make-dist/pull.log..."
 
     mtn -d tmp.db pull $MTN_PULL_FROM ssd.hpl.hp.com/$i >>pull.log 2>&1
+    HEAD="`mtn -d tmp.db automate heads ssd.hpl.hp.com/$i`"
+    REF_HEAD="`cd ~/projects/$i; mtn automate heads`"
+    if [ "$HEAD" != "$REF_HEAD" ]; then 
+	echo "Weird, heads differ between synced ($HEAD) and ~/projects/$i ($REF_HEAD)"
+	exit 1
+    fi
 done
 
 [ -d build ] || mkdir build
@@ -60,7 +66,7 @@ for i in $PACKAGES; do
     echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}'`"
     echo "   autoreconf; logging to /tmp/make-dist/autoreconf.$i.log"
     [ $i = Lintel ] || /tmp/make-dist/build/bin/lintel-acinclude >../autoreconf.$i.log
-    autoreconf --install >>autoreconf.$i.log 2>&1
+    autoreconf --install >>../autoreconf.$i.log 2>&1
     cd ..
     [ ! -d build/$i ] || rm -rf build/$i
     mkdir build/$i
