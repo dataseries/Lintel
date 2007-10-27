@@ -32,6 +32,7 @@ libLintel_la_LIBADD = @TCL_LIBS@
 libLintel_la_SOURCES = \
 	AssertException.C \
 	Clock.C \
+	ConstantString.C \
 	Deque.C \
 	Double.C \
 	HashTable.C \

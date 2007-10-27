@@ -561,21 +561,26 @@ AC_ARG_WITH(dmalloc,
   [with_dmalloc='no'])
 
 DMALLOC_LIBS=''
+DMALLOC_THR_LIBS=''
 if test "$with_dmalloc" = yes; then
     have_dmalloc_hdr=no
     have_dmalloc_lib=no
+    have_dmallocth_lib=no
     AC_LANG_ASSERT(C)
     AC_CHECK_HEADER(dmalloc.h,have_dmalloc_hdr=yes,)
     AC_CHECK_LIB(dmalloc,dmalloc_debug,have_dmalloc_lib=yes;DMALLOC_LIBS=-ldmalloc)
+    AC_CHECK_LIB(dmallocth,dmalloc_debug,have_dmallocth_lib=yes;DMALLOC_THR_LIBS=-ldmallocth)
     
-    if test $have_dmalloc_hdr = yes -a $have_dmalloc_lib = yes; then
+    if test $have_dmalloc_hdr = yes -a $have_dmalloc_lib = yes -a $have_dmallocth_lib = yes; then
     	with_dmalloc=yes
     else
         with_dmalloc=no
-    	DMALLOC_LIBS=''
+	DMALLOC_LIBS=''
+	DMALLOC_THR_LIBS=''
     fi
 fi
 AC_SUBST(DMALLOC_LIBS)
+AC_SUBST(DMALLOC_THR_LIBS)
 AM_CONDITIONAL(WITH_DMALLOC, test $with_dmalloc = yes)
 ])
 

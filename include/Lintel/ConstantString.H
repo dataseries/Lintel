@@ -12,28 +12,48 @@
 #ifndef __CONSTANT_STRING
 #define __CONSTANT_STRING
 
+#include <sys/types.h>
+
 #include <string>
 #include <vector>
 
-#include <Lintel/GC_Alloc.H>
 #include <Lintel/HashTable.H>
 
-// These are stored out here rather than as static inline methods in the 
-// class because g++ doesn't seem to succeed in inlining them otherwise
+// TODO: think about how to make this thread safe; potentially one
+// choice is to make the constructor the constantstring take a
+// stringpool argument with a choice on the pool as to whether it is
+// locked or not.
 
-inline const unsigned int ConstantString_length(const unsigned int *ptr) { return *(ptr - 1); }
-inline const char *ConstantString_c_str(const unsigned int *ptr) { return (const char *)ptr; }
+// Class is here merely to force type incompatibility
+struct ConstantStringValue;
+
+// These functions are stored out here rather than as static inline
+// methods in the class because an old version of g++ doesn't seem to
+// succeed in inlining them otherwise; TODO: recheck this
+inline const uint32_t ConstantString_length(const ConstantStringValue *ptr) { 
+    return *(reinterpret_cast<const uint32_t *>(ptr) - 1); }
+inline const char *ConstantString_c_str(const ConstantStringValue *ptr) { 
+    return reinterpret_cast<const char *>(ptr); 
+}
 
 class ConstantString {
 public:
-    typedef unsigned int uint32;
-    ConstantString(const std::string &str);
-    ConstantString(const gcstring &str);
-    ConstantString(const char *s);
+    ConstantString(const ConstantString &from) {
+	myptr = from.myptr;
+    }
+    ConstantString(const std::string &str) { 
+	init(str.data(), str.size());
+    }
+    ConstantString(const char *s) {
+	init(s, strlen(s));
+    }
+    ConstantString() { myptr = NULL; }
+    void init(const char *s, uint32_t slen);
 
     const char *c_str() const { return ConstantString_c_str(myptr); }
-    inline const uint32 size() const { return ConstantString_length(myptr); }
-    inline const uint32 length() const { return ConstantString_length(myptr); }
+    const char *data() const { return ConstantString_c_str(myptr); }
+    inline const uint32_t size() const { return ConstantString_length(myptr); }
+    inline const uint32_t length() const { return ConstantString_length(myptr); }
     int compare(const ConstantString &rhs) const {
 	int cmplen = size() < rhs.size() ? size() : rhs.size();
 	cmplen += 1; // include null byte of shorter string
@@ -45,14 +65,8 @@ public:
 	return memcmp(c_str(),rhs.c_str(),cmplen);
     }
 
-    int compare(const gcstring &rhs) const {
-	int cmplen = size() < rhs.size() ? size() : rhs.size();
-	cmplen += 1; // include null byte of shorter string
-	return memcmp(c_str(),rhs.c_str(),cmplen);
-    }
-
     struct buffer {
-	char *data;
+	ConstantStringValue *data;
 	int size;
 	int amt_used;
     };
@@ -66,32 +80,35 @@ public:
     // the c_str() pointer of a thing is the same as the pointer
     class hteHash {
     public:
-	unsigned int operator()(const char *k) {
-	    return HashTable_hashbytes(k,strlen(k));
+	unsigned int operator()(const ConstantStringValue *k) {
+	    return HashTable_hashbytes(ConstantString_c_str(k),ConstantString_length(k));
 	}
     };
     class hteEqual {
     public:
-	bool operator()(const char *a, const char *b) {
-	    return strcmp(a,b) == 0;
+	bool operator()(const ConstantStringValue *a, const ConstantStringValue *b) {
+	    uint32_t len_a = ConstantString_length(a);
+	    uint32_t len_b = ConstantString_length(b);
+	    if (len_a != len_b) {
+		return false;
+	    } else {
+		return memcmp(ConstantString_c_str(a),ConstantString_c_str(b), len_a) == 0;
+	    }
 	}
     };
+    bool equal(const ConstantString &to) const {
+	return myptr == to.myptr ? true : false;
+    }
 private:
-    void init(const char *s,uint32 slen);
-    uint32 *myptr;
+    const ConstantStringValue *myptr;
 
     static int nstrings;
     static int string_bytes;
     static const int buffer_size = 512*1024;
     static bufvect *buffers;
-    // safe to use the ignore off page allocator here because the
-    // buffer pool pointer to the strings will always be the
-    // authoritative pointer, so the char * pointer here is a
-    // duplicate.
-    typedef HashTable<const char *, hteHash, hteEqual,
-	GCAtomicIgnoreOffPageAllocator<HashTable_hte<const char *> >,
-	GCAtomicIgnoreOffPageAllocator<int> > CS_hashtable; 
-    static CS_hashtable hashtable;
+    typedef HashTable<const ConstantStringValue *, hteHash, hteEqual> CS_hashtable;
+
+    static CS_hashtable *hashtable;
 };
 
 inline bool
@@ -106,12 +123,12 @@ operator<=(const ConstantString &lhs, const ConstantString &rhs) {
 
 inline bool
 operator==(const ConstantString &lhs, const ConstantString &rhs) {
-    return lhs.compare(rhs) == 0;
+    return lhs.equal(rhs);
 }
 
 inline bool
 operator!=(const ConstantString &lhs, const ConstantString &rhs) {
-    return lhs.compare(rhs) != 0;
+    return !lhs.equal(rhs);
 }
 
 inline bool

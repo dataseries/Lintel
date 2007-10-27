@@ -8,6 +8,7 @@ nobase_include_HEADERS = \
 	Lintel/AssertException.H \
 	Lintel/Clock.H \
 	Lintel/CompilerMarkup.H \
+	Lintel/ConstantString.H \
 	Lintel/Deque.H \
 	Lintel/Double.H \
 	Lintel/HashMap.H \
@@ -51,14 +52,14 @@ nobase_include_HEADERS += \
 endif
 
 if WITH_GC
-nobase_include_HEADERS += \
-	Lintel/ConstantString.H \
-	Lintel/GC_Alloc.H
+nobase_include_HEADERS +=
+	Lintel/GC_Alloc.H 
 
 Lintel/GC_Alloc.H: make_gcalloc_h.pl
 	[ -d Lintel ] || mkdir Lintel
 	perl $(srcdir)/make_gcalloc_h.pl >$@-new
 	mv $@-new $@
+
 endif
 
 if WITH_HPUX_REPLACE_MEMORY

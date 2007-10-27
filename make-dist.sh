@@ -67,6 +67,7 @@ for i in $PACKAGES; do
     echo "   autoreconf; logging to /tmp/make-dist/autoreconf.$i.log"
     [ $i = Lintel ] || /tmp/make-dist/build/bin/lintel-acinclude >../autoreconf.$i.log
     autoreconf --install >>../autoreconf.$i.log 2>&1
+    rm -rf autom4te.cache
     cd ..
     [ ! -d build/$i ] || rm -rf build/$i
     mkdir build/$i

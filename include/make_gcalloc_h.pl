@@ -23,6 +23,8 @@ print <<'END_OF_HEADER';
 #ifndef __LINTEL_GC_ALLOC_H
 #define __LINTEL_GC_ALLOC_H
 
+#define WITH_LINTEL_GC_ALLOC 1
+
 #include <memory>
 #include <string>
 

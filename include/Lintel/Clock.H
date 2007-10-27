@@ -231,6 +231,13 @@ public:
 	return secMicroToTfrac(t.tv_sec,t.tv_usec);
     }	
 
+    static struct timeval TfracToStructTimeval(Tfrac in) {
+	struct timeval ret;
+	ret.tv_sec = TfracToSec(in);
+	ret.tv_usec = TfracToMicroSec(in);
+	return ret;
+    }
+
     static void selfCheck();
 public:
     static double inverse_clock_rate; // us/cycle
