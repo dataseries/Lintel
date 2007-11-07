@@ -18,7 +18,7 @@ StringId::StringId()
 }
 
 unsigned int
-StringId::getId(const gcstring &str)
+StringId::getId(const std::string &str)
 {
 #if 0
     unsigned int tmp = idmap[str];
@@ -33,7 +33,7 @@ StringId::getId(const gcstring &str)
     HTE ent(str);
     const HTE *d = idmap.lookup(ent);
     if (d == NULL) {
-	gcstring *alloc = new gcstring(str);
+	std::string *alloc = new std::string(str);
 	ent.str = alloc;
 	ent.id = nextid;
 	idmap.add(ent);
@@ -46,7 +46,7 @@ StringId::getId(const gcstring &str)
 #endif
 }
 
-const gcstring &
+const std::string &
 StringId::getString(unsigned int id)
 {
 #if 0    

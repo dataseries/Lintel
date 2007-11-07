@@ -19,14 +19,14 @@
 class StringId {
 public:
     StringId();
-    unsigned int getId(const gcstring &str);
-    const gcstring &getString(unsigned int id);
+    unsigned int getId(const std::string &str);
+    const std::string &getString(unsigned int id);
     unsigned int maxId() { return nextid; }
 
     struct HTE {
-	const gcstring *str;
+	const std::string *str;
 	unsigned int id;
-	HTE(const gcstring &_str) : str(&_str), id(0) {}
+	HTE(const std::string &_str) : str(&_str), id(0) {}
 	HTE(const unsigned int _id) : id(_id) {}
     };
     class HTEHashStr {
