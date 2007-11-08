@@ -69,6 +69,13 @@ struct HashMap_hash<const unsigned> {
 };
 
 template <>
+struct HashMap_hash<const uint64_t> {
+    unsigned operator()(const uint64_t _a) const {
+	return _a;
+    }
+};
+
+template <>
 struct HashMap_hash<const long long> {
     unsigned operator()(const long long _a) const {
 	return BobJenkinsHashMixULL(_a);
