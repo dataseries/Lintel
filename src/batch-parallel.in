@@ -602,7 +602,9 @@ no-execute mode.
 This function will execute @command using system after printing out
 the command that is about to be executed.  If the command fails, the
 function will not return.  It is therefore useful for writing
-replacement rebuild_thing_do functions.
+replacement rebuild_thing_do functions.  You should set $this->{verbose_level}
+before calling this function.  At verbose level 1 or greater, run will
+print out the command.
 
 =head3 sub file_older($this, $file, @inputs)
 

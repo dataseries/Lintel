@@ -1,6 +1,6 @@
-package Text::ExpandInt;
+package Text::Expand;
 #
-#  (c) Copyright 2004-2006, Hewlett-Packard Development Company, LP
+#  (c) Copyright 2004-2007, Hewlett-Packard Development Company, LP
 #
 #  See the file named COPYING for license details
 #
@@ -12,9 +12,9 @@ require Exporter;
 
 use vars qw/@EXPORT_OK @ISA/;
 @ISA = qw/Exporter/;
-@EXPORT_OK = qw/expand/;
+@EXPORT_OK = qw/expandString/;
 
-sub expand {
+sub expandString {
     my @ret;
     my @pending = @_;
     while (@pending > 0) {
@@ -55,13 +55,21 @@ __END__
 
 =head1 NAME
 
-Text::ExpandInt - a function to expand out multiple arguments
+Text::Expand - a function to expand out multiple arguments
 
 =head1 SYNOPSIS
 
-use Text::ExpandInt 'expand';
+use Text::Expand 'expandString';
 
-my @list = expand("foo[1,7,11]-[1-5%2,9-13%2]");
+    my @list = expandString("a[0-3]"); # qw(a0 a1 a2 a3)
+    @list = expandString("[0,2,4]b"); # qw(0b 2b 4b)
+    @list = expandString("a[0,2,3-5]c"); # qw(a0c a2c a3c a4c a5c)
+    @list = expandString("d[0-12%2]"); # qw(d0 d2 d4 d6 d8 d10 d12)
+    @list = expandString("e[00-12%2]"); # qw(d00 d02 d04 d06 d08 d10 d12)
+    @list = expandString(""f[0,1]g[03-05]"); 
+      # qw(f0g03 f0g04 f0g05 f1g03 f1g04 f1g05)
+    @list = expandString("foo[1,7,11]-[1-5%2,9-13%2]");
+      # see description
 
 =head1 DESCRIPTION
 
@@ -77,4 +85,13 @@ my @list = expand("foo[1,7,11]-[1-5%2,9-13%2]");
 # The structure inside a single [] block is a list of , separated
 # entries.  Each entry is either a single integer (#), a range of
 # integers (#-#), or a range of integers with a step (#-#%#).
+
+=head1 TODO
+
+It would be nice if we could specify non-integer constructs for ,
+separated expansion, and possibly for constructs like a-z for -
+expansion, although it is not exactly clear how aa-zz should be
+interpreted, e.g. as aa,bb,cc,dd, ..., zz; or as aa, ab, ac, ..., az,
+ba, ..., zz.
+
 

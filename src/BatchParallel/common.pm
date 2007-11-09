@@ -270,7 +270,13 @@ sub rebuild_thing_fail {
 sub run {
     my $this = shift;
 
-    print "Running: ", join(" ", @_), "\n";
+    unless (defined $this->{verbose_level}) {
+	warn "forcing value for \$this->{verbose_level}";
+	$this->{verbose_level} = 1;
+    }
+	
+    print "Running: ", join(" ", @_), "\n"
+	if $this->{verbose_level} >= 1;
     my $ret = system(@_);
     confess "Command '" . join(" ", @_), "' failed; return was $ret"
 	unless $ret == 0;
