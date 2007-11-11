@@ -20,6 +20,11 @@ use Carp;
 use POSIX;
 use Cwd ();
 use Pod::Usage;
+use Sys::Hostname;
+use File::stat;
+use Fcntl ':mode';
+use DirHandle;
+use File::Path;
 @PERL_MODULES_INC_UNSHIFT@
 BEGIN { unshift(@INC,"@expanded_datadir@/bp_modules"); }
 use BatchParallel::common;
@@ -36,6 +41,9 @@ my $queue;
 my $shuffle = 1;
 my $show_rebuild;
 my $verbose;
+my $batch_workdir;
+
+my $default_baseworkdir = "$ENV{HOME}/.batch-parallel/work";
 
 my @dirs;
 while(@ARGV > 0 && $ARGV[@ARGV-1] ne '--') {
@@ -58,11 +66,26 @@ my $ret = GetOptions('man!' => \$print_manpage,
 		     'groupsize=i' => \$batch_groupsize,
 		     'maxgroups=i' => \$batch_maxgroups,
 		     'shuffle!' => \$shuffle,
-		     'show-rebuild!' => \$show_rebuild);
+		     'show-rebuild!' => \$show_rebuild,
+		     'batch-workdir' => \$batch_workdir);
 
-unshift(@INC,"$ENV{HOME}/.bp_modules");
+usage("error parsing arguments")
+    unless $ret;
 
-my @bp_module_dirs = ("$ENV{HOME}/.bp_modules","@expanded_datadir@/bp_modules");
+usage("missing command line arguments") 
+    unless @ARGV >= 1;
+
+
+if (-d "$ENV{HOME}/.bp_modules") {
+    # TODO: remove this 2008-06-01 or later
+    warn "You have the obsolete ~/.bp_modules directory. It should be moved to
+~/.batch-parallel/modules\n";
+    unshift(@INC,"$ENV{HOME}/.bp_modules");
+}
+unshift(@INC, "$ENV{HOME}/.batch-parallel/modules");
+
+my @bp_module_dirs = ("$ENV{HOME}/.batch-parallel/modules", 
+		      "@expanded_datadir@/bp_modules");
 
 if (defined $ENV{BP_MODULES}) {
     unshift(@bp_module_dirs,split(/:/o,$ENV{BP_MODULES}));
@@ -70,7 +93,6 @@ if (defined $ENV{BP_MODULES}) {
 }
 
 pod2usage(-verbose => 2) if $print_manpage;
-usage() unless $ret && @ARGV >= 1;
 
 die "can't specify both groupsize and maxgroups"
     if defined $batch_groupsize && defined $batch_maxgroups;
@@ -95,25 +117,25 @@ if ($@) {
 	if $verbose;
 }
 
-my $usename = "BatchParallel::$bp_module_name";
-my $module = new $usename(@bp_args);
+my $modulename = "BatchParallel::$bp_module_name";
+
+if (defined $lsfexec) {
+    batch_exec('LSB_JOBINDEX', $lsfexec);
+    exit(0);
+}
+
+if (defined $codineexec) {
+    batch_exec('SGE_TASK_ID', $codineexec);
+    exit(0);
+}
+
+my $module = new $modulename(@bp_args);
 
 die "new $bp_module_name did not return a reference"
     unless defined $module && ref $module;
 
 if (@dirs == 0) {
     @dirs = $module->default_source_locations();
-}
-
-
-if (defined $lsfexec) {
-    lsfexec();
-    exit(0);
-}
-
-if (defined $codineexec) {
-    codineexec();
-    exit(0);
 }
 
 unless (defined $batch_jobwidth || defined $local_parallelism) {
@@ -175,12 +197,12 @@ sub usage {
     }
     delete $available_modules{'common'};
     my $mods = join(" ",sort keys %available_modules);
-    pod2usage( -exitval => 'NOEXIT' );
+    pod2usage( -exitval => 'NOEXIT', -verbose => 0 );
     print "    bp modules: $mods
     looked in: @bp_module_dirs
     you can define \$BP_MODULES to add directories
 "; 
-   exit(2);
+   confess @_;
 }
     
 sub finish_child {
@@ -241,25 +263,67 @@ sub batch_submit {
     }
 }
 
-sub write_joblist {
-    my ($basedir) = @_; # optional
+sub clean_a_workdir {
+    my($dir, $older_than) = @_;
 
-    my $hostname = `hostname`;
-    chomp($hostname);
-    my $workdir = "batch-parallel.$hostname.$$";
-    $workdir = "$basedir/$workdir" if defined $basedir;
-    unless(-d $workdir) {
-	mkdir($workdir,0755) || die "can't mkdir $workdir: $!";
+    my $dh = new DirHandle $dir
+	or die "Can't opendir $dir: $!";
+    
+    foreach my $file (readdir($dh)) {
+	next if $file eq '.' || $file eq '..';
+
+	if ($file =~ /^(joblist)|(log\.\d+)$/o) {
+	    my $stat = stat("$dir/$file");
+	    die "Can't stat $dir/$file: $!"
+		unless defined $stat;
+	    return if $stat->mtime >= $older_than;
+	}
     }
+    if ($no_exec) {
+	print "Should auto-clean old workdir $dir\n";
+    } else {
+	print "Note auto-cleaning old workdir $dir\n";
+	$dh->rewind;
+	foreach my $file (readdir($dh)) {
+	    next if $file eq '.' || $file eq '..';
+	    
+	    unlink("$dir/$file") or die "Can't unlink $dir/$file: $!";
+	}
+	rmdir($dir) or die "Can't rmdir $dir: $!";
+    }
+}
 
-    # TODO: consider compressing this, it can get very long in some cases.
-    open(BATCH_LIST,">$workdir/joblist")
-	|| die "open($workdir/joblist) failed: $!";
-    local $Data::Dumper::Purity = 1;
-    my $str = Dumper(\@things_to_build);
-    print BATCH_LIST $str;
-    close(BATCH_LIST);
-    die "write bad $workdir/joblist" unless -s "$workdir/joblist" == length $str;
+sub cleanup_workdir {
+    my $dh = new DirHandle "$default_baseworkdir"
+	or return;
+
+    # TODO: make cleaning age configurable, 1 week seems a sane
+    # starting default since any log output will push the delay forward.
+    # if you change the date, update the documentation.
+
+    my $older_than = time - 7 * 24 * 3600;
+    foreach my $file (readdir($dh)) {
+	next unless $file =~ /^.+\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/o;
+	clean_a_workdir("$default_baseworkdir/$file", $older_than);
+    }
+}
+
+sub write_joblist {
+    my $workdir;
+    if (defined $batch_workdir) {
+	$workdir = $batch_workdir;
+    } else {
+	my $hostname = hostname();
+	my @time = localtime(time);
+	my $time = sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+			   $time[5]+1900, $time[4]+1, $time[3],
+			   $time[2], $time[1], $time[0]);
+	$workdir = "$default_baseworkdir/$hostname--$time";
+	cleanup_workdir(); # Only clean if we are using the default
+    }
+    die "$workdir already exists??"
+	if -d $workdir;
+
     my $batch_size = 1;
     if (defined $batch_groupsize) {
 	$batch_size = $batch_groupsize;
@@ -279,19 +343,31 @@ sub write_joblist {
 	    $batch_size = ceil((scalar @things_to_build) / $batch_maxgroups);
 	}
     }
+
+    unless ($no_exec) {
+	mkpath($workdir,0, 0755);
+
+	# TODO: consider compressing this, it can get very long in some cases.
+	open(BATCH_LIST,">$workdir/joblist")
+	    || die "open($workdir/joblist) failed: $!";
+	local $Data::Dumper::Purity = 1;
+	my $str = Dumper([$module, \@things_to_build]);
+	print BATCH_LIST $str;
+	close(BATCH_LIST);
+	die "write bad $workdir/joblist" 
+	    unless -s "$workdir/joblist" == length $str;
+    }
     return ($workdir,$batch_size);
-    print "and batch size $batch_size\n";
-	
 }
 
 sub codine_submit {
     die "queue option not supported" if defined $queue;
     print "Running using Codine with $batch_jobwidth job-width, ";
-    my ($workdir, $batch_size) = write_joblist(); # Cwd::getcwd());
+    my ($workdir, $batch_size) = write_joblist(); 
     print "and batch size $batch_size\n";
     my $njobs = ceil(@things_to_build / $batch_size);
-    my $cmd_args = join(' ', $bp_fullpath,map { quotemeta $_ } @bp_args, "--",$workdir);
-    my $cmd = "qsub -b y -r y -cwd -t 1-$njobs -o $workdir/'log.\$TASK_ID' -j y $0 --codineexec=$batch_size $cmd_args";
+
+    my $cmd = "qsub -b y -r y -cwd -t 1-$njobs -o $workdir/'log.\$TASK_ID' -j y $0 --codineexec=$batch_size $bp_module_name -- $workdir";
     if ($no_exec) {
 	print "should run $cmd\n";
     } else {
@@ -303,6 +379,7 @@ sub codine_submit {
 }
 
 sub lsf_submit {
+    my ($workdir,$batch_size) = write_joblist();
     print "Running using LSF with $batch_jobwidth job-width, ";
     if (defined $queue) {
 	print "queue $queue, ";
@@ -310,17 +387,15 @@ sub lsf_submit {
     } else {
 	$queue = '';
     }
-    my ($workdir,$batch_size) = write_joblist();
     print "and batch size $batch_size\n";
     my $njobs = ceil(@things_to_build / $batch_size);
     my $hostname = `hostname`;
     chomp($hostname);
     my $jobname = "batch-parallel:$hostname:$$:$bp_module_name:$hostname:[1-$njobs]%$batch_jobwidth";
 
-    my $cmd_args = join(' ',$bp_fullpath,map { quotemeta $_ } @bp_args, "--",$workdir);
-
-    my $cmd = "bsub $queue -J '$jobname' -o $workdir/log.%I $0 --lsfexec=$batch_size $cmd_args";
+    my $cmd = "bsub $queue -J '$jobname' -o $workdir/log.%I $0 --lsfexec=$batch_size $bp_module_name -- $workdir";
     if ($no_exec) {
+	# TODO: make this print out what we will rebuild...
 	print "should run $cmd\n";
     } else {
 	print "$cmd\n";
@@ -330,14 +405,18 @@ sub lsf_submit {
     }
 }
 
-sub lsfexec {
+sub batch_exec {
+    my($envvar, $groupsize) = @_;
+
     die "wrong number of arguments" unless @dirs == 1;
-    my $base_index = $ENV{LSB_JOBINDEX};
-    die "Don't have \$ENV{LSB_JOBINDEX}"
+    my $base_index = $ENV{$envvar};
+    die "Don't have \$ENV{$envvar}"
 	unless defined $base_index;
-    die "invalid \$ENV{LSB_JOBINDEX} '$base_index'"
+    die "invalid \$ENV{$envvar} '$base_index'"
 	unless $base_index =~ /^\d+$/o;
 
+    die "Invalid base index 0 from \$ENV{$envvar}" 
+	unless $base_index > 0;
     --$base_index;
     open(BPENTS,"$dirs[0]/joblist") || die "can't open $dirs[0] for read: $!";
     my $data;
@@ -349,46 +428,18 @@ sub lsfexec {
 	close(BPENTS);
 	# TODO: move this into a Safe so that we don't leak all of the
 	# $VAR# variables
-	$data = eval "$str; \$VAR1;";
-	die "error in eval of $dirs[0]: $@" if $@;
-	die "error in eval of $data; wrong type" unless ref $data eq 'ARRAY';
+	my $tmp = eval "$str; \$VAR1;";
+	die "error in eval of $dirs[0]/joblist: $@" if $@;
+	die "error in eval of $dirs[0]/joblist; wrong type" 
+	    unless ref $tmp eq 'ARRAY' && @$tmp == 2;
+	($module, $data) = @$tmp; # module is global
+	die "error in eval of $dirs[0]/joblist; wrong type for module" 
+	    unless ref $module eq $modulename;
+	die "error in eval of $dirs[0]/joblist; wrong type for things to build" 
+	    unless ref $data eq 'ARRAY'
     }
-    my $start_index = $base_index * $lsfexec;
-    my $end_index = $start_index + $lsfexec;
-    $end_index = @$data if $end_index > @$data;
-    die "internal error" unless $end_index > $start_index;
-
-    @things_to_build = ();
-    for(my $i=$start_index;$i<$end_index;++$i) {
-	push(@things_to_build,$data->[$i]);
-    }
-
-    $local_parallelism = 1;
-    local_parallel();
-}
-
-sub codineexec {
-    die "wrong number of arguments" unless @dirs == 1;
-    my $base_index = $ENV{SGE_TASK_ID};
-    die "Don't have \$ENV{SGE_TASK_ID}"
-	unless defined $base_index;
-    die "invalid \$ENV{SGE_TASK_ID} '$base_index'"
-	unless $base_index =~ /^\d+$/o;
-
-    --$base_index;
-    open(BPENTS,"$dirs[0]/joblist") || die "can't open $dirs[0] for read: $!";
-    my $data;
-    {
-        local $/;
-	no strict;
-	my $str = <BPENTS>;
-	die "no data in $dirs[0]" unless defined $str;
-	$data = eval $str;
-	die "error in eval of $dirs[0]: $@" if $@;
-	die "error in eval of $data; wrong type" unless ref $data eq 'ARRAY';
-    }
-    my $start_index = $base_index * $codineexec;
-    my $end_index = $start_index + $codineexec;
+    my $start_index = $base_index * $groupsize;
+    my $end_index = $start_index + $groupsize;
     $end_index = @$data if $end_index > @$data;
     die "internal error" unless $end_index > $start_index;
 
@@ -413,8 +464,9 @@ batch-parallel - a program to simplify running batch tasks in parallel
 
  % batch-parallel [-n] [(-w batch-job-width) | (-j local-parallelism)] 
    [-q batch-queue] [--maxgroups=#, default min(batch-job-width*5,2000)]
-   [--groupsize=#, rebuilds/lsf-job]
+   [--groupsize=#, rebuilds/lsf-job] 
    [--noshuffle # process jobs exactly in order they were found ]
+   [--show-rebuild] [--batch-workdir=path]
    [-- (if bp args use -'s)] <bp-module> [bp-module args...] -- dir/file...
 
 =head1 DESCRIPTION
@@ -439,9 +491,26 @@ Get help
 
 Print out the manual page
 
+=item B<-j> I<local-parallelism>
+
+Run the jobs on the local node with parallelism as specified.  The
+default is to run in this mode with parallelism set to the number of cores.
+
 =item B<-n>
 
 No-execute mode.  Do not actually execute anything just say what we would do.
+
+=item B<-w> I<job-width>
+
+Submit the jobs to run in a batch cluster; auto-guesses LSF vs. Codine/SGE.
+The job width is the maximum number of parallel jobs to run at any one time.
+
+=item B<--batch-workdir>=I<path>
+
+For batch jobs, batch-parallel needs to write out the jobs to execute and
+log the batch output.  This option specifies the directory path for that
+information.  If unspecified, it defaults to ~/.batch-parallel/work, and
+directories in there are automatically cleaned out after 1 week.
 
 =item ...
 
@@ -453,15 +522,16 @@ These recipies explain how to perform certain tasks
 
 =head2 Find out what modules are currently installed
 
-  % batch-parallel.pl
+  % batch-parallel
 
 This will provide the usage options, and will list the bp modules that
-are installed in the two standard paths ~/.bp_modules and
-/etc/bp_modules, and any paths listed in a colon-separated $BP_MODULES.
+are installed in the two standard paths ~/.batch-parallel/modules and
+/usr/share/bp_modules, and any paths listed in a colon-separated
+$BP_MODULES.
 
 =head2 Get usage information for a particular module
   
-  % batch-parallel.pl <module> help
+  % batch-parallel <module> help
 
 This will provide whatever additional help a module has on it's particular
 usage and options.  
