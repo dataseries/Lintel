@@ -8,6 +8,7 @@
     StatsEMA implementation
 */
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/StatsEMA.H>
 
@@ -51,6 +52,12 @@ StatsEMA::add(const double value)
 	    updateEMA(i,value);
 	}
     }
+}
+
+void
+StatsEMA::add(const Stats &stat)
+{
+    FATAL_ERROR("unimplemented");
 }
 
 double

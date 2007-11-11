@@ -83,6 +83,10 @@ public:
     virtual void reset();
     
     virtual void add(const double value);
+    // add(Stats &) is linear in the number of values added to stat,
+    // and may double the error bounds.
+    virtual void add(const Stats &stat); 
+
     double getQuantile(double quantile) const;
 
     const int getBufferSize() { return buffer_size; }
@@ -105,6 +109,9 @@ public:
     virtual void printRome(int depth, std::ostream &out) const;
     virtual void printText(std::ostream &out) const;
 private:
+    // add for only the quantile portion
+    void addQuantile(const double value);
+
     typedef double *one_buffer;
     void collapse();
     

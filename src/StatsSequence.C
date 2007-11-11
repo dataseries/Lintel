@@ -10,6 +10,7 @@
 
 #include <math.h>
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/StatsSequence.H>
 
@@ -86,6 +87,12 @@ StatsSequence::add(const double value)
 	new_value = 0;
 	points_remain_new_bucket = points_per_bucket;
     }
+}
+
+void
+StatsSequence::add(const Stats &stat)
+{
+    FATAL_ERROR("unimplemented");
 }
 
 void

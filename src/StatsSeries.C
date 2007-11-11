@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/StatsSeries.H>
 
@@ -102,6 +103,12 @@ StatsSeries::add(const double value)
   
   // get ready for the next sample
   sampleno++;
+}
+
+void
+StatsSeries::add(const Stats &stat)
+{
+    FATAL_ERROR("unimplemented");
 }
 
 void

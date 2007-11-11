@@ -13,15 +13,20 @@
 #endif
 
 #include <algorithm>
+#include <ostream>
+
+#include <boost/format.hpp>
 
 #include <Lintel/Double.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/MersenneTwisterRandom.H>
 #include <Lintel/StatsQuantile.H>
 
+using namespace std;
+
 void
 checkQuantiles(StatsQuantile &stats,
-	       std::vector<double> &sorted_list,
+	       vector<double> &sorted_list,
 	       Stats &exact_error,
 	       double epsilon)
 {
@@ -96,7 +101,7 @@ test_fromrandom(MersenneTwisterRandom &mt,
 {
     StatsQuantile test(epsilon,nelems);
     printf("adding-entries... ");fflush(stdout);
-    std::vector<double> exact_list;
+    vector<double> exact_list;
     exact_list.reserve(nelems);
     for(int i = 0;i<nelems;i++) {
 	double v = mt.randDoubleOpen53();
@@ -104,11 +109,56 @@ test_fromrandom(MersenneTwisterRandom &mt,
 	test.add(v);
     }
     printf("sorting... ");fflush(stdout);
-    std::sort(exact_list.begin(), exact_list.end());
+    sort(exact_list.begin(), exact_list.end());
 	
     printf("checking...");fflush(stdout);
     checkQuantiles(test, exact_list, exact_error, epsilon);
     printf("done.\n");
+}
+
+void 
+test_merge(MersenneTwisterRandom &mt, 
+	   double epsilon, int nelems, uint32_t nreps,
+	   Stats &exact_error)
+{
+    cout << "test merge: select random...\n"; cout.flush();
+    vector<double> random_list;
+    random_list.reserve(nelems);
+    for(int i = 0;i<nelems;i++) {
+	double v = mt.randDoubleOpen53();
+	random_list.push_back(v);
+    }
+    vector<double> sorted_list = random_list;
+    sort(sorted_list.begin(), sorted_list.end());
+
+    for(uint32_t rep = 1; rep <= nreps; ++rep) {
+	cout << boost::format("  test round %d: loading... ") % rep;
+	
+	StatsQuantile test1(epsilon, nelems), test2(epsilon, nelems);
+	for(int i=0; i < nelems; ++i) {
+	    if (mt.randInt(2)) {
+		test1.add(random_list[i]);
+	    } else {
+		test2.add(random_list[i]);
+	    }
+	}
+
+	cout << "merging... "; cout.flush();
+	StatsQuantile merge;
+	if (mt.randInt(2)) {
+	    merge.add(test1);
+	    // TODO: equality test here for merge and test1?
+	    merge.add(test2);
+	} else {
+	    merge.add(test2);
+	    merge.add(test1);
+	}
+	cout << "checking... "; cout.flush();
+
+	Stats exact_error;
+	checkQuantiles(merge, sorted_list, exact_error, epsilon);
+	cout << "ok\n";
+    }
 }
 
 double eNbk_table[][4] = {
@@ -191,21 +241,21 @@ checkRomePrint()
     };
     int nr_data = 10;
 
-    std::ostringstream buf1;
+    ostringstream buf1;
     for (int i = 0; i < nr_data; i++)
 	s->add(data[i]);
     s->printRome(0, buf1);
-    std::string str1 = buf1.str();
+    string str1 = buf1.str();
     
-    std::ostringstream buf2;
+    ostringstream buf2;
     s->reset();
     for (int i = 0; i < nr_data; i++)
 	s->add(data[i]);
     s->printRome(0, buf2);
-    std::string str2 = buf2.str();
+    string str2 = buf2.str();
     if (str1 != str2) {
-	std::cout << " output mismatch: str1=" << str1 << std::endl;
-	std::cout << " str1=" << str2 << std::endl;
+	cout << " output mismatch: str1=" << str1 << endl;
+	cout << " str1=" << str2 << endl;
 	AssertFatal(("abort"));
     }
 }
@@ -451,14 +501,14 @@ main(int argc, char *argv[])
 	
 	printf("Large-Approx checking, 0.005 x 75000 random, sorted:\n  ");
 	printf("generating-entries... ");fflush(stdout);
-	std::vector<double> exact_list;
+	vector<double> exact_list;
 	exact_list.reserve(75000);
 	for(int i = 0;i<75000;i++) {
 	    double v = mt.randDoubleOpen53();
 	    exact_list.push_back(v);
 	}
 	printf("sorting... ");fflush(stdout);
-	std::sort(exact_list.begin(), exact_list.end());
+	sort(exact_list.begin(), exact_list.end());
 	
 	StatsQuantile test(0.005,75000);
 	printf("adding entries... "); fflush(stdout);
@@ -474,4 +524,12 @@ main(int argc, char *argv[])
 	       exact_error.min(), exact_error.max());
 	test.dumpState();
     }	
+    if (true) {
+	MersenneTwisterRandom mt; // actually want to seed randomly, so we
+	// check things slightly differently each time!  What we're really
+	// testing is that the estimates are within the bounds 
+	printf("Merge checking  checking, 0.01 x 250000 pure-random:\n  ");
+	Stats exact_error;
+	test_merge(mt,0.01,250000,5,exact_error);
+    }
 }

@@ -22,6 +22,7 @@ public:
     virtual ~StatsSequence();
     virtual void reset();
     virtual void add(const double value);
+    virtual void add(const Stats &stat); // attempt to merge two stats
     
     virtual void printRome(int depth, std::ostream &out) const;
     void setIntervalWidth(double width);

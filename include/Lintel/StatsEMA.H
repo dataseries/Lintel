@@ -37,7 +37,8 @@ public:
     virtual ~StatsEMA();
     virtual void reset();
     virtual void add(const double value);
-    
+    virtual void add(const Stats &stat); // attempt to merge two stats
+
     /** ema_num matches the different decay rates specified in the vector constructor */
     double getEMA(unsigned ema_num = 0);
     double minEMA();

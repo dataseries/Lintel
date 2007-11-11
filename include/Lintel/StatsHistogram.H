@@ -69,6 +69,7 @@ public:
 
     //----Record a new value
     virtual void add(const double value) = 0;
+    virtual void add(const Stats &stat);
     virtual void add(const double index_value, const double data_value) = 0;
 
     //----Histogram-wide access functions

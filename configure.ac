@@ -6,7 +6,7 @@
 #
 # Process this file with autoconf to produce a configure script.
 
-AC_INIT(Lintel, 1.0, [software@cello.hpl.hp.com])
+AC_INIT(Lintel, 0.0, [software@cello.hpl.hp.com])
 
 AC_PREREQ(2.57)
 
@@ -153,6 +153,8 @@ case $host in
      echo "********************************************************";
      RANDOM_COMPARETO=tests/Random.linux.regression ;;
 esac
+
+AM_CONDITIONAL(HAS_MTN_REVISION, test -f $(srcdir)/_MTN/revision)
 
 AC_SUBST(RANDOM_COMPARETO)
 

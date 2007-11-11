@@ -273,3 +273,10 @@ cur buffer is 3, cur buffer pos is 625
     0.9996, 0.9996, 0.9997, 0.9997, 0.9997, 0.9997, 0.9997, 0.9997, 0.9997, 0.9997, 
     0.9997, 0.9997, 0.9998, 0.9998, 0.9998, 0.9998, 0.9998, 0.9998, 0.9998, 0.9998, 
     0.9999, 0.9999, 1, 1, 1, 
+Merge checking  checking, 0.01 x 250000 pure-random:
+  test merge: select random...
+  test round 1: loading... merging... checking... !.........!.........!.........!.........!.........ok
+  test round 2: loading... merging... checking... !.........!.........!.........!.........!.........ok
+  test round 3: loading... merging... checking... !.........!.........!.........!.........!.........ok
+  test round 4: loading... merging... checking... !.........!.........!.........!.........!.........ok
+  test round 5: loading... merging... checking... !.........!.........!.........!.........!.........ok

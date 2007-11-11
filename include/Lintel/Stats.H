@@ -60,6 +60,7 @@ public:
     
     /// Stick in a new value
     virtual void add(const double value);
+    virtual void add(const Stats &stat); // attempt to merge two stats
 
     /// default function just re-dispatches to add
     virtual void addTimeSeq(const double value, const double timeSeq); 

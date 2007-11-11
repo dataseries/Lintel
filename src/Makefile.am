@@ -119,13 +119,13 @@ packaging_DATA = redhat-rules
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.
 
-check_PROGRAMS := tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister
+check_PROGRAMS := tests/check-Stats tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister
 
 if WITH_TCL
 check_PROGRAMS += tests/check-Random
 endif
 
-check-local: tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister
+check-local: tests/checked_Stats tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister
 	@echo "Regression tests successful"
 
 clean-local::
@@ -138,6 +138,12 @@ tests/checked_Random: tests/check-Random
 	tests/check-Random 2>&1 | diff -b $(srcdir)/@RANDOM_COMPARETO@ -
 	touch $@
 endif
+
+tests_check_Stats_SOURCES = tests/stats.cpp
+
+tests/checked_Stats: tests/check-Stats
+	tests/check-Stats
+	touch $@
 
 tests_check_StatsQuantile_SOURCES = tests/stats_quantile.C
 

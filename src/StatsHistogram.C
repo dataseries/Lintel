@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <values.h>
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/StatsHistogram.H>
 #include <Lintel/Double.H>
@@ -26,6 +27,12 @@ StatsHistogram::StatsHistogram()
 
 StatsHistogram::~StatsHistogram()
 {
+}
+
+void
+StatsHistogram::add(const Stats &stat)
+{
+    FATAL_ERROR("unimplemented");
 }
 
 void

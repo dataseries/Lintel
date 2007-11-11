@@ -32,6 +32,7 @@ public:
     virtual ~StatsSeries();		// Delete one
   
     virtual void add(const double value);	// Stick in a new value
+    virtual void add(const Stats &stat); // attempt to merge two stats
     virtual void reset();
   
     //----Query functions

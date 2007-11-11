@@ -23,6 +23,7 @@ class StatsSeriesGroup : public Stats {
 public:
     StatsSeriesGroup(const std::string &_myname, double interval);
     virtual void add(const double value); // asserts out, shouldn't be called
+    virtual void add(const Stats &stat); // attempt to merge two stats
     virtual void addTimeSeq(const double value, const double timeSeq);
 
     virtual void reset();

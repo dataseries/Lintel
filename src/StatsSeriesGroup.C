@@ -8,6 +8,7 @@
     StatsSeriesGroup implementation
 */
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
 #include <Lintel/StatsMaker.H>
 #include <Lintel/StatsSeriesGroup.H>
@@ -26,6 +27,12 @@ void
 StatsSeriesGroup::add(const double value)
 {
     AssertFatal(("StatsSeriesGroup::add shouldn't be called.\n"));
+}
+
+void
+StatsSeriesGroup::add(const Stats &stat)
+{
+    FATAL_ERROR("unimplemented");
 }
 
 void

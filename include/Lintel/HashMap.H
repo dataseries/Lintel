@@ -30,6 +30,7 @@ struct HashMap_val {
     HashMap_val(const K &k) : first(k), second() { }
 };
 
+// TODO: make the return value uint32_t
 template <class K>
 struct HashMap_hash {
     //    unsigned operator()(const K &a) const;

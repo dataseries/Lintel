@@ -13,6 +13,7 @@
 
 #include <boost/format.hpp>
 
+#include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/StatsQuantile.H>
@@ -151,9 +152,8 @@ public:
 };
 
 void
-StatsQuantile::add(const double value)
+StatsQuantile::addQuantile(const double value)
 {
-    Stats::add(value);
     if (cur_buffer_pos >= buffer_size) {
 	cur_buffer += 1;
 	cur_buffer_pos = 0;
@@ -177,6 +177,52 @@ StatsQuantile::add(const double value)
     buffer_sorted[cur_buffer] = false;
     all_buffers[cur_buffer][cur_buffer_pos] = value;
     cur_buffer_pos += 1;
+}
+
+void
+StatsQuantile::add(const double value)
+{
+    Stats::add(value);
+    addQuantile(value);
+}
+
+void
+StatsQuantile::add(const Stats &_stat)
+{
+    const StatsQuantile *stat = dynamic_cast<const StatsQuantile *>(&_stat);
+    INVARIANT(stat != NULL, 
+	      "need another StatsQuantile for add(Stats) to work");
+
+    Stats::add(_stat); 
+
+    // TODO: special case the "add into nothing" version?
+
+    // There should be a faster way to do this, but this should work
+    // correctly.  The faster way should be possible if for no other
+    // reason we are inserting the values in order.  In essence we
+    // pretent that stat was made up of repeated insertions of the
+    // values kept.  Since it's contents are indistinguishable from
+    // that actually happening, the merge should be pretty close to
+    // correct; this is of course not a formal proof, and I suspect
+    // that it is wrong in some special case.
+
+    for(int i=0; i < stat->cur_buffer; ++i) {
+	// cur_buffer is the one we are filling, so all previous ones are full
+	double *abuf = stat->all_buffers[i];
+	for(int j=0; j < stat->buffer_size; ++j) {
+	    double v = abuf[j];
+	    for(int k=0; k < stat->buffer_weight[i]; ++k) {
+		addQuantile(v);
+	    }
+	}
+    }
+    double *abuf = stat->all_buffers[stat->cur_buffer];
+    for (int j=0; j < stat->cur_buffer_pos; ++j) {
+	double v = abuf[j];
+	for(int k=0; k < stat->buffer_weight[stat->cur_buffer]; ++k) {
+	    addQuantile(v);
+	}
+    }
 }
 
 // getQuantile is quite expensive for the upper quantiles; in theory
@@ -235,8 +281,7 @@ StatsQuantile::getQuantile(double quantile) const
     double prev_val = -Double::Inf;
     // the 1e-15 accounts for a minor rounding error that seems to occur
     // when doing division, e.g. ceil(150000.0 * (131058.0 / 150000.0)) on
-    // linux = 131059.0; the current code is limited to 2e9 values, and
-    // even after fixing that, I'd imagine we'd never see 1e+15 values
+    // linux = 131059.0; I'd imagine we'll never see 1e+15 values
     // wherein this adjustment would make a difference
     double nentries = countll();
     AssertAlways(nentries < 1e+14,

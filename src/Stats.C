@@ -114,6 +114,19 @@ void Stats::add(const double value)
 }
 
 void
+Stats::add(const Stats &stat)
+{
+    number += stat.number;
+    sum += stat.sum;
+    sumsq += stat.sumsq;
+
+    if (stat.min_value < min_value)
+	min_value = stat.min_value;
+    if (stat.max_value > max_value)
+	max_value = stat.max_value;
+}
+
+void
 Stats::addTimeSeq(const double value, const double timeSeq)
 {
     this->add(value);

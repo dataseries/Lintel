@@ -17,6 +17,8 @@
 #include <string>
 #include <vector>
 
+#include <boost/static_assert.hpp>
+
 #include <Lintel/HashTable.H>
 
 // TODO: think about how to make this thread safe; potentially one
@@ -52,8 +54,20 @@ public:
 
     const char *c_str() const { return ConstantString_c_str(myptr); }
     const char *data() const { return ConstantString_c_str(myptr); }
-    inline const uint32_t size() const { return ConstantString_length(myptr); }
-    inline const uint32_t length() const { return ConstantString_length(myptr); }
+    const uint32_t size() const { return ConstantString_length(myptr); }
+    const uint32_t length() const { return ConstantString_length(myptr); }
+    const uint32_t hash() const {
+	BOOST_STATIC_ASSERT(sizeof(ConstantStringValue *) == 4 ||
+			    sizeof(ConstantStringValue *) == 8);
+	if (sizeof(ConstantStringValue *) == 4) {
+	    // guarenteed to be unique!
+	    return reinterpret_cast<uint32_t>(myptr);
+	} else if (sizeof(ConstantStringValue *) == 8) {
+	    // likely to be unique
+	    uint64_t v = reinterpret_cast<uint64_t>(myptr);
+	    return (v & 0xFFFFFFFFULL) ^ (v >> 32);
+	} 
+    }
     int compare(const ConstantString &rhs) const {
 	int cmplen = size() < rhs.size() ? size() : rhs.size();
 	cmplen += 1; // include null byte of shorter string
