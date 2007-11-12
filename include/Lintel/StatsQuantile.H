@@ -125,6 +125,9 @@ private:
     /// Zero-clear all the buffer contents for quantile computation.
     void init_buffers(); 
 
+    // TODO: replace these with vectors, make structure with all buffer
+    // related thing, e.g. weight, level, sorted(probably)
+
     one_buffer *all_buffers;
     int *buffer_weight;
     int *buffer_level;

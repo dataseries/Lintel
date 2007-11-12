@@ -144,7 +144,7 @@ test_merge(MersenneTwisterRandom &mt,
 	}
 
 	cout << "merging... "; cout.flush();
-	StatsQuantile merge;
+	StatsQuantile merge(epsilon, nelems);
 	if (mt.randInt(2)) {
 	    merge.add(test1);
 	    // TODO: equality test here for merge and test1?

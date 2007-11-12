@@ -195,7 +195,26 @@ StatsQuantile::add(const Stats &_stat)
 
     Stats::add(_stat); 
 
-    // TODO: special case the "add into nothing" version?
+    if (cur_buffer == 0 && cur_buffer_pos == 0 && // we are empty
+	buffer_size == stat->buffer_size && // we are compatible
+	nbuffers == stat->nbuffers) {
+	INVARIANT(countll() == _stat.countll(), "??");
+	INVARIANT(stat->cur_buffer < nbuffers, "??");
+	for(int i=0; i <= stat->cur_buffer; ++i) {
+	    // Will copy some useless stuff in last buffer.
+	    memcpy(all_buffers[i], stat->all_buffers[i],
+		   sizeof(double) * buffer_size);
+	    buffer_weight[i] = stat->buffer_weight[i];
+	    buffer_level[i] = stat->buffer_level[i];
+	    buffer_sorted[i] = stat->buffer_sorted[i];
+	}
+	cur_buffer = stat->cur_buffer;
+	cur_buffer_pos = stat->cur_buffer_pos;
+	// TODO: determine if we really have to copy collapse_pos
+	memcpy(collapse_pos, stat->collapse_pos, sizeof(int) * buffer_size);
+	collapse_even_low = stat->collapse_even_low;
+	return;
+    }
 
     // There should be a faster way to do this, but this should work
     // correctly.  The faster way should be possible if for no other
@@ -205,6 +224,12 @@ StatsQuantile::add(const Stats &_stat)
     // that actually happening, the merge should be pretty close to
     // correct; this is of course not a formal proof, and I suspect
     // that it is wrong in some special case.
+
+    // TODO: special case bulk loading of lots of the same values;
+    // should be able to greatly simplify the addQuantile code to just
+    // copy a swath of values in.  Probably can even sort the buffer
+    // first, and if we are in order, then just drop everything in and
+    // leave the buffer marked sorted.
 
     for(int i=0; i < stat->cur_buffer; ++i) {
 	// cur_buffer is the one we are filling, so all previous ones are full

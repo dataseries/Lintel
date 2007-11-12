@@ -19,7 +19,7 @@
 
 #include <boost/static_assert.hpp>
 
-#include <Lintel/HashTable.H>
+#include <Lintel/HashMap.H>
 
 // TODO: think about how to make this thread safe; potentially one
 // choice is to make the constructor the constantstring take a
@@ -170,5 +170,12 @@ operator<< (std::ostream&o, const ConstantString&s) {
     o << s.c_str();
     return o;
 }
+
+template <>
+struct HashMap_hash<const ConstantString> {
+    unsigned operator()(const ConstantString &a) const {
+	return a.hash();
+    }
+};
 
 #endif
