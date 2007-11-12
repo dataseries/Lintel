@@ -61,7 +61,11 @@ public:
 			    sizeof(ConstantStringValue *) == 8);
 	if (sizeof(ConstantStringValue *) == 4) {
 	    // guarenteed to be unique!
-	    return reinterpret_cast<uint32_t>(myptr);
+	    // Cast through size_t because on 64bit gcc 3.4.6
+	    // complains about the cast losing precision even though
+	    // this branch of the if is dead.
+	    size_t tmp = reinterpret_cast<size_t>(myptr);
+	    return static_cast<uint32_t>(tmp);
 	} else if (sizeof(ConstantStringValue *) == 8) {
 	    // likely to be unique
 	    uint64_t v = reinterpret_cast<uint64_t>(myptr);
