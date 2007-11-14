@@ -154,7 +154,7 @@ case $host in
      RANDOM_COMPARETO=tests/Random.linux.regression ;;
 esac
 
-AM_CONDITIONAL(HAS_MTN_REVISION, test -f $(srcdir)/_MTN/revision)
+AM_CONDITIONAL(HAS_MTN_REVISION, test -f ${srcdir}/_MTN/revision)
 
 AC_SUBST(RANDOM_COMPARETO)
 
