@@ -66,8 +66,10 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/bp_modules/BatchParallel/common.pm
 /usr/share/bp_modules/BatchParallel/compress.pm
 /usr/share/bp_modules/BatchParallel/jobsfile.pm
+/usr/share/perl5/Lintel/Net/SSH/KnownHostsFile.pm
 /usr/share/perl5/Plot/Mercury.pm
-/usr/share/perl5/Text/ExpandInt.pm
+/usr/share/perl5/Plot/Mercury/Tics.pm
+/usr/share/perl5/Text/Expand.pm
 /usr/share/doc/Lintel/COPYING
 /usr/share/doc/Lintel/Release.info
 /usr/share/doc/Lintel/Changelog.mtn
@@ -77,6 +79,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/include/Lintel/AssertException.H
 /usr/include/Lintel/Clock.H
 /usr/include/Lintel/CompilerMarkup.H
+/usr/include/Lintel/ConstantString.H
 /usr/include/Lintel/Deque.H
 /usr/include/Lintel/Double.H
 /usr/include/Lintel/HashMap.H
@@ -114,6 +117,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/lib/libLintelPThread.la
 /usr/share/cmake-modules/FindLibXmlpp.cmake
 /usr/share/cmake-modules/FindLintel.cmake
+/usr/share/packaging/redhat-rules
 
 %files libs
 /usr/lib/libLintel.so.0.0.0
