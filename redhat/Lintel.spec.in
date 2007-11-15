@@ -42,27 +42,30 @@ Lintel header files
 autoreconf --install
 mkdir build
 cd build
-../configure --prefix=/usr --enable-optmode=optimize 
+../configure --prefix=/usr --enable-optmode=optimize --libdir=%{_libdir}
+cp Makefile Makefile.old
+sed -e 's;^linteldocdir =.*;linteldocdir = %{_docdir}/Lintel-%{version};' Makefile.old > Makefile
 make
 
 %install
 cd build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
-cp ../Release.info $RPM_BUILD_ROOT/usr/share/doc/Lintel/Release.info
-cp ../Changelog.mtn $RPM_BUILD_ROOT/usr/share/doc/Lintel/Changelog.mtn
+mkdir -p $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
+cp ../Release.info $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}/Release.info
+cp ../Changelog.mtn $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}/Changelog.mtn
 
 %clean
 rm -rf $RPM_BUILD_ROOT
 
 %files
-/usr/bin/batch-parallel
-/usr/bin/buildTcl
-/usr/bin/calcStats
-/usr/bin/drawRandomLogNormal
-/usr/bin/lintel-acinclude
-/usr/bin/lintel-config
-/usr/bin/mercury-plot
+%{_bindir}/batch-parallel
+%{_bindir}/buildTcl
+%{_bindir}/calcStats
+%{_bindir}/drawRandomLogNormal
+%{_bindir}/lintel-acinclude
+%{_bindir}/lintel-config
+%{_bindir}/mercury-plot
 /usr/share/bp_modules/BatchParallel/common.pm
 /usr/share/bp_modules/BatchParallel/compress.pm
 /usr/share/bp_modules/BatchParallel/jobsfile.pm
@@ -70,64 +73,67 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/perl5/Plot/Mercury.pm
 /usr/share/perl5/Plot/Mercury/Tics.pm
 /usr/share/perl5/Text/Expand.pm
-/usr/share/doc/Lintel/COPYING
-/usr/share/doc/Lintel/Release.info
-/usr/share/doc/Lintel/Changelog.mtn
+%{_docdir}/Lintel-%{version}/COPYING
+%{_docdir}/Lintel-%{version}/Release.info
+%{_docdir}/Lintel-%{version}/Changelog.mtn
 
 %files devel
-/usr/include/Lintel/AssertBoost.H
-/usr/include/Lintel/AssertException.H
-/usr/include/Lintel/Clock.H
-/usr/include/Lintel/CompilerMarkup.H
-/usr/include/Lintel/ConstantString.H
-/usr/include/Lintel/Deque.H
-/usr/include/Lintel/Double.H
-/usr/include/Lintel/HashMap.H
-/usr/include/Lintel/HashTable.H
-/usr/include/Lintel/HashUnique.H
-/usr/include/Lintel/LintelAssert.H
-/usr/include/Lintel/LintelVersion.H
-/usr/include/Lintel/MathSpecialFunctions.H
-/usr/include/Lintel/Matrix.H
-/usr/include/Lintel/MersenneTwisterRandom.H
-/usr/include/Lintel/PThread.H
-/usr/include/Lintel/Posix.H
-/usr/include/Lintel/PriorityQueue.H
-/usr/include/Lintel/Stats.H
-/usr/include/Lintel/StatsEMA.H
-/usr/include/Lintel/StatsHistogram.H
-/usr/include/Lintel/StatsMaker.H
-/usr/include/Lintel/StatsQuantile.H
-/usr/include/Lintel/StatsRW.H
-/usr/include/Lintel/StatsSequence.H
-/usr/include/Lintel/StatsSeries.H
-/usr/include/Lintel/StatsSeriesGroup.H
-/usr/include/Lintel/StringUtil.H
-/usr/include/Lintel/Uncompress.H
-/usr/include/Lintel/streamcompat.H
+%{_includedir}/Lintel/AssertBoost.H
+%{_includedir}/Lintel/AssertException.H
+%{_includedir}/Lintel/Clock.H
+%{_includedir}/Lintel/CompilerMarkup.H
+%{_includedir}/Lintel/ConstantString.H
+%{_includedir}/Lintel/Deque.H
+%{_includedir}/Lintel/Double.H
+%{_includedir}/Lintel/HashMap.H
+%{_includedir}/Lintel/HashTable.H
+%{_includedir}/Lintel/HashUnique.H
+%{_includedir}/Lintel/LintelAssert.H
+%{_includedir}/Lintel/LintelVersion.H
+%{_includedir}/Lintel/MathSpecialFunctions.H
+%{_includedir}/Lintel/Matrix.H
+%{_includedir}/Lintel/MersenneTwisterRandom.H
+%{_includedir}/Lintel/PThread.H
+%{_includedir}/Lintel/Posix.H
+%{_includedir}/Lintel/PriorityQueue.H
+%{_includedir}/Lintel/Stats.H
+%{_includedir}/Lintel/StatsEMA.H
+%{_includedir}/Lintel/StatsHistogram.H
+%{_includedir}/Lintel/StatsMaker.H
+%{_includedir}/Lintel/StatsQuantile.H
+%{_includedir}/Lintel/StatsRW.H
+%{_includedir}/Lintel/StatsSequence.H
+%{_includedir}/Lintel/StatsSeries.H
+%{_includedir}/Lintel/StatsSeriesGroup.H
+%{_includedir}/Lintel/StringUtil.H
+%{_includedir}/Lintel/Uncompress.H
+%{_includedir}/Lintel/streamcompat.H
 /usr/share/aclocal/com_hp_hpl_lintel.m4
-/usr/lib/Make.common
-/usr/lib/Make.world
-/usr/lib/libLintel.a
-/usr/lib/libLintel.la
-/usr/lib/libLintel.so.0.0.0
-/usr/lib/libLintel.so.0
-/usr/lib/libLintel.so
-/usr/lib/libLintelPThread.a
-/usr/lib/libLintelPThread.la
+%{_libdir}/Make.common
+%{_libdir}/Make.world
+%{_libdir}/libLintel.a
+%{_libdir}/libLintel.la
+%{_libdir}/libLintel.so.0.0.0
+%{_libdir}/libLintel.so.0
+%{_libdir}/libLintel.so
+%{_libdir}/libLintelPThread.a
+%{_libdir}/libLintelPThread.la
 /usr/share/cmake-modules/FindLibXmlpp.cmake
 /usr/share/cmake-modules/FindLintel.cmake
 /usr/share/packaging/redhat-rules
 
 %files libs
-/usr/lib/libLintel.so.0.0.0
-/usr/lib/libLintel.so.0
-/usr/lib/libLintel.so
-/usr/lib/libLintelPThread.so.0.0.0
-/usr/lib/libLintelPThread.so.0
-/usr/lib/libLintelPThread.so
+%{_libdir}/libLintel.so.0.0.0
+%{_libdir}/libLintel.so.0
+%{_libdir}/libLintel.so
+%{_libdir}/libLintelPThread.so.0.0.0
+%{_libdir}/libLintelPThread.so.0
+%{_libdir}/libLintelPThread.so
 
 %changelog
+
+* Thu Nov 15 2007 software@cello.hpl.hp.com
+- fixed up relocatable bits
 
 *Wed Mar  28 2007 software@cello.hpl.hp.com
 - added .so symlinks
