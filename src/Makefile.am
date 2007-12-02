@@ -111,7 +111,7 @@ bpmodulesdir = $(datadir)/bp_modules
 nobase_bpmodules_DATA = BatchParallel/common.pm BatchParallel/compress.pm BatchParallel/jobsfile.pm
 
 perllibdir = $(datadir)/perl5
-nobase_perllib_DATA = Text/Expand.pm Plot/Mercury.pm Plot/Mercury/Tics.pm Lintel/Net/SSH/KnownHostsFile.pm
+nobase_perllib_DATA = Text/Expand.pm Text/ExpandInt.pm Plot/Mercury.pm Plot/Mercury/Tics.pm Lintel/Net/SSH/KnownHostsFile.pm
 
 packagingdir = $(datadir)/packaging
 packaging_DATA = redhat-rules
