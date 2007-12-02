@@ -55,7 +55,7 @@ public:
     typedef double Tdbl;
 
     // units for this is seconds * 2^-32, such that Tfrac >> 32 == time in seconds
-    typedef unsigned long long Tfrac;
+    typedef uint64_t Tfrac;
 
     // Clock cycle calibration occurs until the relative conf95 is
     // under the maximum allowed, the default of 0.01 allows for a 1%
@@ -223,6 +223,16 @@ public:
 
     static Tll TfracToTll(Tfrac in) {
 	return static_cast<Tll>(TfracToSec(in))*1000000 + TfracToMicroSec(in);
+    }
+
+    // double in seconds
+    static double TfracToDouble(Tfrac in) {
+	return TfracToSec(in) + (in & 0xFFFFFFFFULL) / 4294967296.0;
+    }
+
+    // double in seconds
+    static double int64TfracToDouble(int64_t in) {
+	return in >= 0 ? TfracToDouble(in) : -TfracToDouble(-in);
     }
 
     static Tfrac todTfrac() {

@@ -36,6 +36,7 @@ libLintel_la_SOURCES = \
 	Deque.C \
 	Double.C \
 	HashTable.C \
+	LeastSquares.cpp \
 	LintelAssert.C \
 	LintelVersion.C \
 	MathSpecialFunctions.C \
@@ -119,13 +120,13 @@ packaging_DATA = redhat-rules
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.
 
-check_PROGRAMS := tests/check-Stats tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister
+check_PROGRAMS := tests/check-Stats tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister tests/check-least_squares
 
 if WITH_TCL
 check_PROGRAMS += tests/check-Random
 endif
 
-check-local: tests/checked_Stats tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister
+check-local: tests/checked_Stats tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister tests/checked_least_squares
 	@echo "Regression tests successful"
 
 clean-local::
@@ -183,3 +184,10 @@ tests_check_mersenneTwister_SOURCES = tests/mersenneTwister.C
 tests/checked_mersenneTwister: tests/check-mersenneTwister
 	tests/check-mersenneTwister
 	touch $@
+
+tests_check_least_squares_SOURCES = tests/least_squares.cpp
+
+tests/checked_least_squares: tests/check-least_squares
+	./tests/check-least_squares
+	touch $@
+

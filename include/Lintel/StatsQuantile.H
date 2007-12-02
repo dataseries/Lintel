@@ -24,7 +24,9 @@
 #include <Lintel/Clock.H>
 #endif
 
-class StatsQuantile : public Stats {
+#include <boost/utility.hpp>
+
+class StatsQuantile : public Stats, boost::noncopyable {
 public:
     // The default tuning parameters use up about 59 KiB/StatsQuantile
     // and support up to a billion inputs with quantile 0.9 as

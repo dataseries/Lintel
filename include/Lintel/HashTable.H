@@ -21,18 +21,10 @@ extern uint32_t HashTable_prime_list[];
 
 // The key and value are not separate because in some cases, they are
 // the same, for example for ConstantString, which wants to do a lookup to
-// find a constant string
+// find a constant string.
 
 // HashFn should only hash the key part of D; similarly Equal should only
-// compare on the key part of D
-
-// This is out here because C++ templates are sub-optimal.  All
-// existing examples of using templates do things the way the
-// following is done.  To enable use of different allocators, the
-// allocator has to be a parameter of the template, but all of the
-// examples only show classes as arguments to a template and an
-// allocator under the C++ STL specification is a template not a
-// class.
+// compare on the key part of D.
 
 // Sample usage:
 // struct hteData {
@@ -61,6 +53,21 @@ extern uint32_t HashTable_prime_list[];
 // HashTable<hteData, hteHash, hteEqual> hashTable;
 // hashTable.add(hteData(1,2,"1+2=","3"));
 // hteData *result = hashTable.lookup(hteData(1,2,"1+2="));
+
+// WARNING: if you put a pointer into the hteData, or the value of a
+// HashMap, you can't safely put a delete for the pointer into the
+// destructor for the structure.  The problem is that during
+// operation, the data structure may be copied, and the old version
+// deleted.  This destroys the pointed to value but leaves around the
+// pointer.  An stl::map behaves the same way.  
+
+// This is out here because C++ templates are sub-optimal.  All
+// existing examples of using templates do things the way the
+// following is done.  To enable use of different allocators, the
+// allocator has to be a parameter of the template, but all of the
+// examples only show classes as arguments to a template and an
+// allocator under the C++ STL specification is a template not a
+// class.
 
 template <class D>
 struct HashTable_hte {

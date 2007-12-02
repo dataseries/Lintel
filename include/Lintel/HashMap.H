@@ -6,7 +6,8 @@
 */
 
 /** @file
-    A "map" using the HashTable class
+    A "map" using the HashTable class.  You may want to read the warning in
+    HashTable.H about the types of values that you can safely use.
 */
 
 #ifndef __HASH_MAP

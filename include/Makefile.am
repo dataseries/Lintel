@@ -14,6 +14,7 @@ nobase_include_HEADERS = \
 	Lintel/HashMap.H \
 	Lintel/HashTable.H \
 	Lintel/HashUnique.H \
+	Lintel/LeastSquares.hpp \
 	Lintel/LintelAssert.H \
 	Lintel/LintelVersion.H \
 	Lintel/MathSpecialFunctions.H \

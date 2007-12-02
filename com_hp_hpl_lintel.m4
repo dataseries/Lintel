@@ -229,6 +229,9 @@ LINTEL_VERSION=`$LINTEL_CONFIG --version 2>/dev/null`
 
 if test "$LINTEL_VERSION" = ""; then
     AC_MSG_RESULT(failed -- tried $LINTEL_CONFIG and $LINTEL_CONFIG_TRY1)
+    AC_MSG_NOTICE(you need to either put an installed lintel in your path)
+    AC_MSG_NOTICE(or specify the same value for --prefix for both Lintel)
+    AC_MSG_NOTICE(and the current package)
 else
     AC_MSG_RESULT(success -- using $LINTEL_CONFIG)
     LINTEL_CFLAGS=`$LINTEL_CONFIG --cflags || exit 1`
