@@ -72,9 +72,10 @@ my $ret = GetOptions('man!' => \$print_manpage,
 usage("error parsing arguments")
     unless $ret;
 
+pod2usage(-verbose => 2) if $print_manpage;
+
 usage("missing command line arguments") 
     unless @ARGV >= 1;
-
 
 if (-d "$ENV{HOME}/.bp_modules") {
     # TODO: remove this 2008-06-01 or later
@@ -91,8 +92,6 @@ if (defined $ENV{BP_MODULES}) {
     unshift(@bp_module_dirs,split(/:/o,$ENV{BP_MODULES}));
     unshift(@INC,split(/:/o,$ENV{BP_MODULES}));
 }
-
-pod2usage(-verbose => 2) if $print_manpage;
 
 die "can't specify both groupsize and maxgroups"
     if defined $batch_groupsize && defined $batch_maxgroups;

@@ -52,9 +52,9 @@ Double::setFP64BitMode()
 #ifdef __i386__
     fpu_control_t cw;
     _FPU_GETCW(cw);
-    AssertAlways(cw == _FPU_IEEE,
-		 ("Whoa, exiting mode for fpu not IEEE?! %d != %d\n",
-		  cw, _FPU_IEEE));
+    INVARIANT(cw == _FPU_IEEE,
+	      boost::format("Whoa, exiting mode for fpu not IEEE?! %d != %d\n")
+	      % cw % _FPU_IEEE);
     cw &= ~_FPU_EXTENDED;
     cw |= _FPU_DOUBLE;
     _FPU_SETCW(cw);
