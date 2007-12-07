@@ -15,6 +15,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <stdint.h>
+#include <pthread.h>
 
 #include <limits>
 
@@ -71,10 +72,9 @@ public:
 			       int print_calibration_warnings_after_tries = 1);
 
     Clock(bool allow_calibration = false);
-    static double clock_rate; // MhZ, assume SMP processors run at same rate.
-    static Stats calibrate;
-    static Tll now() {
-	Tll ret = 0;
+
+    static uint64_t getCycleCounter() {
+	uint64_t ret = 0;
 #if defined(__HP_aCC)
 	readControlRegister16(&ret);
 #define LINTEL_CLOCK_CYCLECOUNTER 1
@@ -88,22 +88,27 @@ public:
 #endif
 	return ret;
     }
+    static uint64_t now() {
+	// TODO: deprecate this
+	return getCycleCounter();
+    }
   
+    //////////////////////////////////////////
+    /// Time of day routines...
+
     static Tll todll() {
 	struct timeval t;
 	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
 	return (Tll)t.tv_sec * (Tll)1000000 + (Tll)t.tv_usec;
     }
 
-    // Might want to switch to using clock_gettime() instead of gettimeofday()
-    // for more accuracy
+    // Might want to switch to using clock_gettime() instead of
+    // gettimeofday() for more accuracy; measurements indicate there
+    // is no more precision the clock_gettime at least on linux
     static Tdbl tod() {
 	return tod_epoch_internal(0);
     }	
 
-    static void bindToProcessor(unsigned proc = 0); // Needed on SMP machines as cycle counters aren't the same.
-    static void unbindFromProcessor();
-    
     Tdbl tod_epoch() {
 	return tod_epoch_internal(epoch_offset);
     }	
@@ -111,10 +116,10 @@ public:
     Tdbl todcc_recalibrate();
 
     // Not a good idea to use the todcc from multiple threads; have a separate
-    // Clock object for each of them.
+    // Clock object for each of them, for example via Clock::perThread()
 
     inline Tdbl todcc_direct() {
-	Tll cur_cc = now();
+	Tll cur_cc = getCycleCounter();
 	if (cur_cc <= last_cc || (cur_cc - last_recalibrate_cc) > recalibrate_interval_cycles) {
 	    last_cc = cur_cc;
 	    return todcc_recalibrate();
@@ -125,15 +130,25 @@ public:
     }
 
     inline Tdbl todcc_incremental() {
-	Tll delta_cc = now() - last_recalibrate_cc;
+	Tll delta_cc = getCycleCounter() - last_recalibrate_cc;
 	if (delta_cc < 0 || delta_cc > recalibrate_interval_cycles) {
 	    return todcc_recalibrate();
 	} else {
-	    double delta_us = (int)delta_cc * inverse_clock_rate;
+	    double delta_us = (uint32_t)delta_cc * inverse_clock_rate;
 	    return last_calibrate_tod + delta_us;
 	}
     }
 
+    inline Tfrac todccTfrac_incremental() {
+	Tll delta_cc = getCycleCounter() - last_recalibrate_cc;
+	if (delta_cc < 0 || delta_cc > recalibrate_interval_cycles) {
+	    return secondsToTfrac(todcc_recalibrate()*1e-6);
+	} else {
+	    double delta_us = static_cast<uint32_t>(delta_cc) * inverse_clock_rate_tfrac;
+	    return last_calibrate_tod_tfrac + static_cast<Tfrac>(delta_us);
+	}
+    }
+    
     inline Tdbl todcc() {
 	// PIII based machines (all I have to test) are faster in 
 	// incremental mode.  Tested an opteron 2.8GhZ, also faster
@@ -146,6 +161,16 @@ public:
 	return todcc_incremental();
 #else
 	return todcc_direct();
+#endif
+    }
+    
+    inline Tfrac todccTfrac() {
+#if LINTEL_CLOCK_CYCLECOUNTER == 0
+	return todTfrac();
+#elif defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
+	return todccTfrac_incremental();
+#else
+	FATAL_ERROR("unimplemented");
 #endif
     }
 
@@ -168,15 +193,19 @@ public:
 	return static_cast<Tdbl>(epoch_offset) * 1.0e6;
     }
 
-    // nbadgettod counts the number of times we got the time of day, but
-    // switched CPUs or took forever to do it, thereby invalidating the
-    // effort to calibrate the cycle counter to the time of day.
-    int nrecalibrate, nbadgettod;
-    static void timingTest();
+    static Tfrac todTfrac() {
+	struct timeval t;
+	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
+	return secMicroToTfrac(t.tv_sec,t.tv_usec);
+    }	
+
+    //////////////////////////////////////////
+    /// Tfrac conversion routines...
 
     static Tfrac secondsToTfrac(double seconds) {
 	INVARIANT(seconds < std::numeric_limits<uint32_t>::max(), 
-		  "seconds out of bounds for conversion");
+		  boost::format("seconds %g out of bounds for conversion")
+		  % seconds);
 	uint32_t sec_only = static_cast<uint32_t>(floor(seconds));
 	// lower = now - secs
 	// lower_ns = round(lower * 1e9)
@@ -189,6 +218,7 @@ public:
 	uint32_t tfrac_lower = static_cast<uint32_t>(tmp);
 	return (static_cast<uint64_t>(sec_only) << 32) + tfrac_lower;	
     }
+
     static Tfrac secMicroToTfrac(uint32_t seconds, uint32_t micro_seconds) {
 	Tfrac ret = static_cast<Tfrac>(seconds) << 32;
 	ret += (static_cast<Tfrac>(micro_seconds) << 32) / 1000000;
@@ -235,12 +265,6 @@ public:
 	return in >= 0 ? TfracToDouble(in) : -TfracToDouble(-in);
     }
 
-    static Tfrac todTfrac() {
-	struct timeval t;
-	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
-	return secMicroToTfrac(t.tv_sec,t.tv_usec);
-    }	
-
     static struct timeval TfracToStructTimeval(Tfrac in) {
 	struct timeval ret;
 	ret.tv_sec = TfracToSec(in);
@@ -248,14 +272,37 @@ public:
 	return ret;
     }
 
+    ////////////////////////////////
+    // Utility functions
+
+    // To get the per-thread functions you need to link with libLintelPThread
+    static void perThreadInit(); // should be called once, from main.  will call calibrateClock()
+    static Clock &perThread(); // uses default calibration routines, slow on first call.
+
     static void selfCheck();
+    // Needed on some SMP machines as cycle counters aren't the same; used during calibration
+    static void bindToProcessor(unsigned proc = 0); 
+    static void unbindFromProcessor();
+
+    // nbadgettod counts the number of times we got the time of day, but
+    // switched CPUs or took forever to do it, thereby invalidating the
+    // effort to calibrate the cycle counter to the time of day.
+    int nrecalibrate, nbadgettod;
+    static void timingTest();
+    
 public:
+    static double clock_rate; // MhZ, assume SMP processors run at same rate.
+    static Stats calibrate;
     static double inverse_clock_rate; // us/cycle
+    static double inverse_clock_rate_tfrac; // tfrac/cycle
     static Tll max_recalibrate_measure_time; // see todcc_recalibrate()
     // Cycle counter calibration variables
     Tdbl last_calibrate_tod, cycle_count_offset, recalibrate_interval;
+    Tfrac last_calibrate_tod_tfrac;
     Tll last_cc, last_recalibrate_cc, recalibrate_interval_cycles;
 private:
+    static pthread_key_t per_thread_clock;
+
     unsigned epoch_offset;
     
     static Tdbl tod_epoch_internal(unsigned epoch) {

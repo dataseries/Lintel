@@ -97,7 +97,7 @@ if WITH_BOOST
 libLintelPThread_la_LDFLAGS = -version-info @LIBLINTELPTHREAD_VERSION@ 
 libLintelPThread_la_LIBADD = libLintel.la -lpthread
 libLintelPThread_la_SOURCES = \
-	PThread.C
+	PThread.C ClockPThread.cpp
 endif
 
 if WITH_MAKEBITS

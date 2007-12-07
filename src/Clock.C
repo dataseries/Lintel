@@ -12,7 +12,6 @@
 
 using namespace std;
 
-#include <pthread.h>
 #include <stdio.h>
 #include <sys/time.h>
 
@@ -28,8 +27,10 @@ using namespace std;
 #include <Lintel/AssertBoost.H>
 
 const int min_samples = 20;
-double Clock::clock_rate = -1;
-double Clock::inverse_clock_rate = -1;
+// Use -Double::Inf so things blow up suitably if these get used.
+double Clock::clock_rate = -Double::Inf;
+double Clock::inverse_clock_rate = -Double::Inf;
+double Clock::inverse_clock_rate_tfrac = -Double::Inf;
 Clock::Tll Clock::max_recalibrate_measure_time = 10000000000LL;
 Stats Clock::calibrate;
 
@@ -50,7 +51,7 @@ Clock::calibrateClock(bool print_calibration_information, double max_conf95_rel,
     // TODO: Check if /sys/devices/system/cpu/cpu*/cpufreq/cpuinfo_min_freq is readable and
     // different from cpuinfo_max_freq, and if so bail out
     double tmp_clock_rate;
-    if (clock_rate == -1) {
+    if (clock_rate == -Double::Inf) {
 	bindToProcessor();
 	for(int tries=0;tries<10;++tries) {
 	    calibrate.reset();
@@ -98,11 +99,17 @@ Clock::calibrateClock(bool print_calibration_information, double max_conf95_rel,
 		}
 		if (calibrate.conf95() < calibrate.mean() * max_conf95_rel) {
 		    tmp_clock_rate = calibrate.mean();
-		    AssertAlways(clock_rate == -1,("whoa, two threads calibrating at the same time?!\n"));
+		    INVARIANT(clock_rate == -Double::Inf,
+			      boost::format("whoa, two threads calibrating at the same time?! %g != %g")
+			      % clock_rate % (-Double::Inf));
 		    clock_rate = tmp_clock_rate;
-		    AssertAlways(inverse_clock_rate == -1,
+		    AssertAlways(inverse_clock_rate == -Double::Inf,
 				 ("error: two threads trying to calibrate at once ?!\n"));
 		    inverse_clock_rate = 1.0 / clock_rate;
+
+		    // cycle_counter * icr = time in us * 1/1e6 = time
+		    // in seconds * 2**32 = time in Tfrac
+		    inverse_clock_rate_tfrac = inverse_clock_rate * (4294967296.0/1000000.0);
 		    std::vector<Tll> elapsed;
 		    const int nelapsed = 100;
 		    for(int i=0;i<nelapsed;i++) {
@@ -144,6 +151,7 @@ Clock::calibrateClock(bool print_calibration_information, double max_conf95_rel,
 Clock::Clock(bool allow_calibration)
     : nrecalibrate(0), nbadgettod(0),
       last_calibrate_tod(0), cycle_count_offset(0), recalibrate_interval(0),
+      last_calibrate_tod_tfrac(0),
       last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0),
       epoch_offset(0)
       //, badrecalibration_delta(0.0), badrecalibration_delta_count(0), ntodzerotime(0)
@@ -190,6 +198,14 @@ Clock::todcc_recalibrate()
 {
     AssertAlways(clock_rate > 0,
 		 ("Doofus, you do not appear to have setup a Clock object\n"));
+
+    // TODO: consider measuring how long a tod_epoch usually takes and
+    // then moving us forward until we cross a boundary, without that
+    // we get a weird wobble every recalibration interval --
+    // alternately could check to see if the time is still consistent
+    // with the last one, and if so, just adjust the offsets,
+    // e.g. estimate where in the cur_us we actually are.
+
     Clock::Tll start_cycle = now();
     Clock::Tdbl cur_us = tod_epoch();
     Clock::Tll end_cycle = now();
@@ -214,6 +230,7 @@ Clock::todcc_recalibrate()
 	double est_us = end_cycle * inverse_clock_rate;
 	cycle_count_offset = cur_us - est_us;
 	last_calibrate_tod = cur_us;
+	last_calibrate_tod_tfrac = secondsToTfrac(last_calibrate_tod*1e-6);
 	last_recalibrate_cc = end_cycle;
 	++nrecalibrate;
     }
@@ -227,7 +244,7 @@ Clock::setRecalibrateInterval(Tdbl interval_us)
     recalibrate_interval = interval_us;
     // This check is needed so that the (int) cast in
     // todcc_incremental is correct; and the (int) cast
-    // results in a reasonable speedup
+    // results in a reasonable speedup 1<< 30 is conservative.
     AssertAlways(recalibrate_interval * clock_rate < (double)(1 << 30),
 		 ("using too large a recalibration interval on too fast a machine %.2f, %.2f\n",
 		  recalibrate_interval, clock_rate));
@@ -673,3 +690,4 @@ Clock::selfCheck()
 		  % sec % ns % tfrac % (tfrac & 0xFFFFFFFFULL) % sec_test % ns_test);
     }
 }
+

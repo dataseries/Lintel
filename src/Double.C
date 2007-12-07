@@ -18,7 +18,7 @@
 
 #include <math.h>
 #include <Lintel/Double.H>
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 
 double Double::default_epsilon = 1e-12;
 
@@ -73,6 +73,7 @@ Double::resetFPMode()
 void
 Double::selfCheck()
 {
-    AssertAlways(isnan(NaN),("nan isn't"));
-    AssertAlways(isinf(Inf),("inf isn't"));
+    INVARIANT(isnan(NaN),"nan isn't");
+    INVARIANT(isinf(Inf),"inf isn't");
+    INVARIANT(isinf(-Inf),"-inf isn't");
 }
