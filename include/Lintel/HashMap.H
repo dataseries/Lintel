@@ -173,6 +173,14 @@ public:
 	return *this;
     }
 
+    void reserve(uint32_t nentries) {
+	hashtable.reserve(nentries);
+    }
+    
+    uint32_t available() {
+	return hashtable.available();
+    }
+
     // primiarily here so that you can get at unsafeGetRawDataVector, with
     // all the caveats that go with that function.
     HashTableT &getHashTable() {

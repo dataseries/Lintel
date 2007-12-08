@@ -344,6 +344,10 @@ public:
 	entry_points.resize(new_size, -1);
     }
 
+    uint32_t available() {
+	return chains.available();
+    }
+
     // this is useful if you want to build up a big table of data, but then
     // want to store it on disk sorted, of course once you sort the vector,
     // you've just destroyed the hash table, but the only other choice
