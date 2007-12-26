@@ -269,7 +269,7 @@ stringToInt32(const std::string &str, int base)
 	    errno = ERANGE;
 	}
     }
-    INVARIANT(errno == 0, 
+    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
 	      boost::format("error in conversion of '%s' base %d to int32: %s")
 	      % str % base % strerror(errno));
     return v;
@@ -290,7 +290,7 @@ stringToUInt32(const std::string &str, int base)
 	    errno = ERANGE;
 	}
     }
-    INVARIANT(errno == 0, 
+    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
 	      boost::format("error in conversion of '%s' base %d to uint32: %s")
 	      % str % base % strerror(errno));
     return v;
@@ -312,7 +312,7 @@ stringToInt64(const std::string &str, int base)
 	    errno = ERANGE;
 	}
     }
-    INVARIANT(errno == 0, 
+    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
 	      boost::format("error in conversion of '%s' base %d to int64: %s")
 	      % str % base % strerror(errno));
     return v;
@@ -334,7 +334,7 @@ stringToUInt64(const std::string &str, int base)
 	    errno = ERANGE;
 	}
     }
-    INVARIANT(errno == 0, 
+    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
 	      boost::format("error in conversion of '%s' base %d to uint64: %s")
 	      % str % base % strerror(errno));
     return v;

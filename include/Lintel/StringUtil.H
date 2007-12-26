@@ -17,7 +17,8 @@
 #include <inttypes.h>
 
 /** split instr into all of the separate strings separated by splitstr, and
-    put the results into bits */
+    put the results into bits; alternately, and probably better, use
+    boost::split from boost/algorithm/string.hpp */
 void split(const std::string &instr, const std::string &splitstr, 
 	   std::vector<std::string> &bits);
 
