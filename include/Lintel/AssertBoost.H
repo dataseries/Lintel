@@ -75,7 +75,7 @@ extern std::string global_assertboost_no_details;
 
 #else
 #define DEBUG_INVARIANT(ExpressioN, MessagE) do { } while(0)
-#define DEBUG_SINVARIANT(ExpressioN, MessagE) do { } while(0)
+#define DEBUG_SINVARIANT(ExpressioN) do { } while(0)
 #define DEBUG_CHECK(LeveL, ExpressioN, MessagE) do { } while(0)
 #endif
 
