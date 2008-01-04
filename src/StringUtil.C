@@ -54,12 +54,13 @@ split(const string &instr, const string &splitstr, vector<string> &bits)
 }
 
 string
-join(const string &joinstr, vector<string> &bits)
+join(const string &joinstr, const vector<string> &bits)
 {
     string ret;
 
     unsigned size = 0;
-    for(vector<string>::iterator i = bits.begin(); i != bits.end(); ++i) {
+    for(vector<string>::const_iterator i = bits.begin(); 
+	i != bits.end(); ++i) {
 	if (i != bits.begin())
 	    size += joinstr.size();
 	size += i->size();
@@ -67,7 +68,8 @@ join(const string &joinstr, vector<string> &bits)
 
     ret.reserve(size);
 
-    for(vector<string>::iterator i = bits.begin(); i != bits.end(); ++i) {
+    for(vector<string>::const_iterator i = bits.begin(); 
+	i != bits.end(); ++i) {
 	if (i != bits.begin())
 	    ret.append(joinstr);
 	ret.append(*i);

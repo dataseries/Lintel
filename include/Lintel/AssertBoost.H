@@ -45,6 +45,16 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 	AssertBoostFail("Fatal error", __FILE__, __LINE__, \
 		        MessagE)
         
+// Checked is for things that will have side effects, some people
+// don't like this to be called INVARIANT on the assumption that
+// invariants could be compiled out.  We choose to only compile out
+// debug invariants, but the naming change could be valuable.
+#define CHECKED(ExpressioN, MessagE) INVARIANT(ExpressioN, MessagE)
+
+// Simple Invariant, lets us stop writing additional bits that mean nothing
+extern std::string global_assertboost_no_details;
+#define SINVARIANT(ExpressioN) INVARIANT(ExpressioN, global_assertboost_no_details);
+
 #if defined(COMPILE_DEBUG) || defined(DEBUG)
 #define DEBUG_INVARIANT(ExpressioN, MessagE) \
 	( \
@@ -53,6 +63,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 		         MessagE) \
 	)
 
+#define DEBUG_SINVARIANT(ExpressioN) DEBUG_INVARAINT(ExpressioN, global_assertboost_no_details);
 #define DEBUG_CHECK(LeveL, ExpressioN, MessagE) \
 	( \
 	 LIKELY(AssertLevel < (LeveL)) ? (void)0 : \
@@ -64,6 +75,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 
 #else
 #define DEBUG_INVARIANT(ExpressioN, MessagE) do { } while(0)
+#define DEBUG_SINVARIANT(ExpressioN, MessagE) do { } while(0)
 #define DEBUG_CHECK(LeveL, ExpressioN, MessagE) do { } while(0)
 #endif
 

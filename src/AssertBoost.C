@@ -20,6 +20,7 @@
 
 typedef boost::function<void ()> failureFunction;
 static std::vector<failureFunction> failure_functions;
+std::string global_assertboost_no_details("No additional details provided");
 
 void AssertBoostFnAfter(void (*fn)())
 {
