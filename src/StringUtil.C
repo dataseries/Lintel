@@ -30,10 +30,8 @@
 #include <inttypes.h>
 #endif
 
-#if defined(__HP_aCC) && __HP_aCC < 35000
-#else
 using namespace std;
-#endif
+using boost::format;
 
 void 
 split(const string &instr, const string &splitstr, vector<string> &bits) 
@@ -134,7 +132,7 @@ unpackhexchar(const char v)
 	return v - '0';
     if (v >= 'a' && v <= 'f')
 	return 10 + v - 'a';
-    AssertFatal(("bad %d\n",v));
+    FATAL_ERROR(format("bad hex character %d\n") % static_cast<unsigned>(v));
     return -1;
 }
 
@@ -149,7 +147,9 @@ unpackhex(const char *v)
 string
 hex2raw(const string &in)
 {
-    AssertAlways((in.size() % 2) == 0,("bad\n"));
+    INVARIANT((in.size() % 2) == 0,
+	      format("can't convert '%s' to hex, not an even number of digits")
+	      % in);
     string out;
     out.resize(in.size()/2);
     for(unsigned int i=0;i<out.size();++i) {

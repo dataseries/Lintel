@@ -63,7 +63,7 @@ extern std::string global_assertboost_no_details;
 		         MessagE) \
 	)
 
-#define DEBUG_SINVARIANT(ExpressioN) DEBUG_INVARAINT(ExpressioN, global_assertboost_no_details);
+#define DEBUG_SINVARIANT(ExpressioN) DEBUG_INVARIANT(ExpressioN, global_assertboost_no_details);
 #define DEBUG_CHECK(LeveL, ExpressioN, MessagE) \
 	( \
 	 LIKELY(AssertLevel < (LeveL)) ? (void)0 : \
