@@ -70,17 +70,23 @@ struct HashMap_hash<const unsigned> {
     }
 };
 
+// Can't have both long long and int64_t instantiations of this
+// template because 32bit x86 Debian etch thinks those types are the
+// same, so it complains about duplicate templates, but 64bit x86_64
+// RHEL4 thinks the types are different so requires both of them.  We
+// choose to go with just the standard, size-specific types.
+
 template <>
-struct HashMap_hash<const uint64_t> {
-    unsigned operator()(const uint64_t _a) const {
-	return _a;
+struct HashMap_hash<const int64_t> {
+    unsigned operator()(const int64_t _a) const {
+	return BobJenkinsHashMixULL(_a);
     }
 };
 
 template <>
-struct HashMap_hash<const long long> {
-    unsigned operator()(const long long _a) const {
-	return BobJenkinsHashMixULL(_a);
+struct HashMap_hash<const uint64_t> {
+    unsigned operator()(const uint64_t _a) const {
+	return _a;
     }
 };
 
