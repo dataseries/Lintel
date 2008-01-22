@@ -66,6 +66,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_bindir}/lintel-acinclude
 %{_bindir}/lintel-config
 %{_bindir}/mercury-plot
+/usr/share/bp_modules/BatchParallel/checksum.pm
 /usr/share/bp_modules/BatchParallel/common.pm
 /usr/share/bp_modules/BatchParallel/compress.pm
 /usr/share/bp_modules/BatchParallel/jobsfile.pm
@@ -73,6 +74,7 @@ rm -rf $RPM_BUILD_ROOT
 /usr/share/perl5/Plot/Mercury.pm
 /usr/share/perl5/Plot/Mercury/Tics.pm
 /usr/share/perl5/Text/Expand.pm
+/usr/share/perl5/Text/ExpandInt.pm
 %{_docdir}/Lintel-%{version}/COPYING
 %{_docdir}/Lintel-%{version}/Release.info
 %{_docdir}/Lintel-%{version}/Changelog.mtn
@@ -88,6 +90,7 @@ rm -rf $RPM_BUILD_ROOT
 %{_includedir}/Lintel/HashMap.H
 %{_includedir}/Lintel/HashTable.H
 %{_includedir}/Lintel/HashUnique.H
+%{_includedir}/Lintel/LeastSquares.hpp
 %{_includedir}/Lintel/LintelAssert.H
 %{_includedir}/Lintel/LintelVersion.H
 %{_includedir}/Lintel/MathSpecialFunctions.H
