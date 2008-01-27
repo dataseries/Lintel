@@ -59,7 +59,6 @@ sub new {
 sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
 
-    return 0 if -l $filename;
     return 0 unless -f $filename;
     return 0 if $filename =~ /\.$this->{type}$/o;
     return 1;
