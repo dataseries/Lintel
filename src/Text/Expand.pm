@@ -73,13 +73,13 @@ use Text::Expand 'expandString';
 
 =head1 DESCRIPTION
 
-my @list = expand("foo[1,7,11]-[1-5%2,9-13%2]");
+my @list = expandString("foo[1,7,11]-[1-5%2,9-13%2]");
 
 # Returns: foo1-1, foo1-3, foo1-5, foo1-9, foo1-11, foo1-13, foo7-1,
 # foo7-3, foo7-5, foo7-9, foo7-11, foo7-13, foo11-1, foo11-3, foo11-5,
 # foo11-9, foo11-11, foo11-13
 
-# Expandint will expand out the bits inside of [] expanding out so
+# Text::Expand will expand out the bits inside of [] expanding out so
 # that the later [] bits are expanded out first.
 
 # The structure inside a single [] block is a list of , separated
@@ -92,6 +92,7 @@ It would be nice if we could specify non-integer constructs for ,
 separated expansion, and possibly for constructs like a-z for -
 expansion, although it is not exactly clear how aa-zz should be
 interpreted, e.g. as aa,bb,cc,dd, ..., zz; or as aa, ab, ac, ..., az,
-ba, ..., zz.
+ba, ..., zz. Could start with the unambiguous options of , separated 
+strings.
 
 

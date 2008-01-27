@@ -42,6 +42,7 @@ my $shuffle = 1;
 my $show_rebuild;
 my $verbose;
 my $batch_workdir;
+my $transfer_env;
 
 my $default_baseworkdir = "$ENV{HOME}/.batch-parallel/work";
 
@@ -67,7 +68,16 @@ my $ret = GetOptions('man!' => \$print_manpage,
 		     'maxgroups=i' => \$batch_maxgroups,
 		     'shuffle!' => \$shuffle,
 		     'show-rebuild!' => \$show_rebuild,
-		     'batch-workdir' => \$batch_workdir);
+		     'batch-workdir' => \$batch_workdir,
+		     'transfer-env!' => \$transfer_env);
+
+my @bp_module_dirs = ("$ENV{HOME}/.batch-parallel/modules", 
+		      "@expanded_datadir@/bp_modules");
+
+if (defined $ENV{BP_MODULES}) {
+    unshift(@bp_module_dirs,split(/:/o,$ENV{BP_MODULES}));
+    unshift(@INC,split(/:/o,$ENV{BP_MODULES}));
+}
 
 usage("error parsing arguments")
     unless $ret;
@@ -84,14 +94,6 @@ if (-d "$ENV{HOME}/.bp_modules") {
     unshift(@INC,"$ENV{HOME}/.bp_modules");
 }
 unshift(@INC, "$ENV{HOME}/.batch-parallel/modules");
-
-my @bp_module_dirs = ("$ENV{HOME}/.batch-parallel/modules", 
-		      "@expanded_datadir@/bp_modules");
-
-if (defined $ENV{BP_MODULES}) {
-    unshift(@bp_module_dirs,split(/:/o,$ENV{BP_MODULES}));
-    unshift(@INC,split(/:/o,$ENV{BP_MODULES}));
-}
 
 die "can't specify both groupsize and maxgroups"
     if defined $batch_groupsize && defined $batch_maxgroups;
@@ -130,8 +132,14 @@ if (defined $codineexec) {
 
 my $module = new $modulename(@bp_args);
 
-die "new $bp_module_name did not return a reference"
+die "new $bp_module_name did not return an object"
     unless defined $module && ref $module;
+
+if ($transfer_env) {
+    die "Can't transfer env unless we are a BatchParallel::common"
+	unless $module->isa('BatchParallel::common');
+    $module->{batch_parallel_env} = \%ENV;
+}
 
 if (@dirs == 0) {
     @dirs = $module->default_source_locations();
@@ -214,7 +222,9 @@ sub finish_child {
     if ($? == 0) {
 	$module->rebuild_thing_success($thing_info);
     } else {
-	$module->rebuild_thing_fail($thing_info);
+	eval { $module->rebuild_thing_fail($thing_info); };
+	warn "Module error, rebuild_thing_fail resulted in an error: $@"
+	    if $@;
     }
 
     delete $kidinfo->{$pid};
@@ -437,6 +447,9 @@ sub batch_exec {
 	die "error in eval of $dirs[0]/joblist; wrong type for things to build" 
 	    unless ref $data eq 'ARRAY'
     }
+    if (defined $module->{batch_parallel_env}) {
+	%ENV = %{$module->{batch_parallel_env}};
+    }
     my $start_index = $base_index * $groupsize;
     my $end_index = $start_index + $groupsize;
     $end_index = @$data if $end_index > @$data;
@@ -544,11 +557,11 @@ with the package BatchParallel::I<module name>.  You will need to
 place it in an appropriate directory, you can run C<batch-parallel> to
 get the list of locations it will use.
 
-You will then define your modules parent class as
+ÃYou will then define your modules parent class as
 BatchParallel::common, and populate your module with various functions
 that define how your module processes data.  Since batch-parallel uses
 the module as an object, you can override any of the standard
-methods.
+methods.  
 
 =head2 Explaining your module
 
@@ -566,10 +579,11 @@ It should print out all of the additional options your module supports.
 =head3 sub new
 
 This function is called to create a new BatchParallel object; it
-should return a blessed object which has all the appropriate methods
+should return a blessed hash-ref which has all the appropriate methods
 defined.  It should also process any additional options handled by the
-module.  You only have to override this message if you take options in
-addition to your directory/file arguments.
+module.  You only have to override this function if you take options
+in addition to your directory/file arguments.  BatchParallel::common
+reserves the batch_parallel_.* keys for internal use.
 
 =head2 Finding things to process
 
@@ -655,8 +669,9 @@ to destfile.  This function will be called in serial.
 
 This function will handle the case where a rebuild failed, it should
 perform any final processing, for example printing out a message about
-the failed build.  If this function exits, other jobs which are
-running in parallel will continue in the background.
+the failed build.  This function should not exit, as jobs which are
+running in parallel would continue detached from the batch-parallel 
+process.
 
 =head3 sub rebuild_thing_message($this, $thing_info)
 
