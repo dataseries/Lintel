@@ -228,6 +228,6 @@ TclEnum::TclEnum(std::string name, int value) {
 	std::cerr << "duplicate enum name " << name << std::endl;
 	exit(0);
     }
-    Tcl_SetHashValue(entryPtr, value);
+    Tcl_SetHashValue(entryPtr, reinterpret_cast<ClientData>(value));
 };
 

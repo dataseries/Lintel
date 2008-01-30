@@ -49,6 +49,9 @@ public:
     ConstantString(const char *s) {
 	init(s, strlen(s));
     }
+    ConstantString(const void *s, uint32_t slen) {
+	init(static_cast<const char *>(s), slen);
+    }
     ConstantString() { myptr = NULL; }
     void init(const char *s, uint32_t slen);
 
@@ -56,6 +59,8 @@ public:
     const char *data() const { return ConstantString_c_str(myptr); }
     const uint32_t size() const { return ConstantString_length(myptr); }
     const uint32_t length() const { return ConstantString_length(myptr); }
+    std::string str() const { return std::string(c_str(), size()); }
+
     const uint32_t hash() const {
 	BOOST_STATIC_ASSERT(sizeof(ConstantStringValue *) == 4 ||
 			    sizeof(ConstantStringValue *) == 8);

@@ -35,7 +35,7 @@ extern uint32_t HashTable_prime_list[];
 //       : key1(a),key2(b),key3(c),data(d) {}
 // };
 // struct hteHash {
-//     unsigned int operator()(const hteData &k) {
+//     uint32_t operator()(const hteData &k) {
 // 	   // use key2 as the starting hash value
 //         // could also hash 2*sizeof(int) bytes starting at key1 if you are
 //         // sure the values are consecutive

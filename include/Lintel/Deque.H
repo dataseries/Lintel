@@ -13,6 +13,8 @@
 #ifndef __DEQUE_H
 #define __DEQUE_H
 
+#include <boost/utility.hpp>
+
 #include <Lintel/AssertBoost.H>
 #include <new>
 // don't use deque for runnable; it has horrid performance on
@@ -22,7 +24,7 @@
 // back -> empty
 
 template <class T>
-class Deque {
+class Deque : boost::noncopyable {
 public:
     Deque(unsigned default_size = 8) 
 	: q_front(0), q_back(0), q_size(default_size), is_resizeable(true) {
@@ -30,6 +32,9 @@ public:
 	deque = new T[q_size];
     }
 
+    ~Deque() {
+	delete [] deque;
+    }
     typedef Deque<T> mytype;
 
 #if ENABLE_SHMEM
@@ -70,7 +75,8 @@ public:
     }
     bool empty() const { return q_front == q_back;} ;
     unsigned size() const { return (q_back + q_size - q_front) % q_size; }
-    void reserve(int new_size) {
+
+    void resize(int new_size) {
 	INVARIANT(is_resizeable,"This deque isn't resizeable!");
 	INVARIANT(empty(),"Lame implementation only does reserve when empty");
 	INVARIANT(new_size > 0, "Must have size at least 1");
@@ -80,6 +86,11 @@ public:
 	delete [] deque;
 	deque = new T[q_size];
     }
+
+    void reserve(unsigned new_size) {
+	resize(new_size);
+    }
+
     int capacity() const { return q_size - 1; }
 
     class iterator {
