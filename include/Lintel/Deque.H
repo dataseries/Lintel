@@ -134,7 +134,12 @@ public:
     iterator end() {
 	return iterator(*this,q_back);
     }
-	
+
+    void clear() {
+	q_front = q_back = 0;
+	DEBUG_SINVARIANT(empty());
+    }
+
 private:
     friend class iterator;
 #if ENABLE_SHMEM
