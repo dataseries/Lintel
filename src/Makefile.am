@@ -120,13 +120,13 @@ packaging_DATA = redhat-rules
 ## regression test, which is hopefully sufficiently flexible to handle
 ## the occasionally complex regression tests that we perform.
 
-check_PROGRAMS := tests/check-Stats tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister tests/check-least_squares
+check_PROGRAMS := tests/check-Stats tests/check-StatsQuantile tests/check-Uncompress tests/check-LintelAssert tests/check-Clock tests/check-hashtable tests/check-mersenneTwister tests/check-least_squares tests/check-rotating_hashmap
 
 if WITH_TCL
 check_PROGRAMS += tests/check-Random
 endif
 
-check-local: tests/checked_Stats tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister tests/checked_least_squares
+check-local: tests/checked_Stats tests/checked_StatsQuantile tests/checked_Uncompress tests/checked_LintelAssert tests/checked_Clock tests/checked_hashtable tests/checked_mersenneTwister tests/checked_least_squares tests/checked_rotating_hashmap
 	@echo "Regression tests successful"
 
 clean-local::
@@ -191,3 +191,8 @@ tests/checked_least_squares: tests/check-least_squares
 	./tests/check-least_squares
 	touch $@
 
+tests_check_rotating_hashmap_SOURCES = tests/rotating_hashmap.cpp
+
+tests/checked_rotating_hashmap: tests/check-rotating_hashmap
+	./tests/check-rotating_hashmap
+	touch $@

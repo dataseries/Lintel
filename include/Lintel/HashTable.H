@@ -16,7 +16,7 @@
 
 #include <vector>
 
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 extern uint32_t HashTable_prime_list[];
 
 // The key and value are not separate because in some cases, they are
@@ -108,14 +108,12 @@ public:
 	    resizeHashTable();
 	}
 
-	AssertAlways(entry_points.size() > 0, 
-		     ("did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C"));
+	INVARIANT(entry_points.size() > 0, 
+		  "did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C");
 	uint32_t hash = hashof(data) % entry_points.size();
 	if (free_list == -1) {
 	    hte v(data, entry_points[hash]);
-#ifdef COMPILE_DEBUG
-	    AssertAlways(hash < entry_points.size(),("internal"));
-#endif
+	    DEBUG_SINVARIANT(hash < entry_points.size());
 	    entry_points[hash] = static_cast<int>(chains.size());
 	    chains.push_back(v);
 	    return &(chains.back().data);
@@ -163,7 +161,8 @@ public:
 	uint32_t chain = start_chain;
 	while(entry_points[chain] == -1) {
 	    chain = (chain + 1) % entry_points.size();
-	    AssertAlways(chain != start_chain, ("unable to find a non-empty chain"));
+	    INVARIANT(chain != start_chain, 
+		      "unable to find a non-empty chain");
 	}
 
 	uint32_t chain_len = 0;
@@ -171,7 +170,7 @@ public:
 	    ++chain_len;
 	}
 
-	AssertAlways(chain_len > 0, ("internal"));
+	SINVARIANT(chain_len > 0);
 
 	uint32_t bucket = randb % chain_len;
 	for(int32_t j = entry_points[chain]; j != -1; j=chains[j].next) {
@@ -181,45 +180,51 @@ public:
 		--bucket;
 	    }
 	}
-	AssertFatal(("internal: did not find random entry"));
+	FATAL_ERROR("internal: did not find random entry");
 	return NULL;
     }
 
-     void remove(const D &key, bool must_exist = true) {
-	 if (entry_points.size() == 0) {
-	     AssertAlways(must_exist == false,("remove failed, hash table is empty"));
-	     return;
-	 }
-	 uint32_t hash = hashof(key) % entry_points.size();
-	 int32_t loc = entry_points[hash];
-	 if (loc == -1) {
-	     AssertAlways(must_exist == false,
-			  ("remove failed, value doesn't exist\n"));
-	     return;
-	 }
-	 if (equal(key,chains[loc].data)) {
-	     entry_points[hash] = chains[loc].next;
-	     chains[loc].next = free_list;
-	     free_list = loc;
-	 } else {
-	     int32_t prev = loc;
-	     while(true) {
-		 prev = loc;
-		 loc = chains[loc].next;
-		 if (loc == -1) {
-		     AssertAlways(must_exist == false,
-				  ("remove failed, value doesn't exist\n"));
-		     break;
-		 }
-		 if (equal(key,chains[loc].data)) {
-		     chains[prev].next = chains[loc].next;
-		     chains[loc].next = free_list;
-		     free_list = loc;
-		     break;
-		 }
-	     }
-	 }
-     }
+    /* return true if something was found to remove */
+    bool remove(const D &key, bool must_exist = true) {
+	if (entry_points.size() == 0) {
+	    INVARIANT(must_exist == false,
+		      "remove failed, hash table is empty");
+	    return false;
+	}
+	uint32_t hash = hashof(key) % entry_points.size();
+	int32_t loc = entry_points[hash];
+	if (loc == -1) {
+	    INVARIANT(must_exist == false,
+		      "remove failed, value doesn't exist");
+	    return false;
+	}
+
+	bool ret = true;
+	if (equal(key,chains[loc].data)) {
+	    entry_points[hash] = chains[loc].next;
+	    chains[loc].next = free_list;
+	    free_list = loc;
+	} else {
+	    int32_t prev = loc;
+	    while(true) {
+		prev = loc;
+		loc = chains[loc].next;
+		if (loc == -1) {
+		    INVARIANT(must_exist == false,
+			      "remove failed, value doesn't exist");
+		    ret = false;
+		    break;
+		}
+		if (equal(key,chains[loc].data)) {
+		    chains[prev].next = chains[loc].next;
+		    chains[loc].next = free_list;
+		    free_list = loc;
+		    break;
+		}
+	    }
+	}
+	return ret;
+    }
 
      void clear() {
 	 free_list = -1;
@@ -250,9 +255,9 @@ public:
 	     return !(*this == y);
 	 }
 	 D &operator *() { 
-	     AssertAlways(chain_loc >= 0 && 
-			  chain_loc < static_cast<int>(mytable.chains.size()),
-			  ("Bad use of iterator\n"));
+	     INVARIANT(chain_loc >= 0 && 
+		       chain_loc < static_cast<int>(mytable.chains.size()),
+		       "Bad use of iterator");
 	     return mytable.chains[chain_loc].data;
 	 }
 	 D *operator ->() {
@@ -268,8 +273,7 @@ public:
 		 chain_loc = mytable.entry_points[cur_chain];
 		 findNonemptyChain();
 	     } else {
-		 AssertAlways(cur_chain == static_cast<int>(mytable.entry_points.size()),
-			      ("internal error\n"));
+		 SINVARIANT(cur_chain == static_cast<int>(mytable.entry_points.size()));
 	     }
 	 }
 	 void reset() {
@@ -290,9 +294,9 @@ public:
 	     }
 	 }
 	 void increment() {
-	     AssertAlways(chain_loc >= 0 && 
-			  chain_loc < static_cast<int>(mytable.chains.size()),
-			  ("bad use of iterator\n"));
+	     INVARIANT(chain_loc >= 0 && 
+		       chain_loc < static_cast<int>(mytable.chains.size()),
+		       "bad use of iterator");
 	     chain_loc = mytable.chains[chain_loc].next;
 	     if (chain_loc == -1) {
 		 cur_chain += 1;
@@ -331,13 +335,13 @@ public:
     void reserve(unsigned expected_entries) {
 	// assertion lets us resize the entry points without thinking about
 	// handling existing bits.
-	AssertAlways(chains.size() == 0,
-		     ("have to reserve() before putting anything in hash table"));
+	INVARIANT(chains.size() == 0,
+		  "have to reserve() before putting anything in hash table");
 	chains.reserve(expected_entries);
 	unsigned new_entry_size = (unsigned)(expected_entries / target_chain_length);
 	unsigned i;
 	for(i=0; HashTable_prime_list[i] < new_entry_size; ++i) {
-	    AssertAlways(HashTable_prime_list[i] != 0,("Fatal Error"));
+	    SINVARIANT(HashTable_prime_list[i] != 0);
 	}
 	unsigned new_size = HashTable_prime_list[i];
 
@@ -361,6 +365,7 @@ public:
     bool dense() {
 	return free_list == -1;
     }
+
     hte_vectorT &unsafeGetRawDataVector() {
 	INVARIANT(dense(), "If the hash table isn't dense, then there are false values in the vector.");
 	return chains;
@@ -371,7 +376,8 @@ private:
     }
 
     void init(double _tcl) {
-	AssertAlways(_tcl > 0, ("invalid target_chain_length %.6f\n",_tcl));
+	INVARIANT(_tcl > 0, 
+		  boost::format("invalid target_chain_length %.6f") % _tcl);
 
 	if (entry_points.capacity() == 0) {
 	    // only do this if we haven't already done the init in add()
@@ -382,6 +388,7 @@ private:
 	}
 	target_chain_length = _tcl;
     }	
+
     HashTable &assign(const HashTable &__in) {
 	free_list = __in.free_list;
 	chains = __in.chains;
@@ -399,12 +406,12 @@ private:
     // are fine.
 
     void resizeHashTable() {
-	AssertAlways(free_list == -1,("?! internal error\n"));
+	SINVARIANT(free_list == -1);
 	uint32_t old_size = entry_points.size();
 	uint32_t new_size;
 	uint32_t i;
 	for(i=0; HashTable_prime_list[i] <= old_size;i++) {
-	    AssertAlways(HashTable_prime_list[i] != 0,("Fatal Error"));
+	    SINVARIANT(HashTable_prime_list[i] != 0);
 	}
 	new_size = HashTable_prime_list[i];
 	entry_points.reserve(new_size);

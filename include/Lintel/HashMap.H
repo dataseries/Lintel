@@ -143,9 +143,10 @@ public:
 	return lookup(k) != NULL;
     }
 
-    void remove(const K &k, bool must_exist = true) {
+    /** returns true if something was removed */
+    bool remove(const K &k, bool must_exist = true) {
 	hmval fullval(k);
-	hashtable.remove(fullval, must_exist);
+	return hashtable.remove(fullval, must_exist);
     }
 
     void clear() {
@@ -165,6 +166,10 @@ public:
     iterator end() {
 	return hashtable.end();
     }
+
+    HashMap(double target_chain_length) 
+	: hashtable(target_chain_length)
+    { }
 
     HashMap() {
     }

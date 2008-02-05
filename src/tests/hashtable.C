@@ -12,6 +12,7 @@
 
 #include <Lintel/HashTable.H>
 #include <Lintel/HashMap.H>
+#include <Lintel/LintelAssert.H>
 
 using namespace std;
 
@@ -72,7 +73,7 @@ int main()
     }
     for(int i=0;i<100;i+=2) {
 	collisiontable.remove(i);
-	int count = 0;
+	size_t count = 0;
 	for (HashTable<int,collisionHash,intEqual>::iterator i = collisiontable.begin();
 	     i != collisiontable.end();i++) {
 	    count++;
@@ -87,7 +88,7 @@ int main()
     
     printf("test adding...\n");
     for(int i=0;i<maxi;i++) {
-	AssertAlways(table.size() == i,("?!"));
+	AssertAlways((int)table.size() == i,("?!"));
 	table.add(i);
     }
     for(int i=0;i<maxi;i++) {
@@ -115,7 +116,7 @@ int main()
     for(int i=0;i<maxi/2;i++) {
 	AssertAlways(table.lookup(i) != NULL,("?!"));
 	AssertAlways(*table.lookup(i) == i,("?!"));
-	AssertAlways(table.size() == maxi-i,("?!"));
+	AssertAlways((int)table.size() == maxi-i,("?!"));
 	table.remove(i);
     }
     for(int i=maxi/2;i<maxi;i++) {
@@ -127,7 +128,7 @@ int main()
     }
     printf("test complete remove...\n");
     for(int i=maxi/2;i<maxi;i++) {
-	AssertAlways(table.size() == maxi-i,("?!"));
+	AssertAlways((int)table.size() == maxi-i,("?!"));
 	table.remove(i);
     }
     AssertAlways(table.size() == 0,("?!"));

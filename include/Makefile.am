@@ -23,6 +23,7 @@ nobase_include_HEADERS = \
 	Lintel/PThread.H \
 	Lintel/Posix.H \
 	Lintel/PriorityQueue.H \
+	Lintel/RotatingHashMap.hpp \
 	Lintel/Stats.H \
 	Lintel/StatsEMA.H \
 	Lintel/StatsHistogram.H \
