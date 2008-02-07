@@ -98,6 +98,22 @@ PThread::setDetached(bool detached)
     INVARIANT(ret == 0,boost::format("pthread_attr_setdetachstate failed: %s") % strerror(ret));
 }
 
+size_t
+PThread::getStackSize() 
+{
+    size_t size;
+    int ret = pthread_attr_getstacksize(&attr, &size);
+    INVARIANT(ret == 0, boost::format("pthread_attr_getstacksize failed: %s") % strerror(ret));
+    return size;
+}
+
+void
+PThread::setStackSize(size_t size)
+{
+    int ret = pthread_attr_setstacksize(&attr, size);
+    INVARIANT(ret == 0, boost::format("pthread_attr_setstacksize failed: %s") % strerror(ret));
+}
+
 static void *
 pthread_starter(void *arg)
 {

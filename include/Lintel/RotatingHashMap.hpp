@@ -36,6 +36,11 @@ public:
 	table_old = new HashMap<K,V>;
     }
 
+    ~RotatingHashMap() {
+	delete table_recent;
+	delete table_old;
+    }
+
     V *lookup(const K &k) {
 	V *ret = table_recent->lookup(k);
 	if (ret == NULL) {

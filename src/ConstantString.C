@@ -46,6 +46,7 @@ ConstantString::init(const char *s, uint32_t slen)
 	if (init_buffer_len < 5 + slen) {
 	    delete [] init_buffer;
 	    init_buffer = new char[5 + slen];
+	    init_buffer_len = 5 + slen;
 	}
 	*reinterpret_cast<uint32_t *>(init_buffer) = slen;
 	memcpy(init_buffer + 4, s, slen);
