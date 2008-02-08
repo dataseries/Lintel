@@ -46,6 +46,8 @@ public:
     void setDetached(bool detached = true);
     size_t getStackSize();
     void setStackSize(size_t size);
+    size_t getGuardSize();
+    void setGuardSize(size_t size);
 
     // override this function to do whatever work you want in your
     // thread.  Return value will be provided for people joining with
