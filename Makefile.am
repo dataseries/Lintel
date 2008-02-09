@@ -29,10 +29,11 @@ ACLOCAL_AUTORECONF_FLAGS = -I .
 
 if HAS_CMAKE
 all:
-	(cd doc; cmake -DCMAKE_INSTALL_PREFIX=$(prefix) $(top_srcdir)/doc)
-	(cd doc; make all)
+	[ -d doc ] || mkdir doc
+	(cd doc && cmake -DCMAKE_INSTALL_PREFIX=$(prefix) $(top_srcdir)/doc)
+	(cd doc && make all)
 
 install:
-	(cd doc; make install)
+	(cd doc && make install)
 
 endif
