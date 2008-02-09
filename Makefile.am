@@ -28,12 +28,12 @@ linteldoc_DATA = \
 ACLOCAL_AUTORECONF_FLAGS = -I .
 
 if HAS_CMAKE
-all:
+all: all-recursive
 	[ -d doc ] || mkdir doc
 	(cd doc && cmake -DCMAKE_INSTALL_PREFIX=$(prefix) $(top_srcdir)/doc)
 	(cd doc && make all)
 
-install:
+install: install-recursive
 	(cd doc && make install)
 
 endif
