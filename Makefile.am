@@ -26,3 +26,13 @@ linteldoc_DATA = \
 # Sadly, we can't use this in other packages because the proper -I depends
 # on where we are installing.
 ACLOCAL_AUTORECONF_FLAGS = -I .
+
+if HAS_CMAKE
+all:
+	(cd doc; cmake -DCMAKE_INSTALL_PREFIX=$(prefix) $(top_srcdir)/doc)
+	(cd doc; make all)
+
+install:
+	(cd doc; make install)
+
+endif

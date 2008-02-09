@@ -25,6 +25,9 @@ AC_PROG_CXX
 AC_PROG_INSTALL
 AC_PROG_LD
 AC_SUBST(LD)
+AC_ARG_VAR(HAS_CMAKE, 'could we find cmake in the current path')
+AC_CHECK_PROG(HAS_CMAKE, cmake, yes, no)
+AM_CONDITIONAL(HAS_CMAKE, test $HAS_CMAKE = yes)
 
 HPL_PERL_SUBSTS
 
@@ -189,5 +192,11 @@ expanded_datadir=`expand_variable $datadir`
 AC_SUBST(expanded_datadir)
 
 AC_OUTPUT
+
+if test "$HAS_CMAKE" = no; then
+   AC_MSG_WARN([WARNING: you do not have cmake, so will not get documentation built])
+   AC_MSG_WARN([WARNING: in the future, Lintel will depend on cmake for building])
+   AC_MSG_WARN([WARNING: instead of autoconf to get easier cross-platform builds])
+fi
 
 COM_HP_HPL_LINTEL_OPTMODE_MESSAGES

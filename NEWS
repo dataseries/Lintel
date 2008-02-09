@@ -1,0 +1,9 @@
+2008-02-08:
+   * Added documentation generation/installation; depends on cmake to work
+     since eventually we will transition entirely to cmake.
+
+2008-02-05:
+   * Add a RotatingHashMap class that is useful for aging out old
+     values from a cache with low overhead.
+
+---- Updates before here not yet put into NEWS ----
