@@ -47,5 +47,14 @@ int main()
 	SINVARIANT(!test_hm.exists(i));
     }
 
+    test_hm.rotate();
+    test_hm.rotate();
+
+    // Test update after rotation
+    test_hm[1] = 1;
+    test_hm.rotate();
+    test_hm[1] = 2;
+    SINVARIANT(test_hm[1] == 2);
+
     exit(0);
 }

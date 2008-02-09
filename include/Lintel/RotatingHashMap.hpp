@@ -23,6 +23,20 @@
 
 #include <Lintel/HashMap.H>
 
+// TODO: may be worth making the number of tables we keep a parameter,
+// rationale is the following: Imagine you have a stream of data with
+// time and some value; You want to rotate the stored data such that
+// all values would be in the table for x seconds.  With two tables,
+// you have to rotate every x seconds, at a cost of 2x memory.  If you
+// kept 3 tables, you could rotate every x/2 seconds, because then
+// even a value evicted from the first table immediately would site in
+// the next to for a total of x seconds, at a cost of 3/2 x memory.
+// Further tables get diminishing returns, 4 tables gets you to 4/3 x,
+// and so on, and they have a linear increase in the number of tables
+// that the functions have to search through.  A pity we haven't
+// opened up the implementation a little more so we could (for
+// example) only calculate the hash once.
+
 template <class K, class V,
 	  class KHash = HashMap_hash<const K>,
 	  class KEqual = std::equal_to<const K> >
@@ -46,8 +60,9 @@ public:
 	if (ret == NULL) {
 	    ret = table_old->lookup(k);
 	    if (ret != NULL) {
-		(*table_recent)[k] = *ret;
+		V &tmp = (*table_recent)[k] = *ret;
 		table_old->remove(k);
+		ret = &tmp;
 	    }
 	} else {
 	    DEBUG_SINVARIANT(table_old->lookup(k) == NULL);
@@ -110,7 +125,20 @@ public:
     size_t size() {
 	return size_recent() + size_old();
     }
-    
+
+    /// Mostly for debugging purposes
+    bool exists_recent(const K &k) {
+	return table_recent->exists(k);
+    }
+
+    /// Mostly for debugging purposes
+    bool exists_old(const K &k) {
+	return table_old->exists(k);
+    }
+
+    size_t memoryUsage() {
+	return table_recent->memoryUsage() + table_old->memoryUsage();
+    }
 private:
     typedef typename HashMapT::iterator hm_iterator;
     HashMap<K,V> *table_recent, *table_old;

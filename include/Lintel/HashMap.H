@@ -167,7 +167,7 @@ public:
 	return hashtable.end();
     }
 
-    HashMap(double target_chain_length) 
+    explicit HashMap(double target_chain_length) 
 	: hashtable(target_chain_length)
     { }
 
@@ -190,6 +190,10 @@ public:
     
     uint32_t available() {
 	return hashtable.available();
+    }
+
+    size_t memoryUsage() {
+	return hashtable.memoryUsage();
     }
 
     // primiarily here so that you can get at unsafeGetRawDataVector, with

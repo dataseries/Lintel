@@ -92,7 +92,7 @@ template <class D, class HashFn, class Equal,
 #endif
 class HashTable {
 public:
-    HashTable(double _target_chain_length) {
+    explicit HashTable(double _target_chain_length) {
 	init(_target_chain_length);
     }
     HashTable() {
@@ -323,7 +323,7 @@ public:
 	return size;
     }
 
-    HashTable(const HashTable &__in) {
+    explicit HashTable(const HashTable &__in) {
 	assign(__in);
     }
 
@@ -350,6 +350,10 @@ public:
 
     uint32_t available() {
 	return chains.available();
+    }
+
+    size_t memoryUsage() {
+	return sizeof(hte) * chains.capacity() + sizeof(int) * entry_points.capacity();
     }
 
     // this is useful if you want to build up a big table of data, but then
@@ -447,7 +451,7 @@ private:
 // note that the order of arguments here is different than for the
 // HashTable_hashbytes function; this is to make the order consistent
 // with how the crc/adler hash's work in both zlib and lzo library, and
-// the ordering for the md5, sha1, etc. hashs from openssl; the order for
+// the ordering for the md5, sha1, etc. hashs from openssl; the order for 
 // the other function is retained as the common usage is to not specify a
 // previous hash
 
