@@ -12,9 +12,12 @@
 // strings and binary data that includes nulls; previous version of
 // code collided strings that were identical up to the first null.
 
+#include <iostream>
 #include <Lintel/AssertBoost.H>
 #include <Lintel/ConstantString.H>
-#include <Lintel/LintelAssert.H>
+
+using namespace std;
+using boost::format;
 
 int ConstantString::nstrings = 0;
 int ConstantString::string_bytes = 0;
@@ -80,15 +83,14 @@ ConstantString::init(const char *s, uint32_t slen)
 		empty_string = this;
 	    }
 	    if (enable_constant_folding) {
-		INVARIANT(c_str() == reinterpret_cast<const char *>(myptr),
-			  "internal error");
+		SINVARIANT(c_str() == reinterpret_cast<const char *>(myptr));
 		hashtable->add(myptr);
 	    }
 	    return;
 	}
     }
-    AssertAlways(space_used < buffer_size / 64,
-		 ("Reduce possible badness by limiting max string size\n"));
+    INVARIANT(space_used < buffer_size / 64,
+	      "Reduce possible badness by limiting max string size");
 
     buffer new_buffer;
     new_buffer.data = reinterpret_cast<ConstantStringValue *>(new char[buffer_size]);
@@ -101,17 +103,21 @@ ConstantString::init(const char *s, uint32_t slen)
 void
 ConstantString::dumpInfo()
 {
+    if (buffers == 0) {
+	cout << "CSInfo: never used\n";
+	return;
+    }
     int total_data = 0;
     int total_used = 0;
     for(unsigned int i=0;i<buffers->size();i++) {
 	total_data += (*buffers)[i].amt_used;
 	total_used += (*buffers)[i].size;
     }
-    printf("CSInfo: %d strings, bytes: %d string, %d used, %d alloced\n",
-	   nstrings, string_bytes, total_data, total_used);
+    cout << format("CSInfo: %d strings, bytes: %d string, %d used, %d alloced\n")
+	% nstrings % string_bytes % total_data % total_used;
     for(unsigned int i=0;i<buffers->size();i++) {
-	printf("CSInfo: buffer %d, %d/%d used\n",i,(*buffers)[i].amt_used,
-	       (*buffers)[i].size);
+	cout << format("CSInfo: buffer %d, %d/%d used\n")
+	    % i % (*buffers)[i].amt_used % (*buffers)[i].size;
     }
 }
 
