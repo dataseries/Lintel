@@ -118,6 +118,11 @@ if ($@) {
 	if $verbose;
 }
 
+if (defined $SIG{CHLD}) {
+    warn "WARNING: BatchParallel::$bp_module_name overrode \$SIG{CHLD}; resetting";
+    delete $SIG{CHLD};
+}
+
 my $modulename = "BatchParallel::$bp_module_name";
 
 if (defined $lsfexec) {
