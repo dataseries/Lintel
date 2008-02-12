@@ -27,6 +27,7 @@ linteldoc_DATA = \
 # on where we are installing.
 ACLOCAL_AUTORECONF_FLAGS = -I .
 
+abs_top_srcdir = @abs_top_srcdir@
 if HAS_CMAKE
 all: all-recursive
 	if [ \! -d include ]; then \
@@ -34,10 +35,13 @@ all: all-recursive
 		exit 1; \
 	fi
 	[ -d doc ] || mkdir doc
-	(cd doc && cmake -DCMAKE_INSTALL_PREFIX=$(prefix) $(top_srcdir)/doc)
+	(cd doc && cmake -DCMAKE_INSTALL_PREFIX=$(prefix) $(abs_top_srcdir)/doc)
 	(cd doc && make all)
 
 install: install-recursive
 	(cd doc && make install)
 
 endif
+
+rpm:
+	(cd $(top_srcdir); ./redhat/make-rpm.sh)

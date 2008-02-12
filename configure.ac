@@ -191,6 +191,16 @@ EXPAND_VARIABLE
 expanded_datadir=`expand_variable $datadir`
 AC_SUBST(expanded_datadir)
 
+if [ -z "$abs_top_srcdir" ]; then
+   case "$top_srcdir" in
+       /*) abs_top_srcdir="$top_srcdir" ;;
+       .*) abs_top_srcdir="`pwd`/$top_srcdir" ;;
+       *) echo "Internal '$top_srcdir'"; exit 1;;
+   esac
+fi
+
+AC_SUBST(abs_top_srcdir)
+
 AC_OUTPUT
 
 if test "$HAS_CMAKE" = no; then
