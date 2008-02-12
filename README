@@ -25,24 +25,24 @@ libboost (http://www.boost.org/), 1.33.1 or greater has been tested
 
 BUILDING
 
-1a) Get source code (via version control):
+1a) Get source code (via version control, inside HP only):
    [ -d ~/.monotone ] || mkdir ~/.monotone
-   mtn -d ~/.monotone/Lintel.db db init
-   mtn -d ~/.monotone/Lintel.db pull usi.hpl.hp.com ssd.hpl.hp.com/Lintel\*
+   mtn -d ~/.monotone/ssd.db db init
+   mtn -d ~/.monotone/ssd.db pull usi.hpl.hp.com ssd.hpl.hp.com/Lintel\*
    [ -d ~/projects ] || mkdir ~/projects
    cd ~/projects
-   mtn -d ~/.monotone/Lintel.db co -b ssd.hpl.hp.com/Lintel Lintel
+   mtn -d ~/.monotone/ssd.db co -b ssd.hpl.hp.com/Lintel Lintel
    cd Lintel
    autoreconf --install
    # monotone intro: https://twiki.hpl.hp.com/bin/view/StorageSystems/MonotoneIntro
 
-1b) Get source code (via tarball):
+1b) Get source code (via tarball, from anywhere):
    [ -d ~/projects ] || mkdir ~/projects
    cd ~/projects
-   wget http://tesla.hpl.hp.com/opensource/Lintel-2007-04-05.tar.bz2
-   bunzip2 -c < Lintel-2007-04-05.tar.bz2 | tar xvvf -
-   mv Lintel-2007-04-05 Lintel
-   # more recent versions: http://tesla.hpl.hp.com/opensource/
+   # visit http://tesla.hpl.hp.com/opensource/ to find the most recent version
+   wget http://tesla.hpl.hp.com/opensource/Lintel-2007-11-07.tar.bz2
+   bunzip2 -c < Lintel-2007-11-07.tar.bz2 | tar xvvf -
+   mv Lintel-2007-11-07 Lintel
 
 2) configure the package:
    mkdir -p ~/build/optimize/Lintel
