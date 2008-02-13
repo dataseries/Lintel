@@ -91,5 +91,8 @@ bool stringIsSpace(const std::string &);
  * returns the result of gethostname(2) as a std::string. */
 std::string getHostFQDN();
 
+/** This is a form of strerror_r(3) that is convenient to use. */
+std::string stringError(int errnum);
+
 #endif
 
