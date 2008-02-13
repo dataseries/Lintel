@@ -17,6 +17,7 @@
 #include <netinet/in.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/socket.h>
 
@@ -396,4 +397,19 @@ std::string getHostFQDN()
     if (res) freeaddrinfo(res);
 
     return hostname;
+}
+
+std::string stringError(int errnum)
+{
+    size_t buflen = 256;
+    char buf[buflen];
+
+    // Note there are two strerror_r(3). See <string.h> for details.
+
+    char *s = ::strerror_r(errnum, buf, buflen);
+    if (s != NULL) {
+	return std::string(s);
+    } else {
+	return "(NULL)";
+    }
 }
