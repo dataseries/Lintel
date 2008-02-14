@@ -562,11 +562,13 @@ with the package BatchParallel::I<module name>.  You will need to
 place it in an appropriate directory, you can run C<batch-parallel> to
 get the list of locations it will use.
 
-ÃYou will then define your modules parent class as
+You will then define your modules parent class as
 BatchParallel::common, and populate your module with various functions
 that define how your module processes data.  Since batch-parallel uses
-the module as an object, you can override any of the standard
-methods.  
+the module as an object, you can override any of the standard methods.
+
+You can check version compatibility against
+$BatchParallel::common::interface_version.  The current version is 1.0.
 
 =head2 Explaining your module
 
@@ -614,9 +616,12 @@ to be rebuilt.
 This function returns an array.  The first element is the number of
 source files that were located, and the second is a list of things to
 build.  Each thing will be passed to rebuild_thing_*.  The default
-find_things_to_build() generates a list of filenames.  If you override
-this method, then you also need to override rebuild_thing_do,
-rebuild_thing_success, rebuild_thing_fail, rebuild_thing_message.
+find_things_to_build() returns things of the form [ $prefix,
+$fullpath, $destfile ] because it calls through to
+determine_things_to_build.  The return things are likely to change to
+a hash object at some point.  If you override this method, then you
+also need to override rebuild_thing_do, rebuild_thing_success,
+rebuild_thing_fail, rebuild_thing_message.
 
 =head3 sub find_possibles($this, @dirs)
 
