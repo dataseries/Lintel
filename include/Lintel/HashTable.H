@@ -315,12 +315,18 @@ public:
 	return iterator(*this,entry_points.size());
     }
     
+    // TODO: count the size of the free list so this function is constant
+    // time rather than linear in the number of currently free entries.
     uint32_t size() {
 	uint32_t size = chains.size();
 	for(int32_t i = free_list; i != -1; i = chains[i].next) {
 	    size--;
 	}
 	return size;
+    }
+
+    bool empty() {
+	return size() == 0;
     }
 
     explicit HashTable(const HashTable &__in) {

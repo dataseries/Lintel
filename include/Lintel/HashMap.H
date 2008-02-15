@@ -157,6 +157,10 @@ public:
 	return hashtable.size();
     }
 
+    bool empty() {
+	return hashtable.empty();
+    }
+
     typedef HashTable<hmval,hmvalHash,hmvalEqual> HashTableT;
     typedef typename HashTableT::iterator iterator;
 
