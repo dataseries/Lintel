@@ -1298,6 +1298,28 @@ mostly as macros.  Example:
     fooplot("engine = 'prius'")
     fooplot("engine = 'solid booster rocket'")
 
+There are a number of perl functions that are useful inside of defined
+functions:
+
+=head3 sql_exec("sql")
+
+Executes the sql and returns a DBI statement handle as a return (see
+perldoc DBI).  Normally what you then want to do is use
+$sth->fetchrow_array.  For example:
+
+    my $sth = sql_exec("select expname, count(*) from experiments");
+    while(my @row = $sth->fetchrow_array) {
+       print "Experiment $row[0] has $row[1] experiments\n";
+    }
+
+=head3 sql_unique_row("sql")
+
+Executes the sql and returns the unique row that came back (or fails
+if you don't get a unique row).  For example:
+
+    my($nexps, $max_runtime) = sql_unique_row("select count(*), max(runtime) from experiments");
+    print "Over $nexps, the longest took $max_runtime seconds.\n";
+
 =head2 I<fnname>(...)
 
 Calls a function that was defined by the user in a define
