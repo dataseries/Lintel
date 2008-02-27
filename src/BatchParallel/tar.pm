@@ -8,6 +8,7 @@ package BatchParallel::tar;
 use strict;
 use warnings;
 use FileHandle;
+use Carp;
 use vars '@ISA';
 @ISA = qw/BatchParallel::common/;
 
@@ -53,9 +54,12 @@ sub new {
 	    $this->{path_parts} = $1 || 1;
 	} elsif (/^strip-path=(\d+)$/o) {
 	    $this->{strip_path} = $1;
+	} elsif (/^require-re=(.+)$/o) {
+	    $this->{require_re} = qr/$1/;
+	} elsif (/^exclude-re=(.+)$/o) {
+	    $this->{exclude_re} = qr/$1/;
 	} elsif (/^verbose=(\d+)$/o) {
 	    $this->{verbose_level} = $1;
-	    print "$this->{verbose_level} XX\n";
 	} else {
 	    die "unknown options specified for batch-parallel module $class: '$_'";
 	}
@@ -78,20 +82,31 @@ sub new {
 sub usage {
     print <<'END_OF_USAGE';
 batch-parallel -j 1 --noshuffle tar target-size=#[kmg] [destdir=path]
-    [sort={none,lexical}] [path-parts[=#]] [verbose=#]
+    [require-re=regex] [exclude-re=regex] [sort={none,lexical}] 
+    [path-parts[=#]] [strip-path=#] [verbose=#]
   -- file/directory...
 
   The tar module will find all of the files under the files and
-  directories specified, sort them (if requested), and create a series
-  of tar files under the destination directory (default /tmp).  Each
-  tar file will be a contiguous set of files such that the estimated
-  size of the tar file is less than the target size.  Each output file
-  will be named by the first and last file in it's group, the path
-  from each file will retain all components unless rpath-parts is specified, 
-  in which case only the number of components specified (default 1)
-  are retained, and then the /'s in the path will be replaced with _.
-  The same rule for stripping off path components will be applied to files
-  stored in the tar archives, except for the / to _ transform.
+  directories specified.  It will prune out any files matching
+  exclude-re, and will require all the files to match require-re.
+  Then it will take the list of files, sort them if requested, and
+  create a series of tar files under the destination directory
+  (default /tmp).  Each tar file will be a contiguous set of files
+  such that the estimated size of the tar file is less than the target
+  size.
+
+  Each output tar file will be named by the first and last file in
+  it's group.  The following transforms will be applied to the
+  filenames: First, if path-parts was specified, only that many of the
+  rightmost components will be retained; this is useful for irregular
+  directory structures where some number of components on the right
+  are sufficient for unique identification.  Second, if strip-path was
+  specified, that many components will be removed from the leftmost
+  part of the path; this is useful for removing some prefix of all the
+  filenames that is unimportant.  Next the the /'s in the path will be
+  replaced with _.  The same rule for removing path components will be
+  applied to files stored in the tar archives, except for the / to _
+  transform.
 
   Default verbose level is 1, level 2 prints out the temporary files that
   will be used by tar to make the tarfiles if run in -n mode.
@@ -101,7 +116,9 @@ END_OF_USAGE
 sub pathToParts ($$) {
     my($this, $path) = @_;
 
-    my $spath = $path;
+    confess "internal: path to parts called without path??"
+	unless defined $path;
+    my $start_path = $path;
     my @first;
     if (defined $this->{path_parts}) {
 	die "??" if $this->{path_parts} <= 0;
@@ -116,18 +133,24 @@ sub pathToParts ($$) {
 	@first = splice(@parts, 0, $this->{strip_path});
 	$path = join("/", @parts);
     }
+    die "No path remains from $start_path?"
+	unless defined $path;
     my $upath = $path;
     $upath =~ s!/!_!go;
-    print "$spath -> $path\n" if 0;
+    print "$start_path -> $path\n" if 0;
     return join('/', @first), $path, $upath;
 }
 
 sub newThing {
     my($this, $cur_group) = @_;
 
+    confess "Internal, empty group?"
+	unless @$cur_group > 0;
+    map { die "Internal, empty path in group" 
+	      unless defined $_ } @$cur_group;
     my ($firstdir, $firstpath, $firstname) 
 	= $this->pathToParts($cur_group->[0]);
-    my ($lastdir, $firstpath, $lastname) 
+    my ($lastdir, $lastpath, $lastname) 
 	= $this->pathToParts($cur_group->[@$cur_group - 1]);
 
     my $dest_file = "$this->{destdir}/$firstname";
@@ -139,15 +162,18 @@ sub newThing {
 	if defined $this->{dest_files}->{$dest_file};
     $this->{dest_files}->{$dest_file} = 1;
     
-    my @group;
+    my @tar_file_list;
+    my @srcs;
     foreach my $ent (@$cur_group) {
+	push(@srcs, $ent);
 	my($dir, $path, $name) = $this->pathToParts($ent);
-	push(@group, "-C$dir\n")
+	push(@tar_file_list, "-C$dir\n")
 	    unless $dir eq '';
-	push(@group, "$path\n");
+	push(@tar_file_list, "$path\n");
     }
 
-    return BatchParallel::Tar::Thing->new(\@group, $dest_file);
+    my $tar_file_list = join('', @tar_file_list);
+    return BatchParallel::Tar::Thing->new($tar_file_list, \@srcs, $dest_file);
 }
 
 sub find_things_to_build {
@@ -183,16 +209,21 @@ sub find_things_to_build {
 	$cur_groupsize += $size;
 	push(@$cur_group, $ent->[1]);
     }
-    push(@groups, $this->newThing($cur_group));
+    push(@groups, $this->newThing($cur_group))
+	if @$cur_group > 0;
     my $source_count = @groups;
 
     delete $this->{dest_files};
+    @groups = grep($_->needs_rebuild($this), @groups);
+
     return ($source_count, @groups);
 }
 
 sub file_is_source {
     my($this,$prefix,$fullpath,$filename) = @_;
 
+    return if defined $this->{exclude_re} && $fullpath =~ $this->{exclude_re};
+    return if defined $this->{require_re} && $fullpath !~ $this->{require_re};
     warn "Found tar file $fullpath"
 	if $fullpath =~ /\.tar\b/o && -f $fullpath;
     return 1 if -f $fullpath;
@@ -208,13 +239,13 @@ sub rebuild_thing_do {
 sub rebuild_thing_success {
     my($this,$thing) = @_;
 
-    $thing->rebuild_thing_success();
+    $thing->rebuild_thing_success($this);
 }
 
 sub rebuild_thing_fail {
     my($this,$thing) = @_;
 
-    $thing->rebuild_thing_fail();
+    $thing->rebuild_thing_fail($this);
 }
 
 sub rebuild_thing_message {
@@ -226,10 +257,12 @@ sub rebuild_thing_message {
 package BatchParallel::Tar::Thing;
 
 sub new {
-    my($class, $srcs, $dest) = @_;
+    my($class, $tar_file_list, $srcs, $dest) = @_;
 
-    return bless { 'srcs' => $srcs,
-		   'dest' => $dest };
+    return bless { 'tar_file_list' => $tar_file_list,
+		   'srcs' => $srcs,
+		   'dest' => $dest 
+		   };
 }
 
 sub rebuild_thing_do {
@@ -238,12 +271,11 @@ sub rebuild_thing_do {
     my $filelist = "/tmp/batch-parallel.tar.$$";
     open(FILELIST, ">$filelist")
 	or die "Unable to write filelist $filelist: $!";
-    my $data = join('', @{$thing->{srcs}});
-    print FILELIST $data;
+    print FILELIST $thing->{tar_file_list};
     close(FILELIST) or die "close failed: $!";
     die "Something wrong with write to $filelist; size mismatch"
-	unless -s $filelist == length $data;
-    my $cmd = "tar -c -f $thing->{dest} -S --files-from $filelist";
+	unless -s $filelist == length $thing->{tar_file_list};
+    my $cmd = "tar -c -f $thing->{dest}-tmp -S --files-from $filelist";
     
     $this->run($cmd);
     unlink($filelist);
@@ -251,13 +283,17 @@ sub rebuild_thing_do {
 }
 
 sub rebuild_thing_success {
-    my($this) = @_;
+    my($thing, $this) = @_;
+
+    rename("$thing->{dest}-tmp", "$thing->{dest}")
+	or die "rename from $thing->{dest}-tmp to $thing->{dest} failed: $!";
 
 }
 
 sub rebuild_thing_fail {
-    my($this) = @_;
+    my($thing, $this) = @_;
 
+    warn "Rebuild of $thing->{dest} failed.";
 }
 
 sub rebuild_thing_message {
@@ -265,10 +301,17 @@ sub rebuild_thing_message {
 
     print "Should build $thing->{dest}\n";
     if ($this->{verbose_level} >= 2) {
-	print map { "  $_" } @{$thing->{srcs}};
+	my @tmp = split(/\n/o, $thing->{tar_file_list});
+	grep(chomp, @tmp);
+	print map { "  $_\n" } @tmp;
 	print "\n";
     }
 }
 
+sub needs_rebuild {
+    my($thing, $this) = @_;
+
+    return $this->file_older($thing->{dest}, @{$thing->{srcs}});
+}
 1;
 

@@ -191,11 +191,16 @@ EXPAND_VARIABLE
 expanded_datadir=`expand_variable $datadir`
 AC_SUBST(expanded_datadir)
 
-if [ -z "$abs_top_srcdir" ]; then
-   case "$top_srcdir" in
-       /*) abs_top_srcdir="$top_srcdir" ;;
-       .*) abs_top_srcdir="`pwd`/$top_srcdir" ;;
-       *) echo "Internal '$top_srcdir'"; exit 1;;
+tmp_srcdir="$top_srcdir"
+if test -z "$tmp_srcdir"; then
+   tmp_srcdir="$srcdir"
+fi
+
+if test -z "$abs_top_srcdir"; then
+   case "$tmp_srcdir" in
+       /*) abs_top_srcdir="$tmp_srcdir" ;;
+       .*) abs_top_srcdir="`pwd`/$tmp_srcdir" ;;
+       *) echo "Internal '$tmp_srcdir'"; exit 1;;
    esac
 fi
 
