@@ -13,14 +13,43 @@
 #define INCLUDED_ASSERT_BOOST_H
 
 #include <boost/format.hpp>
-
+#include <boost/function.hpp>
 #include <Lintel/CompilerMarkup.H>
 
 extern unsigned AssertLevel; // from LintelAssert.H, but want to deprecate it
 
-// TODO: figure out what AssertBoostFnAfter interface ought to be; no
-// arguments is probably wrong.
-void AssertBoostFnAfter(void (*fn)()); 
+class AssertBoostException : public std::exception {
+public:
+    const std::string expression;
+    const std::string filename;
+    unsigned line;
+    const std::string msg;
+
+    virtual const char *what();
+    const std::string summary();
+    AssertBoostException(const char *a, const char *b, unsigned c,
+			 const std::string &d) 
+	: expression(a), filename(b), line(c), msg(d) { }
+    virtual ~AssertBoostException() throw ();
+};
+
+
+// Arguments are expression, file, line, message
+typedef boost::function<void (const char *, const char *, unsigned, 
+			      const std::string &)> assert_hook_fn;
+/// Call this hook before printing out the message
+void AssertBoostFnBefore(const assert_hook_fn &fn);
+/// Call this hook after printing out the message
+void AssertBoostFnAfter(void (*fn)()); // TODO: deprecate
+void AssertBoostFnAfter(const assert_hook_fn &fn);
+/// Clear out any of the before and after functions
+void AssertBoostClearFns();
+
+/// This function will create and throw an AssertBoostException; available
+/// as a function so a wrapper could choose to only throw exceptions from
+/// certain files.
+void AssertBoostThrowExceptionFn(const char *expression, const char *filename, 
+				 unsigned line, const std::string &message);
 
 void AssertBoostFail(const char *expression, const char *file, int line,
 		     boost::format &format) FUNC_ATTR_NORETURN;
