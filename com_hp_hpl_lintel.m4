@@ -715,24 +715,31 @@ else
     PROFILEFLAG=-pg
     # choices for optimization determined using doc/Performance, please 
     # update that file as appropriate.	
-    # cases are sorted alphabetically, please preserve this
+    # cases are grouped by cpu type first, and then host and compiler
     case $host::$PROCMOD::$LINTEL_OPTMODE_COMPILER in
         hppa2.0w-hp-hpux11*::PA2.0W::HPUX11)
 	   OPTFLAGS="+O3 +Onolimit +DA2.0 +Oaggressive"
 	   PROFILEFLAG="-G"
 	   ;;
+
 	i686-*::*PentiumIII*::gcc-3.[34]*)
 	   OPTFLAGS="-Wall -O3 -march=pentium3 -msse2 -D__pentiumpro__ -g"
   	   ;;
+
 	i686-*::*IntelPentium4CPU*::gcc-3.[34]*)
 	   OPTFLAGS="-Wall -O3 -march=pentium4 -D__pentiumpro__ -g"
 	   ;;
+
 	i686-*::*IntelXeon*::gcc-3.3*)
 	   OPTFLAGS="-Wall -O3 -march=pentium4 -D__pentiumpro__ -g"
 	   ;;
 	i686-*::*IntelXeon*::gcc-3.4*)
 	   OPTFLAGS="-Wall -O3 -march=pentium4 -D__pentium4__ -g"
 	   ;;
+	i686-*::*IntelXeon*::gcc-4.1*)
+	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
+	   ;;
+
 	i686-*::*PentiumM*::gcc-2.95*)
 	   OPTFLAGS="-Wall -O3 -march=i686 -msse2 -D__pentiumpro__ -g"
 	   ;;
@@ -745,12 +752,14 @@ else
 	i686-*::*PentiumM*::gcc-4.*) 
 	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
 	   ;;
-	i686-*::*IntelCPUT2600*::gcc-4.*)
-	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
-	   ;;
 	i686-*::*PentiumM*::icc-8.1*)
 	   OPTFLAGS="-O3 -xN -ipo -D__pentiumpro__" # can't use -xB as isnan(NAN) == false
   	   ;;
+
+	i686-*::*IntelCPUT2600*::gcc-4.*)
+	   OPTFLAGS="-Wall -O3 -march=pentium-m -D__pentiumpro__ -g"
+	   ;;
+
 	x86_64-*::*AMDOpteron*::gcc-3.*)
 	   OPTFLAGS="-Wall -O3 -march=opteron -D__pentiumpro__ -g"
 	   ;;
