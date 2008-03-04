@@ -24,23 +24,28 @@ public:
 	double intercept, slope;
 	// TODO: add in more statistics, e.g. R^2
     };
+    struct WeightedPoint { 
+	WeightedPoint(double _x, double _y, double _weight = 1.0) 
+	    : x(_x), y(_y), weight(_weight) { }
+	double x, y, weight; 
+    };
 
-    typedef std::vector<std::pair<double, double> > Data;
+    typedef std::vector<WeightedPoint> WeightedData;
 
-    static Linear fitLinearVertical(const Data &data);
+    static Linear fitLinearVertical(const WeightedData &data);
     
     Linear fitLinearVertical() {
 	return fitLinearVertical(data);
     }
 
-    void add(double x, double y) {
-	data.push_back(std::pair<double, double>(x,y));
+    void add(double x, double y, double weight = 1.0) {
+	data.push_back(WeightedPoint(x, y, weight));
     }
 
     /// space separated one pair/line
     void printText(std::ostream &to) const; 
 
-    Data data;
+    WeightedData data;
 };
 
 inline std::ostream &operator<<(std::ostream &to, const LeastSquares &ls) {
