@@ -95,6 +95,9 @@ StatsQuantile::init(int _nbuffers, int _buffer_size)
     AssertAlways(buffer_size >= 10,
 		 ("buffers smaller than 10 don't make sense.\n"));
     all_buffers = new one_buffer[nbuffers];
+    for(int i = 0; i < nbuffers; ++i) {
+	all_buffers[i] = NULL;
+    }
     buffer_weight = new int[nbuffers];
     buffer_level = new int[nbuffers];
     buffer_sorted = new bool[nbuffers];
@@ -107,7 +110,9 @@ void
 StatsQuantile::init_buffers()
 {
     for(int i=0;i<nbuffers;i++) {
-	all_buffers[i] = new double[buffer_size];
+	if (all_buffers[i] == NULL) {
+	    all_buffers[i] = new double[buffer_size];
+	}
 	// touch all the space to make sure it is allocated; necessary
 	// to avoid demand allocation (which can create long delays
 	// when used in Buttress2)

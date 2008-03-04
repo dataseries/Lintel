@@ -15,8 +15,7 @@
 #include <algorithm>
 #include <ostream>
 
-#include <boost/format.hpp>
-
+#include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
 #include <Lintel/LintelAssert.H>
 #include <Lintel/MersenneTwisterRandom.H>
@@ -531,5 +530,26 @@ main(int argc, char *argv[])
 	printf("Merge checking  checking, 0.01 x 250000 pure-random:\n  ");
 	Stats exact_error;
 	test_merge(mt,0.01,250000,5,exact_error);
+    }
+    if (true) {
+	cout << "test random..."; cout.flush();
+	MersenneTwisterRandom mt;
+
+	StatsQuantile a,b;
+	for(unsigned i=0;i < 100000; ++i) {
+	    a.add(mt.randDouble());
+	}
+	a.reset();
+	cout << "reset, re-add..."; cout.flush();
+	for(unsigned i=0; i < 100000; ++i) {
+	    double v = mt.randDouble();
+	    a.add(v);
+	    b.add(v);
+	}
+	cout << "check equality..."; cout.flush();
+	for(double i=0.0; i <= 1; i += 0.01) {
+	    SINVARIANT(a.getQuantile(i) == b.getQuantile(i));
+	}
+	cout << "reset() test passed.\n";
     }
 }

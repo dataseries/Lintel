@@ -565,6 +565,8 @@ sub sqlplot {
 	} else {
 	    $cmd .= " order by cdf";
 	}
+    } elsif ($cmd =~ /\bseg_x1\b/o) {
+	# no adjustment
     } elsif ($cmd =~ s/\blimit\b/ order by x limit /o) {
     } else {
 	$cmd .= " order by x";
@@ -581,10 +583,12 @@ sub sqlplot {
 	return;
     }
     my @names = @{$sth->{NAME}};
-    my ($x,$y,$y2,$yerr,$ylo,$yhi,$cdf);
+    my ($x,$y,$y2,$yerr,$ylo,$yhi,$cdf, $seg_x1, $seg_y1, $seg_x2, $seg_y2);
     my %known_columns = ( 'x' => \$x, 'y' => \$y, 'y2' => \$y2, 
 			  'yerr' => \$yerr, 'ylo' => \$ylo, 'yhi' => \$yhi,
-			  'cdf' => \$cdf);
+			  'cdf' => \$cdf, 
+			  'seg_x1' => \$seg_x1, 'seg_y1' => \$seg_y1, 
+			  'seg_x2' => \$seg_x2, 'seg_y2' => \$seg_y2);
     my %found;
     for(my $i=0;$i<@names;++$i) {
 	my $t;
@@ -621,6 +625,10 @@ sub sqlplot {
 	my $i = 0;
 	$writefn = sub { printf OUT "%.4f $cdf\n", 100*$i/$nrows; ++$i };
 	$plotfn = \&plotxy;
+    } elsif ($found{seg_x1} && $found{seg_y1} 
+	     && $found{seg_x2} && $found{seg_y2}) {
+	$writefn = sub { printf OUT "$seg_x1 $seg_y1\n$seg_x2 $seg_y2\n\n"; };
+	$plotfn = \&plotseg;
     } else {
 	print "Don't know how to plot results.\n";
 	return;
@@ -969,6 +977,14 @@ sub plotboxes {
     return $p;
 }
 
+sub plotseg {
+    my($filename,$sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{with} = 'lines';
+    return $p;
+}
+
 sub listplot {
     my $i = 0;
     foreach $_ (@plots) {
@@ -1202,11 +1218,12 @@ C<plot> is the primary command that generates plots in
 C<mercury-plot>.  It takes as an argument a generic sql statement with
 the expectation that some of the columns will have special names that
 it will use in order to generate the plot.  In this version, the
-special names are x, y, y2, yerr, ylo, yhi, cdf.  A plot with x, y will
-generate a simple scatter or line plot.  Using y2 instead of y will
-plot against the second axis on the plot.  Adding in yerr will add in
-error bars, and explicit tops and bottoms for the error bars can be
-generated with ylo and yhi.  cdf will 
+special names are x, y, y2, yerr, ylo, yhi, cdf.  A plot with x, y
+will generate a simple scatter or line plot.  Using y2 instead of y
+will plot against the second axis on the plot.  Adding in yerr will
+add in error bars, and explicit tops and bottoms for the error bars
+can be generated with ylo and yhi.  cdf will generate a cumulative
+distribution function plot from a single plot value.
 
 =head3 a few examples 
 
