@@ -37,8 +37,9 @@ public:
 	return fitLinearVertical(data);
     }
 
-    // weight is the weight given to the measure point (x, y),
-    // weight should be a positive real
+    // weights are relative, i.e., they need not add up to n; a
+    // typical choice of weights is each weight equals the reciprocal
+    // of the variance of the measurement
     void add(double x, double y, double weight = 1.0) {
 	INVARIANT(weight > 0, "weight should be > 0");
 	data.push_back(WeightedPoint(x, y, weight));
