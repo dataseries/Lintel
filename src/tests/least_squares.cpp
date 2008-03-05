@@ -110,7 +110,7 @@ int main()
     test.add(345, 10293.3, 0.005);
     test.add(34, 984, 7.36);
     result = test.fitLinearVertical();
-    // Results calculated using perl Statistics::OLS module
+    // Results calculated using perl Statistics::LineFit module
     INVARIANT(Double::eq(result.intercept,  662.946833319873) && 
 	      Double::eq(result.slope, -0.0124699082339257), "bad");
 
