@@ -31,9 +31,10 @@ LeastSquares::fitLinearVertical(const WeightedData &data)
 	sum_wxy += i->weight * i->x * i->y;
     }
 
-    double n = data.size();
     Linear ret;
-    ret.slope = (sum_w * sum_wxy - sum_wx * sum_wy) / (sum_w * sum_wxx - sum_wx * sum_wx);
+    double denom = sum_w * sum_wxx - sum_wx * sum_wx;
+    INVARIANT(denom != 0.0, "denominator is 0, aborting");
+    ret.slope = (sum_w * sum_wxy - sum_wx * sum_wy) / denom;
     ret.intercept = (sum_wy - ret.slope * sum_wx) / sum_w;
 
     return ret;

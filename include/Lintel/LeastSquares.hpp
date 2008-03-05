@@ -32,18 +32,28 @@ public:
 
     typedef std::vector<WeightedPoint> WeightedData;
 
-    static Linear fitLinearVertical(const WeightedData &data);
     
     Linear fitLinearVertical() {
 	return fitLinearVertical(data);
     }
 
+    // weight is the weight given to the measure point (x, y),
+    // weight should be a positive real
     void add(double x, double y, double weight = 1.0) {
+	INVARIANT(weight > 0, "weight should be > 0");
 	data.push_back(WeightedPoint(x, y, weight));
+    }
+
+    void clearData() { 
+	data.clear(); 
     }
 
     /// space separated one pair/line
     void printText(std::ostream &to) const; 
+
+
+private:
+    static Linear fitLinearVertical(const WeightedData &data);
 
     WeightedData data;
 };
