@@ -49,6 +49,10 @@ public:
 	data.clear(); 
     }
 
+    size_t dataSize() {
+	return data.size();
+    }
+
     /// space separated one pair/line
     void printText(std::ostream &to) const; 
 
