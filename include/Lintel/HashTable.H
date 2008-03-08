@@ -317,7 +317,7 @@ public:
     
     // TODO: count the size of the free list so this function is constant
     // time rather than linear in the number of currently free entries.
-    uint32_t size() {
+    uint32_t size() const {
 	uint32_t size = chains.size();
 	for(int32_t i = free_list; i != -1; i = chains[i].next) {
 	    size--;
@@ -325,7 +325,7 @@ public:
 	return size;
     }
 
-    bool empty() {
+    bool empty() const {
 	return size() == 0;
     }
 

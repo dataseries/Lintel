@@ -29,19 +29,21 @@ int main()
     test.add(5,5);
     test.add(6,6);
     LeastSquares::Linear result = test.fitLinearVertical();
-    INVARIANT(result.intercept == 0 && result.slope == 1, "bad");
-    
+    SINVARIANT(result.intercept == 0 && result.slope == 1);
+    SINVARIANT(Double::eq(result.get(113), 113));
+    SINVARIANT(test.size() == 6);
+
     // test simple non-uniform weight
-    test.clearData();
+    test.clear();
     test.add(-1,0, 0.25);
     test.add(0,1, 0.50);
     test.add(1,0, 0.25);
     result = test.fitLinearVertical();
     // compare against hand calculation
-    INVARIANT(result.intercept == 0.5 && result.slope == 0, "bad");
+    SINVARIANT(result.intercept == 0.5 && result.slope == 0);
     
     // test complex uniform weight
-    test.clearData();
+    test.clear();
     test.add(24037007,-321.5);
     test.add(27040842,-322);
     test.add(28042496,-323);
@@ -88,7 +90,7 @@ int main()
 
     // test complex uniform weight
     // the following numbers are manually randomly typed in
-    test.clearData();
+    test.clear();
     test.add(23, -3.5, 0.1);
     test.add(-2, 10, 0.05);
     test.add(2, 30.5, 0.3);

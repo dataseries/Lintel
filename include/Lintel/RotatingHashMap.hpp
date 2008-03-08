@@ -126,6 +126,10 @@ public:
 	return size_recent() + size_old();
     }
 
+    bool empty() const {
+	return table_recent->empty() && table_old->empty();
+    }
+
     /// Mostly for debugging purposes
     bool exists_recent(const K &k) {
 	return table_recent->exists(k);

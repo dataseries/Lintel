@@ -21,12 +21,15 @@ int main()
 {
     RotatingHashMap<int, int> test_hm;
 
+    SINVARIANT(test_hm.empty());
     for(int i=0; i<100; ++i) {
 	test_hm[i] = i;
     }
+    SINVARIANT(test_hm.size() == 100);
 
     test_hm.rotate();
     SINVARIANT(test_hm.size_recent() == 0 && test_hm.size_old() == 100);
+    SINVARIANT(!test_hm.empty());
 
     for(int i=0; i<100; i += 2) {
 	SINVARIANT(test_hm.lookup(i) != NULL);
@@ -50,6 +53,7 @@ int main()
     test_hm.rotate();
     test_hm.rotate();
 
+    SINVARIANT(test_hm.empty());
     // Test update after rotation
     test_hm[1] = 1;
     test_hm.rotate();
