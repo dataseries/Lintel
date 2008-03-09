@@ -53,6 +53,12 @@ public:
 	pq = new T[initial_size];
     }
 
+    ~PriorityQueue() {
+	if (resizeable) {
+	    delete [] pq;
+	}
+	pq = NULL;
+    }
     typedef PriorityQueue<T, LessImportant> mytype;
 
 #if ENABLE_SHMEM
