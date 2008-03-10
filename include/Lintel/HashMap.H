@@ -153,11 +153,11 @@ public:
 	hashtable.clear();
     }
 
-    uint32_t size() {
+    uint32_t size() const {
 	return hashtable.size();
     }
 
-    bool empty() {
+    bool empty() const {
 	return hashtable.empty();
     }
 

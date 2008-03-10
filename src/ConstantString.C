@@ -24,19 +24,20 @@ int ConstantString::string_bytes = 0;
 ConstantString::bufvect *ConstantString::buffers;
 ConstantString::CS_hashtable *ConstantString::hashtable;
 
-static ConstantString *empty_string;
+static const ConstantStringValue *empty_string_myptr;
 static char *init_buffer;
 static uint32_t init_buffer_len;
 static const bool enable_constant_folding = true;
+
 void
-ConstantString::init(const char *s, uint32_t slen)
+ConstantString::init(const void *s, uint32_t slen)
 {
     if (buffers == NULL) {
 	buffers = new bufvect;
 	hashtable = new CS_hashtable;
     }
-    if (slen == 0 && empty_string != NULL) {
-	myptr = empty_string->myptr;
+    if (slen == 0 && empty_string_myptr != NULL) {
+	myptr = empty_string_myptr;
 	return;
     }
     if (enable_constant_folding) {
@@ -80,7 +81,7 @@ ConstantString::init(const char *s, uint32_t slen)
 	    myptr = reinterpret_cast<ConstantStringValue *>(ptr);
 
 	    if (slen == 0) {
-		empty_string = this;
+		empty_string_myptr = myptr;
 	    }
 	    if (enable_constant_folding) {
 		SINVARIANT(c_str() == reinterpret_cast<const char *>(myptr));

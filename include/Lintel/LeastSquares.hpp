@@ -22,6 +22,8 @@ class LeastSquares {
 public:
     struct Linear {
 	double intercept, slope;
+
+	double get(double x) const { return x * slope + intercept; }
 	// TODO: add in more statistics, e.g. R^2
     };
     struct WeightedPoint { 
@@ -45,17 +47,16 @@ public:
 	data.push_back(WeightedPoint(x, y, weight));
     }
 
-    void clearData() { 
+    void clear() { 
 	data.clear(); 
     }
 
-    size_t dataSize() {
+    size_t size() {
 	return data.size();
     }
 
     /// space separated one pair/line
     void printText(std::ostream &to) const; 
-
 
 private:
     static Linear fitLinearVertical(const WeightedData &data);

@@ -52,8 +52,8 @@ public:
     ConstantString(const void *s, uint32_t slen) {
 	init(static_cast<const char *>(s), slen);
     }
-    ConstantString() { myptr = NULL; }
-    void init(const char *s, uint32_t slen);
+    ConstantString() { init("", 0); }
+    void init(const void *s, uint32_t slen);
 
     const char *c_str() const { return ConstantString_c_str(myptr); }
     const char *data() const { return ConstantString_c_str(myptr); }

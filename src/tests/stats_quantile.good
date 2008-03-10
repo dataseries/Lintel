@@ -280,3 +280,4 @@ Merge checking  checking, 0.01 x 250000 pure-random:
   test round 3: loading... merging... checking... !.........!.........!.........!.........!.........ok
   test round 4: loading... merging... checking... !.........!.........!.........!.........!.........ok
   test round 5: loading... merging... checking... !.........!.........!.........!.........!.........ok
+test random...reset, re-add...check equality...reset() test passed.

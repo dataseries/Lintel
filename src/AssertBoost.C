@@ -76,6 +76,9 @@ void AssertBoostClearFns()
 void AssertBoostFail(const char *expression, const char *file, int line,
 		     const string &msg)
 {
+    fflush(stderr);  cerr.flush(); // Belts ...
+    fflush(stdout);  cout.flush(); // ... and braces
+
     for(vector<assert_hook_fn>::iterator i = pre_msg_fns.begin();
 	i != pre_msg_fns.end(); ++i) {
       (*i)(expression, file, line, msg);
@@ -84,13 +87,12 @@ void AssertBoostFail(const char *expression, const char *file, int line,
     fflush(stderr);  cerr.flush(); // Belts ...
     fflush(stdout);  cout.flush(); // ... and braces
 
-    cerr << endl 
-	      << "**** Assertion failure in file " << file << ", line "
-	      << line << endl 
-	      << "**** Failed expression: " << expression << endl;
+    cerr << boost::format("\n**** Assertion failure in file %s, line %d\n"
+			  "**** Failed expression: %s\n")
+	% file % line % expression;
     
     if (msg.size() > 0) {
-	cerr << "**** Details: " << msg << endl;
+	cerr << "**** Details: " << msg << "\n";
     }
     cerr.flush();
     for(vector<assert_hook_fn>::iterator i = post_msg_fns.begin();

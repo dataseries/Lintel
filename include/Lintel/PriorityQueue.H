@@ -12,7 +12,9 @@
 #ifndef __PRIORITY_QUEUE_H
 #define __PRIORITY_QUEUE_H
 
-#include <Lintel/LintelAssert.H>
+#include <stdint.h>
+
+#include <Lintel/AssertBoost.H>
 #include <new>
 
 // The priority_queue in the HPUX STL is ~4x slower than this one on
@@ -51,6 +53,12 @@ public:
 	pq = new T[initial_size];
     }
 
+    ~PriorityQueue() {
+	if (resizeable) {
+	    delete [] pq;
+	}
+	pq = NULL;
+    }
     typedef PriorityQueue<T, LessImportant> mytype;
 
 #if ENABLE_SHMEM
@@ -60,25 +68,26 @@ public:
 	void *_ret = shmem.alloc(sizeof(mytype));
 	
 	mytype *ret = new(_ret) PriorityQueue(shmem, final_size);
-	AssertAlways(ret == _ret && ret->resizeable == false,
-		     ("placement new didn't work correctly??\n"));
+	INVARIANT(ret == _ret && ret->resizeable == false,
+		  "placement new didn't work correctly??");
 	return ret;
     }
 #endif
-    T &top() { return pq[0]; }
-    const T &top() const { return pq[0]; }
+    T &top() { DEBUG_SINVARIANT(!empty()); return pq[0]; }
+    const T &top() const { DEBUG_SINVARIANT(!empty()); return pq[0]; }
     
     void pop() {
+	SINVARIANT(pq_size > 0);
 	--pq_size;
 	if (pq_size > 0) {
-	    int cur_pos = 0;
+	    uint32_t cur_pos = 0;
 	    while(1) {
-		int down_left = 2*cur_pos + 1;
+		uint32_t down_left = 2*cur_pos + 1;
 		if (down_left >= pq_size)
 		    break;
-		int down_right = down_left + 1;
+		uint32_t down_right = down_left + 1;
 		
-		int smaller_down = down_left;
+		uint32_t smaller_down = down_left;
 		if (down_right < pq_size &&
 		    !lessimportant(pq[down_right],pq[down_left])) {
 		    smaller_down = down_right;
@@ -92,6 +101,7 @@ public:
 	    pq[cur_pos] = pq[pq_size];
 	}
     }
+
     void push(const T &val) {
 	if (pq_size == size_available) {
 	    double_size();
@@ -109,16 +119,19 @@ public:
 	pq[end_pos] = val;
 	++pq_size;
     }
-    int size() {
+
+    uint32_t size() const {
 	return pq_size;
     }
-    bool empty() {
+
+    bool empty() const {
 	return pq_size == 0;
     }
     
-    void reserve(int amt) {
-	AssertAlways(pq_size == 0,("Lame implementation only able to reserve empty priority queue\n"));
-	AssertAlways(resizeable,("PQ isn't resizeable?\n"));
+    void reserve(uint32_t amt) {
+	INVARIANT(empty(), "Lame implementation only able to reserve empty priority queue");
+		  
+	INVARIANT(resizeable, "PQ isn't resizeable?");
 	if (amt > pq_size) {
 	    delete [] pq;
 	    pq = new T[amt];
@@ -139,17 +152,18 @@ private:
 
     LessImportant lessimportant;
     void double_size() {
-	AssertAlways(resizeable,("this PQ isn't resizeable, and only holds %d elements.\n",size_available));
+	INVARIANT(resizeable, boost::format("this PQ isn't resizeable, and only holds %d elements.") % size_available);
+		  
 	T *pq_new = new T[size_available * 2];
-	for(int i=0;i<size_available;i++) {
+	for(unsigned i=0;i<size_available;i++) {
 	    pq_new[i] = pq[i];
 	}
 	delete [] pq;
 	pq = pq_new;
 	size_available = size_available * 2;
     }
-    int size_available;
-    int pq_size;
+    uint32_t size_available;
+    uint32_t pq_size;
     T *pq;
     bool resizeable;
     // 0 -> 1,2
