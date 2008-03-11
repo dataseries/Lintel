@@ -55,6 +55,10 @@ public:
 	return data.size();
     }
 
+    // Deprecated, remove 2008-06-01 or after
+    size_t dataSize() { 
+	return size();
+    }
     /// space separated one pair/line
     void printText(std::ostream &to) const; 
 
