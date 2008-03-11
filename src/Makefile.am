@@ -61,7 +61,6 @@ endif
 
 if WITH_BOOST
 libLintel_la_SOURCES += AssertBoost.C
-libLintel_la_LIBADD += -lboost_signals
 endif
 
 if WITH_TCL
