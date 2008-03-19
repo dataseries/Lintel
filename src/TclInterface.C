@@ -13,8 +13,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <string>
+#include <iostream>
+#include <fstream>
 
-#include <Lintel/streamcompat.H>
 #include <Lintel/TclInterface.H>
 
 // ========================================================================

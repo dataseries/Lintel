@@ -9,6 +9,7 @@
     ensure streams compatibility between compilers
 */
 
+#warning "This file is now deprecated; just include iostream and fstream"
 #if defined(__HP_aCC) && __HP_aCC < 35000
 #include <stream.h>
 #include <fstream.h>
