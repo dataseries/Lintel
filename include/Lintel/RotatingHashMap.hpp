@@ -15,13 +15,13 @@
     added, but for now just provide the help.
 */
 
-#ifndef __LINTEL_ROTATING_HASHMAP_HPP
-#define __LINTEL_ROTATING_HASHMAP_HPP
+#ifndef LINTEL_ROTATING_HASHMAP_HPP
+#define LINTEL_ROTATING_HASHMAP_HPP
 
 #include <boost/function.hpp>
 #include <boost/bind.hpp>
 
-#include <Lintel/HashMap.H>
+#include <Lintel/HashMap.hpp>
 
 // TODO: may be worth making the number of tables we keep a parameter,
 // rationale is the following: Imagine you have a stream of data with

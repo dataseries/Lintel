@@ -11,8 +11,8 @@
     http://mathworld.wolfram.com/LeastSquaresFitting.html
 */
 
-#ifndef __LINTEL_LEASTSQUARES_H
-#define __LINTEL_LEASTSQUARES_H
+#ifndef LINTEL_LEASTSQUARES_HPP
+#define LINTEL_LEASTSQUARES_HPP
 
 #include <ostream>
 #include <utility>
