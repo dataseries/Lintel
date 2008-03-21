@@ -49,7 +49,7 @@ main(int argc, char* argv[])
   bool recurseTest = false;	// True if going to run regression tests
   bool fatalTest   = false;	// True if going to run fatal-error tests
 
-  printf("** LintelAssert.C standalone test.\n");
+  printf("** LintelAssert.cpp standalone test.\n");
   fflush(stdout);
 
   int offset = 1;

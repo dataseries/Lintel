@@ -15,7 +15,7 @@ echo "==============================================================="
 echo ">>>>Expect Assert to fail on fatal fault"
 echo LintelAssert -F
 tests/check-LintelAssert -F
-) 2>&1 | grep -v 'tests/run-check-LintelAssert.sh' | sed "s/.C, [0-9]*:/.C, LINENO:/" | sed 's,Assert failure in .*tests.check-Lintel,Assert failure in tests/check-Lintel,' >tests/tmp-LintelAssert.out
+) 2>&1 | grep -v 'tests/run-check-LintelAssert.sh' | sed "s/.cpp, [0-9]*:/.cpp, LINENO:/" | sed 's,Assert failure in .*tests.check-Lintel,Assert failure in tests/check-Lintel,' >tests/tmp-LintelAssert.out
 set -e
 echo "diff -c $1/tests/LintelAssert.good tests/tmp-LintelAssert.out"
 diff -c $1/tests/LintelAssert.good tests/tmp-LintelAssert.out

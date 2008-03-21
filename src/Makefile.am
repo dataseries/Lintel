@@ -14,8 +14,8 @@ AUTOMAKE_OPTIONS = 1.7 foreign
 bin_PROGRAMS = calcStats drawRandomLogNormal 
 bin_SCRIPTS = buildTcl batch-parallel mercury-plot lintel-config lintel-acinclude
 
-calcStats_SOURCES = calcStats.C
-drawRandomLogNormal_SOURCES = drawRandomLogNormal.C
+calcStats_SOURCES = calcStats.cpp
+drawRandomLogNormal_SOURCES = drawRandomLogNormal.cpp
 
 LDADD = libLintel.la @TCL_LIBS@ 
 AM_CPPFLAGS = -I$(top_srcdir)/include -I$(top_builddir)/include @TCL_CFLAGS@ @GC_CFLAGS@ -DLIBLINTEL_VERSION="\"@LIBLINTEL_VERSION@\"" 
@@ -30,52 +30,52 @@ libLintel_la_LDFLAGS = -version-info @LIBLINTEL_VERSION@
 libLintel_la_LIBADD = @TCL_LIBS@
  
 libLintel_la_SOURCES = \
-	AssertException.C \
-	Clock.C \
-	ConstantString.C \
-	Deque.C \
-	Double.C \
-	HashTable.C \
+	AssertException.cpp \
+	Clock.cpp \
+	ConstantString.cpp \
+	Deque.cpp \
+	Double.cpp \
+	HashTable.cpp \
 	LeastSquares.cpp \
-	LintelAssert.C \
-	LintelVersion.C \
-	MathSpecialFunctions.C \
-	Matrix.C \
-	MersenneTwisterRandom.C \
-	PriorityQueue.C \
-	Stats.C \
-	StatsEMA.C \
-	StatsHistogram.C \
-	StatsMaker.C \
-	StatsRW.C \
-	StatsQuantile.C \
-	StatsSequence.C \
-	StatsSeries.C \
-	StatsSeriesGroup.C \
-	StringUtil.C \
-	Uncompress.C
+	LintelAssert.cpp \
+	LintelVersion.cpp \
+	MathSpecialFunctions.cpp \
+	Matrix.cpp \
+	MersenneTwisterRandom.cpp \
+	PriorityQueue.cpp \
+	Stats.cpp \
+	StatsEMA.cpp \
+	StatsHistogram.cpp \
+	StatsMaker.cpp \
+	StatsRW.cpp \
+	StatsQuantile.cpp \
+	StatsSequence.cpp \
+	StatsSeries.cpp \
+	StatsSeriesGroup.cpp \
+	StringUtil.cpp \
+	Uncompress.cpp
 
 if ENABLE_STDIO64
-libLintel_la_SOURCES += stdio_64.C
+libLintel_la_SOURCES += stdio_64.cpp
 endif
 
 if WITH_BOOST
-libLintel_la_SOURCES += AssertBoost.C
+libLintel_la_SOURCES += AssertBoost.cpp
 endif
 
 if WITH_TCL
-BUILT_SOURCES = LintelTclCommands.C
-libLintel_la_SOURCES += LintelTclCommands.C Nameable.C \
-  Random.C Randommwm.C TclInterface.C 
+BUILT_SOURCES = LintelTclCommands.cpp
+libLintel_la_SOURCES += LintelTclCommands.cpp Nameable.cpp \
+  Random.cpp Randommwm.cpp TclInterface.cpp 
 
 # Headers for classes which define Tcl-accesible functions:
 TCL_HDRS = $(top_srcdir)/include/Lintel/Random.H
 
 # TODO: I think this is a broken way of doing things and that we should
-# always rebuild LintelTclCommands.C into the build directory
+# always rebuild LintelTclCommands.cpp into the build directory
 
-LintelTclCommands.C: $(top_srcdir)/include/Lintel/TclInterface.H $(TCL_HDRS) $(top_builddir)/src/buildTcl
-	@[ ! -f $(top_srcdir)/src/LintelTclCommands.C ] || rm $(top_srcdir)/src/LintelTclCommands.C
+LintelTclCommands.cpp: $(top_srcdir)/include/Lintel/TclInterface.H $(TCL_HDRS) $(top_builddir)/src/buildTcl
+	@[ ! -f $(top_srcdir)/src/LintelTclCommands.cpp ] || rm $(top_srcdir)/src/LintelTclCommands.cpp
 	$(top_builddir)/src/buildTcl -- -o $@-new -t $(TCL_HDRS)
 	@echo "int UseLintelTclCommands = 1; /* here to force linking */" >>$@-new
 	mv $@-new $@
@@ -85,8 +85,8 @@ if WITH_GC
 libLintelGC_la_LDFLAGS = -version-info @LIBLINTELGC_VERSION@ 
 libLintelGC_la_LIBADD = libLintel.la
 libLintelGC_la_SOURCES = \
-	StringId.C \
-	ConstantString.C
+	StringId.cpp \
+	ConstantString.cpp
 
 libnogc_la_LDFLAGS = -version-info @LIBNOGC_VERSION@
 libnogc_la_SOURCES = nogc.c 
@@ -96,7 +96,7 @@ if WITH_BOOST
 libLintelPThread_la_LDFLAGS = -version-info @LIBLINTELPTHREAD_VERSION@ 
 libLintelPThread_la_LIBADD = libLintel.la -lpthread
 libLintelPThread_la_SOURCES = \
-	PThread.C ClockPThread.cpp
+	PThread.cpp ClockPThread.cpp
 endif
 
 if WITH_MAKEBITS
@@ -132,7 +132,7 @@ clean-local::
 	-rm -f tests/checked_*
 
 if WITH_TCL
-tests_check_Random_SOURCES = tests/check-Random.C
+tests_check_Random_SOURCES = tests/check-Random.cpp
 
 tests/checked_Random: tests/check-Random
 	tests/check-Random 2>&1 | diff -b $(srcdir)/@RANDOM_COMPARETO@ -
@@ -145,40 +145,40 @@ tests/checked_Stats: tests/check-Stats
 	tests/check-Stats
 	touch $@
 
-tests_check_StatsQuantile_SOURCES = tests/stats_quantile.C
+tests_check_StatsQuantile_SOURCES = tests/stats_quantile.cpp
 
 tests/checked_StatsQuantile: tests/check-StatsQuantile
 	tests/check-StatsQuantile | diff -c $(srcdir)/tests/stats_quantile.good -
 	touch $@
 
-tests_check_Uncompress_SOURCES = tests/check-Uncompress.C
+tests_check_Uncompress_SOURCES = tests/check-Uncompress.cpp
 
 tests/checked_Uncompress: tests/check-Uncompress
-	tests/check-Uncompress $(srcdir)/Uncompress.C | diff -c $(srcdir)/Uncompress.C -
-	gzip -1cv <$(srcdir)/Uncompress.C >tests/Uncompress.C.gz
-	tests/check-Uncompress tests/Uncompress.C.gz | diff -c $(srcdir)/Uncompress.C -
-	rm tests/Uncompress.C.gz
+	tests/check-Uncompress $(srcdir)/Uncompress.cpp | diff -c $(srcdir)/Uncompress.cpp -
+	gzip -1cv <$(srcdir)/Uncompress.cpp >tests/Uncompress.cpp.gz
+	tests/check-Uncompress tests/Uncompress.cpp.gz | diff -c $(srcdir)/Uncompress.cpp -
+	rm tests/Uncompress.cpp.gz
 	touch $@
 
-tests_check_LintelAssert_SOURCES = tests/check-LintelAssert.C
+tests_check_LintelAssert_SOURCES = tests/check-LintelAssert.cpp
 
 tests/checked_LintelAssert: tests/check-LintelAssert $(srcdir)/tests/run-check-LintelAssert.sh
 	$(srcdir)/tests/run-check-LintelAssert.sh $(srcdir)
 	touch $@
 
-tests_check_Clock_SOURCES = tests/clock.C
+tests_check_Clock_SOURCES = tests/clock.cpp
 
 tests/checked_Clock: tests/check-Clock
 	tests/check-Clock
 	touch $@
 
-tests_check_hashtable_SOURCES = tests/hashtable.C
+tests_check_hashtable_SOURCES = tests/hashtable.cpp
 
 tests/checked_hashtable: tests/check-hashtable
 	tests/check-hashtable
 	touch $@
 
-tests_check_mersenneTwister_SOURCES = tests/mersenneTwister.C
+tests_check_mersenneTwister_SOURCES = tests/mersenneTwister.cpp
 
 tests/checked_mersenneTwister: tests/check-mersenneTwister
 	tests/check-mersenneTwister

@@ -1,11 +1,11 @@
 >>>>Expect Assert to fail on 2nd call
 LintelAssert
-** LintelAssert.C standalone test.
+** LintelAssert.cpp standalone test.
 AssertLevel = 1, recurse = 0 fatal = 0
 DebugMsg(1): DebugLevel=1
 after registerDebugFunction, list length = 2
 
-**** Assert failure in tests/check-LintelAssert.C, LINENO: "Assert at level 0"==0
+**** Assert failure in tests/check-LintelAssert.cpp, LINENO: "Assert at level 0"==0
 **** Should always fire
 
 **** Abort() has been invoked
@@ -16,12 +16,12 @@ debugFunc2 invoked, with argument 222
 ===============================================================
 >>>>Expect Assert to fail on 1st call
 LintelAssert 99
-** LintelAssert.C standalone test.
+** LintelAssert.cpp standalone test.
 AssertLevel = 99, recurse = 0 fatal = 0
 DebugMsg(1): DebugLevel=1
 after registerDebugFunction, list length = 2
 
-**** Assert failure in tests/check-LintelAssert.C, LINENO: "Assert at level 6"==0
+**** Assert failure in tests/check-LintelAssert.cpp, LINENO: "Assert at level 6"==0
 **** Should fire if AssertLevel >= 6
 
 **** Abort() has been invoked
@@ -32,12 +32,12 @@ debugFunc2 invoked, with argument 222
 ===============================================================
 >>>>Expect Assert to fail on recursion fault
 LintelAssert -R
-** LintelAssert.C standalone test.
+** LintelAssert.cpp standalone test.
 AssertLevel = 1, recurse = 1 fatal = 0
 DebugMsg(1): DebugLevel=1
 after registerDebugFunction, list length = 3
 
-**** Assert failure in tests/check-LintelAssert.C, LINENO: "Force recursion test"==0
+**** Assert failure in tests/check-LintelAssert.cpp, LINENO: "Force recursion test"==0
 
 **** Abort() has been invoked
 debugFunc1 invoked, with argument 111
@@ -48,12 +48,12 @@ debugFuncRecurse invoked, with argument 333
 ===============================================================
 >>>>Expect Assert to fail on fatal fault
 LintelAssert -F
-** LintelAssert.C standalone test.
+** LintelAssert.cpp standalone test.
 AssertLevel = 1, recurse = 0 fatal = 1
 DebugMsg(1): DebugLevel=1
 after registerDebugFunction, list length = 2
 
-**** Assert failure in tests/check-LintelAssert.C, LINENO: Fatal error
+**** Assert failure in tests/check-LintelAssert.cpp, LINENO: Fatal error
 **** Force fatal error, because fatalTest = 1
 
 **** Abort() has been invoked
