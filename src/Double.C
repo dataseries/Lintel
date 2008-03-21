@@ -17,8 +17,8 @@
 #endif
 
 #include <math.h>
-#include <Lintel/Double.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/Double.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 double Double::default_epsilon = 1e-12;
 

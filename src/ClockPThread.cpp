@@ -1,4 +1,4 @@
-#include <Lintel/Clock.H>
+#include <Lintel/Clock.hpp>
 
 pthread_key_t Clock::per_thread_clock;
 static bool did_per_thread_init;

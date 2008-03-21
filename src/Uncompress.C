@@ -17,9 +17,9 @@
 #include <errno.h>
 #include <map>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/Uncompress.H>
-#include <Lintel/Posix.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/Uncompress.hpp>
+#include <Lintel/Posix.hpp>
 
 class child_stuff {
 public:

@@ -10,7 +10,7 @@
 
 #include <stdarg.h>
 
-#include <Lintel/AssertException.H>
+#include <Lintel/AssertException.hpp>
 
 AssertExceptionT::~AssertExceptionT() throw()
 {

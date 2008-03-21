@@ -8,8 +8,8 @@
     Functions for nameable objects
 */
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/Nameable.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/Nameable.hpp>
 
 std::string
 Named::debugString() const

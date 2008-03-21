@@ -8,7 +8,7 @@
     64bit versions of stdio routines
 */
 
-#include <stdio_64.H>
+#include <stdio_64.hpp>
 
 #ifdef __LP64__
 #define O_LARGEFILE 0

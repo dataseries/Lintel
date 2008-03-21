@@ -8,7 +8,7 @@
     Deque implementation
 */
 
-#include <Lintel/Deque.H>
+#include <Lintel/Deque.hpp>
 
 void
 DequeTest()

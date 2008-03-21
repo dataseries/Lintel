@@ -11,7 +11,7 @@
 */
 
 #include <malloc.h>
-#include <LintelAssert.H>
+#include <LintelAssert.hpp>
 
 static const int bufsize = 256*1024*1024;
 static unsigned char bigbuf[bufsize];

@@ -13,8 +13,8 @@
 // code collided strings that were identical up to the first null.
 
 #include <iostream>
-#include <Lintel/AssertBoost.H>
-#include <Lintel/ConstantString.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/ConstantString.hpp>
 
 using namespace std;
 using boost::format;

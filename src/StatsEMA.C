@@ -8,9 +8,9 @@
     StatsEMA implementation
 */
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/LintelAssert.H>
-#include <Lintel/StatsEMA.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/StatsEMA.hpp>
 
 using namespace std;
 

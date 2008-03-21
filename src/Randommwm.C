@@ -11,8 +11,8 @@
 #include <time.h>
 #include <sys/time.h>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/Randommwm.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/Randommwm.hpp>
 
 void RandMwm::randn (std::vector <double>& r, long l,double sigma, double mu)
 {

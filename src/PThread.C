@@ -13,8 +13,8 @@
 #include <iostream>
 
 
-#include <Lintel/PThread.H>
-#include <Lintel/StringUtil.H>
+#include <Lintel/PThread.hpp>
+#include <Lintel/StringUtil.hpp>
 
 using namespace std;
 

@@ -16,7 +16,7 @@
 #include <iostream>
 #include <fstream>
 
-#include <Lintel/TclInterface.H>
+#include <Lintel/TclInterface.hpp>
 
 // ========================================================================
 // Class for storing name/procedure pairs.  These name/procedure pairs

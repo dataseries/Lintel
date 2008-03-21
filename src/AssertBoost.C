@@ -16,7 +16,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 
-#include <Lintel/AssertBoost.H>
+#include <Lintel/AssertBoost.hpp>
 
 using namespace std;
 

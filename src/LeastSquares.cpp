@@ -8,7 +8,7 @@
 /** @file
     implementation
 */
-#include <Lintel/AssertBoost.H>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/LeastSquares.hpp>
 
 #include <boost/format.hpp>

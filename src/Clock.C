@@ -18,13 +18,13 @@ using namespace std;
 #include <algorithm>
 #include <vector>
 
-#include <Lintel/Clock.H>
-#include <Lintel/LintelAssert.H>
-#include <Lintel/PThread.H>
-#include <Lintel/Stats.H>
-#include <Lintel/Double.H>
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/Clock.hpp>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/PThread.hpp>
+#include <Lintel/Stats.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 const int min_samples = 20;
 // Use -Double::Inf so things blow up suitably if these get used.

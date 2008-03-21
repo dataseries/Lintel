@@ -8,9 +8,9 @@
     Read-Write I/O stats class
 */
 
-#include <Lintel/Stats.H>
-#include <Lintel/StatsMaker.H>
-#include <Lintel/StatsSeriesGroup.H>
+#include <Lintel/Stats.hpp>
+#include <Lintel/StatsMaker.hpp>
+#include <Lintel/StatsSeriesGroup.hpp>
 
 StatsRW::StatsRW(const std::string &name) 
 {

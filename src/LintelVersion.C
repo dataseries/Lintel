@@ -8,7 +8,7 @@
     Lintel version implementation; mostly for configure checking
 */
 
-#include <Lintel/LintelVersion.H>
+#include <Lintel/LintelVersion.hpp>
 
 static char *lintelVersionString = VERSION;
 static char *libtoolLibLintelVersionString = LIBLINTEL_VERSION;

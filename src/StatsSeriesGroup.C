@@ -8,10 +8,10 @@
     StatsSeriesGroup implementation
 */
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/Double.H>
-#include <Lintel/StatsMaker.H>
-#include <Lintel/StatsSeriesGroup.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/StatsMaker.hpp>
+#include <Lintel/StatsSeriesGroup.hpp>
 
 StatsSeriesGroup::StatsSeriesGroup(const std::string &_myname, double _interval) :
     interval(_interval), 

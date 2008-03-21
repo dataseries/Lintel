@@ -15,9 +15,9 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/Stats.H>
-#include <Lintel/Double.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/Stats.hpp>
+#include <Lintel/Double.hpp>
 
 ///////////////////////////////////////////////////////////////////////////
 // Functions specific to the Statistics base class

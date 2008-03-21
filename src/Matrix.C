@@ -10,7 +10,7 @@
 
 #include <stdarg.h>
 
-#include <Lintel/Matrix.H>
+#include <Lintel/Matrix.hpp>
 
 Matrix::Matrix(unsigned int rows, unsigned int cols)
 {

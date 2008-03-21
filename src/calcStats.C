@@ -17,8 +17,8 @@
 
 #include <stdlib.h>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/Stats.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/Stats.hpp>
 
 int
 main(int argc, char *argv[])

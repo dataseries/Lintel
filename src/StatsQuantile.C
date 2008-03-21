@@ -13,10 +13,10 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/Double.H>
-#include <Lintel/LintelAssert.H>
-#include <Lintel/StatsQuantile.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
 

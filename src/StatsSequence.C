@@ -10,9 +10,9 @@
 
 #include <math.h>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/LintelAssert.H>
-#include <Lintel/StatsSequence.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/StatsSequence.hpp>
 
 StatsSequence::StatsSequence(unsigned long _max_retain, mode _merge_mode)
     : Stats(), max_retain(_max_retain)

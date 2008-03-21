@@ -23,9 +23,9 @@
 
 #include <boost/static_assert.hpp>
 
-#include <Lintel/StringUtil.H>
-#include <Lintel/LintelAssert.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/StringUtil.hpp>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 #ifdef __HP_aCC
 #include <inttypes.h>

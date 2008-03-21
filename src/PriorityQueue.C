@@ -11,9 +11,9 @@
 #include <vector>
 #include <queue>
 
-#include <Lintel/LintelAssert.H>
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/PriorityQueue.H>
+#include <Lintel/LintelAssert.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/PriorityQueue.hpp>
 
 class IntCompare {
 public:
