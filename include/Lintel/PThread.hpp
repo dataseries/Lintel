@@ -92,7 +92,8 @@ struct PThreadMutex : boost::noncopyable {
 	    return;
 	}
 	int ret = pthread_mutex_lock(&m);
-	INVARIANT(ret==0,boost::format("pthread_mutex_lock failed: %s") % strerror(ret));
+	INVARIANT(ret==0, boost::format("pthread_mutex_lock failed: %s") 
+		  % strerror(ret));
 	++ncontention;
     }
     bool trylock() {
@@ -101,7 +102,8 @@ struct PThreadMutex : boost::noncopyable {
             return true;
         }
         INVARIANT(ret == EBUSY,
-		  boost::format("Invalid error(%d,%s) on trylock") % ret % strerror(ret));
+		  boost::format("Invalid error(%d,%s) on trylock") 
+		  % ret % strerror(ret));
         return false;
     }
 
