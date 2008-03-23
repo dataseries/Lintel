@@ -9,6 +9,7 @@
 int
 main()
 {
+    Clock::allowUnsafeFrequencyScaling(Clock::AUFSO_WarnFast);
     Clock::selfCheck();
     Clock::timingTest();
     return 0;

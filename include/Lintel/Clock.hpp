@@ -20,7 +20,6 @@
 #include <limits>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/Stats.hpp>
 
 #if __HP_aCC
@@ -41,21 +40,30 @@ extern "C" {
 #define HAVE_RDTSCLL 1
 #endif
 
+/// \class Clock
+/// \brief Class for dealing with the clock in various ways.
+///
+/// The Clock class has four classes of functions: 1) functions for
+/// getting the clock, either directly from the system, or using the
+/// cycle counter.  2) functions for converting between various clock
+/// representations.  3) functions for configuring how it operates. 4)
+/// utility functions either for external or internal use.
+///
+/// TODO: deprecate Tdbl; it's just not safe, there is just barely enough
+/// precision to represent us with doubles, and when you subtract them, you
+/// get things like .934us for the minimum separation.  Probably switch
+/// entirely to the use of Tfrac, change it to an int64 so substraction works
+/// sanely, and rename it T.
+
 class Clock {
 public:
-    // Type split as of 2003-01-30, and renamed to guarantee
-    // compilation problems if the code is used incorrectly; after
-    // June if no problems have been found, we should re-introduce the
-    // T type as a synonym for Tdbl; performance measurement (see
-    // tests/clock.C) has indicated that calculating the time as a
-    // double is faster than using a long long, and both have enough
-    // precision
-    // 
     // for both of the versions, the units are micro-seconds
-    typedef long long Tll;
-    typedef double Tdbl;
+    typedef long long Tll; ///< units of micro-seconds
+    typedef double Tdbl; ///< units of micro-seconds
 
-    // units for this is seconds * 2^-32, such that Tfrac >> 32 == time in seconds
+    /// Tfrac units are seconds * 2^-32, such that Tfrac >> 32 == time
+    /// in seconds, and (Tfrac & 0xFFFFFFFF) / 4294967296.0 = fractional
+    /// seconds
     typedef uint64_t Tfrac;
 
     // Clock cycle calibration occurs until the relative conf95 is
@@ -84,7 +92,7 @@ public:
 #else
 #warning "Do not know how to get the cycle counter on this platform, clock functions may be slow"
 #define LINTEL_CLOCK_CYCLECOUNTER 0
-	AssertFatal(("do not know how to get cycle counter on this platform"));
+	FATAL_ERROR("do not know how to get cycle counter on this platform");
 #endif
 	return ret;
     }
@@ -93,12 +101,12 @@ public:
 	return getCycleCounter();
     }
   
-    //////////////////////////////////////////
-    /// Time of day routines...
+    /////////////////////////////////////////
+    // Time of day routines...
 
     static Tll todll() {
 	struct timeval t;
-	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
+	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
 	return (Tll)t.tv_sec * (Tll)1000000 + (Tll)t.tv_usec;
     }
 
@@ -139,6 +147,8 @@ public:
 	}
     }
 
+    // TODO: add check for last_cc not going backwards which also indicates
+    // a core switch
     inline Tfrac todccTfrac_incremental() {
 	Tll delta_cc = getCycleCounter() - last_recalibrate_cc;
 	if (delta_cc < 0 || delta_cc > recalibrate_interval_cycles) {
@@ -156,7 +166,7 @@ public:
 	// HPPA 2 based machines are all faster in direct mode, 
 	// probably because they can use the fused multiply-add
 #if LINTEL_CLOCK_CYCLECOUNTER == 0
-	return tod();
+	return todcc_recalibrate(); // generates warning
 #elif defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
 	return todcc_incremental();
 #else
@@ -166,7 +176,7 @@ public:
     
     inline Tfrac todccTfrac() {
 #if LINTEL_CLOCK_CYCLECOUNTER == 0
-	return todTfrac();
+	return secondsToTfrac(todcc_recalibrate()*1e-6);
 #elif defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
 	return todccTfrac_incremental();
 #else
@@ -174,7 +184,9 @@ public:
 #endif
     }
 
-    /// How many micro seconds should elapse between recalibrations
+    /// How many micro seconds should elapse between recalibrations;
+    /// default is 500us.  TODO: measure and figure out a smarter way
+    /// to set this.
     void setRecalibrateInterval(Tdbl interval_us);
 
     /// What epoch (in seconds since 1970) should be used for the
@@ -195,7 +207,7 @@ public:
 
     static Tfrac todTfrac() {
 	struct timeval t;
-	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
+	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
 	return secMicroToTfrac(t.tv_sec,t.tv_usec);
     }	
 
@@ -273,6 +285,23 @@ public:
     }
 
     ////////////////////////////////
+    // Configuration functions
+
+    enum AllowUnsafeFreqScalingOpt { 
+	AUFSO_Yes, ///< silently allow fast but wrong results
+	AUFSO_WarnFast, ///< like Yes but print out a warning to cerr
+	AUFSO_WarnSlow, ///< like Slow but print out a warning to cerr
+	AUFSO_Slow, ///< substitute tod() when frequency scaling is possible
+	AUFSO_No ///< fail when frequency scaling is possible
+    };
+    /// \brief How should we deal with frequency scaling?
+    /// Frequency scaling means that the estimated clock could be wrong
+    /// by recalibrate_interval * min_freq/max_freq; by default if we
+    /// can't tell that the frequency would be constant or we know 
+    /// it isn't, then we use allow to determine how to behave.
+    static void allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow = AUFSO_WarnFast);
+
+    ////////////////////////////////
     // Utility functions
 
     // To get the per-thread functions you need to link with libLintelPThread
@@ -306,17 +335,9 @@ private:
     unsigned epoch_offset;
     
     static Tdbl tod_epoch_internal(unsigned epoch) {
-	// No point of this on linux, timer there is only doing us precision and
-	// clock_gettime() requires us to list with -lrt
-#if 0 && defined(_POSIX_TIMERS) && _POSIX_TIMERS > 0
-	struct timespec t;
-	AssertAlways(clock_gettime(CLOCK_REALoTIME,&t)==0,("Internal error\n"));
-	return (Tdbl)(t.tv_sec - epoch) * (Tdbl)1000000 + (Tdbl)t.tv_nsec * 0.001;
-#else
 	struct timeval t;
-	AssertAlways(gettimeofday(&t,NULL)==0,("Internal error\n"));
+	CHECKED(gettimeofday(&t,NULL)==0,"how did gettimeofday fail?");
 	return (Tdbl)(t.tv_sec - epoch) * (Tdbl)1000000 + (Tdbl)t.tv_usec;
-#endif
     }	
 };
 

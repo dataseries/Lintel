@@ -73,32 +73,28 @@ void AssertBoostClearFns()
     post_msg_fns.clear();
 }
 
-void AssertBoostFail(const char *expression, const char *file, int line,
-		     const string &msg)
+static bool assert_boost_fail_recurse;
+
+static void AssertBoostFailOutput(const char *expression, const char *file, 
+				  int line, const string &msg)
 {
     fflush(stderr);  cerr.flush(); // Belts ...
     fflush(stdout);  cout.flush(); // ... and braces
-
-    for(vector<assert_hook_fn>::iterator i = pre_msg_fns.begin();
-	i != pre_msg_fns.end(); ++i) {
-      (*i)(expression, file, line, msg);
-    }
-
-    fflush(stderr);  cerr.flush(); // Belts ...
-    fflush(stdout);  cout.flush(); // ... and braces
-
+	
     cerr << boost::format("\n**** Assertion failure in file %s, line %d\n"
 			  "**** Failed expression: %s\n")
 	% file % line % expression;
-    
+	
     if (msg.size() > 0) {
 	cerr << "**** Details: " << msg << "\n";
     }
     cerr.flush();
-    for(vector<assert_hook_fn>::iterator i = post_msg_fns.begin();
-	i != post_msg_fns.end(); ++i) {
-      (*i)(expression, file, line, msg);
-    }
+}
+
+static void AssertBoostFailDie() FUNC_ATTR_NORETURN;
+
+void AssertBoostFailDie() 
+{
     abort();	 // try to die
     exit(173);   // try harder to die
     kill(getpid(), 9); // try hardest to die
@@ -106,6 +102,58 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 	cerr << "**** Help, I'm still not dead????" << endl;
 	sleep(1);
     }
+    /*NOTREACHED*/
+}
+
+// Doing things this way means a throw inside an assertion cleans up
+// the recursion flag.  Can't use SINVARIANT inside of this, so expand
+// it out and manually invert the test 
+class AssertBoostCleanupRecurse {
+public:
+    AssertBoostCleanupRecurse() {
+	if (!(assert_boost_fail_recurse == false)) {
+	    AssertBoostFailOutput("assert_boost_fail_recurse == false", 
+				  __FILE__, __LINE__, "unexpected value for recurse flag; multiple threads dying at the same time?");
+	    AssertBoostFailDie();
+	}
+	assert_boost_fail_recurse = true;
+    }
+    ~AssertBoostCleanupRecurse() {
+	if (!(assert_boost_fail_recurse == true)) {
+	    AssertBoostFailOutput("assert_boost_fail_recurse == true", 
+				  __FILE__, __LINE__, "unexpected value for recurse flag; multiple threads dying at the same time?");
+	    AssertBoostFailDie();
+	}
+	assert_boost_fail_recurse = false;
+    }
+};
+
+void AssertBoostFail(const char *expression, const char *file, int line,
+		     const string &msg)
+{
+    fflush(stderr);  cerr.flush(); // Belts ...
+    fflush(stdout);  cout.flush(); // ... and braces
+
+    if (assert_boost_fail_recurse) {
+	cerr << "**** Recursing on assertions, you have a bad hook" << endl;
+    } else {
+	for(vector<assert_hook_fn>::iterator i = pre_msg_fns.begin();
+	    i != pre_msg_fns.end(); ++i) {
+	    AssertBoostCleanupRecurse cleanup;
+	    (*i)(expression, file, line, msg);
+	}
+    }	
+
+    AssertBoostFailOutput(expression, file, line, msg);
+    if (!assert_boost_fail_recurse) {
+	for(vector<assert_hook_fn>::iterator i = post_msg_fns.begin();
+	    i != post_msg_fns.end(); ++i) {
+	    AssertBoostCleanupRecurse cleanup;
+	    (*i)(expression, file, line, msg);
+	}
+    }
+
+    AssertBoostFailDie();
     /*NOTREACHED*/
 }
 

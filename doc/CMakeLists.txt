@@ -7,10 +7,17 @@ INCLUDE(FindDoxygen)
 IF (DOXYGEN_FOUND)
    CONFIGURE_FILE(doxygen.config.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config @ONLY)
 
+   FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/../*.hpp)
+   FILE(GLOB_RECURSE DOXYGEN_DEP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/../*.cpp)
+
+   MESSAGE("HOLA ${DOXYGEN_DEP_INCLUDES}")
    ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html
 	              COMMAND ${DOXYGEN_EXECUTABLE} 
 		   	      ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
- 		      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config)
+ 		      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
+		              ${DOXYGEN_DEP_INCLUDES}
+			      ${DOXYGEN_DEP_SOURCES}
+                      )
 
    ADD_CUSTOM_TARGET(doc ALL 
 	  	     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html)
