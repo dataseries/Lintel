@@ -125,18 +125,18 @@ struct PThreadMutex : boost::noncopyable {
     std::string debugInfo();
 };
 
-// Allocate this as an automatic in your stack frame.  It will
-// take the mutex on construction and drop it on destruction,
-// when the stack frame goes out of scope.
-class PThreadAutoLocker : boost::noncopyable {
+/// Allocate this as an automatic in your stack frame.  It will
+/// lock the mutex on construction and unlock it on destruction,
+/// when the stack frame goes out of scope.
+class PThreadScopedLock : boost::noncopyable {
 public:
-    explicit PThreadAutoLocker(PThreadMutex &_lock) 
+    explicit PThreadScopedLock(PThreadMutex &_lock) 
 	: lock(_lock)
     {
 	lock.lock();
     }
 
-    ~PThreadAutoLocker()
+    ~PThreadScopedLock()
     {
 	lock.unlock();
     }
@@ -144,6 +144,16 @@ public:
 private:
     PThreadMutex &lock;
 };
+
+/// Old name for PThreadScopedLock; it was renamed to match with the
+/// naming convention from the boost libraries.
+class PThreadAutoLocker : public PThreadScopedLock {
+public:
+    explicit PThreadAutoLocker(PThreadMutex &_lock)
+	: PThreadScopedLock(_lock) 
+    { }
+};
+
 
 struct PThreadCond : boost::noncopyable {
     pthread_cond_t c;
