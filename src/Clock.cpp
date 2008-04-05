@@ -297,9 +297,9 @@ Clock::todcc_recalibrate()
     // with the last one, and if so, just adjust the offsets,
     // e.g. estimate where in the cur_us we actually are.
 
-    Clock::Tll start_cycle = now();
+    uint64_t start_cycle = now();
     Clock::Tdbl cur_us = tod_epoch();
-    Clock::Tll end_cycle = now();
+    uint64_t end_cycle = now();
     INVARIANT(cur_us >= last_calibrate_tod,
 	      format("Whoa, tod_epoch() went backwards %.2f < %.2f")
 	      % cur_us % last_calibrate_tod);
@@ -325,6 +325,7 @@ Clock::todcc_recalibrate()
 	last_recalibrate_cc = end_cycle;
 	++nrecalibrate;
     }
+    
     return cur_us;
 }
 

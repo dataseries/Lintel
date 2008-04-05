@@ -114,12 +114,18 @@ struct PThreadMutex : boost::noncopyable {
 		  % strerror(ret));
     }
     
+    bool islocked() const {
 #if HPUX_ACC
-    // so amazingly non portable, but seems to work
-    bool islocked() {
+	// so amazingly non portable, but seems to work; unfortunately will
+	// silently break.
 	return ((char *)&m)[67] == 0;
-    }
+#elsif defined(__GNUC__) && defined(_PTHREAD_H) && defined(_BITS_SIGTHREAD_H) && defined(_BITS_PTHREADTYPES_H) && defined(__need_schedparam)
+	// hopefully this is enough to identify the glibc implementation
+	return m.__m_lock.__reserved != 0;
+#else
+	FATAL_ERROR("don't know how to implement PThreadMutex.islocked() on this platform");
 #endif
+    }
     int ncontention;
 
     std::string debugInfo();
