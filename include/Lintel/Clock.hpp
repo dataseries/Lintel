@@ -127,9 +127,9 @@ public:
     // Clock object for each of them, for example via Clock::perThread()
 
     inline Tdbl todcc_direct() {
-	Tll cur_cc = getCycleCounter();
-	if (cur_cc <= last_cc || (cur_cc - last_recalibrate_cc) > recalibrate_interval_cycles) {
-	    last_cc = cur_cc;
+	uint64_t cur_cc = getCycleCounter();
+	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
+	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
 	    return todcc_recalibrate();
 	} else {
 	    last_cc = cur_cc;
@@ -138,8 +138,9 @@ public:
     }
 
     inline Tdbl todcc_incremental() {
-	Tll delta_cc = getCycleCounter() - last_recalibrate_cc;
-	if (delta_cc < 0 || delta_cc > recalibrate_interval_cycles) {
+	uint64_t cur_cc = getCycleCounter();
+	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
+	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
 	    return todcc_recalibrate();
 	} else {
 	    double delta_us = (uint32_t)delta_cc * inverse_clock_rate;
@@ -150,11 +151,13 @@ public:
     // TODO: add check for last_cc not going backwards which also indicates
     // a core switch
     inline Tfrac todccTfrac_incremental() {
-	Tll delta_cc = getCycleCounter() - last_recalibrate_cc;
-	if (delta_cc < 0 || delta_cc > recalibrate_interval_cycles) {
+	uint64_t cur_cc = getCycleCounter();
+	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
+	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
 	    return secondsToTfrac(todcc_recalibrate()*1e-6);
 	} else {
-	    double delta_us = static_cast<uint32_t>(delta_cc) * inverse_clock_rate_tfrac;
+	    double delta_us = static_cast<uint32_t>(delta_cc) 
+		* inverse_clock_rate_tfrac;
 	    return last_calibrate_tod_tfrac + static_cast<Tfrac>(delta_us);
 	}
     }
@@ -328,7 +331,7 @@ public:
     // Cycle counter calibration variables
     Tdbl last_calibrate_tod, cycle_count_offset, recalibrate_interval;
     Tfrac last_calibrate_tod_tfrac;
-    Tll last_cc, last_recalibrate_cc, recalibrate_interval_cycles;
+    uint64_t last_cc, last_recalibrate_cc, recalibrate_interval_cycles;
 private:
     static pthread_key_t per_thread_clock;
 
