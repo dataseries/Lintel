@@ -19,56 +19,13 @@
 #include <Lintel/AssertBoost.hpp>
 extern uint32_t HashTable_prime_list[];
 
-// The key and value are not separate because in some cases, they are
-// the same, for example for ConstantString, which wants to do a lookup to
-// find a constant string.
-
-// HashFn should only hash the key part of D; similarly Equal should only
-// compare on the key part of D.
-
-// Sample usage:
-// struct hteData {
-//     int key1, key2;
-//     string key3;
-//     string data;
-//     hteData(int a, int b, const string &c, const string &d = "") 
-//       : key1(a),key2(b),key3(c),data(d) {}
-// };
-// struct hteHash {
-//     uint32_t operator()(const hteData &k) {
-// 	   // use key2 as the starting hash value
-//         // could also hash 2*sizeof(int) bytes starting at key1 if you are
-//         // sure the values are consecutive
-// 	   uint32_t partial_hash = HashTable_hashbytes(&k.key1,
-// 			  			       sizeof(int),k.key2);
-// 	   return HashTable_hashbytes(k.key3.data(),k.key3.size(),
-// 				      partial_hash);
-//     };
-// };
-// struct hteEqual {
-//     bool operator()(const hteData &a, const hteData &b) {
-// 	   return a.key1 == b.key1 && a.key2 == b.key2 && a.key3 == b.key3;
-//     }
-// };
-// HashTable<hteData, hteHash, hteEqual> hashTable;
-// hashTable.add(hteData(1,2,"1+2=","3"));
-// hteData *result = hashTable.lookup(hteData(1,2,"1+2="));
-
-// WARNING: if you put a pointer into the hteData, or the value of a
-// HashMap, you can't safely put a delete for the pointer into the
-// destructor for the structure.  The problem is that during
-// operation, the data structure may be copied, and the old version
-// deleted.  This destroys the pointed to value but leaves around the
-// pointer.  An stl::map behaves the same way.  
-
-// This is out here because C++ templates are sub-optimal.  All
-// existing examples of using templates do things the way the
-// following is done.  To enable use of different allocators, the
-// allocator has to be a parameter of the template, but all of the
-// examples only show classes as arguments to a template and an
-// allocator under the C++ STL specification is a template not a
-// class.
-
+/// This is out here because C++ templates are sub-optimal.  All
+/// existing examples of using templates do things the way the
+/// following is done.  To enable use of different allocators, the
+/// allocator has to be a parameter of the template, but all of the
+/// examples only show classes as arguments to a template and an
+/// allocator under the C++ STL specification is a template not a
+/// class.
 template <class D>
 struct HashTable_hte {
     D data;
@@ -81,6 +38,51 @@ struct HashTable_hte {
 // through all of this so we can bump the maximum hash table size to
 // 2^32-1 entries.  Consider writing a test (64bit only) that can
 // verify proper operation at that size.
+
+/// \code
+/// Sample usage:
+/// struct hteData {
+///     int key1, key2;
+///     string key3;
+///     string data;
+///     hteData(int a, int b, const string &c, const string &d = "") 
+///       : key1(a),key2(b),key3(c),data(d) {}
+/// };
+/// struct hteHash {
+///     uint32_t operator()(const hteData &k) {
+/// 	   // use key2 as the starting hash value
+///         // could also hash 2*sizeof(int) bytes starting at key1 if you are
+///         // sure the values are consecutive
+/// 	   uint32_t partial_hash = HashTable_hashbytes(&k.key1,
+/// 			  			       sizeof(int),k.key2);
+/// 	   return HashTable_hashbytes(k.key3.data(),k.key3.size(),
+/// 				      partial_hash);
+///     };
+/// };
+/// struct hteEqual {
+///     bool operator()(const hteData &a, const hteData &b) {
+/// 	   return a.key1 == b.key1 && a.key2 == b.key2 && a.key3 == b.key3;
+///     }
+/// };
+/// HashTable<hteData, hteHash, hteEqual> hashTable;
+/// hashTable.add(hteData(1,2,"1+2=","3"));
+/// hteData *result = hashTable.lookup(hteData(1,2,"1+2="));
+/// \endcode
+///
+/// WARNING: if you put a pointer into the hteData, or the value of a
+/// HashMap, you can't safely put a delete for the pointer into the
+/// destructor for the structure.  The problem is that during
+/// operation, the data structure may be copied, and the old version
+/// deleted.  This destroys the pointed to value but leaves around the
+/// pointer.  An stl::map behaves the same way.  
+///
+/// The key and value are not separate because in some cases, they are
+/// the same, for example for ConstantString, which wants to do a lookup to
+/// find a constant string.
+///
+/// HashFn should only hash the key part of D; similarly Equal should only
+/// compare on the key part of D.
+
 
 template <class D, class HashFn, class Equal, 
 #ifdef RWSTD_SIMPLE_DEFAULT
