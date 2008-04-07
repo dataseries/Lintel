@@ -50,11 +50,11 @@ struct HashTable_hte {
 /// };
 /// struct hteHash {
 ///     uint32_t operator()(const hteData &k) {
-/// 	   // use key2 as the starting hash value
-///         // could also hash 2*sizeof(int) bytes starting at key1 if you are
-///         // sure the values are consecutive
-/// 	   uint32_t partial_hash = HashTable_hashbytes(&k.key1,
-/// 			  			       sizeof(int),k.key2);
+/// 	   // use key1+key2 as the starting hash value; 1972 is an arbitrary
+///        // constant. Could use HashTable_hashbytes, but that would be 
+///        // slower and would end up calculating about the same thing.
+///        uint32_t partial_hash = BobJenkinsHashMix3(k.key1, key.key2, 1972);
+///        // now mix in the string key value.
 /// 	   return HashTable_hashbytes(k.key3.data(),k.key3.size(),
 /// 				      partial_hash);
 ///     };
