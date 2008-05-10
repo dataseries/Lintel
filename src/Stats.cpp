@@ -38,6 +38,11 @@ StatsBase::~StatsBase()
     is_assigned = false;
 };
 
+bool StatsBase::checkInvariants() const
+{ 
+    return is_assigned; 
+}
+
 void
 StatsBase::reset()
 {

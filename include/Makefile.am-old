@@ -93,8 +93,7 @@ nobase_include_HEADERS +=
 
 Lintel/GC_Alloc.hpp: make_gcalloc_h.pl
 	[ -d Lintel ] || mkdir Lintel
-	perl $(srcdir)/make_gcalloc_h.pl >$@-new
-	mv $@-new $@
+	perl $(srcdir)/make_gcalloc_h.pl $@
 
 endif
 

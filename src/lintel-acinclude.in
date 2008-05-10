@@ -5,8 +5,8 @@
 #  See the file named COPYING for license details
 #
 set -e
-prefix=@prefix@
-datadir=@expanded_datadir@
+prefix=@CMAKE_INSTALL_PREFIX@
+datadir=@CMAKE_INSTALL_PREFIX@/share
 
 if [ ! -f configure.ac ]; then
    echo "Usage: $0 (in directory where configure.ac exists)"

@@ -6,11 +6,11 @@
 #  See the file named COPYING for license details
 #
 
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-includedir=@includedir@
-libdir=@libdir@
-datadir=@expanded_datadir@
+prefix=@CMAKE_INSTALL_PREFIX@
+exec_prefix=@CMAKE_INSTALL_PREFIX@
+includedir=@CMAKE_INSTALL_PREFIX@/include
+libdir=@CMAKE_INSTALL_PREFIX@/lib
+datadir=@CMAKE_INSTALL_PREFIX@/share
 
 usage()
 {
@@ -19,14 +19,15 @@ Usage: lintel-config <OPTION>
 
 Valid options:
   --cflags	       show needed compiler flags
-  --libtool-libs       show link options for libtool
-  --libtool-lintelgc   show link options for libLintelWithGC 
-    this library requires either --nogclibs or --mustgclibs, and classes may
-    assume GC exists.
-  --libtool-lintelpthread show libtool link options for libLintelPThread
+
   --libs	       show library link options
-  --mustgclibs         show library link options for programs requiring garbage collection
-  --nogclibs           show library link options for programs that don't need gc libraries
+
+  --libtool-libs       obsolete
+  --libtool-lintelgc   obsolete
+  --libtool-lintelpthread obsolete
+  --mustgclibs         obsolete
+  --nogclibs           obsolete
+
   --features           show the features this version of lintel was built with
   --has-feature <feature> exit true (has feature) or false (does not have feature)
   --datadir            show the share directory lintel used for installation
@@ -36,58 +37,45 @@ EOF
 exit 1
 }
 
+features=`echo "@LINTEL_FEATURES@" | sed 's/;/ /'`
+
 case "$1" in
     --cflags)
-    	echo "-I${includedir} @TCL_CFLAGS@ @GC_CFLAGS@"
+    	echo "-I${includedir} -I@TCL_INCLUDE_PATH@"
 	exit 0
     	;;
-    --libtool-libs)
-	echo ${libdir}/libLintel.la
-	exit 0
-	;;
-    --libtool-lintelgc)
-	@WITH_GC_TRUE@ echo ${libdir}/libLintelGC.la
-	@WITH_GC_TRUE@ exit 0
-	@WITH_GC_FALSE@ echo "-lmissing--with-gc-in-lintel-configure-need-dependant-bits"
-	@WITH_GC_FALSE@ exit 1
-	;;
-    --libtool-lintelpthread)
-	echo ${libdir}/libLintelPThread.la
-	exit 0
-	;;
     --libs)
         if test $libdir = '/usr/lib'; then
-	    echo "-lLintel @TCL_LIBS@"
+	    echo "-lLintel @TCL_LIBRARY@"
         else
-	    echo "-L$libdir -lLintel @TCL_LIBS@"
+	    echo "-L$libdir -lLintel @TCL_LIBRARY@"
 	fi
 	exit 0
 	;;
+    --libtool-libs)
+        $0 --libs
+	;;
+    --libtool-lintelgc)
+        echo /no/such/file/no/support/for/lintel-config/--libtool-lintelgc
+	exit 1
+	;;
+    --libtool-lintelpthread)
+        echo "`$0 --libs` -lLintelPThread"
+	exit 0
+	;;
     --mustgclibs)
-    	@WITH_GC_TRUE@ if test $libdir = '/usr/lib'; then
-    	@WITH_GC_TRUE@ 	   echo "@GC_LIBS@"
-    	@WITH_GC_TRUE@ else
-    	@WITH_GC_TRUE@ 	   echo "-L$libdir @GC_LIBS@"
-    	@WITH_GC_TRUE@ fi
-    	@WITH_GC_TRUE@ exit 0
-    	@WITH_GC_FALSE@ echo "-lno-gc-lib-configured-in-lintel-but-required-by-program"
-    	@WITH_GC_FALSE@ exit 1
+        echo /no/such/file/no/support/for/lintel-config/--mustgclibs
+	exit 1
 	;;
     --nogclibs)
-        @WITH_GC_TRUE@ if test $libdir = '/usr/lib'; then
-	@WITH_GC_TRUE@     echo "-lnogc"
-        @WITH_GC_TRUE@ else
-	@WITH_GC_TRUE@     echo "-L$libdir -lnogc"
-	@WITH_GC_TRUE@ fi
-	@WITH_GC_TRUE@ exit 0
-	@WITH_GC_FALSE@ echo "-llintel-libnogc-not-needed-now-unless-using-liblintelgc"
-	@WITH_GC_FALSE@ exit 1
+        echo /no/such/file/no/support/for/lintel-config/--nogclibs
+	exit 1
 	;;
     --features)
-        echo @LINTEL_FEATURES@
+        echo $features
 	;;
     --has-feature)
-        for i in @LINTEL_FEATURES@; do
+        for i in $features; do
 	    if test "$i" = "$2"; then
 		exit 0
 	    fi
@@ -101,7 +89,7 @@ case "$1" in
         usage
 	;;
     --version)
-    	echo @VERSION@;
+    	echo @LINTEL_VERSION@;
     	exit 0
     	;;
     *)

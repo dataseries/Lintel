@@ -26,7 +26,8 @@ use Fcntl ':mode';
 use DirHandle;
 use File::Path;
 @PERL_MODULES_INC_UNSHIFT@
-BEGIN { unshift(@INC,"@expanded_datadir@/bp_modules"); }
+BEGIN { $Global::BP_ModulePath = "@CMAKE_INSTALL_PREFIX@/share/bp_modules";
+        unshift(@INC, $Global::BP_ModulePath); }
 use BatchParallel::common;
 
 $|=1;
@@ -72,7 +73,7 @@ my $ret = GetOptions('man!' => \$print_manpage,
 		     'transfer-env!' => \$transfer_env);
 
 my @bp_module_dirs = ("$ENV{HOME}/.batch-parallel/modules", 
-		      "@expanded_datadir@/bp_modules");
+		      $Global::BP_ModulePath);
 
 if (defined $ENV{BP_MODULES}) {
     unshift(@bp_module_dirs,split(/:/o,$ENV{BP_MODULES}));

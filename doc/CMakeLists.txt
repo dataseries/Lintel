@@ -1,3 +1,10 @@
+#
+# (c) Copyright 2007-2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# cmake description for the doc directory
+
 CMAKE_MINIMUM_REQUIRED(VERSION 2.4.4 FATAL_ERROR)
 INCLUDE(FindDoxygen)
 
@@ -7,10 +14,9 @@ INCLUDE(FindDoxygen)
 IF (DOXYGEN_FOUND)
    CONFIGURE_FILE(doxygen.config.in ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config @ONLY)
 
-   FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES ${CMAKE_CURRENT_SOURCE_DIR}/../*.hpp)
-   FILE(GLOB_RECURSE DOXYGEN_DEP_SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/../*.cpp)
+   FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES ${Lintel_SOURCE_DIR}/*.hpp)
+   FILE(GLOB_RECURSE DOXYGEN_DEP_SOURCES ${Lintel_SOURCE_DIR}/*.cpp)
 
-   MESSAGE("HOLA ${DOXYGEN_DEP_INCLUDES}")
    ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html
 	              COMMAND ${DOXYGEN_EXECUTABLE} 
 		   	      ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config

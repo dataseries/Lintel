@@ -1,14 +1,31 @@
-#!/usr/local/bin/perl -w
+#!/usr/bin/perl -w
 
 #
-#  (c) Copyright 2005, Hewlett-Packard Development Company, LP
+#  (c) Copyright 2005-2008, Hewlett-Packard Development Company, LP
 #
 #  See the file named COPYING for license details
 #
 
 use strict;
+use File::Path;
 
-print <<'END_OF_HEADER';
+die "Usage: $0 <output-pathname>" unless @ARGV == 1 && $ARGV[0] =~ m!/!;
+
+my $dir = $ARGV[0];
+$dir =~ s!/[^/]+$!!o;
+mkpath($dir);
+
+open(OUT, ">$ARGV[0]-new") or die "Can't write to $ARGV[0]-new: $!";
+select(OUT);
+header();
+templates();
+footer();
+close(OUT);
+rename("$ARGV[0]-new", $ARGV[0]) or die "can't rename $ARGV[0]-new to $ARGV[0]: $!";
+exit(0);
+
+sub header {
+    print <<'END_OF_HEADER';
 /*
    (c) Copyright 2005, Hewlett-Packard Development Company, LP
 
@@ -56,14 +73,18 @@ template<class __T> class GCAtomicAllocatorRebindGCAlloc;
 template<class __T> class GCAtomicIgnoreOffPageAllocatorRebindGCAlloc;
 
 END_OF_HEADER
+}
 
-write_template('GCAllocator','GC_malloc','GCAllocator');
-write_template('GCAtomicAllocator','GC_malloc_atomic','GCAtomicAllocator');
-write_template('GCAtomicAllocatorRebindGCAlloc','GC_malloc_atomic','GCAllocator');
-write_template('GCAtomicIgnoreOffPageAllocator','GC_malloc_atomic_ignore_off_page','GCAtomicIgnoreOffPageAllocator');
-write_template('GCAtomicIgnoreOffPageAllocatorRebindGCAlloc','GC_malloc_atomic_ignore_off_page','GCAllocator');
+sub templates {
+    write_template('GCAllocator','GC_malloc','GCAllocator');
+    write_template('GCAtomicAllocator','GC_malloc_atomic','GCAtomicAllocator');
+    write_template('GCAtomicAllocatorRebindGCAlloc','GC_malloc_atomic','GCAllocator');
+    write_template('GCAtomicIgnoreOffPageAllocator','GC_malloc_atomic_ignore_off_page','GCAtomicIgnoreOffPageAllocator');
+    write_template('GCAtomicIgnoreOffPageAllocatorRebindGCAlloc','GC_malloc_atomic_ignore_off_page','GCAllocator');
+}
 
-print <<'END_OF_FOOTER';
+sub footer {
+    print <<'END_OF_FOOTER';
 #if (__GNUC__ >= 3) 
 typedef std::basic_string<char, std::char_traits<char>, GCAtomicAllocator<char> > gcstring;
 #else
@@ -83,6 +104,7 @@ static inline bool operator== (const gcstring &lhs, const std::string &rhs)
 #endif
 
 END_OF_FOOTER
+}
 
 sub write_template {
     my($classname,$fnname,$rebindname) = @_;

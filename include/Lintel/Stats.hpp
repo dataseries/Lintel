@@ -25,7 +25,7 @@ protected:
 public:
     StatsBase();
     virtual ~StatsBase();		
-    virtual bool checkInvariants() const { return is_assigned; }
+    virtual bool checkInvariants() const;
     virtual void reset();		///< Reset to original values
 
     //----Query functions

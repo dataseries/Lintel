@@ -1,3 +1,18 @@
+2008-05-09: 
+   * Switched over to using cmake for building instead of autoconf.  This
+     change is intended to move us toward being able to build on Windows.
+     As part of this change, we discovered that boost support is pretty 
+     much required, so explicitly made it so. Also, dropped support for 
+     gc and makebits; those are both old and unused.  
+
+2008-03-23: 
+   * Clock routines now check for frequency scaling and will not continue
+     if frequency scaling is enabled and the user has not accepted potentially
+     incorrect results.
+
+2008-03-04:
+   * Add segment plotting to mercury-plot
+
 2008-02-14:
    * Added tar batch-parallel module for taking a group of files in
      directories and creating tar files out of them of a specified size.

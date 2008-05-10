@@ -1,29 +1,19 @@
-Add more external documentation (use doxygen?)
+Update all of the classes to follow the guidelines in:
+http://techbase.kde.org/Policies/Binary_Compatibility_Issues_With_C++
+so we can maintain binary compatibility easier.
 
 There are many things in Lintel that should be replaced with better and/or
 more standard things from (e.g.) boost or std::tr1. For data structures,
-also remember to check relative performance first.
+also remember to check relative performance first.  In particular, the 
+PriorityQueue, Deque, and HashTable(/Map/Unique) implementations all
+exist because they were measured as faster.
 
 add a test that checks whether or not we need '-Dstd=' rather than
 guessing based on HP-UX compiler version
 
-figure out how to generate weak symbols so that we can have libnogc.so
-included in libLintel.so and if people want to enable garbage
-collection they can add it in and it just works. -- this is the same
-trick as is done by libpthread
-     
 add in an option to StatsQuantile that controls directly the memory
 used, and makes a tradeoff between the Nbound and the error so that
 it's roughly balanced.
-
-add support for checking of the lintel version into the
-HPL_REQUIRELIB_LINTEL bit.
-
-Figure out how to make a meta-macro that generates the
-HPL_{REQUIRELIB,WITHLIB}_{XML2,LZF,LZO,...} since all of those macros
-are so similar; a generalization of HPL_DEFINE_REQUIRELIB might work,
-but we want to check for various functions being defined, see the
-example HPL_REQUIRELIB_XML2 functions.
 
 HashMap.H: figure out why HashMap<const std::string, int> gives a
 compiler error with gcc-4.1

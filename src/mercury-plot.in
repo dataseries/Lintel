@@ -1023,8 +1023,8 @@ sub plotwith {
 	    $default_plotwith = undef;
 	    return;
 	}
-	print "default_plotwith = $default_plotwith\n";
 	$default_plotwith = $with;
+	print "default_plotwith = $default_plotwith\n";
 	foreach my $plot (@plots) {
 	    next if defined $plot->{with};
 	    $plot->{with} = $default_plotwith;

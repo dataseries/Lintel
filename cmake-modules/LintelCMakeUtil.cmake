@@ -1,0 +1,32 @@
+MACRO(LINTEL_CONFIG_FILE file_name)
+  MESSAGE("${file_name}: substitute @vars")
+  CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${file_name}.in
+                 ${CMAKE_CURRENT_BINARY_DIR}/${file_name}
+                 @ONLY)
+ENDMACRO(LINTEL_CONFIG_FILE)
+
+MACRO(LINTEL_INSTALL_CONFIG_PROGRAM file_name)
+  LINTEL_CONFIG_FILE(${file_name})				   
+  INSTALL(PROGRAMS ${CMAKE_CURRENT_BINARY_DIR}/${file_name}
+          DESTINATION ${CMAKE_INSTALL_PREFIX}/bin)
+ENDMACRO(LINTEL_INSTALL_CONFIG_PROGRAM)
+
+MACRO(LINTEL_INSTALL_CONFIG_FILE file_name dest_prefix)
+  LINTEL_CONFIG_FILE(${file_name})
+  INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${file_name}
+          DESTINATION ${dest_prefix})
+ENDMACRO(LINTEL_INSTALL_CONFIG_FILE)
+
+MACRO(LINTEL_INSTALL_ONE_FILE_PATH path_name dest_prefix)
+  GET_FILENAME_COMPONENT(tmp ${path_name} PATH)
+  INSTALL(FILES ${path_name}
+	  DESTINATION ${dest_prefix}/${tmp})
+ENDMACRO(LINTEL_INSTALL_ONE_FILE_PATH)
+
+# prefix file ...
+MACRO(LINTEL_INSTALL_FILE_PATH dest_prefix)
+  FOREACH(file ${ARGN})
+    LINTEL_INSTALL_ONE_FILE_PATH(${file} ${dest_prefix})
+  ENDFOREACH(file)
+ENDMACRO(LINTEL_INSTALL_FILE_PATH)
+

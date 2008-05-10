@@ -1,0 +1,62 @@
+#
+# (c) Copyright 2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# All of the options and dependencies for the various cmake sub-bits
+
+OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
+
+OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
+INCLUDE(FindBoost)
+IF(Boost_FOUND)
+ELSE(Boost_FOUND)
+  MESSAGE(FATAL_ERROR "ERROR: Could NOT find the Boost includes and libraries")
+ENDIF(Boost_FOUND)
+
+INCLUDE(FindTCL)
+IF(TCL_INCLUDE_PATH)
+  SET(DEFAULT_WITH_TCL On)
+ELSE(TCL_INCLUDE_PATH)
+  SET(DEFAULT_WITH_TCL Off)
+ENDIF(TCL_INCLUDE_PATH)
+OPTION(WITH_TCL "Build with TCL support?" On)
+
+INCLUDE(FindThreads)
+IF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H)
+  SET(DEFAULT_WITH_PTHREADS On)
+ELSE(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H)
+  SET(DEFAULT_WITH_PTHREADS Off)
+ENDIF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H)
+OPTION(WITH_THREADS "Build with thread (pthread right now) support?" On)
+
+FIND_PROGRAM(AWK_PATH awk)
+FIND_PROGRAM(PERL_BINARY perl)
+
+# need to do this to pick up user installed modules.
+# need unshift so that if we have commonly installed perl modules
+# and user installed ones that the user installed ones take precedence.
+SET(PERL_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'$PERL_SHAREDIR') if grep(\$_ eq '$PERL_SHAREDIR', @INC) == 0;};")
+# need this so that we can regression test without having to install first.
+# and can't do it through the standard PERLLIB env variable as that
+# would get overridden by the earlier unshift.
+# TODO: check to see if setting PERL5LIB with PERL_SHAREDIR and this one works now.
+SET(PERL_MODULES_INC_UNSHIFT "$PERL_MODULES_INC_UNSHIFT BEGIN { unshift(@INC, \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}) if defined \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}; };")
+
+OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
+
+IF(WITH_INSTALLED_RPATH)
+  # use, i.e. don't skip the full RPATH for the build tree
+  SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+
+  # when building, don't use the install RPATH already
+  # (but later on when installing)
+  SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+
+  # the RPATH to be used when installing
+  SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+
+  # add the automatically determined parts of the RPATH
+  # which point to directories outside the build tree to the install RPATH
+  SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+ENDIF(WITH_INSTALLED_RPATH)

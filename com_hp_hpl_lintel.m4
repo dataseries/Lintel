@@ -208,9 +208,6 @@ AC_MSG_CHECKING(for lintel-config)
 LINTEL_CFLAGS=
 LINTEL_LIBS=
 LINTEL_LIBTOOL=
-LINTEL_ANYGCLIBS=
-LINTEL_REQUIREGCLIBS=
-LINTEL_NOGCLIBS=
 have_lintel=no
 # this ordering of tests causes the build to prefer the version of Lintel
 # installed into the prefix, rather than the one in the user's path
@@ -238,8 +235,6 @@ else
     LINTEL_LIBTOOL=`$LINTEL_CONFIG --libtool-libs || exit 1`
     LINTELPTHREAD_LIBTOOL=`$LINTEL_CONFIG --libtool-lintelpthread || exit 1`
     LINTEL_LIBS=`$LINTEL_CONFIG --libs || exit 1`
-    LINTEL_MUSTGCLIBS=`$LINTEL_CONFIG --mustgclibs || exit 1`
-    LINTEL_NOGCLIBS=`$LINTEL_CONFIG --nogclibs || exit 1`
     save_lintel_cppflags=$CPPFLAGS
     CPPFLAGS="$CPPFLAGS $LINTEL_CFLAGS"
     AC_CHECK_HEADER(Lintel/LintelAssert.H,have_lintel=yes,have_lintel=no)
@@ -283,8 +278,6 @@ AC_SUBST(LINTEL_CFLAGS)
 AC_SUBST(LINTEL_LIBTOOL)
 AC_SUBST(LINTELPTHREAD_LIBTOOL)
 AC_SUBST(LINTEL_LIBS)
-AC_SUBST(LINTEL_MUSTGCLIBS)
-AC_SUBST(LINTEL_NOGCLIBS)
 ])
 
 

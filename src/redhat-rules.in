@@ -5,7 +5,7 @@ ifeq ($(REPODIR),)
 REPODIR := /var/www/redhat/hpl-custom-config
 endif
 
-TOOLSDIR := @expanded_datadir@/packaging
+TOOLSDIR := @CMAKE_INSTALL_PREFIX@/share/packaging
 
 help: 
 	@echo "make rpm | tar | repo"
