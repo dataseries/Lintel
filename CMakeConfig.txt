@@ -6,6 +6,11 @@
 # All of the options and dependencies for the various cmake sub-bits
 
 OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
+IF(BUILD_SHARED_LIBS)
+  SET(LIBRARY_TYPE SHARED)
+ELSE(BUILD_SHARED_LIBS)
+  SET(LIBRARY_TYPE STATIC)
+ENDIF(BUILD_SHARED_LIBS)
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
 INCLUDE(FindBoost)
@@ -32,16 +37,6 @@ OPTION(WITH_THREADS "Build with thread (pthread right now) support?" On)
 
 FIND_PROGRAM(AWK_PATH awk)
 FIND_PROGRAM(PERL_BINARY perl)
-
-# need to do this to pick up user installed modules.
-# need unshift so that if we have commonly installed perl modules
-# and user installed ones that the user installed ones take precedence.
-SET(PERL_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'$PERL_SHAREDIR') if grep(\$_ eq '$PERL_SHAREDIR', @INC) == 0;};")
-# need this so that we can regression test without having to install first.
-# and can't do it through the standard PERLLIB env variable as that
-# would get overridden by the earlier unshift.
-# TODO: check to see if setting PERL5LIB with PERL_SHAREDIR and this one works now.
-SET(PERL_MODULES_INC_UNSHIFT "$PERL_MODULES_INC_UNSHIFT BEGIN { unshift(@INC, \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}) if defined \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}; };")
 
 OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
 

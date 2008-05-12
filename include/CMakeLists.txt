@@ -5,7 +5,7 @@
 #
 # cmake description for the include directory
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.4.4 FATAL_ERROR)
+# TODO: move this into Lintel/; remove all the unneeded paths
 
 SET(INCLUDE_FILES
 	Lintel/AssertException.hpp

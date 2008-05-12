@@ -5,6 +5,9 @@
 #
 # Main cmake control file
 
+# ELSEIF came with 2.4.4
+CMAKE_MINIMUM_REQUIRED(VERSION 2.4.4 FATAL_ERROR)
+
 PROJECT(Lintel)
 
 SET(LINTEL_VERSION 0.0)
