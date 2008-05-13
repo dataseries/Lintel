@@ -54,8 +54,9 @@ static string readFileLine(const string &filename)
     // open the file.
 
     FILE *f = fopen(filename.c_str(), "r");
-    INVARIANT(f != NULL, format("Unable to open %s for read: %s")
-	      % filename % strerror(errno));
+    if (f == NULL) {
+	return "";
+    }
     static const unsigned bufsize = 80; // long enough for how we are using it.
     char buf[bufsize]; 
     fgets(buf, bufsize, f);
@@ -77,13 +78,15 @@ static void checkForPossibleFrequencyScaling()
 	unsigned cpu_count = 0;
 	struct dirent *ent;
 	while((ent = readdir(dir)) != NULL) {
-	    if (strncmp(ent->d_name, "cpu", 3) == 0) {
+	    if (strncmp(ent->d_name, "cpu", 3) == 0 
+		&& isdigit(ent->d_name[3])) {
 		++cpu_count;
 		string dir = cpu_dir + "/" + ent->d_name + "/cpufreq";
 		string min_freq = readFileLine(dir + "/scaling_min_freq");
 		string max_freq = readFileLine(dir + "/scaling_max_freq");
 		string governor = readFileLine(dir + "/scaling_governor");
-		if (governor == "performance" || min_freq == max_freq) {
+		if (governor == "performance" 
+		    || (!min_freq.empty() && min_freq == max_freq)) {
 		    // ok
 		} else {
 		    all_ok = false;
