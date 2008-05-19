@@ -114,6 +114,18 @@ public:
 	rotate();
     }
     
+    /*** rotate enough times so that the hash map is empty */
+    void flushRotate() {
+	rotate();
+	rotate();
+    }
+
+    /*** rotate enough times so that the hash map is empty */
+    void flushRotate(const rotate_fn fn) {
+	rotate(fn);
+	rotate(fn);
+    }
+
     size_t size_recent() {
 	return table_recent->size();
     }

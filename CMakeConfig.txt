@@ -5,53 +5,81 @@
 #
 # All of the options and dependencies for the various cmake sub-bits
 
+##### Required bits
+
+INCLUDE(FindBoost)
+IF(NOT Boost_FOUND)
+    MESSAGE(FATAL_ERROR "ERROR: Could NOT find the Boost includes and libraries")
+ENDIF(NOT Boost_FOUND)
+
+# TODO: check to see if this is only needed for buildTcl
+FIND_PROGRAM(AWK_PATH awk)
+IF(NOT AWK_PATH)
+    MESSAGE(FATAL_ERROR "ERROR: Could NOT find awk")
+ENDIF(NOT AWK_PATH)
+
+FIND_PROGRAM(PERL_BINARY perl)
+IF (NOT PERL_BINARY)
+    MESSAGE(FATAL_ERROR "ERROR: Could NOT find perl")
+ENDIF(NOT PERL_BINARY)
+
+##### Optional bits
+
+INCLUDE(FindDoxygen)
+
 OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
 IF(BUILD_SHARED_LIBS)
-  SET(LIBRARY_TYPE SHARED)
+    SET(LIBRARY_TYPE SHARED)
 ELSE(BUILD_SHARED_LIBS)
-  SET(LIBRARY_TYPE STATIC)
+    SET(LIBRARY_TYPE STATIC)
 ENDIF(BUILD_SHARED_LIBS)
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
-INCLUDE(FindBoost)
-IF(Boost_FOUND)
-ELSE(Boost_FOUND)
-  MESSAGE(FATAL_ERROR "ERROR: Could NOT find the Boost includes and libraries")
-ENDIF(Boost_FOUND)
 
 INCLUDE(FindTCL)
-IF(TCL_INCLUDE_PATH)
-  SET(DEFAULT_WITH_TCL On)
-ELSE(TCL_INCLUDE_PATH)
-  SET(DEFAULT_WITH_TCL Off)
-ENDIF(TCL_INCLUDE_PATH)
-OPTION(WITH_TCL "Build with TCL support?" On)
+OPTION(WITH_TCL "Try to build with TCL support?" On)
+IF(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL)
+    SET(TCL_ENABLED ON)
+ELSE(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL)
+    SET(TCL_ENABLED OFF)
+ENDIF(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL)
 
 INCLUDE(FindThreads)
-IF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H)
-  SET(DEFAULT_WITH_PTHREADS On)
-ELSE(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H)
-  SET(DEFAULT_WITH_PTHREADS Off)
-ENDIF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H)
-OPTION(WITH_THREADS "Build with thread (pthread right now) support?" On)
-
-FIND_PROGRAM(AWK_PATH awk)
-FIND_PROGRAM(PERL_BINARY perl)
+OPTION(WITH_THREADS "Try to build with thread (pthread right now) support?" On)
+IF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H AND WITH_THREADS)
+    SET(THREADS_ENABLED ON)
+ELSE(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H AND WITH_THREADS)
+    SET(THREADS_ENABLED OFF)
+ENDIF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H AND WITH_THREADS)
 
 OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
 
 IF(WITH_INSTALLED_RPATH)
-  # use, i.e. don't skip the full RPATH for the build tree
-  SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
-
-  # when building, don't use the install RPATH already
-  # (but later on when installing)
-  SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
-
-  # the RPATH to be used when installing
-  SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-
-  # add the automatically determined parts of the RPATH
-  # which point to directories outside the build tree to the install RPATH
-  SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    # use, i.e. don't skip the full RPATH for the build tree
+    SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+  
+    # when building, don't use the install RPATH already
+    # (but later on when installing)
+    SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+  
+    # the RPATH to be used when installing
+    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+  
+    # add the automatically determined parts of the RPATH
+    # which point to directories outside the build tree to the install RPATH
+    SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 ENDIF(WITH_INSTALLED_RPATH)
+
+IF(WITH_TCL AND NOT TCL_ENABLED)
+    MESSAGE("WITH_TCL on, but could not find tcl includes/libraries.")
+    MESSAGE("  Lintel TCL libraries support will be skipped.")
+ENDIF(WITH_TCL AND NOT TCL_ENABLED)
+
+IF(WITH_THREADS AND NOT THREADS_ENABLED)
+    MESSAGE("WITH_THREADS on, but could not find pthread includes/libraries.")
+    MESSAGE("  LintelPThread library will be skipped.")
+ENDIF(WITH_THREADS AND NOT THREADS_ENABLED)
+
+IF(NOT DOXYGEN_FOUND)
+    MESSAGE("WARNING: doxygen not found, unable to build documentation")
+ENDIF(NOT DOXYGEN_FOUND)
