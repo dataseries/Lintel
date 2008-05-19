@@ -11,7 +11,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 
 /*
@@ -165,7 +165,7 @@ MersenneTwisterRandom::initArray(std::vector<uint32_t> seed_array)
 	    }
 	}
     }
-    Assert(any_nonzero,("Must have a non-zero entry in seed_array!\n"));
+    INVARIANT(any_nonzero, "Must have a non-zero entry in seed_array!\n");
     mti=N;
 #endif
 }
@@ -614,43 +614,43 @@ MersenneTwisterRandom::selfTest()
 
     for(int i=0;i<arrayCheck_count;i++) {
 	uint32_t v = mt.randInt();
-	AssertAlways(v == arrayCheck[i],
-		     ("MersenneTwisterRandom::selfTest() %d failed %u != %u\n",
-		      i,v,arrayCheck[i]));
+	INVARIANT(v == arrayCheck[i],
+		  boost::format("MersenneTwisterRandom::selfTest() %d failed %u != %u")
+		  % i % v % arrayCheck[i]);
     }
 
     mt.init(5489UL);
     for(int i=0;i<seedCheck_count;i++) {
 	uint32_t v = mt.randInt();
-	AssertAlways(v == seedCheck[i],
-		     ("MersenneTwisterRandom::selfTest() %d failed %u != %u\n",
-		      i,v,seedCheck[i]));
+	INVARIANT(v == seedCheck[i],
+		  boost::format("MersenneTwisterRandom::selfTest() %d failed %u != %u")
+		  % i % v % seedCheck[i]);
     }
 
     uint32_t maxint = ~0;
     double maxintplus1 = (double)maxint + 1.0;
 
-    AssertAlways(maxint * MTR_int_to_open < 1,
-		 ("MTR_int_to_open bad\n"));
-    AssertAlways(maxintplus1 * MTR_int_to_open >= 1,
-		 ("MTR_int_to_open bad\n"));
+    INVARIANT(maxint * MTR_int_to_open < 1,
+	      "MTR_int_to_open bad");
+    INVARIANT(maxintplus1 * MTR_int_to_open >= 1,
+	      "MTR_int_to_open bad");
 
     // Oddly for gcc 2.95 on linux without optimization, 
     // substituting yfoo into the assert makes it not work
     double yfoo = maxint * MTR_int_to_closed;
-    AssertAlways(yfoo == 1,("int_to_closed bad %.20g\n",1-yfoo));
+    INVARIANT(yfoo == 1, boost::format("int_to_closed bad %.20g") % (1-yfoo));
 		 
-    AssertAlways((maxint-1) * MTR_int_to_closed < 1,
-		 ("int_to_closed bad\n"));
+    INVARIANT((maxint-1) * MTR_int_to_closed < 1,
+	      "int_to_closed bad");
 
     uint32_t a_val = static_cast<uint32_t>(~0) >> 5;
     uint32_t b_val = static_cast<uint32_t>(~0) >> 6;
     
-    AssertAlways(MTR_53bits_to_open(a_val,b_val) < 1,
-		 ("MTR_53bits_to_open bad %d %d %.20g \n",
-		  a_val,b_val,MTR_53bits_to_open(a_val,b_val)));
+    INVARIANT(MTR_53bits_to_open(a_val,b_val) < 1,
+	      boost::format("MTR_53bits_to_open bad %d %d %.20g")
+	      % a_val % b_val % MTR_53bits_to_open(a_val,b_val));
 
-    AssertAlways(MTR_53bits_to_closed(a_val,b_val) == 1,
-		 ("MTR_53bits_to_closed bad %.20g \n",
-		  MTR_53bits_to_closed(a_val,b_val)));
+    INVARIANT(MTR_53bits_to_closed(a_val,b_val) == 1,
+	      boost::format("MTR_53bits_to_closed bad %.20g")
+	      % MTR_53bits_to_closed(a_val,b_val));
 }

@@ -78,7 +78,8 @@ StatsRW::add(const double value, modeT mode, const double timeSeq)
 	    if (all) all->addTimeSeq(value, timeSeq);
 	    break;
 	default:
-	    AssertFatal(("Unknown mode %d for StatsRW::add\n",mode));
+	    FATAL_ERROR(boost::format("Unknown mode %d for StatsRW::add")
+			% mode);
 	}
     if (autoAll) {
 	if (all) all->addTimeSeq(value, timeSeq);

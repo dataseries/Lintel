@@ -45,7 +45,7 @@ sub header {
 #include <memory>
 #include <string>
 
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 extern "C" {
 #include <gc/gc.h>
 }
@@ -157,7 +157,7 @@ public:
 	n = n * sizeof(T); // C++ documentation implies this is correct
 #endif
 	allocateT ret = static_cast<allocateT>($fnname(n));
-	AssertAlways(ret != NULL,("Out of Memory!"));
+	INVARIANT(ret != NULL, "Out of Memory!");
 	return ret;
     }
     

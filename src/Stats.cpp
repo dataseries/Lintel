@@ -15,7 +15,7 @@
 
 #include <boost/format.hpp>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/Stats.hpp>
 #include <Lintel/Double.hpp>
 
@@ -34,7 +34,7 @@ StatsBase::StatsBase()
 
 StatsBase::~StatsBase()
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     is_assigned = false;
 };
 
@@ -46,27 +46,27 @@ bool StatsBase::checkInvariants() const
 void
 StatsBase::reset()
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     reset_count++;
 }
 
 const double
 StatsBase::stddev() const
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     double sigsq = variance();
 
     if (sigsq <= 0.0)
 	return 0.0;
 
-    Assert(1,sigsq > 0.0);
+    DEBUG_SINVARIANT(sigsq > 0.0);
     return sqrt(sigsq);
 }
 
 const double 
 StatsBase::relconf95() const
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     return conf95()/mean();
 }
 
@@ -91,7 +91,7 @@ Stats::~Stats()	// Delete a value
 
 void Stats::reset()
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     StatsBase::reset();
     number = 0;
     sum = 0.0;
@@ -106,8 +106,8 @@ void Stats::add(const double value)
 {
     // TODO: make this a DEBUG_INVARIANT so it goes away if debugging
     // invariants are disabled.
-    AssertAlways(value == value,
-		 ("You tried to add a NaN to the stats object.")); 
+    INVARIANT(value == value,
+	      "You tried to add a NaN to the stats object."); 
     ++number;
     sum += value;
     sumsq += value*value;
@@ -141,7 +141,7 @@ Stats::addTimeSeq(const double value, const double timeSeq)
 
 const double Stats::mean() const
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     if (number == 0)
 	return 0.0;
     else
@@ -151,7 +151,7 @@ const double Stats::mean() const
 
 const double Stats::variance() const
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return 0.0;
     double m = double(mean());
     return double(sumsq)/double(number) - m*m;
@@ -161,9 +161,9 @@ const double Stats::variance() const
 
 const double Stats::conf95() const
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return DBL_MAX; // **** Should really be NaN if count==0
-    Assert(1,number > 0);
+    DEBUG_SINVARIANT(number > 0);
     return 1.96*stddev()/sqrt((double)number);
 }
 
@@ -174,7 +174,7 @@ const double Stats::conf95() const
 std::string Stats::debugString() const
 {
     // XXX rewrite using std::ostrstream.
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
 
     char line[1024];
     if (count() == 0)
@@ -185,7 +185,7 @@ std::string Stats::debugString() const
 		" 95%%conf %G rel95%%conf %G min %G max %G",
 		count(), mean(), stddev(), variance(),
 		conf95(), relconf95(), min(), max());
-    Assert(1,strlen(line) < 1024);
+    DEBUG_SINVARIANT(strlen(line) < 1024);
     return std::string(line);
 };
 
@@ -193,7 +193,7 @@ std::string Stats::debugString() const
 void
 Stats::printRome(int depth, std::ostream &out) const
 {
-    Assert(1,checkInvariants());
+    DEBUG_SINVARIANT(checkInvariants());
 
     std::string spaces;
     for(int i = 0; i < depth; i++) {
@@ -216,7 +216,7 @@ Stats::printRome(int depth, std::ostream &out) const
 void
 Stats::printTabular(int depth, std::ostream &out) const
 {
-  Assert(1,checkInvariants());
+  DEBUG_SINVARIANT(checkInvariants());
 
   std::string spaces;
   for(int i = 0; i < depth; i++) {

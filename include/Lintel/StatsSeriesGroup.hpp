@@ -13,7 +13,7 @@
 
 #include <vector>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/Stats.hpp>
 
 // Each of the stats objects in the series will be created using
@@ -30,8 +30,8 @@ public:
 
     const int getSeriesLength() { return stats.size(); }
     const Stats &getSeriesStat(const int statnum) {
-	AssertAlways(statnum >= 0 && statnum < (int)stats.size(),
-		     ("statnum %d is out of bounds\n",statnum));
+	INVARIANT(statnum >= 0 && static_cast<size_t>(statnum) < stats.size(),
+		  boost::format("statnum %d is out of bounds") % statnum);
 	return *(stats[statnum]);
     }
 

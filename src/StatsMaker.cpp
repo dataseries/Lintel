@@ -35,7 +35,7 @@ StatsMaker::getDefaultStatDef(const std::string &statname)
 	int i = tmp.rfind("-");
 	if (i < 0 || i >= (int)tmp.length())
 	    break;
-	AssertAlways(tmp[i] == '-',("?? internal error\n"));
+	SINVARIANT(tmp[i] == '-');
 	while(i>=0 && tmp[i] == '-') {
 	    i--;
 	}
@@ -138,7 +138,7 @@ StatsMaker::makeHistogram(statDefT &def)
       return new StatsHistogramLogAccum(def.bins, def.low, def.high);
       break;
     default:
-      AssertFatal(("This didn't happen.\n"));
+	FATAL_ERROR("This didn't happen.");
     }
   return NULL;
 }
@@ -165,18 +165,19 @@ StatsMaker::makeRWStats(const std::string &name, statDefT &def)
 static StatsHistogram::HistMode
 getHistMode(const std::string &histogram_type)
 {
-  if (histogram_type == "Uniform") {
+    if (histogram_type == "Uniform") {
+	return StatsHistogram::Uniform;
+    } else if (histogram_type == "Log") {
+	return StatsHistogram::Log;
+    } else if (histogram_type == "UniformAccum") {
+	return StatsHistogram::UniformAccum;
+    } else if (histogram_type == "LogAccum") {
+	return StatsHistogram::LogAccum;
+    } else {
+	FATAL_ERROR(boost::format("Unknown histogram mode %s")
+		    % histogram_type.c_str());
+    }
     return StatsHistogram::Uniform;
-  } else if (histogram_type == "Log") {
-    return StatsHistogram::Log;
-  } else if (histogram_type == "UniformAccum") {
-    return StatsHistogram::UniformAccum;
-  } else if (histogram_type == "LogAccum") {
-    return StatsHistogram::LogAccum;
-  } else {
-    AssertFatal(("Unknown histogram mode %s\n",histogram_type.c_str()));
-  }
-  return StatsHistogram::Uniform;
 }
 
 void

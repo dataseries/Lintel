@@ -51,7 +51,7 @@
 #include <values.h>
 #include <iostream>
 #include <fstream>
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/Stats.hpp>
 
 
@@ -337,9 +337,9 @@ public:
   virtual void add(const double index_value, const double data_value);
   
   const StatsHistogram &getHistogram(unsigned int n) const {
-    AssertAlways(n>=0 && n < histograms.size(),
-		 ("Requested out of bounds histogram %d valid range [%d .. %d]\n",
-		  n,0,histograms.size()));
+      INVARIANT(n>=0 && n < histograms.size(),
+		boost::format("Requested out of bounds histogram %d valid range [%d .. %d]")
+		% n % 0 % histograms.size());
     return *histograms[n];
   }
 

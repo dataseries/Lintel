@@ -23,7 +23,7 @@
 #include <values.h>
 #include <iostream>
 #include <fstream>
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/TclInterface.hpp>
 
 //----------------------------------------------------------------
@@ -360,7 +360,7 @@ public:
 
 
     RandH(const RandH& randH_in);
-    RandH() { AssertFatal(("Someone called the RandH default constructor.")); }
+    RandH() { FATAL_ERROR("Someone called the RandH default constructor."); }
 
     virtual ~RandH();
 
@@ -540,8 +540,6 @@ public:
   RandList(const char* file_name, const char* suffix) : Rand(), current(0)
     {
       char* buffer = new char[strlen(file_name) + strlen(suffix) + 1];
-      //AssertAlways(buffer, ("Could not new up a char buffer"));
-
       
       sprintf(buffer, "%s%s", file_name, suffix);
       init(buffer);

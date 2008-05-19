@@ -13,7 +13,7 @@
 #define LINTEL_MATRIX_HPP
 
 #include <Lintel/Double.hpp>
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 // gcc doesn't seem to be inlining the element stuff, and as a result, the
 // performance is noticably slower for the table-based stuff.

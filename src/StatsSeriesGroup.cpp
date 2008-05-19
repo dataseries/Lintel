@@ -20,13 +20,13 @@ StatsSeriesGroup::StatsSeriesGroup(const std::string &_myname, double _interval)
     first_time(Double::NaN),
     myname(_myname + "-")
 {
-    AssertAlways(last_time != last_time,("IEEE violation??\n"));
+    INVARIANT(last_time != last_time, "IEEE violation??");
 }
 
 void
 StatsSeriesGroup::add(const double value)
 {
-    AssertFatal(("StatsSeriesGroup::add shouldn't be called.\n"));
+    FATAL_ERROR("StatsSeriesGroup::add shouldn't be called.");
 }
 
 void
@@ -38,8 +38,7 @@ StatsSeriesGroup::add(const Stats &stat)
 void
 StatsSeriesGroup::setSeriesStart(const double timeSeq)
 {
-    AssertAlways(last_time != last_time,
-		 ("Duplicate setSeriesStart?!\n"));
+    INVARIANT(last_time != last_time, "Duplicate setSeriesStart?!");
     last_time = timeSeq;
     cur_interval_start = timeSeq;
     first_time = timeSeq;
@@ -52,9 +51,9 @@ StatsSeriesGroup::addTimeSeq(const double value, const double timeSeq)
     if (last_time != last_time) {
 	setSeriesStart(timeSeq);
     }
-    AssertAlways(timeSeq >= last_time,
-		 ("Time series expects data in increasing order, %.8g < %.8g\n",
-		  timeSeq,last_time));
+    INVARIANT(timeSeq >= last_time,
+	      boost::format("Time series expects data in increasing order, %.8g < %.8g")
+	      % timeSeq % last_time);
     last_time = timeSeq;
 
     // >= makes them half open intervals
@@ -122,5 +121,5 @@ StatsSeriesGroup::printRome(int depth, std::ostream &out) const
 void
 StatsSeriesGroup::printTabular(int depth, std::ostream &out) const
 {
-    AssertFatal(("unimplemented\n"));
+    FATAL_ERROR("unimplemented");
 }

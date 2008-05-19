@@ -13,7 +13,7 @@
 #include <math.h>
 #include <limits.h>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/MathSpecialFunctions.hpp>
 
 
@@ -86,12 +86,12 @@ bool isDoubleIntegral(double d, size_t target_size) {
     static const size_t size_long = sizeof(long);
     static const size_t size_long_long = sizeof(long long);
 
-    AssertAlways(target_size > 0 &&
-                 ( target_size == size_long ||
-                   target_size == size_long_long ),
-                 ( "Size %d is not valid for a long integer, valid sizes "
-                   "are %d for long and %d for long long.",
-                   target_size, size_long, size_long_long));
+    INVARIANT(target_size > 0 &&
+	      ( target_size == size_long ||
+		target_size == size_long_long ),
+	      boost::format("Size %d is not valid for a long integer, valid"
+			    "sizes are %d for long and %d for long long.")
+	      % target_size % size_long % size_long_long);
 
     // Determine the largest possible long values.  We have values for
     // long, but sadly we can't rely on the compiler giving us a value

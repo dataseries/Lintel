@@ -17,7 +17,7 @@
 
 #include <stdlib.h>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/Stats.hpp>
 
 int
@@ -29,7 +29,7 @@ main(int argc, char *argv[])
     }
 
     FILE *data_file = fopen(argv[1],"r");
-    AssertAlways(data_file != NULL,("Can't open %s\n",argv[1]));
+    INVARIANT(data_file != NULL, boost::format("Can't open %s") % argv[1]);
 
     Stats data_values;
     

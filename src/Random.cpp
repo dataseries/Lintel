@@ -12,7 +12,7 @@
 #include <sys/time.h>
 
 #include <Lintel/Double.hpp>
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/Random.hpp>
 
 
@@ -342,15 +342,15 @@ void RandH::init(const unsigned input_array_size,
  
     //DebugMsg(10, ("x_table[%d] = %lf, y_table[%d] = %lf\n",
     //	  i, x_table[i], i, y_table[i]));
-    Assert(1, (x_table[i-1] <= x_table[i] + epsilon));
-    Assert(1, (y_table[i-1] <= y_table[i] + epsilon));
+    DEBUG_SINVARIANT((x_table[i-1] <= x_table[i] + epsilon));
+    DEBUG_SINVARIANT((y_table[i-1] <= y_table[i] + epsilon));
     mean_value += (x_table[i]+x_table[i-1])/2. * 
                   (y_table[i]-y_table[i-1]);
   }
 
   // The last element in y_array should be ~1.0
   double last_y = y_table[input_array_size];
-  Assert(1, 1.0-epsilon <= last_y  &&  last_y <= 1.0+epsilon);
+  DEBUG_SINVARIANT(1.0-epsilon <= last_y  &&  last_y <= 1.0+epsilon);
 }
 
 
@@ -407,9 +407,9 @@ double RandH::draw(double _low, double _high)
   // we return.
     zero_range = false;
 
-    Assert(1, _low >= 0);
-    Assert(1, _high <= x_table[(table_size - 1)]);
-    Assert(1, _low <= _high);
+    DEBUG_SINVARIANT(_low >= 0);
+    DEBUG_SINVARIANT(_high <= x_table[(table_size - 1)]);
+    DEBUG_SINVARIANT(_low <= _high);
 
     // These should be replaced with a binary search.
     int i;
@@ -503,8 +503,8 @@ RandH::find_region(unsigned l_index,	// low boundary of the region searched
 {
   // Low index must be smaller than high index, and 
   // value can't be bigger than the biggest value in the y_table 
-  Assert(1, l_index < h_index);
-  Assert(1, value <= y_table[h_index]);
+  DEBUG_SINVARIANT(l_index < h_index);
+  DEBUG_SINVARIANT(value <= y_table[h_index]);
 
   if (value == y_table[h_index]) {	// Special case: very top of table
     return h_index - 1;
@@ -536,18 +536,18 @@ RandH* RandH::DiscreteRandom(std::string filename)
 {
     // Try to open the file:
     FILE* f = fopen(filename.c_str(), "r");
-    AssertAlways(f != NULL,
-                 ("Can't open histogram file %s: %s.",
-                  filename.c_str(), strerror(errno)));
+    INVARIANT(f != NULL,
+	      boost::format("Can't open histogram file %s: %s.")
+	      % filename % strerror(errno));
 
     // Read the number of entries.  It must be at least two, otherwise
     // this histogram would be just a fixed value.
     int n;
     int n_scan = fscanf(f, "%d\n", &n);
-    AssertAlways(n_scan == 1 && n > 1,
-                 ("First line of histogram file %s was not "
-                  "a positive number.",
-                  filename.c_str()));
+    INVARIANT(n_scan == 1 && n > 1,
+	      boost::format("First line of histogram file %s was not "
+			    "a positive number.")
+	      % filename);
 
     // Read the entries themselves; verify that none of the X or Y values
     // are out of range.
@@ -557,23 +557,23 @@ RandH* RandH::DiscreteRandom(std::string filename)
 
     for (int i=0; i<n; ++i) {
         n_scan = fscanf(f, "%lf %lf\n", &raw_x[i], &raw_p[i]);
-        AssertAlways(n_scan == 2,
-                     ("Line %d of histogram file %s was not X and Y.",
-                      i+2, filename.c_str()));
-        AssertAlways(raw_x[i] >= 0.0,
-                     ("Histogram file %s X[%d]=%f is negative.",
-                      filename.c_str(), i, raw_x[i]));
-        AssertAlways(raw_p[i] >= 0.0,
-                     ("Histogram file %s Prob[%d]=%f is not positive.",
-                      filename.c_str(), i, raw_p[i]));
+        INVARIANT(n_scan == 2,
+		 boost::format("Line %d of histogram file %s was not X and Y.")
+		  % (i+2) % filename);
+        INVARIANT(raw_x[i] >= 0.0,
+		  boost::format("Histogram file %s X[%d]=%f is negative.")
+		  % filename % i % raw_x[i]);
+        INVARIANT(raw_p[i] >= 0.0,
+		boost::format("Histogram file %s Prob[%d]=%f is not positive.")
+		  % filename % i % raw_p[i]);
         total_p += raw_p[i];
     }
     fclose(f);
 
     // The total probability has to be non-zero:
-    AssertAlways(total_p >= 0.0,
-                 ("Histogram file %s is all zero probabilities.",
-                  filename.c_str()));
+    INVARIANT(total_p >= 0.0,
+	      boost::format("Histogram file %s is all zero probabilities.")
+	      % filename);
     // Rescale all the probabilites:
     for (int i=0; i<n; ++i) {
         raw_p[i] /= total_p;
@@ -584,9 +584,9 @@ RandH* RandH::DiscreteRandom(std::string filename)
     // are within 0.1 of each other, the logic of the loop below that
     // converts this PDF into a CDF has to change radically.
     for (int i=1; i<n; ++i) {
-        AssertAlways(raw_x[i] - raw_x[i-1] >= 1.0-eps,
-                     ("Histogram %s X[%d]=%f and X[%d]=%f are too close.",
-                      filename.c_str(), i-1, raw_x[i-1], i, raw_x[i]));
+        INVARIANT(raw_x[i] - raw_x[i-1] >= 1.0-eps,
+	     boost::format("Histogram %s X[%d]=%f and X[%d]=%f are too close.")
+		  % filename.c_str() % (i-1) % raw_x[i-1] % i % raw_x[i]);
     }
 
     // Now convert the probabilities into a CDF.  This requires adding
@@ -629,13 +629,13 @@ RandH* RandH::DiscreteRandom(std::string filename)
     }
 
     // Make sure no more than n+1 values were used:
-    AssertAlways(u<=2*n, ("Histogram %s internal error: %d<=2*%d",
-                       filename.c_str(), u, n));
+    INVARIANT(u<=2*n, boost::format("Histogram %s internal error: %d<=2*%d")
+	      % filename % u % n);
 
     // Logic check: The very last value must be 1:
-    AssertAlways(p[u-1] >= 1.0 - eps,
-                 ("Histogram %s internal error: Sum is %f.",
-                  filename.c_str(), p[u-1]));
+    INVARIANT(p[u-1] >= 1.0 - eps,
+	      boost::format("Histogram %s internal error: Sum is %f.")
+	      % filename % p[u-1]);
 
     // Create the desired random distribution:
     RandH* return_value = new RandH(u, x, p);
@@ -659,19 +659,19 @@ RandH* RandH::HistogramRandom(std::string filename)
 {
     // Try to open the file:
     FILE* f = fopen(filename.c_str(), "r");
-    AssertAlways(f != NULL,
-                 ("Can't open histogram file %s: %s.",
-                  filename.c_str(), strerror(errno)));
+    INVARIANT(f != NULL,
+	      boost::format("Can't open histogram file %s: %s.")
+	      % filename % strerror(errno));
 
     // Read the number of entries.  It must be at least two, otherwise
     // this histogram would be just one bin, which is a uniform
     // distribution.
     int n;
     int n_scan = fscanf(f, "%d\n", &n);
-    AssertAlways(n_scan == 1 && n > 1,
-                 ("First line of histogram file %s was not "
-                  "a positive number.",
-                  filename.c_str()));
+    INVARIANT(n_scan == 1 && n > 1,
+	      boost::format("First line of histogram file %s was not "
+			    "a positive number.")
+	      % filename);
 
     // Read the entries themselves; verify that none of the X or Y values
     // are out of range.
@@ -681,23 +681,23 @@ RandH* RandH::HistogramRandom(std::string filename)
 
     for (int i=0; i<n; ++i) {
         n_scan = fscanf(f, "%lf %lf\n", &x[i], &p[i]);
-        AssertAlways(n_scan == 2,
-                     ("Line %d of histogram file %s was not X and Y.",
-                      i+2, filename.c_str()));
-        AssertAlways(x[i] >= 0.0,
-                     ("Histogram file %s X[%d]=%f is negative.",
-                      filename.c_str(), i, x[i]));
-        AssertAlways(p[i] >= 0.0,
-                     ("Histogram file %s Prob[%d]=%f is not positive.",
-                      filename.c_str(), i, p[i]));
+        INVARIANT(n_scan == 2,
+		 boost::format("Line %d of histogram file %s was not X and Y.")
+		  % (i+2) % filename);
+        INVARIANT(x[i] >= 0.0,
+		  boost::format("Histogram file %s X[%d]=%f is negative.")
+		  % filename % i % x[i]);
+        INVARIANT(p[i] >= 0.0,
+	        boost::format("Histogram file %s Prob[%d]=%f is not positive.")
+		  % filename % i % p[i]);
         total_p += p[i];
     }
     fclose(f);
 
     // The total probability has to be non-zero:
-    AssertAlways(total_p >= 0.0,
-                 ("Histogram file %s is all zero probabilities.",
-                  filename.c_str()));
+    INVARIANT(total_p >= 0.0,
+	      boost::format("Histogram file %s is all zero probabilities.")
+	      % filename);
 
     // Rescale all the probabilites, and integrate them into a CDF:
     double cdf = 0;
@@ -748,7 +748,7 @@ RandN::RandN(double mu_, double sigma_, RandSeeder *sd)
 double RandN::draw() 
 {
   double temp = -2.0*log(erand48(seed.seeds));
-  Assert(1, temp > 0.0);
+  DEBUG_SINVARIANT(temp > 0.0);
   return mu + sigma * sqrt(temp) * cos(2.0*M_PI*erand48(seed.seeds));
 };
 
@@ -777,8 +777,9 @@ void RandList::init(const char* file_name)
 {
     double temp;
     std::ifstream input(file_name);
-    AssertAlways(input, 
-		 ("Could not open RandList input file \"%s\"", file_name));
+    INVARIANT(input.good(), 
+	      boost::format("Could not open RandList input file \"%s\"")
+	      % file_name);
     
     while(input >> temp) objects.push_back(temp);
     
@@ -807,8 +808,8 @@ void RandList::init(const double* input, int size)
 
 double RandList::draw() 
 { 
-    AssertAlways(objects.size() >= 1, 
-		 ("Tried to draw() from an empty RandList"));
+    INVARIANT(objects.size() >= 1, 
+	      "Tried to draw() from an empty RandList");
     current %= objects.size(); return objects[current++]; 
 }
 

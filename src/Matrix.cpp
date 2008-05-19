@@ -40,7 +40,7 @@ Matrix::setRow(unsigned int row, ...)
     for(unsigned int i=0;i<ncols;i++) {
 	set(row,i,va_arg(ap, double));
     }
-    Assert(1,isnan(va_arg(ap,double)));
+    DEBUG_SINVARIANT(isnan(va_arg(ap,double)));
     va_end(ap);
 }
 
@@ -55,7 +55,7 @@ Matrix::setConstant(double value)
 inline void 
 Matrix::swapRows(unsigned int row1, unsigned int row2)
 {
-    Assert(1,row1 < nrows && row2 < nrows);
+    SINVARIANT(row1 < nrows && row2 < nrows);
     for(unsigned int i=0;i<ncols;i++) {
 	double tmp = get(row1,i);
 	set(row1,i,get(row2,i));
@@ -66,7 +66,7 @@ Matrix::swapRows(unsigned int row1, unsigned int row2)
 inline void 
 Matrix::divRow(unsigned int row, double val)
 {
-    Assert(1,row < nrows && Double::abs(val) > 0);
+    SINVARIANT(row < nrows && Double::abs(val) > 0);
     for(unsigned int i=0;i<ncols;i++) {
 	set(row,i,get(row,i)/val);
     }
@@ -76,7 +76,7 @@ inline void
 Matrix::accumMultiply(unsigned int into_row, unsigned int from_row,
 		      double value)
 {
-    Assert(1,into_row < nrows && from_row < nrows);
+    SINVARIANT(into_row < nrows && from_row < nrows);
     for(unsigned int i=0;i<ncols;i++) {
 	set(into_row,i,get(into_row,i) + value * get(from_row,i));
     }
@@ -135,7 +135,7 @@ Matrix::print()
 void
 Matrix::selfTest()
 {
-    AssertAlways(isnan(Double::NaN),("isnan failed\n"));
+    INVARIANT(isnan(Double::NaN), "isnan failed");
     Matrix test1(2,3);
     
     test1.set(0,0,2);
@@ -144,12 +144,12 @@ Matrix::selfTest()
     test1.set(1,2,10);
     
     test1.gaussEliminate(2);
-    AssertAlways(Double::eq(test1.get(0,0),1) && 
-		 Double::eq(test1.get(0,1),0) && 
-		 Double::eq(test1.get(0,2),2.5) &&
-		 Double::eq(test1.get(1,0),0) &&
-		 Double::eq(test1.get(1,1),1) && 
-		 Double::eq(test1.get(1,2),5),("selfTest() failed\n"));
+    INVARIANT(Double::eq(test1.get(0,0),1) && 
+	      Double::eq(test1.get(0,1),0) && 
+	      Double::eq(test1.get(0,2),2.5) &&
+	      Double::eq(test1.get(1,0),0) &&
+	      Double::eq(test1.get(1,1),1) && 
+	      Double::eq(test1.get(1,2),5), "selfTest() failed");
     
     test1.setRow(0,25.0,4.0,12.0,Double::NaN);
     test1.setRow(1,13.0,7.0,11.0,Double::NaN);
@@ -157,8 +157,8 @@ Matrix::selfTest()
     test1.gaussEliminate(2);
     double a = test1.get(0,2);
     double b = test1.get(1,2);
-    AssertAlways(Double::eq(25*a+4*b,12) &&
-		 Double::eq(13*a+7*b,11),("selfTest() failed\n"));
+    INVARIANT(Double::eq(25*a+4*b,12) &&
+	      Double::eq(13*a+7*b,11), "selfTest() failed");
 
     Matrix test2(4,5);
 
