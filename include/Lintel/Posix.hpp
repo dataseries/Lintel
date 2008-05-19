@@ -19,42 +19,47 @@
 #include <inttypes.h>
 #include <sys/wait.h>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 namespace posix {
 
     inline void close(int fd) {
 	int status = ::close(fd);
-	AssertAlways(status == 0, ("%s\n", strerror(errno)));
+	INVARIANT(status == 0, boost::format("error on close(): %s") 
+		  % strerror(errno));
     };
 
     inline void dup2(int oldfd, int newfd) {
 	int status = ::dup2(oldfd, newfd);
-	AssertAlways(status != -1, ("can't dup fd %d: %s\n", newfd, 
-				    strerror(errno)));
+	INVARIANT(status != -1, boost::format("can't dup fd %d: %s")
+		  % newfd % strerror(errno));
     };
 
     inline void pipe(int *filedes) {
 	int status = ::pipe(filedes);
-	AssertAlways(status != -1, ("%s\n", strerror(errno)));
+	INVARIANT(status != -1, boost::format("error on pipe(): %s")
+		  % strerror(errno));
     };
 
     inline int open(const char *pathname, int flags) {
 	int status = ::open(pathname, flags);
-	AssertAlways(status != -1, ("error opening %s: %s\n", pathname, 
-				    strerror(errno)));
+	INVARIANT(status != -1, boost::format("error opening %s: %s")
+		  % pathname % strerror(errno));
 	return status;
     };
 
     inline ssize_t read(int fd, void *buf, size_t nbyte) {
 	ssize_t status = ::read(fd, buf, nbyte);
-	AssertAlways(status != -1, ("read: %s\n", strerror(errno)));
+	INVARIANT(status != -1, boost::format("error on read(%d): %s")
+		  % fd % strerror(errno));
 	return status;
     };
 
     inline void read0(int fd, void *buf, size_t nbyte) {
-	AssertAlways(::read(fd, buf, nbyte) == (ssize_t)nbyte, 
-		     ("Read0: premature EOF\n"));
+	ssize_t amt = ::read(fd, buf, nbyte);
+	INVARIANT(amt == static_cast<ssize_t>(nbyte), 
+		  boost::format("Read0(%d, %p, %d): only got %d bytes: %s")
+		  % fd % buf % nbyte % strerror(errno));
     };
 
     inline ssize_t readN(int fd, void *buf, size_t nbyte) {
@@ -62,7 +67,8 @@ namespace posix {
 	ssize_t left = nbyte;
 	do {
 	    ssize_t nb = ::read(fd, buf2, nbyte);
-	    AssertAlways(nb != -1, ("read: %s\n", strerror(errno)));
+	    INVARIANT(nb != -1, boost::format("readN(%d): %s") 
+		      % fd % strerror(errno));
 	    if (nb == 0) {
 		return nbyte - left;
 	    }
@@ -74,31 +80,36 @@ namespace posix {
 
     inline ssize_t write(int fd, const void *buf, size_t nbyte) {
 	ssize_t status = ::write(fd, buf, nbyte);
-	AssertAlways(status != -1, ("write: %s\n", strerror(errno)));
+	INVARIANT(status != -1, boost::format("write(%d): %s")
+		  % fd % strerror(errno));
 	return status;
     }
 
     inline off_t lseek(int fd, off_t offset, int whence) {
 	off_t status = ::lseek(fd, offset, whence);
-	AssertAlways(status != -1, ("lseek: %s\n", strerror(errno)));
+	INVARIANT(status != -1, boost::format("lseek(%d): %s")
+		  % fd % strerror(errno));
 	return status;
     }
 
     inline pid_t waitpid(pid_t pid, int *stat_loc, int options) {
 	pid_t pid2 = ::waitpid(pid, stat_loc, options);
-	AssertAlways(pid2 != -1, ("waitpid: %s\n", strerror(errno)));
+	INVARIANT(pid2 != -1, boost::format("waitpid(%d): %s")
+		  % pid % strerror(errno));
 	return pid2;
     }
 
     inline pid_t fork() {
 	pid_t pid = ::fork();
-	AssertAlways(pid != -1, ("fork: %s\n", strerror(errno)));
+	INVARIANT(pid != -1, boost::format("fork: %s")
+		  % strerror(errno));
 	return pid;
     }
 
     inline int kill(pid_t pid, int sig) {
 	int status = ::kill(pid, sig);
-	AssertAlways(status != -1, ("kill: %s\n", strerror(errno)));
+	INVARIANT(status != -1, boost::format("kill(%d): %s")
+		  % pid % strerror(errno));
 	return status;
     }
 
