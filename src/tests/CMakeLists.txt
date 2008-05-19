@@ -34,9 +34,9 @@ ADD_TEST(lintel-uncompress ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Uncompress.sh $
 
 ################################## CONDITIONAL BITS
 
-IF(WITH_TCL)
+IF(TCL_ENABLED)
   INCLUDE_DIRECTORIES(${TCL_INCLUDE_PATH})
   LINTEL_SIMPLE_PROGRAM(check-Random)
   LINTEL_ENVTEST(lintel-random ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Random.sh ${CMAKE_CURRENT_SOURCE_DIR})
-ENDIF(WITH_TCL)
+ENDIF(TCL_ENABLED)
 
