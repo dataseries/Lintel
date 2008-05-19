@@ -8,10 +8,10 @@
     Priority queue implementation
 */
 
+#include <iostream>
 #include <vector>
 #include <queue>
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/PriorityQueue.hpp>
 

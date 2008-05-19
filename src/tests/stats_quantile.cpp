@@ -17,7 +17,6 @@
 
 #include <Lintel/AssertBoost.H>
 #include <Lintel/Double.H>
-#include <Lintel/LintelAssert.H>
 #include <Lintel/MersenneTwisterRandom.H>
 #include <Lintel/StatsQuantile.H>
 
@@ -87,8 +86,7 @@ checkQuantiles(StatsQuantile &stats,
 	Clock::T clock_1 = Clock::now();
 	accum_error += clock_1 - clock_0;
 #endif
-	AssertAlways(match_error <= position_error,
-		     ("checkQuantiles error!\n"));
+	INVARIANT(match_error <= position_error, "checkQuantiles error!");
 	exact_error.add(match_error);
     }
 }
@@ -255,7 +253,7 @@ checkRomePrint()
     if (str1 != str2) {
 	cout << " output mismatch: str1=" << str1 << endl;
 	cout << " str1=" << str2 << endl;
-	AssertFatal(("abort"));
+	FATAL_ERROR("abort");
     }
 }
 
@@ -276,7 +274,7 @@ main(int argc, char *argv[])
 		    double expect = 1e10*5.0/100.0*q/100.0;
 		    double error = fabs(v-expect);
 		    printf("  %.0f: expect=%.0f got=%.0f error=%.0f\n",q,expect,v,error);
-		    AssertAlways(error < maxerror,("maxerror exceeded.\n"));
+		    INVARIANT(error < maxerror, "maxerror exceeded.");
 		}
 		printf("all ok, continuing..."); fflush(stdout);
 	    }
@@ -288,7 +286,7 @@ main(int argc, char *argv[])
 		    double expect = 1e10*30.0/100.0*q/100.0;
 		    double error = fabs(v-expect);
 		    printf("  %.0f: expect=%.0f got=%.0f error=%.0f\n",q,expect,v,error);
-		    AssertAlways(error < maxerror,("maxerror exceeded.\n"));
+		    INVARIANT(error < maxerror, "maxerror exceeded.");
 		}
 		printf("all ok, continuing..."); fflush(stdout);
 	    }
@@ -305,7 +303,7 @@ main(int argc, char *argv[])
 	    double expect = 1e10*100.0/100.0*q/100.0;
 	    double error = fabs(v-expect);
 	    printf("  %.0f: expect=%.0f got=%.0f error=%.0f\n",q,expect,v,error);
-	    AssertAlways(error < maxerror,("maxerror exceeded.\n"));
+	    INVARIANT(error < maxerror, "maxerror exceeded.");
 	}
 	printf("**** LONG TEST SUCCESSFUL\n");
     }	
@@ -313,21 +311,21 @@ main(int argc, char *argv[])
     if (true) {
 	// Make sure that the stats object doesn't choke with no sample.
 	StatsQuantile test("",3,10);
-	AssertAlways(test.count() == 0, ("Count != 0"));
-	AssertAlways(test.total() == 0, ("Total != 0"));
-	AssertAlways(isnan(test.getQuantile(0.0)),
-		     ("Failed to get quantile, got %.2f",
-		      test.getQuantile(0.0)));
-	AssertAlways(isnan(test.getQuantile(0.99)), 
-		     ("Failed to get quantile, got %.2f",
-		      test.getQuantile(0.99)));
+	INVARIANT(test.count() == 0, "Count != 0");
+	INVARIANT(test.total() == 0, "Total != 0");
+	INVARIANT(isnan(test.getQuantile(0.0)),
+		  boost::format("Failed to get quantile, got %.2f")
+		  % test.getQuantile(0.0));
+	INVARIANT(isnan(test.getQuantile(0.99)), 
+		  boost::format("Failed to get quantile, got %.2f")
+		  % test.getQuantile(0.99));
 
 	// How about one sample??
 	test.add(99.9);
-	AssertAlways(test.count() == 1, ("Count != 0"));
-	AssertAlways(test.total() == 99.9, ("Total != 0"));
-	AssertAlways(test.getQuantile(0.0) == 99.9, ("Failed to get quantile"));
-	AssertAlways(test.getQuantile(0.99) == 99.9, ("Failed to get quantile"));
+	INVARIANT(test.count() == 1, "Count != 0");
+	INVARIANT(test.total() == 99.9, "Total != 0");
+	INVARIANT(test.getQuantile(0.0) == 99.9, "Failed to get quantile");
+	INVARIANT(test.getQuantile(0.99) == 99.9, "Failed to get quantile");
     }
 
     if (true) {
@@ -342,14 +340,18 @@ main(int argc, char *argv[])
 		       );
 		continue;
 	    }
-	    AssertAlways(foo.getNBuffers() == eNbk_table[i][2],
-			 ("mismatch on nbuffers for %.4g %.4g, %.4g != %.4g\n",
-			  eNbk_table[i][0],eNbk_table[i][1],
-			  (double)foo.getNBuffers(), eNbk_table[i][2]));
-	    AssertAlways(foo.getBufferSize() == eNbk_table[i][3],
-			 ("mismatch on buffer size for %.4g %.4g, %.4g != %.4g\n",
-			  eNbk_table[i][0],eNbk_table[i][1],
-			  (double)foo.getBufferSize(), eNbk_table[i][3]));
+	    INVARIANT(foo.getNBuffers() == eNbk_table[i][2],
+		      boost::format("mismatch on nbuffers for"
+				    " %.4g %.4g, %.4g != %.4g")
+		      % eNbk_table[i][0] % eNbk_table[i][1]
+		      % static_cast<double>(foo.getNBuffers())
+		      % eNbk_table[i][2]);
+	    INVARIANT(foo.getBufferSize() == eNbk_table[i][3],
+		      boost::format("mismatch on buffer size"
+				    " for %.4g %.4g, %.4g != %.4g")
+		      % eNbk_table[i][0] % eNbk_table[i][1]
+		      % static_cast<double>(foo.getBufferSize())
+		      % eNbk_table[i][3]);
 	}
 	printf("Size checking passed.\n"); 
     }
@@ -361,8 +363,8 @@ main(int argc, char *argv[])
 	}
 	for(int i=0;i<1000;i++) {
 	    double v = test1.getQuantile((double)i/1000.0);
-	    AssertAlways(v == i + 1000,
-			 ("mismatch %.4g %.4g\n",v,(double)i+1000.0));
+	    INVARIANT(v == i + 1000, boost::format("mismatch %.4g %f.4g")
+		      % v % (i+1000.0));
 	}
 	printf("Simple-1 (add sequential) quantile checking passed.\n");
 	
@@ -371,8 +373,8 @@ main(int argc, char *argv[])
 	}
 	for(int i=0;i<2000;i++) {
 	    double v = test1.getQuantile((double)i/2000.0);
-	    AssertAlways(v == i + 1000,
-			 ("mismatch %.4g %.4g\n",v,(double)i+1000.0));
+	    INVARIANT(v == i + 1000,
+		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
 	printf("Simple-2 (more sequential) quantile checking passed.\n");
 	for(int i=4999;i>=3000;i--) {
@@ -380,8 +382,8 @@ main(int argc, char *argv[])
 	}
 	for(int i=0;i<4000;i++) {
 	    double v = test1.getQuantile((double)i/4000.0);
-	    AssertAlways(v == i + 1000,
-			 ("mismatch %.4g %.4g\n",v,(double)i+1000.0));
+	    INVARIANT(v == i + 1000,
+		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
 	printf("Simple-3 (reverse sequential) quantile checking passed.\n");
 	for(int i=5000;i<8000;i+=2) {
@@ -392,8 +394,8 @@ main(int argc, char *argv[])
 	}
 	for(int i=0;i<7000;i++) {
 	    double v = test1.getQuantile((double)i/7000.0);
-	    AssertAlways(v == i + 1000,
-			 ("mismatch %.4g %.4g\n",v,(double)i+1000.0));
+	    INVARIANT(v == i + 1000,
+		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
 	printf("Simple-4 (skip sequential) quantile checking passed.\n");
     }
@@ -404,7 +406,7 @@ main(int argc, char *argv[])
 	}
 	for(int i=0;i<30;i++) {
 	    double v = test2.getQuantile((double)i/30.0);
-	    AssertAlways(v == i,("mismatch %.4g %.4g\n",v,(double)i));
+	    INVARIANT(v == i, boost::format("mismatch %.4g %d") % v % i);
 	}
 	// this add will cause a collapse to occur on the first three
 	// buckets, the first buffer should now contain 
@@ -414,7 +416,8 @@ main(int argc, char *argv[])
 	    double v = test2.getQuantile((double)i/31.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i == 30) expect_v = 30;
-	    AssertAlways(v == expect_v,("mismatch %.4g %.4g\n",v,expect_v));
+	    INVARIANT(v == expect_v, 
+		      boost::format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	for(int i=31;i<50;i++) {
 	    test2.add(i);
@@ -425,7 +428,8 @@ main(int argc, char *argv[])
 	    double v = test2.getQuantile((double)i/50.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = i;
-	    AssertAlways(v == expect_v,("mismatch %.4g %.4g\n",v,expect_v));
+	    INVARIANT(v == expect_v,
+		      boost::format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	// now collapse the second two buckets
 	test2.add(50);
@@ -437,7 +441,8 @@ main(int argc, char *argv[])
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = 2 * (i / 2);
 	    if (i >= 50) expect_v = i;
-	    AssertAlways(v == expect_v,("mismatch %.4g %.4g\n",v,expect_v));
+	    INVARIANT(v == expect_v,
+		      boost::format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	for(int i=51;i<60;i++) {
 	    test2.add(i);
@@ -448,7 +453,8 @@ main(int argc, char *argv[])
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = 2 * (i / 2);
 	    if (i >= 50) expect_v = i;
-	    AssertAlways(v == expect_v,("mismatch %.4g %.4g\n",v,expect_v));
+	    INVARIANT(v == expect_v,
+		      boost::format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	// now collapse all three buckets
 	test2.add(60);
@@ -462,8 +468,9 @@ main(int argc, char *argv[])
 	    if (i >= 30) expect_v = 6 * (i / 6) + 2;
 	    if (i >= 48) expect_v = 6 * (i / 6) + 3;
 	    if (i >= 60) expect_v = i;
-	    AssertAlways(v == expect_v,("mismatch #%d %.4g %.4g\n",
-					i,v,expect_v));
+	    INVARIANT(v == expect_v,
+		      boost::format("mismatch #%d %.4g %.4g")
+		      % i % v % expect_v);
 	}
 	printf("Collapse-1 exact checking passed.\n");
     }

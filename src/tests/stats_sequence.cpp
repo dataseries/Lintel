@@ -4,12 +4,12 @@
    See the file named COPYING for license details
 */
 
+#include <iostream> 
+#include <fstream>
 
-#include <LintelAssert.H>
-#include <StatsSequence.H>
-#include <MersenneTwisterRandom.H>
-
-#include "streamcompat.H"
+#include <Lintel/AssertBoost.H>
+#include <Lintel/StatsSequence.H>
+#include <Lintel/MersenneTwisterRandom.H>
 
 int
 main()
@@ -52,8 +52,9 @@ main()
     }
 
     for(i=0;i<10;i++) {
-	AssertAlways(b1.get(i) == b2.get(i),
-		     ("Mismatch %.8f %.8f ??\n",b1.get(i),b2.get(i)));
+	INVARIANT(b1.get(i) == b2.get(i),
+		  boost::format("Mismatch %.8f %.8f ??")
+		  % b1.get(i) % b2.get(i));
     }
     std::cout << "statsSequence b1 {\n";
     b1.printRome(2,std::cout);

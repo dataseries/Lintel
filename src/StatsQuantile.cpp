@@ -15,7 +15,6 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
@@ -40,8 +39,9 @@ StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _pri
     print_nrange(_print_nrange)
 {
     // sanity check that we haven't been called in a weird/wrong way.
-    AssertAlways(quantile_error < 0.2,
-		 ("whoa, quantile_error %.3g >= 0.2??",quantile_error));
+    INVARIANT(quantile_error < 0.2, 
+	      boost::format("whoa, quantile_error %.3g >= 0.2??") 
+	      % quantile_error);
     double Nbound = _Nbound; // easy for calculations
     if (Nbound < 10000) { Nbound = 10000; } // smallest N with entries in table in the paper
     // The hunt for b = nbuffers, and k = buffer_size is on, following 
@@ -68,9 +68,9 @@ StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _pri
 	}
     }
     
-    AssertAlways(best_b > 0 && best_k > 0,
-		 ("unable to find b/k for %.8g %.8gn",
-		  quantile_error,Nbound));
+    INVARIANT(best_b > 0 && best_k > 0,
+	      boost::format("unable to find b/k for %.8g %.8g")
+	      % quantile_error % Nbound);
     // lower bound sanity value
     if (best_k < 10) best_k = 10;
     // First requirement makes the logic setting the buffer_level faster
@@ -90,10 +90,10 @@ StatsQuantile::init(int _nbuffers, int _buffer_size)
 {
     nbuffers = _nbuffers;
     buffer_size = _buffer_size;
-    AssertAlways(nbuffers > 1,
-		 ("need at least two buffers for code to work correctly\n"));
-    AssertAlways(buffer_size >= 10,
-		 ("buffers smaller than 10 don't make sense.\n"));
+    INVARIANT(nbuffers > 1,
+	      "need at least two buffers for code to work correctly");
+    INVARIANT(buffer_size >= 10,
+	      "buffers smaller than 10 don't make sense.");
     all_buffers = new one_buffer[nbuffers];
     for(int i = 0; i < nbuffers; ++i) {
 	all_buffers[i] = NULL;
@@ -275,8 +275,7 @@ StatsQuantile::getQuantile(double quantile) const
 	return Double::NaN;
     }
     SQTIMING(Clock::T gq_time_0 = Clock::now();)
-    AssertAlways(quantile >= 0.0 && quantile <= 1.0,
-		 ("quantile out of bounds\n"));
+    INVARIANT(quantile >= 0.0 && quantile <= 1.0, "quantile out of bounds");
     // this is slightly different than the algorithm in the paper; the 
     // goal is to allow people to calculate quantiles while the algorithm
     // is running without having to add in and remove the +-\Inf entries
@@ -314,11 +313,11 @@ StatsQuantile::getQuantile(double quantile) const
     // linux = 131059.0; I'd imagine we'll never see 1e+15 values
     // wherein this adjustment would make a difference
     double nentries = countll();
-    AssertAlways(nentries < 1e+14,
-		 ("Rounding error adjustment may start to do something wrong around 1e+14 entries.\n"
-		  "May be safe to decrease rounding adjustment to 0.5e-15, but will be getting very\n"
-		  "close to the limit of precision in floating point.  How did you get this many\n"
-		  "entries into the table??"));
+    INVARIANT(nentries < 1e+14,
+	      "Rounding error adjustment may start to do something wrong around 1e+14 entries.\n"
+	      "May be safe to decrease rounding adjustment to 0.5e-15, but will be getting very\n"
+	      "close to the limit of precision in floating point.  How did you get this many\n"
+	      "entries into the table??");
     long long target_index = (long long)ceil(nentries * (quantile - 1e-15));
     if (target_index == nentries) {
 	target_index = (long long)(nentries - 1);
@@ -369,11 +368,12 @@ StatsQuantile::getQuantile(double quantile) const
 	    }
 	    //	    second_min_buffer = -1;
 	}
-	AssertAlways(min_buffer >= 0 && min_buffer < buffer_size,
-		     ("Whoa, no minimal buffer?!; searching for posn %lldd, cur %lldd\n",
-		      target_index,cur_index));
+	INVARIANT(min_buffer >= 0 && min_buffer < buffer_size,
+		  boost::format("Whoa, no minimal buffer?!;"
+				" searching for posn %lldd, cur %lldd")
+		  % target_index % cur_index);
 	collapse_pos[min_buffer] += 1;
-	AssertAlways(min_val >= prev_val,("Whoa, sort order error?!\n"));
+	INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");
 	SQTIMING(Clock::T gq_time_3 = Clock::now(); 
 		 accum_gq_inner += gq_time_3 - gq_time_2;)
 	// this entry occupies sorted order positions
@@ -403,7 +403,7 @@ StatsQuantile::collapse()
     // two walks over the larger data, and so may very well be slower
     // it's also a lot more complex
     double nentries = countll();
-    AssertAlways(nentries < 1e+14,("getQuantile will fail now.\n"));
+    INVARIANT(nentries < 1e+14, "getQuantile will fail now.");
 		 
     int first_buffer;
     for(first_buffer = nbuffers - 1;first_buffer > 0; --first_buffer) {
@@ -411,22 +411,24 @@ StatsQuantile::collapse()
 	    break;
 	}
     }
-    AssertAlways(first_buffer < nbuffers - 1,
-		 ("Whoa, collapse should always operate on at least two buffers\n"));
-    AssertAlways(buffer_level[first_buffer] >= 0,
-		 ("Whoa, buffer level should be positive\n"));
+    INVARIANT(first_buffer < nbuffers - 1,
+	      "Whoa, collapse should always operate on at least two buffers");
+    INVARIANT(buffer_level[first_buffer] >= 0,
+	      "Whoa, buffer level should be positive");
     // first, sort each of the unsorted input buffers 
     long long total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
 	total_weight += buffer_weight[i];
-	AssertAlways(buffer_weight[i] > 0,("Whoa, buffer_weight should be at least 1\n"));
+	INVARIANT(buffer_weight[i] > 0,
+		  "Whoa, buffer_weight should be at least 1");
 	collapse_pos[i] = 0;
 	if (buffer_sorted[i]) {
 	    // could check for sortedness here, but we'll probably catch it
 	    // later
 	} else {
-	    AssertAlways(i == (nbuffers - 1) || buffer_weight[i] == 1,
-			 ("Huh %d != %d // %d\n",i,nbuffers - 1, buffer_weight[i]));
+	    INVARIANT(i == (nbuffers - 1) || buffer_weight[i] == 1,
+		      boost::format("Huh %d != %d // %d") % i 
+		      % (nbuffers - 1) % buffer_weight[i]);
 	    // sort the buffer
 	    sort(all_buffers[i],all_buffers[i] + buffer_size,
 		      doubleOrder());
@@ -446,13 +448,13 @@ StatsQuantile::collapse()
     } else if ((total_weight % 2) == 1) {
 	next_quantile_offset = (total_weight + 1) / 2;
     } else {
-	AssertFatal(("Huh?\n"));
+	FATAL_ERROR("Huh?");
     }
 
     // Since we start counting at offset 0 (the paper starts at 1), we 
     // subtract one from the starting offset
     next_quantile_offset -= 1;
-    Assert(2,next_quantile_offset >= 0);
+    DEBUG_SINVARIANT(next_quantile_offset >= 0);
 
     long long cur_quantile_offset = 0;
     long long next_output_pos = 0;
@@ -469,8 +471,8 @@ StatsQuantile::collapse()
 		min_buffer = i;
 	    }
 	}
-	AssertAlways(min_buffer >= 0,("Whoa, no minimal buffer?!\n"));
-	AssertAlways(min_val >= prev_val,("Whoa, sort order error?!\n"));
+	INVARIANT(min_buffer >= 0, "Whoa, no minimal buffer?!");
+	INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");
 	prev_val = min_val;
 	collapse_pos[min_buffer] += 1;
 	// same logic as for output(), this entry is in positions
@@ -485,9 +487,10 @@ StatsQuantile::collapse()
 	    next_quantile_offset += total_weight;
 	}
     }
-    AssertAlways(next_quantile_offset / total_weight == buffer_size,
-		 ("Huh, didn't get to correct quantile offset %lld/%lldd != %d?!\n",
-		  next_quantile_offset, total_weight, buffer_size));
+    INVARIANT(next_quantile_offset / total_weight == buffer_size,
+	      boost::format("Huh, didn't get to correct quantile"
+			    " offset %lld/%lldd != %d?!")
+	      % next_quantile_offset % total_weight % buffer_size);
 
     // update all_buffers[first_buffer]
     memcpy(all_buffers[first_buffer],tmp_buffer, buffer_size * sizeof(double));

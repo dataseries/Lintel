@@ -8,7 +8,7 @@
     String to small integer mapping
 */
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/StringId.hpp>
 
 StringId::StringId()
@@ -50,12 +50,13 @@ const std::string &
 StringId::getString(unsigned int id)
 {
 #if 0    
-    AssertAlways(id < nextid,("Fatal Error"));
+    SINVARIANT(id < nextid);
     return revmap[id];
 #else
     HTE ent(id);
     const HTE *d = revmap.lookup(ent);
-    AssertAlways(d != NULL,("internal error id %u has no std::string?!\n",id));
+    INVARIANT(d != NULL,
+	      boost::format("internal error id %u has no std::string?!") % id);
     return *(d->str);
 #endif
 

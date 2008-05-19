@@ -11,14 +11,13 @@
 #include <math.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsSequence.hpp>
 
 StatsSequence::StatsSequence(unsigned long _max_retain, mode _merge_mode)
     : Stats(), max_retain(_max_retain)
 {
-    AssertAlways(max_retain > 0,("Max Retain must be > 0\n"));
-    AssertAlways((max_retain % 2) == 0,("Max Retain must be even!\n"));
+    INVARIANT(max_retain > 0, "Max Retain must be > 0");
+    INVARIANT((max_retain % 2) == 0, "Max Retain must be even!");
     merge_mode = _merge_mode;
     intervalWidth = 1;
     points_per_bucket = 1;
@@ -44,8 +43,8 @@ StatsSequence::add(const double value)
 {
     Stats::add(value);
     if (values.size() == max_retain) {
-	AssertAlways(points_remain_new_bucket == points_per_bucket 
-		     && new_value == 0, ("internal"));
+	SINVARIANT(points_remain_new_bucket == points_per_bucket 
+		   && new_value == 0);
 	for(unsigned int i=0;i<max_retain/2;i++) {
 	    double x = values[2*i], y = values[2*i+1];
 	    switch(merge_mode) 
@@ -57,7 +56,7 @@ StatsSequence::add(const double value)
 		case MergeMax: values[i] = (x>y) ? x : y;
 		    break;
 		default:
-		    AssertFatal(("I didn't get here.\n"));
+		    FATAL_ERROR("I didn't get here.");
 		}
 	}
 	values.resize(max_retain/2);
@@ -80,10 +79,10 @@ StatsSequence::add(const double value)
 	    case MergeMax: 
 		break;
 	    default:
-		AssertFatal(("I didn't get here.\n"));
+		FATAL_ERROR("I didn't get here.");
 	    }
 	values.push_back(new_value);
-	Assert(1,values.size() <= max_retain);
+	SINVARIANT(values.size() <= max_retain);
 	new_value = 0;
 	points_remain_new_bucket = points_per_bucket;
     }
@@ -127,7 +126,7 @@ StatsSequence::printRome(int depth, std::ostream &out) const
 	    case MergeMax: out << new_value;
 		break;
 	    default:
-		AssertFatal(("I didn't get here.\n"));
+		FATAL_ERROR("I didn't get here.");
 	    }
     }
     out << ")}\n";
@@ -137,14 +136,16 @@ StatsSequence::printRome(int depth, std::ostream &out) const
 void
 StatsSequence::setIntervalWidth(double _width)
 {
-    AssertAlways(values.size() == 0,("Can't set interval width after adding value.\n"));
+    INVARIANT(values.size() == 0,
+	      "Can't set interval width after adding value.");
     intervalWidth = _width;
 }
 
 void 
 StatsSequence::setMergeMode(mode _merge_mode)
 {
-    AssertAlways(values.size() == 0,("Can't set merge mode after adding value.\n"));
+    INVARIANT(values.size() == 0,
+	      "Can't set merge mode after adding value.");
     merge_mode = _merge_mode;
 }
 
@@ -153,8 +154,8 @@ StatsSequence::get(unsigned int seqNum)
 {
     // ***FIXME*** should handle getting the value for the "current" bucket.
     // ***FIXME*** then rewrite printRome, maxSeqNum as appropriate.
-    AssertAlways(seqNum < values.size(),
-		 ("seqNum %d >= %d\n",seqNum,values.size()));
+    INVARIANT(seqNum < values.size(),
+	      boost::format("seqNum %d >= %d") % seqNum % values.size());
     return values[seqNum];
 }
 

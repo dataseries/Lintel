@@ -12,7 +12,6 @@
 #include <stdio.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsSeries.hpp>
 
 // The code for this time series analysis was derived from _Time
@@ -53,13 +52,13 @@ StatsSeries::StatsSeries(unsigned maxlag_in)
   samples(NULL),
   product(NULL)
 {
-  Assert(1, max_lag > 0);
+  SINVARIANT(max_lag > 0);
   samples = new double[max_lag+1];
-  Assert(1, samples != NULL);
+  SINVARIANT(samples != NULL);
   product = new double[max_lag+1];
-  Assert(1, product != NULL);
+  SINVARIANT(product != NULL);
   firstsamples = new double[max_lag+1];
-  Assert(1, firstsamples != NULL);
+  SINVARIANT(firstsamples != NULL);
   reset();
 }
 
@@ -126,8 +125,8 @@ StatsSeries::reset()
 double
 StatsSeries::autocovariance(unsigned lag) const
 {
-  Assert(1, lag>=0);
-  Assert(1, lag<=max_lag);
+  SINVARIANT(lag>=0);
+  SINVARIANT(lag<=max_lag);
   
   double lastsamples;
   lastsamples = 0.0;
@@ -151,7 +150,7 @@ StatsSeries::autocovariance(unsigned lag) const
 bool
 StatsSeries::iscorrelated95(unsigned lag) const
 {
-  Assert(1,checkInvariants());
+  SINVARIANT(checkInvariants());
   
   double z;			// confidence level for rejecting 
 				// linear correlation hypothesis
@@ -172,7 +171,7 @@ StatsSeries::iscorrelated95(unsigned lag) const
 std::string
 StatsSeries::debugString() const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     char line[1024];
     if (count() == 0)

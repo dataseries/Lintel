@@ -8,7 +8,6 @@
     Functions for nameable objects
 */
 
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/Nameable.hpp>
 
 std::string

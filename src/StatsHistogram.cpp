@@ -13,7 +13,6 @@
 #include <values.h>
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsHistogram.hpp>
 #include <Lintel/Double.hpp>
 
@@ -61,13 +60,13 @@ StatsHistogramUniform::StatsHistogramUniform(const unsigned bins_in,
 	num_rescales(0),
 	num_grows(0)
 {
-    AssertAlways(high_in >= low_in, ("StatsHistogramUniform: high < low"));
-    AssertAlways(bins_in > 0, ("StatsHistogramUniform: need at least one bin"));
-    AssertAlways(!(is_growable && is_scalable),
-		 ("StatsHistogramUniform: growable and stackable not allowed"));
+    INVARIANT(high_in >= low_in, "StatsHistogramUniform: high < low");
+    INVARIANT(bins_in > 0, "StatsHistogramUniform: need at least one bin");
+    INVARIANT(!(is_growable && is_scalable),
+	      "StatsHistogramUniform: growable and stackable not allowed");
 
     bins = new unsigned long[num_bins];
-    Assert(1,bins != NULL);
+    SINVARIANT(bins != NULL);
     reset();
 }
 
@@ -92,8 +91,8 @@ void StatsHistogramUniform::reset()
 
 unsigned long StatsHistogramUniform::operator[](unsigned index) const
 {
-    Assert(1,checkInvariants());
-    Assert(1,0 <= index  &&  index <= num_bins);
+    SINVARIANT(checkInvariants());
+    SINVARIANT(0 <= index  &&  index <= num_bins);
     return bins[index];
 }
 
@@ -120,8 +119,9 @@ StatsHistogramUniform::add(const double value)
 	num_rescales++;		// About to do a reset, so count it
 	
 	if (value >= bin_high) {
-	    AssertAlways(value < MAXFLOAT/2,
-			 ("StatsHistogramUniform: unreasonable large upper value: %g", value));
+	    INVARIANT(value < MAXFLOAT/2, 
+		      boost::format("StatsHistogramUniform: unreasonably"
+				    "large upper value: %g") % value);
 	    unsigned new_num_bins // round to an even number
 		= 2 * ((unsigned)floor((value - bin_low) / bin_width) + 1)/2;
 	    if (new_num_bins < num_bins * 2)
@@ -137,8 +137,9 @@ StatsHistogramUniform::add(const double value)
 	    num_bins = new_num_bins;
 	    bin_high = bin_low + new_num_bins * bin_width;
 	} else {
-	    AssertAlways(-value < MAXFLOAT/2,
-			 ("unreasonable large lower value: %lg", value));
+	    INVARIANT(-value < MAXFLOAT/2,
+		      boost::format("unreasonably large lower value: %lg")
+		      % value);
 	    unsigned new_num_bins // round to an even number
 		= 2 * ((unsigned)floor((bin_high - value) / bin_width) + 1)/2;
 	    if (new_num_bins < num_bins * 2)
@@ -190,7 +191,8 @@ StatsHistogramUniform::add(const double value)
 void
 StatsHistogramUniform::add(const double index_value, const double data_value)
 {
-    AssertAlways(index_value == data_value,("StatsHistogramUniform: attempted to add non-index value.\n"));
+    INVARIANT(index_value == data_value,
+	      "StatsHistogramUniform: attempted to add non-index value.");
     this->add(index_value);
 }
 
@@ -200,7 +202,7 @@ StatsHistogramUniform::add(const double index_value, const double data_value)
 const double
 StatsHistogramUniform::mode() const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
     unsigned long max = bins[0];
     unsigned long maxpos = 0;
     for (unsigned long i=1; i<num_bins; i++) {
@@ -216,8 +218,8 @@ StatsHistogramUniform::mode() const
 const double
 StatsHistogramUniform::percentile(double p) const
 {
-    Assert(1,checkInvariants());
-    Assert(1,0.0 <= p  &&  p <= 1.0	|| "argument is outside range"==0);
+    SINVARIANT(checkInvariants());
+    SINVARIANT(0.0 <= p  &&  p <= 1.0	|| "argument is outside range"==0);
 
     double targetnumber = p * count();
     unsigned long lowend = 0;
@@ -234,7 +236,7 @@ StatsHistogramUniform::percentile(double p) const
     //
     if (highend == lowend) {
 	// we hit a point where highend == lowend == targetnumber
-	Assert(1,bin == 0);  // the only place where this can occur?
+	SINVARIANT(bin == 0);  // the only place where this can occur?
 	return 0; 
     }
     return (bin_low + bin_width*(bin+(targetnumber-lowend)/(highend-lowend)));
@@ -252,7 +254,7 @@ StatsHistogramUniform::percentile(double p) const
 std::string
 StatsHistogramUniform::debugString() const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string stat = Stats::debugString();
     if (count() == 0) {		// We have nothing more to add
@@ -271,7 +273,7 @@ StatsHistogramUniform::debugString() const
 void
 StatsHistogramUniform::printRome(int depth, std::ostream &out) const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string spaces;
     for(int i = 0; i < depth; i++) {
@@ -306,7 +308,7 @@ StatsHistogramUniform::printRome(int depth, std::ostream &out) const
 void
 StatsHistogram::printTabular(int depth, std::ostream &out) const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string spaces("");
     /*
@@ -392,11 +394,11 @@ StatsHistogramLog::StatsHistogramLog(const unsigned bins_in,
 //       fprintf(stderr, "%s: sample %f -> bin %f\n", name(), s, sampleBin(s));
 //   }
   
-    AssertAlways(bins_in > 0, ("StatsHistogramLog: need at least one bin"));
-    AssertAlways(smallest_bin > 0.0, 
-		 ("StatsHistogramLog: low-bound must be > 0.0"));
-    AssertAlways(smallest_bin <= bin_high, 
-		 ("StatsHistogramLog: higher-bound must be larger than lower"));
+    INVARIANT(bins_in > 0, "StatsHistogramLog: need at least one bin");
+    INVARIANT(smallest_bin > 0.0, 
+	      "StatsHistogramLog: low-bound must be > 0.0");
+    INVARIANT(smallest_bin <= bin_high, 
+	      "StatsHistogramLog: higher-bound must be larger than lower");
 
     bin_scaling = double(num_bins) / log(bin_high/smallest_bin);
 
@@ -425,8 +427,8 @@ void StatsHistogramLog::reset()
 
 unsigned long StatsHistogramLog::operator[](unsigned index) const
 {
-    Assert(1,checkInvariants());
-    Assert(1,0 <= index  &&  index <= num_bins);
+    SINVARIANT(checkInvariants());
+    SINVARIANT(0 <= index  &&  index <= num_bins);
     return bins[index];
 }
 
@@ -456,8 +458,8 @@ const double StatsHistogramLog::binOffset(double index) const
 void
 StatsHistogramLog::add(const double value)
 {
-    AssertAlways(value > 0.0, 
-		 ("values must be greater than 0 for log histogram\n"));
+    INVARIANT(value > 0.0, 
+	      "values must be greater than 0 for log histogram");
     Stats::add(value);		// Keep track of means, etc
 
     if (is_scalable && (value < smallest_bin || value >= bin_high)) {
@@ -490,8 +492,8 @@ StatsHistogramLog::add(const double value)
 void
 StatsHistogramLog::add(const double index_value, const double data_value)
 {
-    AssertAlways(index_value == data_value,
-		 ("StatsHistogramLog: attempted to add non-index value.\n"));
+    INVARIANT(index_value == data_value,
+	      "StatsHistogramLog: attempted to add non-index value.");
     this->add(index_value);
 }
 
@@ -500,7 +502,7 @@ StatsHistogramLog::add(const double index_value, const double data_value)
 const double
 StatsHistogramLog::mode() const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
     unsigned long max = bins[0];
     unsigned long maxpos = 0;
     for (unsigned long i=1; i<num_bins; i++) {
@@ -516,8 +518,8 @@ StatsHistogramLog::mode() const
 const double
 StatsHistogramLog::percentile(double p) const
 {
-    Assert(1,checkInvariants());
-    Assert(1,0.0 <= p  &&  p <= 1.0	|| "argument is outside range"==0);
+    SINVARIANT(checkInvariants());
+    SINVARIANT(0.0 <= p  &&  p <= 1.0	|| "argument is outside range"==0);
 
     double targetnumber = p * count();
     unsigned long lowend = 0;
@@ -534,7 +536,7 @@ StatsHistogramLog::percentile(double p) const
     //
     if (highend == lowend) {
 	// we hit a point where highend == lowend == targetnumber
-	Assert(1,bin == 0);  // the only place where this can occur?
+	SINVARIANT(bin == 0);  // the only place where this can occur?
 	return 0; 
     }
     return (binOffset(bin+(targetnumber-lowend)/(highend-lowend)));
@@ -552,7 +554,7 @@ StatsHistogramLog::percentile(double p) const
 std::string
 StatsHistogramLog::debugString() const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string stat = Stats::debugString();
     if (count() == 0) {		// We have nothing more to add
@@ -567,7 +569,7 @@ StatsHistogramLog::debugString() const
 
 void
 StatsHistogramLog::printRome(int depth, std::ostream &out)  const{
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string spaces;
     for(int i = 0; i < depth; i++) {
@@ -622,7 +624,7 @@ StatsHistogramUniformAccum::StatsHistogramUniformAccum(const unsigned bins_in,
 	val_bins(NULL)
 {
   val_bins = new double[bins_in];
-  Assert(0, val_bins != NULL);
+  SINVARIANT(val_bins != NULL);
   reset();
 }
 
@@ -694,8 +696,8 @@ StatsHistogramUniformAccum::add(const double value)
 
 double StatsHistogramUniformAccum::value(unsigned index) const
 {
-    Assert(1,checkInvariants());
-    Assert(1,0 <= index  &&  index <= num_bins);
+    SINVARIANT(checkInvariants());
+    SINVARIANT(0 <= index  &&  index <= num_bins);
     return val_bins[index];
 }
 
@@ -708,7 +710,7 @@ double StatsHistogramUniformAccum::value(unsigned index) const
 void
 StatsHistogramUniformAccum::printRome(int depth, std::ostream &out)  const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string spaces;
     for(int i = 0; i < depth; i++) {
@@ -778,7 +780,7 @@ StatsHistogramLogAccum::StatsHistogramLogAccum(const unsigned bins_in,
 	val_bins(NULL)
 {
   val_bins = new double[num_bins];
-  Assert(0, val_bins != NULL);
+  SINVARIANT(val_bins != NULL);
   reset();
 }
 
@@ -818,8 +820,8 @@ StatsHistogramLogAccum::add(const double index_value, const double data_value)
 
 double StatsHistogramLogAccum::value(unsigned index) const
 {
-    Assert(1,checkInvariants());
-    Assert(1,0 <= index  &&  index <= num_bins);
+    SINVARIANT(checkInvariants());
+    SINVARIANT(0 <= index  &&  index <= num_bins);
     return val_bins[index];
 }
 
@@ -830,7 +832,7 @@ double StatsHistogramLogAccum::value(unsigned index) const
 void
 StatsHistogramLogAccum::printRome(int depth, std::ostream &out) const
 {
-    Assert(1,checkInvariants());
+    SINVARIANT(checkInvariants());
 
     std::string spaces;
     for(int i = 0; i < depth; i++) {
@@ -881,27 +883,28 @@ StatsHistogramGroup::StatsHistogramGroup(const StatsHistogram::HistMode mode,
 					 const std::vector<double> &_ranges)
   : Stats(), ranges(_ranges), low(), high()
 {
-  AssertAlways(ranges.size() >= 2,("StatsHistogramGroup: must have at least two values in ranges vector.\n"));
-  histograms.resize(ranges.size()-1);
-  for(unsigned int i=0;i<histograms.size();i++) {
-    switch(mode) 
-      {
-      case StatsHistogram::Uniform:
-	histograms[i] = new StatsHistogramUniform(buckets,ranges[i],ranges[i+1]);
-	break;
-      case StatsHistogram::Log:
-	histograms[i] = new StatsHistogramLog(buckets,ranges[i],ranges[i+1]);
-	break;
-      case StatsHistogram::UniformAccum:
-	histograms[i] = new StatsHistogramUniformAccum(buckets,ranges[i],ranges[i+1]);
-	break;
-      case StatsHistogram::LogAccum:
-	histograms[i] = new StatsHistogramLogAccum(buckets,ranges[i],ranges[i+1]);
-	break;
-      default:
-	AssertFatal(("I didn't get here.\n"));
-      }
-  }
+    INVARIANT(ranges.size() >= 2, "StatsHistogramGroup: must have at"
+	      "least two values in ranges vector.");
+    histograms.resize(ranges.size()-1);
+    for(unsigned int i=0;i<histograms.size();i++) {
+	switch(mode) 
+	    {
+	    case StatsHistogram::Uniform:
+		histograms[i] = new StatsHistogramUniform(buckets,ranges[i],ranges[i+1]);
+		break;
+	    case StatsHistogram::Log:
+		histograms[i] = new StatsHistogramLog(buckets,ranges[i],ranges[i+1]);
+		break;
+	    case StatsHistogram::UniformAccum:
+		histograms[i] = new StatsHistogramUniformAccum(buckets,ranges[i],ranges[i+1]);
+		break;
+	    case StatsHistogram::LogAccum:
+		histograms[i] = new StatsHistogramLogAccum(buckets,ranges[i],ranges[i+1]);
+		break;
+	    default:
+		FATAL_ERROR("I didn't get here.");
+	    }
+    }
 }
 
 StatsHistogramGroup::StatsHistogramGroup(const std::vector<StatsHistogram::HistMode> &_modes, 
@@ -909,29 +912,33 @@ StatsHistogramGroup::StatsHistogramGroup(const std::vector<StatsHistogram::HistM
 					 const std::vector<double> &_ranges)
   : Stats(), modes(_modes), ranges(_ranges), low(), high()
 {
-  AssertAlways(ranges.size() >= 2,("StatsHistogramGroup: must have at least two values in ranges vector.\n"));
-  AssertAlways(modes.size() == (ranges.size() - 1),("StatsHistogramGroup: must supply one mode per range in mode vector.\n"));
-  AssertAlways(buckets.size() == (ranges.size() - 1),("StatsHistogramGroup: must supply one bucket value per range in buckets vector.\n"));
-  histograms.resize(ranges.size()-1);
-  for(unsigned int i=0;i<histograms.size();i++) {
-    switch(modes[i]) 
-      {
-      case StatsHistogram::Uniform:
-	histograms[i] = new StatsHistogramUniform(buckets[i],ranges[i],ranges[i+1]);
-	break;
-      case StatsHistogram::Log:
-	histograms[i] = new StatsHistogramLog(buckets[i],ranges[i],ranges[i+1]);
-	break;
-      case StatsHistogram::UniformAccum:
-	histograms[i] = new StatsHistogramUniformAccum(buckets[i],ranges[i],ranges[i+1]);
-	break;
-      case StatsHistogram::LogAccum:
-	histograms[i] = new StatsHistogramLogAccum(buckets[i],ranges[i],ranges[i+1]);
-	break;
-      default:
-	AssertFatal(("I didn't get here.\n"));
-      }
-  }
+    INVARIANT(ranges.size() >= 2, "StatsHistogramGroup: must have at least"
+	      " two values in ranges vector.");
+    INVARIANT(modes.size() == (ranges.size() - 1), "StatsHistogramGroup:"
+	      " must supply one mode per range in mode vector.");
+		 
+    INVARIANT(buckets.size() == (ranges.size() - 1), "StatsHistogramGroup: "
+	      "must supply one bucket value per range in buckets vector.");
+    histograms.resize(ranges.size()-1);
+    for(unsigned int i=0;i<histograms.size();i++) {
+	switch(modes[i]) 
+	    {
+	    case StatsHistogram::Uniform:
+		histograms[i] = new StatsHistogramUniform(buckets[i],ranges[i],ranges[i+1]);
+		break;
+	    case StatsHistogram::Log:
+		histograms[i] = new StatsHistogramLog(buckets[i],ranges[i],ranges[i+1]);
+		break;
+	    case StatsHistogram::UniformAccum:
+		histograms[i] = new StatsHistogramUniformAccum(buckets[i],ranges[i],ranges[i+1]);
+		break;
+	    case StatsHistogram::LogAccum:
+		histograms[i] = new StatsHistogramLogAccum(buckets[i],ranges[i],ranges[i+1]);
+		break;
+	    default:
+		FATAL_ERROR("I didn't get here.");
+	    }
+    }
 }
 
 StatsHistogramGroup::~StatsHistogramGroup()

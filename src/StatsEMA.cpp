@@ -9,7 +9,6 @@
 */
 
 #include <Lintel/AssertBoost.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/StatsEMA.hpp>
 
 using namespace std;
@@ -33,7 +32,7 @@ StatsEMA::~StatsEMA()
 void
 StatsEMA::reset()
 {
-    AssertFatal(("unimplemented"));
+    FATAL_ERROR("unimplemented");
 }
 
 void
@@ -63,8 +62,9 @@ StatsEMA::add(const Stats &stat)
 double
 StatsEMA::getEMA(unsigned ema_num)
 {
-    AssertAlways(ema_num < ema_values.size(),
-		 ("invalid ema_num %d specified\n",ema_num));
+    INVARIANT(ema_num < ema_values.size(),
+	      boost::format("invalid ema_num %d specified")
+	      % ema_num);
     return ema_values[ema_num];
 }
 
@@ -93,13 +93,13 @@ StatsEMA::maxEMA()
 void
 StatsEMA::init(const std::vector<double> &_decay_rates)
 {
-    AssertAlways(_decay_rates.size() > 0,
-		 ("no decay rates specified?!"));
+    INVARIANT(_decay_rates.size() > 0,
+	      "no decay rates specified?!");
     decay_rates = _decay_rates;
     for(unsigned i = 0; i<decay_rates.size(); ++i) {
-	AssertAlways(decay_rates[i] > 0 && decay_rates[i] < 1,
-		     ("invalid decay rate %.9g specified",
-		      decay_rates[i]));
+	INVARIANT(decay_rates[i] > 0 && decay_rates[i] < 1,
+		  boost::format("invalid decay rate %.9g specified")
+		  % decay_rates[i]);
     }
     ema_values.resize(decay_rates.size(),0);
     count_low.resize(decay_rates.size(),true);

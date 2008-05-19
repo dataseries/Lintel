@@ -17,7 +17,7 @@
 #include <errno.h>
 #include <map>
 
-#include <Lintel/LintelAssert.hpp>
+#include <Lintel/AssertBoost.hpp>
 #include <Lintel/Uncompress.hpp>
 #include <Lintel/Posix.hpp>
 
@@ -91,18 +91,18 @@ int openCompressed(const char *pathname) {
 	switch(ftype) {
 	case FT_Z:
 	    execlp("zcat", "zcat", pathname, NULL);
-	    AssertFatal(("zcat: %s\n", strerror(errno)));
+	    FATAL_ERROR(boost::format("zcat: %s") % strerror(errno));
 	    break;
 	case FT_GZ:
 	    execlp("gunzip", "gunzip", "-c", pathname, NULL);
-	    AssertFatal(("gzcat: %s\n", strerror(errno)));
+	    FATAL_ERROR(boost::format("gzcat: %s") % strerror(errno));
 	    break;
 	case FT_BZ2:
 	    execlp("bunzip2", "bunzip2", "-c", pathname, NULL);
-	    AssertFatal(("bzcat: %s\n", strerror(errno)));
+	    FATAL_ERROR(boost::format("bzcat: %s") % strerror(errno));
 	    break;
 	default:
-	    AssertFatal(("unknown file type\n"));
+	    FATAL_ERROR("unknown file type");
 	    break;
 	}
     }
@@ -111,8 +111,8 @@ int openCompressed(const char *pathname) {
     posix::close(file_pipe[1]);
     posix::close(err_pipe[1]);
     
-    AssertAlways(open_pipes.find(file_pipe[0]) == open_pipes.end(),
-		 ("duplicate file descriptor\n"));
+    INVARIANT(open_pipes.find(file_pipe[0]) == open_pipes.end(),
+	      "duplicate file descriptor");
     open_pipes[file_pipe[0]] = child_stuff(pid, err_pipe[0]);
 
     return file_pipe[0];
@@ -132,8 +132,8 @@ static char *compressChildError(int fd) {
 
 void closeCompressed(int fd) {
     std::map<int, child_stuff>::iterator csi = open_pipes.find(fd);
-    AssertAlways(csi != open_pipes.end(), 
-		 ("closeCompressed: unknown descriptor\n"));
+    INVARIANT(csi != open_pipes.end(), 
+	      "closeCompressed: unknown descriptor");
     child_stuff cs = csi->second;
     open_pipes.erase(fd);
     posix::close(fd);
@@ -148,12 +148,13 @@ void closeCompressed(int fd) {
 	else if (WIFEXITED(status)) {	// exited
 	    if (WEXITSTATUS(status)) {	// with an error...
 		// decompression failed, get error msg, assert out
-		AssertFatal(("decompression failed: %s\n", 
-			     compressChildError(cs.err_fd)));
+		FATAL_ERROR(boost::format("decompression failed: %s") 
+			    % compressChildError(cs.err_fd));
 	    }
 	}
 	else {	// child exited abnormally
-	    AssertFatal(("abnormal exit: %s\n",compressChildError(cs.err_fd)));
+	    FATAL_ERROR(boost::format("abnormal exit: %s") 
+			% compressChildError(cs.err_fd));
 	}
 
 	posix::close(cs.err_fd);

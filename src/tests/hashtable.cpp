@@ -12,7 +12,7 @@
 
 #include <Lintel/HashTable.H>
 #include <Lintel/HashMap.H>
-#include <Lintel/LintelAssert.H>
+#include <Lintel/AssertBoost.H>
 
 using namespace std;
 
@@ -55,16 +55,13 @@ stringHTTests()
 	char buf[30];
 	sprintf(buf,"%d", i);
 	
-	AssertAlways(test[string(buf)] == i, ("bad"));
+	SINVARIANT(test[string(buf)] == i);
     }
 
 }
 
 int main()
 {
-//    // Testing for hash table work done at init time...
-//    AssertAlways(strcmp(foo.c_str(),"foo")==0 &&
-//		 strcmp(bar.c_str(),"bar")==0,("internal error\n"));
     printf("test collision add/remove\n");
     
     HashTable<int,collisionHash,intEqual> collisiontable;
@@ -78,62 +75,62 @@ int main()
 	     i != collisiontable.end();i++) {
 	    count++;
 	}
-	AssertAlways(count == collisiontable.size(),
-		     ("?! %d %d\n",count,collisiontable.size()));
+	INVARIANT(count == collisiontable.size(),
+		  boost::format("?! %d %d") % count % collisiontable.size());
     }
     
-    int maxi = 20000;
+    size_t maxi = 20000;
     typedef HashTable<int,intHash,intEqual> inttable;
     inttable table;
     
     printf("test adding...\n");
-    for(int i=0;i<maxi;i++) {
-	AssertAlways((int)table.size() == i,("?!"));
+    for(size_t i=0;i<maxi;i++) {
+	SINVARIANT(table.size() == i);
 	table.add(i);
     }
     for(int i=0;i<maxi;i++) {
-	AssertAlways(table.lookup(i) != NULL,("?!"));
-	AssertAlways(*table.lookup(i) == i,("?!"));
+	SINVARIANT(table.lookup(i) != NULL);
+	SINVARIANT(*table.lookup(i) == i);
     }
     for(inttable::iterator i = table.begin();i != table.end();i++) {
-	AssertAlways(*i >= 0 && *i < maxi, ("?!"));
+	SINVARIANT(*i >= 0 && *i < maxi);
     }
     printf("test copying...\n");
     inttable table2;
     table2 = table;
     for(int i=0;i<maxi;i++) {
-	AssertAlways(table2.lookup(i) != NULL,("?!"));
-	AssertAlways(*table2.lookup(i) == i,("?!"));
+	SINVARIANT(table2.lookup(i) != NULL);
+	SINVARIANT(*table2.lookup(i) == i);
     }
     printf("test assigning...\n");
     inttable table3(table2);
     for(int i=0;i<maxi;i++) {
-	AssertAlways(table3.lookup(i) != NULL,("?!"));
-	AssertAlways(*table3.lookup(i) == i,("?!"));
+	SINVARIANT(table3.lookup(i) != NULL);
+	SINVARIANT(*table3.lookup(i) == i);
     }
 
     printf("test removing...\n");
     for(int i=0;i<maxi/2;i++) {
-	AssertAlways(table.lookup(i) != NULL,("?!"));
-	AssertAlways(*table.lookup(i) == i,("?!"));
-	AssertAlways((int)table.size() == maxi-i,("?!"));
+	SINVARIANT(table.lookup(i) != NULL);
+	SINVARIANT(*table.lookup(i) == i);
+	SINVARIANT((int)table.size() == maxi-i);
 	table.remove(i);
     }
     for(int i=maxi/2;i<maxi;i++) {
-	AssertAlways(table.lookup(i) != NULL,("?!"));
-	AssertAlways(*table.lookup(i) == i,("?!"));
+	SINVARIANT(table.lookup(i) != NULL);
+	SINVARIANT(*table.lookup(i) == i);
     }
     for(inttable::iterator i = table.begin();i != table.end();i++) {
-	AssertAlways(*i >= maxi/2 && *i < maxi, ("?!"));
+	SINVARIANT(*i >= maxi/2 && *i < maxi);
     }
     printf("test complete remove...\n");
     for(int i=maxi/2;i<maxi;i++) {
-	AssertAlways((int)table.size() == maxi-i,("?!"));
+	SINVARIANT((int)table.size() == maxi-i);
 	table.remove(i);
     }
-    AssertAlways(table.size() == 0,("?!"));
+    SINVARIANT(table.size() == 0);
     table.clear();
-    AssertAlways(table.size() == 0,("?!"));
+    SINVARIANT(table.size() == 0);
     printf("test removing strange subset...\n");
     for(int i=0;i<10*maxi;i++) {
 	table.add(i);
@@ -146,14 +143,14 @@ int main()
     for(int i=0;i<10*maxi;i++) {
 	const int *x = table.lookup(i);
 	if ((i % 17) <= 10) {
-	    AssertAlways(x != NULL && *x == i,("?!"));
+	    SINVARIANT(x != NULL && *x == i);
 	} else {
-	    AssertAlways(x == NULL,("?!"));
+	    SINVARIANT(x == NULL);
 	}
     }
 
     table.clear();
-    AssertAlways(table.size() == 0,("?!"));
+    SINVARIANT(table.size() == 0);
     table.remove(5,false);
 
     stringHTTests();

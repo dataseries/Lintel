@@ -24,7 +24,6 @@
 #include <boost/static_assert.hpp>
 
 #include <Lintel/StringUtil.hpp>
-#include <Lintel/LintelAssert.hpp>
 #include <Lintel/AssertBoost.hpp>
 
 #ifdef __HP_aCC
@@ -37,7 +36,7 @@ using boost::format;
 void 
 split(const string &instr, const string &splitstr, vector<string> &bits) 
 {
-    AssertAlways(splitstr.length() > 0,("bad"));
+    SINVARIANT(splitstr.length() > 0);
     int startbit = 0;
     while(true) {
 	int endbit = instr.find(splitstr,startbit);
@@ -45,7 +44,8 @@ split(const string &instr, const string &splitstr, vector<string> &bits)
 	    bits.push_back(instr.substr(startbit,instr.length()-startbit));
 	    return;
 	} else {
-	    AssertAlways(endbit >= startbit,("bad %d %d",startbit,endbit));
+	    INVARIANT(endbit >= startbit,
+		      boost::format("bad %d %d") % startbit % endbit);
 	    bits.push_back(instr.substr(startbit,endbit-startbit));
 	    startbit = endbit + splitstr.length();
 	}
@@ -214,11 +214,11 @@ double
 stringToDouble(const std::string &str)
 {
     char *endptr = NULL;
-    AssertAlways(str.size() > 0, 
-		 ("zero length string not valid in conversion to double"));
+    INVARIANT(str.size() > 0, 
+	      "zero length string not valid in conversion to double");
     double ret = strtod(str.c_str(),&endptr);
-    AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a double",
-				  str.c_str()));
+    INVARIANT(*endptr == '\0',
+	      boost::format("didn't parse all of '%s' as a double") % str);
     return ret;
 }
 
@@ -229,11 +229,11 @@ long
 stringToLong(const std::string &str, int base)
 {
     char *endptr = NULL;
-    AssertAlways(str.size() > 0, 
-		 ("zero length string not valid in conversion to double"));
+    INVARIANT(!str.empty(), 
+	      "zero length string not valid in conversion to double");
     long ret = strtol(str.c_str(),&endptr, base);
-    AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a long long",
-				  str.c_str()));
+    INVARIANT(*endptr == '\0',
+	      boost::format("didn't parse all of '%s' as a long long") % str);
     return ret;
 }
 
@@ -245,11 +245,11 @@ long long
 stringToLongLong(const std::string &str, int base)
 {
     char *endptr = NULL;
-    AssertAlways(str.size() > 0, 
-		 ("zero length string not valid in conversion to double"));
+    INVARIANT(!str.empty(),
+	      "zero length string not valid in conversion to double");
     long long ret = strtoll(str.c_str(),&endptr, base);
-    AssertAlways(*endptr == '\0',("didn't parse all of '%s' as a long long",
-				  str.c_str()));
+    INVARIANT(*endptr == '\0',
+	      boost::format("didn't parse all of '%s' as a long long") % str);
     return ret;
 }
 

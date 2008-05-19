@@ -24,6 +24,7 @@ LINTEL_SIMPLE_PROGRAM(check-Uncompress)
 
 LINTEL_SIMPLE_TEST(stats)
 LINTEL_SIMPLE_TEST(stats_quantile)
+LINTEL_SIMPLE_TEST(stats_sequence)
 LINTEL_SIMPLE_TEST(clock)
 LINTEL_SIMPLE_TEST(hashtable)
 LINTEL_SIMPLE_TEST(mersenneTwister)
