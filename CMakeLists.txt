@@ -18,7 +18,7 @@ INCLUDE("cmake-modules/LintelCMakeUtil.cmake")
 
 ENABLE_TESTING()
 
-ADD_SUBDIRECTORY(include)
+ADD_SUBDIRECTORY(include/Lintel)
 ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(doc)
 ADD_SUBDIRECTORY(cmake-modules)
