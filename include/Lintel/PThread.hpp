@@ -78,9 +78,9 @@ public:
     virtual pthread_t start();
 };
 
-struct PThreadMutex : boost::noncopyable {
-    pthread_mutex_t m;
-#if COMPILE_DEBUG
+class PThreadMutex : boost::noncopyable {
+public:
+#if DEBUG
 #define DEFAULT_ERRORCHECK true
 #else
 #define DEFAULT_ERRORCHECK false
@@ -126,9 +126,16 @@ struct PThreadMutex : boost::noncopyable {
 	FATAL_ERROR("don't know how to implement PThreadMutex.islocked() on this platform");
 #endif
     }
-    int ncontention;
 
+    unsigned getContention() { 
+	return ncontention;
+    }
     std::string debugInfo();
+
+private:
+    friend class PThreadCond;
+    unsigned ncontention;
+    pthread_mutex_t m;
 };
 
 /// Allocate this as an automatic in your stack frame.  It will
@@ -161,8 +168,8 @@ public:
 };
 
 
-struct PThreadCond : boost::noncopyable {
-    pthread_cond_t c;
+class PThreadCond : boost::noncopyable {
+public:
     PThreadCond() {
 	INVARIANT(pthread_cond_init(&c,NULL)==0,"fatal");
     }
@@ -188,6 +195,8 @@ struct PThreadCond : boost::noncopyable {
         INVARIANT(ret == 0 || ret == ETIMEDOUT,"fatal");
         return ret == ETIMEDOUT ? true : false;
     }
+private:
+    pthread_cond_t c;
 };
 
 #endif

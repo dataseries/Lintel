@@ -84,7 +84,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 extern std::string global_assertboost_no_details;
 #define SINVARIANT(ExpressioN) INVARIANT(ExpressioN, global_assertboost_no_details);
 
-#if defined(COMPILE_DEBUG) || defined(DEBUG)
+#if DEBUG
 #define DEBUG_INVARIANT(ExpressioN, MessagE) \
 	( \
          LIKELY(ExpressioN) ? (void)0 : \
