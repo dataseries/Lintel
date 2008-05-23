@@ -30,6 +30,7 @@ LINTEL_SIMPLE_TEST(hashtable)
 LINTEL_SIMPLE_TEST(mersenneTwister)
 LINTEL_SIMPLE_TEST(least_squares)
 LINTEL_SIMPLE_TEST(rotating_hashmap)
+LINTEL_SIMPLE_TEST(simple_mutex)
 ADD_TEST(lintel-assert ${CMAKE_CURRENT_SOURCE_DIR}/run-check-LintelAssert.sh ${CMAKE_CURRENT_SOURCE_DIR})
 ADD_TEST(lintel-uncompress ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Uncompress.sh ${CMAKE_CURRENT_SOURCE_DIR})
 

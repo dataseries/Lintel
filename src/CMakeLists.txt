@@ -27,6 +27,7 @@ SET(LIBLINTEL_SOURCES
 	Matrix.cpp
 	MersenneTwisterRandom.cpp
 	PriorityQueue.cpp
+	SimpleMutex.cpp
 	Stats.cpp
 	StatsEMA.cpp
 	StatsHistogram.cpp

@@ -24,6 +24,7 @@ SET(INCLUDE_FILES
 	Posix.hpp
 	PriorityQueue.hpp
 	RotatingHashMap.hpp
+	SimpleMutex.hpp
 	Stats.hpp
 	StatsEMA.hpp
 	StatsHistogram.hpp
