@@ -4,6 +4,9 @@
    See the file named COPYING for license details
 */
 
+#ifndef LINTEL_SIMPLEMUTEX_HPP
+#define LINTEL_SIMPLEMUTEX_HPP
+
 #include <pthread.h>
 
 #include <boost/utility.hpp>
@@ -37,3 +40,4 @@ private:
      static SimpleMutex singleton; \
      return singleton; \
   } 
+#endif 

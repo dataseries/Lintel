@@ -6,6 +6,7 @@
 # cmake description for the include directory
 
 SET(INCLUDE_FILES
+	AssertBoost.hpp
 	AssertException.hpp
 	Clock.hpp
 	CompilerMarkup.hpp
@@ -17,6 +18,7 @@ SET(INCLUDE_FILES
 	HashUnique.hpp
 	LeastSquares.hpp
 	LintelAssert.hpp
+	LintelLog.hpp
 	LintelVersion.hpp
 	MathSpecialFunctions.hpp
 	Matrix.hpp
@@ -39,6 +41,7 @@ SET(INCLUDE_FILES
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
+	AssertBoost.H
 	AssertException.H
 	Clock.H
 	CompilerMarkup.H
@@ -71,33 +74,35 @@ SET(TRANSITIONAL_INCLUDE_FILES
 
 ################################## CONDITIONAL BITS
 
-SET(INCLUDE_FILES ${INCLUDE_FILES} AssertBoost.hpp)
-SET(TRANSITIONAL_INCLUDE_FILES ${TRANSITIONAL_INCLUDE_FILES} AssertBoost.H)
-
 IF(ENABLE_STDIO64) 
-  SET(INCLUDE_FILES ${INCLUDE_FILES} stdio_64.hpp)
-  SET(TRANSITIONAL_INCLUDE_FILES ${TRANSITIONAL_INCLUDE_FILES} stdio_64.H)
+    LIST(APPEND INCLUDE_FILES stdio_64.hpp)
+    LIST(APPEND TRANSITIONAL_INCLUDE_FILES stdio_64.H)
 ENDIF(ENABLE_STDIO64)
 
 IF(TCL_ENABLED)
-  SET(INCLUDE_FILES ${INCLUDE_FILES} 
-	Nameable.hpp
-	Random.hpp
-	Randommwm.hpp
-	TclInterface.hpp)
-
-  SET(TRANSITIONAL_INCLUDE_FILES ${TRANSITIONAL_INCLUDE_FILES} 
-	Nameable.H
-	Random.H
-	Randommwm.H
-	TclInterface.H)
+    LIST(APPEND INCLUDE_FILES 
+  	Nameable.hpp
+  	Random.hpp
+  	Randommwm.hpp
+  	TclInterface.hpp)
+  
+    LIST(APPEND TRANSITIONAL_INCLUDE_FILES 
+  	Nameable.H
+  	Random.H
+  	Randommwm.H
+  	TclInterface.H)
 ENDIF(TCL_ENABLED)
 
 IF(THREADS_ENABLED)
-  SET(INCLUDE_FILES ${INCLUDE_FILES} PThread.hpp)
-  SET(TRANSITIONAL_INCLUDE_FILES ${TRANSITIONAL_INCLUDE_FILES} PThread.H)
+    LIST(APPEND INCLUDE_FILES PThread.hpp)
+    LIST(APPEND TRANSITIONAL_INCLUDE_FILES PThread.H)
 ENDIF(THREADS_ENABLED)
   
+IF(LIBXML2_ENABLED)
+    LIST(APPEND INCLUDE_FILES LintelLogXML.hpp XMLUtil.hpp)
+ENDIF(LIBXML2_ENABLED)
+
+
 ################################## INSTALL
 
 INSTALL(FILES ${INCLUDE_FILES} ${TRANSITIONAL_INCLUDE_FILES}

@@ -25,6 +25,10 @@ ENDIF(NOT PERL_BINARY)
 
 ##### Optional bits
 
+OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
+
+### Doxygen
+
 INCLUDE(FindDoxygen)
 
 OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
@@ -34,15 +38,26 @@ ELSE(BUILD_SHARED_LIBS)
     SET(LIBRARY_TYPE STATIC)
 ENDIF(BUILD_SHARED_LIBS)
 
-OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
+IF(NOT DOXYGEN_FOUND)
+    MESSAGE("WARNING: doxygen not found, unable to build documentation")
+ENDIF(NOT DOXYGEN_FOUND)
+
+### TCL
 
 INCLUDE(FindTCL)
-OPTION(WITH_TCL "Try to build with TCL support?" On)
+OPTION(WITH_TCL "Use tcl if it is found?" On)
 IF(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL)
     SET(TCL_ENABLED ON)
 ELSE(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL)
     SET(TCL_ENABLED OFF)
 ENDIF(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL)
+
+IF(WITH_TCL AND NOT TCL_ENABLED)
+    MESSAGE("WITH_TCL on, but could not find tcl includes/libraries.")
+    MESSAGE("  Lintel TCL libraries support will be skipped.")
+ENDIF(WITH_TCL AND NOT TCL_ENABLED)
+
+### Threads
 
 INCLUDE(FindThreads)
 OPTION(WITH_THREADS "Try to build with thread (pthread right now) support?" On)
@@ -51,6 +66,28 @@ IF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H AND WITH_THREADS)
 ELSE(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H AND WITH_THREADS)
     SET(THREADS_ENABLED OFF)
 ENDIF(CMAKE_HAVE_THREADS_LIBRARY AND CMAKE_HAVE_PTHREAD_H AND WITH_THREADS)
+
+IF(WITH_THREADS AND NOT THREADS_ENABLED)
+    MESSAGE("WITH_THREADS on, but could not find pthread includes/libraries.")
+    MESSAGE("  LintelPThread library will be skipped.")
+ENDIF(WITH_THREADS AND NOT THREADS_ENABLED)
+
+### LibXML2
+
+INCLUDE(FindLibXml2)
+OPTION(WITH_LIBXML2 "Use the libxml2 library if it is found?" On)
+IF(LIBXML2_FOUND AND WITH_LIBXML2)
+    SET(LIBXML2_ENABLED ON)
+ELSE(LIBXML2_FOUND AND WITH_LIBXML2)
+    SET(LIBXML2_ENABLED OFF)
+ENDIF(LIBXML2_FOUND AND WITH_LIBXML2)
+
+IF(WITH_LIBXML2 AND NOT LIBXML2_ENABLED)
+    MESSAGE("WITH_LIBXML2 on, but could not find libxml2 includes/libraries.")
+    MESSAGE("  XMLUtil and LintelLogXML will be skipped.")
+ENDIF(WITH_LIBXML2 AND NOT LIBXML2_ENABLED)
+
+### RPath
 
 OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
 
@@ -70,16 +107,3 @@ IF(WITH_INSTALLED_RPATH)
     SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
 ENDIF(WITH_INSTALLED_RPATH)
 
-IF(WITH_TCL AND NOT TCL_ENABLED)
-    MESSAGE("WITH_TCL on, but could not find tcl includes/libraries.")
-    MESSAGE("  Lintel TCL libraries support will be skipped.")
-ENDIF(WITH_TCL AND NOT TCL_ENABLED)
-
-IF(WITH_THREADS AND NOT THREADS_ENABLED)
-    MESSAGE("WITH_THREADS on, but could not find pthread includes/libraries.")
-    MESSAGE("  LintelPThread library will be skipped.")
-ENDIF(WITH_THREADS AND NOT THREADS_ENABLED)
-
-IF(NOT DOXYGEN_FOUND)
-    MESSAGE("WARNING: doxygen not found, unable to build documentation")
-ENDIF(NOT DOXYGEN_FOUND)

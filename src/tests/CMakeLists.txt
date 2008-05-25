@@ -19,6 +19,7 @@ ENDMACRO(LINTEL_SIMPLE_TEST)
 
 LINTEL_SIMPLE_PROGRAM(check-LintelAssert)
 LINTEL_SIMPLE_PROGRAM(check-Uncompress)
+LINTEL_SIMPLE_PROGRAM(lintel_log)
 
 ################################## TESTS
 
@@ -33,12 +34,19 @@ LINTEL_SIMPLE_TEST(rotating_hashmap)
 LINTEL_SIMPLE_TEST(simple_mutex)
 ADD_TEST(lintel-assert ${CMAKE_CURRENT_SOURCE_DIR}/run-check-LintelAssert.sh ${CMAKE_CURRENT_SOURCE_DIR})
 ADD_TEST(lintel-uncompress ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Uncompress.sh ${CMAKE_CURRENT_SOURCE_DIR})
+ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 
 ################################## CONDITIONAL BITS
 
 IF(TCL_ENABLED)
-  INCLUDE_DIRECTORIES(${TCL_INCLUDE_PATH})
-  LINTEL_SIMPLE_PROGRAM(check-Random)
-  LINTEL_ENVTEST(lintel-random ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Random.sh ${CMAKE_CURRENT_SOURCE_DIR})
+    INCLUDE_DIRECTORIES(${TCL_INCLUDE_PATH})
+    LINTEL_SIMPLE_PROGRAM(check-Random)
+    LINTEL_ENVTEST(lintel-random ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Random.sh ${CMAKE_CURRENT_SOURCE_DIR})
 ENDIF(TCL_ENABLED)
+
+IF(LIBXML2_ENABLED)
+    INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})
+    LINTEL_SIMPLE_TEST(xmlutil)
+    LINTEL_SIMPLE_TEST(lintellogxml)
+ENDIF(LIBXML2_ENABLED)
 
