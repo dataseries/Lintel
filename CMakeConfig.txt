@@ -27,9 +27,7 @@ ENDIF(NOT PERL_BINARY)
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
 
-### Doxygen
-
-INCLUDE(FindDoxygen)
+### Library type
 
 OPTION(BUILD_SHARED_LIBS "Should we build shared libraries" ON)
 IF(BUILD_SHARED_LIBS)
@@ -37,6 +35,10 @@ IF(BUILD_SHARED_LIBS)
 ELSE(BUILD_SHARED_LIBS)
     SET(LIBRARY_TYPE STATIC)
 ENDIF(BUILD_SHARED_LIBS)
+
+### Doxygen
+
+INCLUDE(FindDoxygen)
 
 IF(NOT DOXYGEN_FOUND)
     MESSAGE("WARNING: doxygen not found, unable to build documentation")

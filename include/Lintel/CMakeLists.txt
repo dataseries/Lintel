@@ -23,6 +23,7 @@ SET(INCLUDE_FILES
 	MathSpecialFunctions.hpp
 	Matrix.hpp
 	MersenneTwisterRandom.hpp
+	PointerUtil.hpp
 	Posix.hpp
 	PriorityQueue.hpp
 	RotatingHashMap.hpp
