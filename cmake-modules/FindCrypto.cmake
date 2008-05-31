@@ -7,7 +7,7 @@
 #  CRYPTO_LIBRARIES   - List of libraries when using crypto
 #  CRYPTO_ENABLED     - True if crypto is enabled
 
-INCLUDE(LintelFindLibrary)
+INCLUDE(LintelFind)
 
 LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(CRYPTO openssl/sha.h crypto)
 

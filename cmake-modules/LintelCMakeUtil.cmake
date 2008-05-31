@@ -37,6 +37,9 @@ ENDMACRO(LINTEL_INSTALL_FILE_PATH)
 # into ${variable}_ENABLED for use in the CMakeLists.txt to determine
 # if we should build using this module.
 
+# TODO: make this a little more like the LintelFind macros, and move
+# it in there.
+
 MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
     IF("${PERL_FOUND}" STREQUAL "")
         INCLUDE(FindPerl)

@@ -7,7 +7,7 @@
 #  LZO_LIBRARIES   - List of libraries when using LZO
 #  LZO_ENABLED     - True if LZO is enabled
 
-INCLUDE(LintelFindLibrary)
+INCLUDE(LintelFind)
 
 # TODO: figure out how to extract the library version; experiments with 
 # DataSeries showed that lzo2 could have worse performance than lzo1

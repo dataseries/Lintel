@@ -4,7 +4,7 @@ SET(CMAKE_MODULE_FILES
 	FindLintel.cmake
 	FindLZO.cmake
 	LintelCMakeUtil.cmake
-	LintelFindLibrary.cmake
+	LintelFind.cmake
 )
 
 INSTALL(FILES ${CMAKE_MODULE_FILES}
