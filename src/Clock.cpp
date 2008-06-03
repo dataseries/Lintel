@@ -214,7 +214,12 @@ Clock::calibrateClock(bool print_calibration_information,
 		    // changed to 5 because we were having too many bad 
 		    // recalibates at high load.
 		    max_recalibrate_measure_time = 5 * elapsed[off];
-		    INVARIANT(max_recalibrate_measure_time < 20 * tmp_clock_rate,
+		    // increased the bound to 30us
+		    // (30*tmp_clock_rate); under load, this invariant
+		    // could fire; might want to warn, on a really
+		    // slow recalibrate, we could introduce a lot of
+		    // error.
+		    INVARIANT(max_recalibrate_measure_time < 30 * tmp_clock_rate,
 			      format("Internal sanity check failed, tod() takes too long, %d > %.2f\n")
 			      % max_recalibrate_measure_time
 			      % (20 * tmp_clock_rate));
@@ -299,6 +304,10 @@ Clock::todcc_recalibrate()
     // alternately could check to see if the time is still consistent
     // with the last one, and if so, just adjust the offsets,
     // e.g. estimate where in the cur_us we actually are.
+
+    // TODO: also consider setting for sooner re-calibration if we are
+    // above some low water mark for how long the gettod takes, for
+    // example, above the 10% rate from calibrateClock()
 
     uint64_t start_cycle = now();
     Clock::Tdbl cur_us = tod_epoch();
