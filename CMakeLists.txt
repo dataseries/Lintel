@@ -23,5 +23,3 @@ ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(doc)
 ADD_SUBDIRECTORY(cmake-modules)
 
-INSTALL(FILES com_hp_hpl_lintel.m4
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/share/aclocal)
