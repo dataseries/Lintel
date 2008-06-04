@@ -39,14 +39,21 @@ struct HashMap_hash {
 
 template <>
 struct HashMap_hash<const std::string> {
-    unsigned operator()(const std::string &a) const {
+    uint32_t operator()(const std::string &a) const {
 	return HashTable_hashbytes(a.data(),a.size());
     }
 };
 
 template <>
+struct HashMap_hash<const char * const> {
+    uint32_t operator()(const char * const a) const {
+	return HashTable_hashbytes(a,strlen(a));
+    }
+};
+
+template <>
 struct HashMap_hash<const int> {
-    unsigned operator()(const int _a) const {
+    uint32_t operator()(const int _a) const {
 	// This turns out to be slow, so turn it back into just using
 	// the underlying integer; if someone does put "bad" integers
 	// into the system then they can make their own hash function
@@ -65,8 +72,8 @@ struct HashMap_hash<const int> {
 
 template <>
 struct HashMap_hash<const unsigned> {
-    unsigned operator()(const unsigned _a) const {
-	return _a;
+    uint32_t operator()(const unsigned _a) const {
+	return static_cast<uint32_t>(_a);
     }
 };
 
@@ -78,14 +85,14 @@ struct HashMap_hash<const unsigned> {
 
 template <>
 struct HashMap_hash<const int64_t> {
-    unsigned operator()(const int64_t _a) const {
+    uint32_t operator()(const int64_t _a) const {
 	return BobJenkinsHashMixULL(_a);
     }
 };
 
 template <>
 struct HashMap_hash<const uint64_t> {
-    unsigned operator()(const uint64_t _a) const {
+    uint32_t operator()(const uint64_t _a) const {
 	return _a;
     }
 };
