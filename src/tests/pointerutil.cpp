@@ -17,7 +17,8 @@ using namespace boost;
 #include <Lintel/PointerUtil.hpp>
 
 using namespace std;
-using namespace Lintel;
+using lintel::safeDownCast;
+using lintel::safeCrossCast;
 using boost::shared_ptr;
 using boost::format;
 
@@ -74,28 +75,31 @@ int main()
     base1 *d1_b1 = static_cast<base1 *>(d1);
     base2 *d1_b2 = d1;
 
-    SINVARIANT(safe_downcast<derived1>(d1_b1) == d1);
-    SINVARIANT(safe_downcast<derived1>(d1_b2) == d1);
+    SINVARIANT(safeDownCast<derived1>(d1_b1) == d1);
+    SINVARIANT(safeDownCast<derived1>(d1_b2) == d1);
 
-    SINVARIANT(safe_downcast<base1>(d1) == d1_b1); // upcast
-    SINVARIANT(safe_downcast<base2>(d1) == d1_b2); // upcast
+    SINVARIANT(safeDownCast<base1>(d1) == d1_b1); // upcast
+    SINVARIANT(safeDownCast<base2>(d1) == d1_b2); // upcast
 
-    SINVARIANT(safe_crosscast<base2>(d1_b1) == d1_b2);
-    SINVARIANT(safe_crosscast<base1>(d1_b2) == d1_b1);
+    SINVARIANT(safeCrossCast<base2>(d1_b1) == d1_b2);
+    SINVARIANT(safeCrossCast<base1>(d1_b2) == d1_b1);
 
     AssertBoostFnBefore(AssertBoostThrowExceptionFn);
     try {
-	SINVARIANT(safe_downcast<derived2>(d1_b1) == 0);
+	SINVARIANT(safeDownCast<derived2>(d1_b1) == 0);
 	FATAL_ERROR("?");
     } catch (AssertBoostException &e) {
-	SINVARIANT(e.msg == "dynamic downcast failed in Target* Lintel::safe_downcast(Source*) [with Target = derived2, Source = base1]");
+	AssertBoostClearFns();
+	SINVARIANT(e.msg == "dynamic downcast failed in Target* lintel::safeDownCast(Source*) [with Target = derived2, Source = base1]");
     }
 
+    AssertBoostFnBefore(AssertBoostThrowExceptionFn);
     try {
-	SINVARIANT(safe_crosscast<unrelated>(d1_b1) == 0);
+	SINVARIANT(safeCrossCast<unrelated>(d1_b1) == 0);
 	FATAL_ERROR("?");
     } catch (AssertBoostException &e) {
-	SINVARIANT(e.msg == "dynamic crosscast failed in Target* Lintel::safe_crosscast(Source*) [with Target = unrelated, Source = base1]");
+	AssertBoostClearFns();
+	SINVARIANT(e.msg == "dynamic crosscast failed in Target* lintel::safeCrossCast(Source*) [with Target = unrelated, Source = base1]");
     }
 
     // Once again with shared pointers ...
@@ -105,27 +109,31 @@ int main()
     base1::Ptr p_d1_b1 = static_pointer_cast<base1>(p_d1);
     base2::Ptr p_d1_b2 = p_d1;
 
-    SINVARIANT(safe_downcast<derived1>(p_d1_b1) == p_d1);
-    SINVARIANT(safe_downcast<derived1>(p_d1_b2) == p_d1);
+    SINVARIANT(safeDownCast<derived1>(p_d1_b1) == p_d1);
+    SINVARIANT(safeDownCast<derived1>(p_d1_b2) == p_d1);
 
-    SINVARIANT(safe_downcast<base1>(p_d1) == p_d1_b1); // upcast
-    SINVARIANT(safe_downcast<base2>(p_d1) == p_d1_b2); // upcast
+    SINVARIANT(safeDownCast<base1>(p_d1) == p_d1_b1); // upcast
+    SINVARIANT(safeDownCast<base2>(p_d1) == p_d1_b2); // upcast
 
-    SINVARIANT(safe_crosscast<base2>(p_d1_b1) == p_d1_b2);
-    SINVARIANT(safe_crosscast<base1>(p_d1_b2) == p_d1_b1);
+    SINVARIANT(safeCrossCast<base2>(p_d1_b1) == p_d1_b2);
+    SINVARIANT(safeCrossCast<base1>(p_d1_b2) == p_d1_b1);
 
+    AssertBoostFnBefore(AssertBoostThrowExceptionFn);
     try {
-	SINVARIANT(safe_downcast<derived2>(p_d1_b1) == 0);
+	SINVARIANT(safeDownCast<derived2>(p_d1_b1) == 0);
 	FATAL_ERROR("?");
     } catch (AssertBoostException &e) {
-	SINVARIANT(e.msg == "dynamic downcast failed in boost::shared_ptr<T> Lintel::safe_downcast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]");
+	AssertBoostClearFns();
+	SINVARIANT(e.msg == "dynamic downcast failed in boost::shared_ptr<T> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]");
     }
 
+    AssertBoostFnBefore(AssertBoostThrowExceptionFn);
     try {
-	SINVARIANT(safe_crosscast<unrelated>(p_d1_b1) == 0);
+	SINVARIANT(safeCrossCast<unrelated>(p_d1_b1) == 0);
 	FATAL_ERROR("?");
     } catch (AssertBoostException &e) {
-	SINVARIANT(e.msg == "dynamic crosscast failed in boost::shared_ptr<T> Lintel::safe_crosscast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]");
+	AssertBoostClearFns();
+	SINVARIANT(e.msg == "dynamic crosscast failed in boost::shared_ptr<T> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]");
     }
 
     return 0;

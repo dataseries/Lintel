@@ -6,7 +6,9 @@
 */
 
 /** @file
-    Utilities for dealing with libxml2 bits
+
+    Utilities for dealing with libxml2 bits; using
+    lintel::strGetXMLAttr to pull it into your namespace.
 */
 
 #ifndef LINTEL_XMLUTIL_HPP
@@ -15,7 +17,7 @@
 #include <string>
 #include <libxml/tree.h>
 
-namespace Lintel {
+namespace lintel {
 
 /// get the value for an attribute of an element.  Returns an empty
 /// string if the attribute doesn't exist (so you can't actually tell

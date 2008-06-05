@@ -9,7 +9,7 @@
 
 using namespace std;
 
-namespace Lintel {
+namespace lintel {
 
 string strGetXMLAttr(xmlNodePtr cur, const string &_attr_name)
 {

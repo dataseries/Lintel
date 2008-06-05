@@ -5,8 +5,10 @@
    See the file named COPYING for license details
 */
 
-/** @file Very low overhead logging support; disable debug level
-    logging by adding -DDISABLE_DEBUG_LINTELLOG
+/** @file 
+
+    Very low overhead logging support; disable debug level logging by
+    adding -DDISABLE_DEBUG_LINTELLOG
 */
 
 #ifndef LINTEL_LOG_HPP
@@ -20,7 +22,7 @@
 #include <Lintel/HashMap.hpp>
 #include <Lintel/SimpleMutex.hpp>
 
-// TODO: is there a point of putting this in namespace Lintel if we're
+// TODO: is there a point of putting this in namespace lintel if we're
 // going to call it LintelLog?  We could put it in namespace Lintel
 // and call it Log, but then it's way more likely to collide, and we
 // have to keep the macros with the LintelLog prefix.  Other option

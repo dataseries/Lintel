@@ -14,7 +14,7 @@
 #include <Lintel/LintelLogXML.hpp>
 
 using namespace std;
-using namespace Lintel;
+using lintel::strGetXMLAttr;
 
 int main()
 {

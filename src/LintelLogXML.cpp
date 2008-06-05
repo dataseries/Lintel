@@ -10,7 +10,7 @@
 #include <Lintel/XMLUtil.hpp>
 
 using namespace std;
-using namespace Lintel;
+using lintel::strGetXMLAttr;
 
 void LintelLogXML::parseXML(xmlNodePtr n) 
 {

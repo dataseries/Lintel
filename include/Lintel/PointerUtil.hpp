@@ -6,7 +6,10 @@
 */
 
 /** @file
-    Utilities for dealing with pointers
+
+    Utilities for dealing with pointers; using lintel::safeDownCast or
+    using lintel::safeCrossCast to put these into the current
+    namespace.
 */
 
 #ifndef LINTEL_POINTERUTIL_HPP
@@ -16,7 +19,7 @@
 
 #include <Lintel/AssertBoost.hpp>
 
-namespace Lintel {
+namespace lintel { 
 
     /// Function for performing a safe downcast of a basic pointer to
     /// a derived class' pointer.  Guarantees that the cast was
@@ -24,7 +27,7 @@ namespace Lintel {
     /// subclass or superclass of the Source class.  For up-casts,
     /// static_cast or simple assignment will be faster.
     template <class Target, class Source>
-    inline Target *safe_downcast(Source *x)
+    inline Target *safeDownCast(Source *x)
     {
 	Target *ret = dynamic_cast<Target *>(x);
 	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
@@ -35,7 +38,7 @@ namespace Lintel {
     /// Function for performing a safe crosscast of a basic pointer to
     /// a related pointer.  Guarantees that the cast was successful.
     template <class Target, class Source>
-    inline Target *safe_crosscast(Source *x)
+    inline Target *safeCrossCast(Source *x)
     {
 	Target *ret = dynamic_cast<Target *>(x);
 	INVARIANT(ret != 0, boost::format("dynamic crosscast failed in %s")
@@ -50,7 +53,7 @@ namespace Lintel {
     /// boost::static_pointer_cast or simple assignment will be faster.
     template <class Target, class Source>
     inline boost::shared_ptr<Target> 
-    safe_downcast(boost::shared_ptr<Source> x)
+    safeDownCast(boost::shared_ptr<Source> x)
     {
 	boost::shared_ptr<Target> ret = boost::dynamic_pointer_cast<Target>(x);
 
@@ -64,7 +67,7 @@ namespace Lintel {
     /// successful.
     template <class Target, class Source>
     inline boost::shared_ptr<Target> 
-    safe_crosscast(boost::shared_ptr<Source> x)
+    safeCrossCast(boost::shared_ptr<Source> x)
     {
 	boost::shared_ptr<Target> ret = boost::dynamic_pointer_cast<Target>(x);
 
