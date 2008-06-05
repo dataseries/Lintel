@@ -36,13 +36,11 @@ ELSE(BUILD_SHARED_LIBS)
     SET(LIBRARY_TYPE STATIC)
 ENDIF(BUILD_SHARED_LIBS)
 
-### Doxygen
+### Documentation
 
-INCLUDE(FindDoxygen)
+INCLUDE(LintelDocs)
 
-IF(NOT DOXYGEN_FOUND)
-    MESSAGE("WARNING: doxygen not found, unable to build documentation")
-ENDIF(NOT DOXYGEN_FOUND)
+LINTEL_DOCS_CONFIG("Lintel")
 
 ### TCL
 

@@ -13,8 +13,10 @@ PROJECT(Lintel)
 SET(LINTEL_VERSION 0.0)
 SET(LINTEL_ABI_VERSION 0)
 
+SET(CMAKE_MODULE_PATH "${Lintel_SOURCE_DIR}/cmake-modules")
+
 INCLUDE("CMakeConfig.txt")
-INCLUDE("cmake-modules/LintelCMakeUtil.cmake")
+INCLUDE(LintelCMakeUtil)
 
 ENABLE_TESTING()
 

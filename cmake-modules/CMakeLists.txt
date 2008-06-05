@@ -4,6 +4,7 @@ SET(CMAKE_MODULE_FILES
 	FindLintel.cmake
 	FindLZO.cmake
 	LintelCMakeUtil.cmake
+	LintelDocs.cmake
 	LintelFind.cmake
 )
 
