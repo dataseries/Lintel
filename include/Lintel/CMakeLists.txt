@@ -38,6 +38,7 @@ SET(INCLUDE_FILES
 	StatsSeries.hpp
 	StatsSeriesGroup.hpp
 	StringUtil.hpp
+	TestUtil.hpp
 	Uncompress.hpp
 )
 

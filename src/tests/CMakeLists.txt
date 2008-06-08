@@ -15,12 +15,6 @@ MACRO(LINTEL_SIMPLE_TEST testname)
   ADD_TEST(${testname} ./${testname})
 ENDMACRO(LINTEL_SIMPLE_TEST)
 
-################################## SPECIAL TEST PROGRAMS
-
-LINTEL_SIMPLE_PROGRAM(check-LintelAssert)
-LINTEL_SIMPLE_PROGRAM(check-Uncompress)
-LINTEL_SIMPLE_PROGRAM(lintel_log)
-
 ################################## TESTS
 
 LINTEL_SIMPLE_TEST(stats)
@@ -33,10 +27,21 @@ LINTEL_SIMPLE_TEST(least_squares)
 LINTEL_SIMPLE_TEST(rotating_hashmap)
 LINTEL_SIMPLE_TEST(simple_mutex)
 LINTEL_SIMPLE_TEST(pointerutil)
+LINTEL_SIMPLE_TEST(stringutil)
 
+################################## SPECIAL TEST PROGRAMS
+
+LINTEL_SIMPLE_PROGRAM(check-LintelAssert)
 ADD_TEST(lintel-assert ${CMAKE_CURRENT_SOURCE_DIR}/run-check-LintelAssert.sh ${CMAKE_CURRENT_SOURCE_DIR})
+
+LINTEL_SIMPLE_PROGRAM(check-Uncompress)
 ADD_TEST(lintel-uncompress ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Uncompress.sh ${CMAKE_CURRENT_SOURCE_DIR})
+
+LINTEL_SIMPLE_PROGRAM(lintel_log)
 ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
+
+LINTEL_SIMPLE_PROGRAM(testutil)
+ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
 ################################## CONDITIONAL BITS
 
