@@ -15,6 +15,7 @@
 #include <string>
 #include <vector>
 #include <inttypes.h>
+#include <locale>
 
 /** split instr into all of the separate strings separated by splitstr, and
     put the results into bits; alternately, and probably better, use
@@ -94,5 +95,9 @@ std::string getHostFQDN();
 /** This is a form of strerror_r(3) that is convenient to use. */
 std::string stringError(int errnum);
 
-#endif
+/** Converts a string to a wstring, using the supplied locale, which
+    defaults to the current locale. */
+std::wstring string2wstring(const std::string &s, 
+			    const std::locale &loc = std::locale());
 
+#endif

@@ -22,6 +22,7 @@
 #include <sys/socket.h>
 
 #include <boost/static_assert.hpp>
+#include <boost/bind.hpp>
 
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/AssertBoost.hpp>
@@ -211,7 +212,7 @@ stringtoipv4(const string &val)
 }
 
 double
-stringToDouble(const std::string &str)
+stringToDouble(const string &str)
 {
     char *endptr = NULL;
     INVARIANT(str.size() > 0, 
@@ -226,7 +227,7 @@ stringToDouble(const std::string &str)
 // 2^31-1.
 
 long
-stringToLong(const std::string &str, int base)
+stringToLong(const string &str, int base)
 {
     char *endptr = NULL;
     INVARIANT(!str.empty(), 
@@ -242,7 +243,7 @@ stringToLong(const std::string &str, int base)
 #endif
 
 long long
-stringToLongLong(const std::string &str, int base)
+stringToLongLong(const string &str, int base)
 {
     char *endptr = NULL;
     INVARIANT(!str.empty(),
@@ -258,7 +259,7 @@ stringToLongLong(const std::string &str, int base)
 // [u]int{32,64}_t, and strto[u]l[l]
 
 int32_t
-stringToInt32(const std::string &str, int base)
+stringToInt32(const string &str, int base)
 {
     BOOST_STATIC_ASSERT(sizeof(long int) >= sizeof(int32_t));
 
@@ -279,7 +280,7 @@ stringToInt32(const std::string &str, int base)
 }
 
 uint32_t
-stringToUInt32(const std::string &str, int base)
+stringToUInt32(const string &str, int base)
 {
     BOOST_STATIC_ASSERT(sizeof(unsigned long int) >= sizeof(uint32_t));
 
@@ -300,7 +301,7 @@ stringToUInt32(const std::string &str, int base)
 }
 
 int64_t
-stringToInt64(const std::string &str, int base)
+stringToInt64(const string &str, int base)
 {
     BOOST_STATIC_ASSERT(sizeof(long long int) >= sizeof(int64_t));
 
@@ -322,7 +323,7 @@ stringToInt64(const std::string &str, int base)
 }
 
 uint64_t
-stringToUInt64(const std::string &str, int base)
+stringToUInt64(const string &str, int base)
 {
     BOOST_STATIC_ASSERT(sizeof(unsigned long long int) >= sizeof(uint64_t));
 
@@ -344,7 +345,7 @@ stringToUInt64(const std::string &str, int base)
 }
 	      
 
-bool stringIsBlank(const std::string &str)
+bool stringIsBlank(const string &str)
 {
     size_t n = str.size();
 
@@ -354,7 +355,7 @@ bool stringIsBlank(const std::string &str)
     return true;
 }
 
-bool stringIsSpace(const std::string &str)
+bool stringIsSpace(const string &str)
 {
     size_t n = str.size();
 
@@ -365,7 +366,7 @@ bool stringIsSpace(const std::string &str)
 }
 
 
-std::string getHostFQDN()
+string getHostFQDN()
 {
     char buf[1024];
     buf[sizeof(buf) - 1] = '\0';
@@ -399,7 +400,7 @@ std::string getHostFQDN()
     return hostname;
 }
 
-std::string stringError(int errnum)
+string stringError(int errnum)
 {
     size_t buflen = 256;
     char buf[buflen];
@@ -408,8 +409,18 @@ std::string stringError(int errnum)
 
     char *s = ::strerror_r(errnum, buf, buflen);
     if (s != NULL) {
-	return std::string(s);
+	return string(s);
     } else {
 	return "(NULL)";
     }
+}
+
+wstring string2wstring(const string &s, const locale &loc)
+{
+	wstring out;
+	out.reserve(s.size());
+	transform(s.begin(), s.end(), back_inserter(out),
+		  boost::bind(&ctype<wchar_t>::widen,
+			      boost::ref(use_facet<ctype<wchar_t> >(loc)), _1));
+	return out;
 }
