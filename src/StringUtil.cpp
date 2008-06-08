@@ -417,10 +417,10 @@ string stringError(int errnum)
 
 wstring string2wstring(const string &s, const locale &loc)
 {
-	wstring out;
-	out.reserve(s.size());
-	transform(s.begin(), s.end(), back_inserter(out),
-		  boost::bind(&ctype<wchar_t>::widen,
-			      boost::ref(use_facet<ctype<wchar_t> >(loc)), _1));
-	return out;
+    wstring out;
+    out.reserve(s.size());
+    transform(s.begin(), s.end(), back_inserter(out),
+	      boost::bind(&ctype<wchar_t>::widen,
+			  boost::ref(use_facet<ctype<wchar_t> >(loc)), _1));
+    return out;
 }
