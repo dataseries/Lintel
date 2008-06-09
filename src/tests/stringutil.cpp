@@ -9,6 +9,8 @@
     Tests for StringUtil
 */
 
+#include <locale.h>
+ 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/TestUtil.hpp>
@@ -35,10 +37,26 @@ void test_stringtoint32() {
 		      "error in conversion of 'abcdef' base 10 to int32: Success");
 }
 
+void test_string2wstring() {
+    string  src( "abcdefghijklmnopqrstuvwxyz0123456789");
+    wstring dst(L"abcdefghijklmnopqrstuvwxyz0123456789");
+    
+    SINVARIANT(string2wstring(src) == dst);
+}
+
+void test_wstring2string() {
+    wstring src(L"abcdefghijklmnopqrstuvwxyz0123456789");
+    string  dst( "abcdefghijklmnopqrstuvwxyz0123456789");
+    
+    SINVARIANT(wstring2string(src) == dst);
+}
+
 // TODO: test the remainder of things in StringUtil.hpp
 
 int main(int argc, char *argv[]) {
     test_splitjoin();
     test_stringtoint32();
+    test_string2wstring();
+    test_wstring2string();
     return 0;
 }

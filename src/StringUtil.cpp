@@ -422,10 +422,10 @@ wstring string2wstring(const string &s, const locale &loc)
     const ctype<wchar_t> &ct = use_facet<ctype<wchar_t> >(loc);
     transform(s.begin(), s.end(), back_inserter(out), 
 	      boost::bind(&ctype<wchar_t>::widen, boost::ref(ct), _1));
-   return out;
+    return out;
 }
 
-string wstring2string(const wstring &s, char default, const locale &loc)
+string wstring2string(const wstring &s, char dfault, const locale &loc)
 {
     string out;
     out.reserve(s.size());

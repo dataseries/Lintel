@@ -107,5 +107,4 @@ std::wstring string2wstring(const std::string &s,
 std::string wstring2string(const std::wstring &s, char dfault = 0,
 			   const std::locale &loc = std::locale());
 
-
 #endif
