@@ -272,7 +272,8 @@ public:
 
     // double in seconds
     static double TfracToDouble(Tfrac in) {
-	return TfracToSec(in) + (in & 0xFFFFFFFFULL) / 4294967296.0;
+	return TfracToSec(in) 
+	    + static_cast<uint32_t>(in & 0xFFFFFFFFULL) / 4294967296.0;
     }
 
     // double in seconds
