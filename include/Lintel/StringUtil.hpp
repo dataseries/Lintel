@@ -100,4 +100,11 @@ std::string stringError(int errnum);
 std::wstring string2wstring(const std::string &s, 
 			    const std::locale &loc = std::locale());
 
+/** Converts a wstring to a string, using the supplied locale, which
+    defaults to the current locale.  The dfault char parameter supples
+    the characeter to be substituted wherever narrowing is not
+    possible. */
+std::string wstring2string(const std::wstring &s, char dfault = 0,
+			   const std::locale &loc = std::locale());
+
 #endif

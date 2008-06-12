@@ -8,15 +8,24 @@
 # installed but don't want to use.  Normally you would use the
 # LINTEL_WITH_* or LINTEL_REQUIRED_* variants of the macros.
 
-# LINTEL_FIND_HEADER(variable header) sets ${variable}_INCLUDE_DIR.
+# LINTEL_FIND_HEADER(variable header) sets ${variable}_INCLUDE_DIR,
+#   ${variable}_INCLUDES, and ${variable}_ENABLED.
+#
 #   The header must exist if ${variable}_FIND_REQUIRED is set.
 #   It also sets up an option WITH_${variable} unless
 #   ${variable}_FIND_REQUIRED is on.  It sets ${variable}_ENABLED based
-#   on finding the header and WITH_${variable}
+#   on finding the header and WITH_${variable}; you can set 
+#   ${variable}_EXTRA_INCLUDE_PATHS to specify additional locations it 
+#   should look, and ${variable}_EXTRA_INCLUDES to specify extra directories 
+#   to put in the ${variable}_INCLUDES variable.
 
-# LINTEL_FIND_LIBRARY(variable header libname) calls
-#   LINTEL_FIND_HEADER, and then sets ${variable}_LIBRARIES.  The library
-#   must exist if ${variable}_FIND_REQUIRED is set.
+# LINTEL_FIND_LIBRARY(variable header libname) sets ${variable}_LIBRARY,
+#   ${variable}_LIBRARIES, and ${variable}_ENABLED after calling 
+#   LINTEL_FIND_HEADER to find the header.
+#
+#   The library must exist if ${variable}_FIND_REQUIRED is set.  You can set
+#   ${variable}_EXTRA_LIBRARIES to specify extra librareis to put in the
+#   ${variable}_LIBRARIES variable.
 
 # LINTEL_FIND_PROGRAM(variable program) sets ${variable}_PATH  The program
 #   must exist if ${variable}_FIND_REQUIRED is set.
@@ -52,11 +61,16 @@ MACRO(LINTEL_FIND_HEADER variable header)
 
     FIND_PATH(${variable}_INCLUDE_DIR ${header})
 
+    IF(${variable}_EXTRA_INCLUDE_PATHS)
+	FIND_PATH(${variable}_INCLUDE_DIR ${header}
+	          PATHS ${${variable}_EXTRA_INCLUDE_PATHS})
+    ENDIF(${variable}_EXTRA_INCLUDE_PATHS)
+
     MARK_AS_ADVANCED(${variable}_INCLUDE_DIR)
 
     IF(${variable}_FIND_REQUIRED)
         IF(NOT ${variable}_INCLUDE_DIR)
-            MESSAGE(STATUS "Looked for header file ${header} in ${CMAKE_INSTALL_PREFIX}/include and system paths")
+            MESSAGE(STATUS "Looked for header file ${header} in ${CMAKE_INSTALL_PREFIX}/include, system paths, and '${${variable}_EXTRA_INCLUDE_PATHS}' (if set)")
 	    IF(DEFINED ${variable}_MISSING_EXTRA)
 	        MESSAGE(STATUS "${${variable}_MISSING_EXTRA")
 	    ENDIF(DEFINED ${variable}_MISSING_EXTRA)
@@ -72,6 +86,9 @@ MACRO(LINTEL_FIND_HEADER variable header)
     ELSE(${variable}_INCLUDE_DIR)
         SET(${variable}_INCLUDE_DIR "")
     ENDIF(${variable}_INCLUDE_DIR)
+
+    SET(${variable}_INCLUDES ${${variable}_INCLUDE_DIR}
+	${${variable}_EXTRA_INCLUDES})
 ENDMACRO(LINTEL_FIND_HEADER)
 
 MACRO(LINTEL_WITH_HEADER variable header)
@@ -99,6 +116,9 @@ ENDMACRO(LINTEL_REQUIRED_HEADER variable header)
 
 ### Libraries
 
+# TODO: consider a check that the library and header share most of their
+# prefix and generate a warning if they don't.
+
 MACRO(LINTEL_FIND_LIBRARY variable header libname)
     LINTEL_FIND_HEADER(${variable} ${header})
 
@@ -113,10 +133,11 @@ MACRO(LINTEL_FIND_LIBRARY variable header libname)
 
     IF (${variable}_INCLUDE_DIR AND ${variable}_LIBRARY)
         SET(${variable}_FOUND TRUE)
-        SET(${variable}_LIBRARIES ${${variable}_LIBRARY})
+        SET(${variable}_LIBRARIES ${${variable}_LIBRARY} 
+	    ${${variable}_EXTRA_LIBRARIES})
     ELSE (${variable}_INCLUDE_DIR AND ${variable}_LIBRARY)
         SET(${variable}_FOUND FALSE)
-        SET(${variable}_LIBRARIES)
+        SET(${variable}_LIBRARIES ${variable}-NOTFOUND)
     ENDIF (${variable}_INCLUDE_DIR AND ${variable}_LIBRARY)
 
     IF (${variable}_FIND_REQUIRED)
@@ -214,14 +235,23 @@ MACRO(LINTEL_REQUIRED_PROGRAM variable program)
     LINTEL_FIND_PROGRAM(${variable} ${program})
 ENDMACRO(LINTEL_REQUIRED_PROGRAM variable program)
 
-# Find the ${Variable} includes and library
+# Find the Variable includes and library
 #
-#  set ${VARIABLE}_FIND_REQUIRED to require the ${VARIABLE} library
-#  otherwise, the user will be given a WITH_${VARIABLE} option.
+#  set VARIABLE_FIND_REQUIRED to require the VARIABLE library
+#  otherwise, the user will be given a WITH_VARIABLE option.
 # 
-#  ${VARIABLE}_INCLUDE_DIR - where to find openssl/sha.h
-#  ${VARIABLE}_LIBRARIES   - List of libraries when using ${VARIABLE}
-#  ${VARIABLE}_ENABLED     - True if ${VARIABLE} is enabled
+#  VARIABLE_INCLUDE_DIR - where to find header file for Variable
+#  VARIABLE_INCLUDES    - all includes needed for Variable
+#  VARIABLE_LIBRARY     - where to find the library for Variable
+#  VARIABLE_LIBRARIES   - all libraries needed for Variable
+#  VARIABLE_ENABLED     - true if VARIABLE is enabled
+
+# If you are creating FindVariable.cmake, then you want to put the
+# documentation from above in, substitute for variable as appropriate,
+# and set the variables VARIABLE_EXTRA_INCLUDES and
+# VARIABLE_EXTRA_LIBRARIES before calling the
+# LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE macro to specify the extra
+# includes/libraries needed.
 
 MACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE variable header libname)
     IF(${variable}_FIND_REQUIRED)
