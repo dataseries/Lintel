@@ -6,10 +6,11 @@
 # cmake rules for the src/BatchParallel directory
 
 SET(BATCH_PARALLEL_FILES
+	checksum.pm
 	common.pm
 	compress.pm
 	jobsfile.pm
-	checksum.pm
+	make.pm
 	tar.pm
 )
 

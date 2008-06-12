@@ -53,9 +53,13 @@ MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
          SET(WITH_${variable} "ON" CACHE BOOL "Enable use of the ${module_name} perl module")
          SET(LFPM_found NO)
          IF(PERL_FOUND)
+	     # Tried OUTPUT_QUIET and ERROR_QUIET but with cmake 2.4-patch 5 
+	     # this didn't seem to make it quiet.
              EXEC_PROGRAM(${PERL_EXECUTABLE}
                           ARGS -e "\"use lib '${CMAKE_INSTALL_PREFIX}/share/perl5'; use ${module_name};\""
-                          RETURN_VALUE LFPM_return_value)
+                          RETURN_VALUE LFPM_return_value
+		          OUTPUT_VARIABLE LFPM_output
+			  ERROR_VARIABLE LFPM_error_output)
              IF("${LFPM_return_value}" STREQUAL 0)
                  SET(LFPM_found YES)
              ENDIF("${LFPM_return_value}" STREQUAL 0)

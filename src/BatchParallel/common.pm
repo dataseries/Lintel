@@ -106,7 +106,7 @@ sub file_older { # true if $name_a is older than any of the later names
     return 0;
 }
 
-# TODO: deprecate this function and switch everyone to file_old
+# overrideable function for use by determine_things_to_build
 sub destfile_out_of_date {
     my($this,$prefix,$fullpath,$destfile) = @_;
 
@@ -201,6 +201,8 @@ sub pre_exec_setup {
 }
 
 sub rebuild {
+    my($this, $prefix, $src_path, $dest_path) = @_;
+
     die "You need to override sub rebuild in your module";
 }
 

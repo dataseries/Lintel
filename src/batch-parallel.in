@@ -602,15 +602,28 @@ and the latter is significantly more general as it could for example
 take a trace file, determine segments of a single trace file and
 generate jobs that will process the separate segments.
 
-=head3 sub file_is_source($this, $prefix, $full_path, $file_name) 
+=head3 sub file_is_source($this, $prefix, $src_path, $src_name) 
 
-This function returns true if the file is a source file, and false
-otherwise.  The prefix is the user-specified tree under which the
-search is occurring.  It may be just a file if the user specified a
-particular file.  The full path includes the filename.  Later the
+This function returns true if the path refers to a source file, and
+false otherwise.  The prefix is the user-specified tree under which
+the search is occurring.  It may be just a file if the user specified
+a particular file.  The src path includes the filename.  Later the
 function destination_file will be used to construct the output file
-from this source, and destfile_out_of_date to determine if it needs
-to be rebuilt.
+from this source, and destfile_out_of_date to determine if it needs to
+be rebuilt.
+
+=head3 sub destination_file($this, $prefix, $src_path)
+
+This function should take in $src_path and return the destination path
+for the input path.  The prefix is the same as for file_is_source.
+This function is called from the default determine_things_to_build
+function.
+
+=head3 sub destfile_out_of_date($this, $prefix, $src_path, $dest_path)
+
+This function should determine if $dest_path is out of date with
+regard to $src_path.  The default function returns true if $dest_path
+does not exist or if $src_path is newer than $dest_path.
 
 =head3 sub find_things_to_build($this, @sources)
 
