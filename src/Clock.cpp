@@ -68,7 +68,7 @@ static string readFileLine(const string &filename)
 
 static void checkForPossibleFrequencyScaling()
 {
-    if (__linux__) {
+#ifdef __linux__
 	const string cpu_dir("/sys/devices/system/cpu");
 	DIR *dir = opendir(cpu_dir.c_str());
 	INVARIANT(dir != NULL, 
@@ -98,9 +98,9 @@ static void checkForPossibleFrequencyScaling()
 	if (all_ok) {
 	    may_have_frequency_scaling = false;
 	}
-    } else {
+#else
 	may_have_frequency_scaling = true;
-    }
+#endif
 
     if (!may_have_frequency_scaling) {
 	// great.

@@ -114,6 +114,8 @@ PThread::setStackSize(size_t size)
     INVARIANT(ret == 0, boost::format("pthread_attr_setstacksize failed: %s") % strerror(ret));
 }
 
+// TODO: see if we need to do something to support cygwin
+#ifndef __CYGWIN__
 size_t
 PThread::getGuardSize() 
 {
@@ -129,6 +131,7 @@ PThread::setGuardSize(size_t size)
     int ret = pthread_attr_setguardsize(&attr, size);
     INVARIANT(ret == 0, boost::format("pthread_attr_setguardsize failed: %s") % strerror(ret));
 }
+#endif
 
 static void *
 pthread_starter(void *arg)

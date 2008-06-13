@@ -33,10 +33,17 @@ void test_stringtoint32() {
     SINVARIANT(stringToInt32("77737373") == 77737373);
     SINVARIANT(stringToInt32("-2133324") == -2133324);
 
+#ifdef __CYGWIN__
+    TEST_INVARIANTMSG(stringToInt32("abcdef") == 5,
+		      "error in conversion of 'abcdef' base 10 to int32: No error");
+#else
     TEST_INVARIANTMSG(stringToInt32("abcdef") == 5,
 		      "error in conversion of 'abcdef' base 10 to int32: Success");
+#endif
 }
 
+// TODO: see if we can do something to support wstring on cygwin
+#ifndef __CYGWIN__
 void test_string2wstring() {
     string  src( "abcdefghijklmnopqrstuvwxyz0123456789");
     wstring dst(L"abcdefghijklmnopqrstuvwxyz0123456789");
@@ -50,13 +57,17 @@ void test_wstring2string() {
     
     SINVARIANT(wstring2string(src) == dst);
 }
+#endif
 
 // TODO: test the remainder of things in StringUtil.hpp
 
 int main(int argc, char *argv[]) {
     test_splitjoin();
     test_stringtoint32();
+// TODO: see if we can do something to support wstring on cygwin
+#ifndef __CYGWIN__
     test_string2wstring();
     test_wstring2string();
+#endif
     return 0;
 }

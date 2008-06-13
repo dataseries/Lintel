@@ -95,6 +95,8 @@ std::string getHostFQDN();
 /** This is a form of strerror_r(3) that is convenient to use. */
 std::string stringError(int errnum);
 
+// TODO: see if we can do something to support wstring on cygwin
+#ifndef __CYGWIN__
 /** Converts a string to a wstring, using the supplied locale, which
     defaults to the current locale. */
 std::wstring string2wstring(const std::string &s, 
@@ -107,4 +109,5 @@ std::wstring string2wstring(const std::string &s,
 std::string wstring2string(const std::wstring &s, char dfault = 0,
 			   const std::locale &loc = std::locale());
 
+#endif
 #endif

@@ -20,7 +20,9 @@
 #include <vector>
 #include <errno.h>
 #include <assert.h>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include <iostream>
 #include <fstream>
 #include <Lintel/AssertBoost.hpp>
@@ -511,7 +513,7 @@ public:
     virtual ~RandintU() {};
 
     virtual unsigned long draw() { return nrand48(seed.seeds); }
-    virtual double        mean() { return MAXINT/2.0; };
+    virtual double        mean() { return INT_MAX/2.0; };
 };
 
 //////////////////////////////////////////////////////////////////////////////

@@ -365,7 +365,6 @@ bool stringIsSpace(const string &str)
     return true;
 }
 
-
 string getHostFQDN()
 {
     char buf[1024];
@@ -374,6 +373,7 @@ string getHostFQDN()
     INVARIANT(rc == 0, "gethostname failed");
     string hostname(buf);
 
+#ifndef __CYGWIN__
     // Try to look up the host via netdb.  This is especially is
     // important on any host running DHCP, where the name returned by
     // gethostname isn't a FQDN on most configurations and usually
@@ -396,6 +396,7 @@ string getHostFQDN()
     }
     
     if (res) freeaddrinfo(res);
+#endif
 
     return hostname;
 }
@@ -415,6 +416,8 @@ string stringError(int errnum)
     }
 }
 
+// TODO: see if we need to do something to support wstring on cygwin
+#ifndef __CYGWIN__
 wstring string2wstring(const string &s, const locale &loc)
 {
     wstring out;
@@ -434,3 +437,4 @@ string wstring2string(const wstring &s, char dfault, const locale &loc)
 	      boost::bind(&ctype<wchar_t>::narrow, boost::ref(ct), _1, dfault));
     return out;
 }
+#endif

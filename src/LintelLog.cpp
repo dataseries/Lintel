@@ -97,7 +97,7 @@ void LintelLog::debugMessagesInitial()
 	vector<string> debug_names;
 
 	instance->mutex.lock();
-	for(HashMap<string, unsigned>::iterator i 
+	for(HashMap<string, uint32_t>::iterator i 
 		= instance->category2id.begin(); 
 	    i != instance->category2id.end(); ++i) {
 	    debug_names.push_back(i->first);
