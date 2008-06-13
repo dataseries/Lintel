@@ -70,6 +70,23 @@ struct HashMap_hash<const int> {
     }
 };
 
+// cygwin didn't use the above for a const int32_t, so...
+#ifdef __CYGWIN__
+template <>
+struct HashMap_hash<const int32_t> {
+    uint32_t operator()(const int32_t _a) const {
+	return static_cast<unsigned>(_a);
+    }
+};
+
+template <>
+struct HashMap_hash<const uint32_t> {
+    uint32_t operator()(const uint32_t _a) const {
+	return static_cast<unsigned>(_a);
+    }
+};
+#endif
+
 template <>
 struct HashMap_hash<const unsigned> {
     uint32_t operator()(const unsigned _a) const {
