@@ -12,7 +12,7 @@
 #define _ISOC9X_SOURCE 1
 #endif
 
-#ifdef __i386__
+#if defined(__i386__) && !defined(__CYGWIN__)
 #include <fpu_control.h>
 #endif
 
@@ -49,7 +49,7 @@ const double Double::Inf = INFINITY;
 void
 Double::setFP64BitMode()
 {
-#ifdef __i386__
+#if defined(__i386__) && !defined(__CYGWIN__)
     fpu_control_t cw;
     _FPU_GETCW(cw);
     INVARIANT(cw == _FPU_IEEE,
@@ -64,7 +64,7 @@ Double::setFP64BitMode()
 void
 Double::resetFPMode()
 {
-#ifdef __i386__
+#if defined(__i386__) && !defined(__CYGWIN__)
     fpu_control_t cw = _FPU_IEEE;
     _FPU_SETCW(cw);
 #endif

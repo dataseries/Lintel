@@ -10,6 +10,7 @@
 
 #include <vector>
 #include <queue>
+#include <cstdlib>
 
 #include <Lintel/LintelAssert.H>
 #include <Lintel/MersenneTwisterRandom.H>
@@ -124,7 +125,7 @@ PriorityQueueTest()
 int
 main()
 {
-    char * foo = (char *)malloc(5);
+    char * foo = (char *)std::malloc(5);
 #if MV
     mal_verify(1);
     mal_debug(3);

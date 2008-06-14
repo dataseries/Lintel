@@ -9,8 +9,8 @@
 */
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
-#include <values.h>
 
 #include <Lintel/AssertBoost.H>
 #include <Lintel/LintelAssert.H>
