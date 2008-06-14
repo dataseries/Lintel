@@ -48,7 +48,9 @@
 
 #include <vector>
 #include <math.h>
+#ifndef __CYGWIN__
 #include <values.h>
+#endif
 #include "streamcompat.H"
 #include "LintelAssert.H"
 #include "Stats.H"

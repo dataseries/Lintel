@@ -17,7 +17,9 @@
 #include <vector>
 #include <errno.h>
 #include <assert.h>
-#include <values.h>
+#include <string.h>
+#include <stdlib.h>
+#include <limits>
 #include "streamcompat.H"
 #include "LintelAssert.H"
 #include "TclInterface.H"
@@ -507,7 +509,7 @@ public:
     virtual ~RandintU() {};
 
     virtual unsigned long draw() { return nrand48(seed.seeds); }
-    virtual double        mean() { return MAXINT/2.0; };
+    virtual double        mean() { return (std::numeric_limits<int>::max)()/2.0; };
 };
 
 //////////////////////////////////////////////////////////////////////////////
