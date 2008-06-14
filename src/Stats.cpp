@@ -12,6 +12,7 @@
 #include <cstdio>
 #include <string>
 #include <float.h>
+#include <string.h>
 
 #include <boost/format.hpp>
 

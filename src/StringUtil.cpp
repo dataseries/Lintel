@@ -19,7 +19,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <sys/socket.h>
+#include <sys/types.h>
 
 #include <boost/static_assert.hpp>
 #include <boost/bind.hpp>
@@ -204,7 +204,11 @@ ipv4tostring(uint32_t val)
 uint32_t
 stringtoipv4(const string &val)
 {
+#ifdef __CYGWIN__
+    in_addr addr;
+#else
     struct in_addr addr;
+#endif
     INVARIANT(inet_aton(val.c_str(), &addr) != 0,
 	      boost::format("Unable to convert %s to inet address")
 	      % val);
@@ -365,6 +369,7 @@ bool stringIsSpace(const string &str)
     return true;
 }
 
+#ifndef __CYGWIN__
 string getHostFQDN()
 {
     char buf[1024];
@@ -400,6 +405,8 @@ string getHostFQDN()
 
     return hostname;
 }
+
+#endif
 
 string stringError(int errnum)
 {

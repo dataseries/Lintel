@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <sstream>
+#include <cstring>
 
 #include <boost/format.hpp>
 

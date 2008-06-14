@@ -119,17 +119,25 @@ PThread::setStackSize(size_t size)
 size_t
 PThread::getGuardSize() 
 {
+#ifdef __CYGWIN__
+    return 0;
+#else
     size_t size;
     int ret = pthread_attr_getguardsize(&attr, &size);
     INVARIANT(ret == 0, boost::format("pthread_attr_getguardsize failed: %s") % strerror(ret));
     return size;
+#endif
 }
 
 void
 PThread::setGuardSize(size_t size)
 {
+#ifdef __CYGWIN__
+    // nothing to do
+#else
     int ret = pthread_attr_setguardsize(&attr, size);
     INVARIANT(ret == 0, boost::format("pthread_attr_setguardsize failed: %s") % strerror(ret));
+#endif
 }
 #endif
 

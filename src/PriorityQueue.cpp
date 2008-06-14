@@ -11,6 +11,7 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <cstdlib>
 
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/PriorityQueue.hpp>
@@ -119,7 +120,7 @@ PriorityQueueTest()
 int
 main()
 {
-    char * foo = (char *)malloc(5);
+    char * foo = (char *)std::malloc(5);
 
     PriorityQueueTest();
 }

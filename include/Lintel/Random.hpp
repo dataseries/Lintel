@@ -513,7 +513,7 @@ public:
     virtual ~RandintU() {};
 
     virtual unsigned long draw() { return nrand48(seed.seeds); }
-    virtual double        mean() { return INT_MAX/2.0; };
+    virtual double        mean() { return (std::numeric_limits<int>::max)()/2.0; };
 };
 
 //////////////////////////////////////////////////////////////////////////////
