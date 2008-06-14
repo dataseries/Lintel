@@ -11,8 +11,8 @@
 
 #include <iostream>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/Double.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/Double.hpp>
 #include <Lintel/LeastSquares.hpp>
 
 using namespace std;

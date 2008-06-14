@@ -25,37 +25,51 @@
 
 #include <Lintel/HashTable.hpp>
 
-template <class K, class V>
-struct HashMap_val {
+#include <boost/type_traits/is_integral.hpp>
+
+template <class K, class V> struct HashMap_val {
     K first;
     V second;
     HashMap_val(K &k, V &v) : first(k), second(v) { }
     HashMap_val(const K &k) : first(k), second() { }
 };
 
-// TODO: make the return value uint32_t
-template <class K>
-struct HashMap_hash {
+/// template to hash integral type things; this lets us handle all of
+/// the combinations of int64_t, long long, etc., without having to
+/// have different variants for all of the sub-types, which is
+/// currently impossible because we can't have both long long and
+/// int64_t instantiations of the HashMap_hash template.  32bit x86
+/// Debian etch thinks those types are the same, so it complains about
+/// duplicate templates, but 64bit x86_64 RHEL4 thinks the types are
+/// different so requires both of them.  
+template<bool isIntegral, int size> struct HashMap_hash_int {
     //    uint32_t operator()(const K &a) const;
 };
 
-template <>
-struct HashMap_hash<const std::string> {
+template <class K> 
+struct HashMap_hash 
+    : HashMap_hash_int<boost::is_integral<K>::value, sizeof(K)> {
+    //    uint32_t operator()(const K &a) const;
+};
+
+/// Specialization for std::string
+template <> struct HashMap_hash<const std::string> {
     uint32_t operator()(const std::string &a) const {
 	return HashTable_hashbytes(a.data(),a.size());
     }
 };
 
-template <>
-struct HashMap_hash<const char * const> {
+/// Specialization for char *
+template <> struct HashMap_hash<const char * const> {
     uint32_t operator()(const char * const a) const {
 	return HashTable_hashbytes(a,strlen(a));
     }
 };
 
-template <>
-struct HashMap_hash<const int> {
-    uint32_t operator()(const int _a) const {
+/// To achieve the HashMap_hash_int thing, need to have
+/// specializations for the different sizes; this is 4 byte size.
+template <> struct HashMap_hash<const uint32_t> {
+    uint32_t operator()(const uint32_t _a) const {
 	// This turns out to be slow, so turn it back into just using
 	// the underlying integer; if someone does put "bad" integers
 	// into the system then they can make their own hash function
@@ -68,56 +82,30 @@ struct HashMap_hash<const int> {
 //	int ret = 1972;
 //	BobJenkinsHashMix(a,b,ret);
 //	return ret;
-	BOOST_STATIC_ASSERT(sizeof(int) <= 4);
 	return static_cast<uint32_t>(_a);
     }
 };
 
-// cygwin didn't use the above for a const int32_t, so...
-#ifdef __CYGWIN__
-template <>
-struct HashMap_hash<const int32_t> {
-    uint32_t operator()(const int32_t _a) const {
-	return static_cast<uint32_t>(_a);
-    }
-};
-
-template <>
-struct HashMap_hash<const uint32_t> {
-    uint32_t operator()(const uint32_t _a) const {
-	return static_cast<uint32_t>(_a);
-    }
-};
-#endif
-
-template <>
-struct HashMap_hash<const unsigned> {
-    uint32_t operator()(const unsigned _a) const {
-	BOOST_STATIC_ASSERT(sizeof(unsigned) <= 4);
-	return static_cast<uint32_t>(_a);
-    }
-};
-
-// Can't have both long long and int64_t instantiations of this
-// template because 32bit x86 Debian etch thinks those types are the
-// same, so it complains about duplicate templates, but 64bit x86_64
-// RHEL4 thinks the types are different so requires both of them.  We
-// choose to go with just the standard, size-specific types.
-
-template <>
-struct HashMap_hash<const int64_t> {
-    uint32_t operator()(const int64_t _a) const {
+/// specialization for 8 byte integers
+template <> struct HashMap_hash<const uint64_t> {
+    uint32_t operator()(const uint64_t _a) const {
 	return BobJenkinsHashMixULL(_a);
     }
 };
 
-template <>
-struct HashMap_hash<const uint64_t> {
-    uint32_t operator()(const uint64_t _a) const {
-	return _a;
-    }
+/// general 4 byte integer hashing
+template<> struct HashMap_hash_int<true, 4> : HashMap_hash<const uint32_t> {
+    BOOST_STATIC_ASSERT(sizeof(uint32_t) == 4);
 };
 
+// general 8 byte integer hashing
+template<> struct HashMap_hash_int<true, 8> : HashMap_hash<const uint64_t> {
+    BOOST_STATIC_ASSERT(sizeof(uint64_t) == 8);
+};
+
+/// HashMap class; in our testing almost as fast as the google dense
+/// map, but uses almost as little memory as the sparse map.  Note
+/// that class K can't be const, see src/tests/hashmap.cpp for details.
 template <class K, class V, 
           class KHash = HashMap_hash<const K>, 
           class KEqual = std::equal_to<const K> >
@@ -157,15 +145,15 @@ public:
 	}
     }
 
-    V &operator[] (K &k) {
-	hmval fullval(k);
-	hmval *v = hashtable.lookup(fullval);
-	if (v == NULL) {
-	    return hashtable.add(fullval)->second;
-	} else {
-	    return v->second;
-	}
-    }
+//    V &operator[] (K &k) {
+//	hmval fullval(k);
+//	hmval *v = hashtable.lookup(fullval);
+//	if (v == NULL) {
+//	    return hashtable.add(fullval)->second;
+//	} else {
+//	    return v->second;
+//	}
+//    }
 
     bool exists(const K &k) {
 	return lookup(k) != NULL;
