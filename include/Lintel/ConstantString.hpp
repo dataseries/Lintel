@@ -16,6 +16,7 @@
 
 #include <string>
 #include <vector>
+#include <cstring>
 
 #include <boost/static_assert.hpp>
 

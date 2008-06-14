@@ -9,10 +9,8 @@
 */
 
 #include <stdlib.h>
+#include <string.h>
 #include <stdio.h>
-#ifndef __CYGWIN__
-#include <values.h>
-#endif
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/StatsHistogram.hpp>
