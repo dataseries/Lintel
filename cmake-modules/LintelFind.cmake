@@ -206,6 +206,7 @@ MACRO(LINTEL_FIND_PROGRAM variable program)
     ENDIF(${variable}_FIND_REQUIRED)
 
     IF(${variable}_PATH)
+        SET(${variable}_FOUND ON)
         IF(NOT ${variable}_FIND_QUIETLY)
             MESSAGE(STATUS "Found program ${program} as ${${variable}_PATH}")
         ENDIF(NOT ${variable}_FIND_QUIETLY)
