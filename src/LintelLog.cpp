@@ -10,7 +10,6 @@
 
 #include <sys/time.h>
 
-#include <boost/foreach.hpp>
 #include <boost/smart_ptr.hpp>
 #include <boost/utility.hpp>
 
