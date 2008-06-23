@@ -51,9 +51,10 @@ PThreadMisc::getNCpus(bool unknown_ok)
     static unsigned nprocs;
 
     if (nprocs == 0) {
-	if (getenv("LINTEL_NCPUS") != NULL) {
-	    nprocs = stringToUInt32(getenv("LINTEL_NCPUS"));
-	    INVARIANT(nprocs > 0, "LINTEL_NCPUS must be > 0");
+	// automatically set on windows, and hence cygwin.
+        if (const char* result = getenv("NUMBER_OF_PROCESSORS")) {
+            nprocs = stringToUInt32(result);
+	    INVARIANT(nprocs > 0, "NUMBER_OF_PROCESSORS must be > 0");
 #ifdef __linux__
 	} else if (1) {
 	    ifstream infile("/proc/cpuinfo");
@@ -72,7 +73,8 @@ PThreadMisc::getNCpus(bool unknown_ok)
 #endif
 	} else {
 	    INVARIANT(unknown_ok, "don't know how to get the number of CPUs;"
-		      "fix the code or set LINTEL_NCPUS");
+		      " fix the code or set the NUMBER_OF_PROCESSORS"
+		      " environment variable");
 	    return -1;
 	}
     }
@@ -82,13 +84,15 @@ PThreadMisc::getNCpus(bool unknown_ok)
 
 PThread::PThread()
 {
+    memset(&attr,0,sizeof(attr)); // needed on cygwin so it doesn't think attr is already initialized
     int ret = pthread_attr_init(&attr);
     INVARIANT(ret == 0,boost::format("pthread_attr_init failed: %s") % strerror(ret));
-    memset(&last_tid,sizeof(last_tid),0);
+    memset(&last_tid,0,sizeof(last_tid));
 }
 
 PThread::~PThread()
 {
+    pthread_attr_destroy(&attr);
 }
 
 void
