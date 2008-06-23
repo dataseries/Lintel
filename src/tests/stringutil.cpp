@@ -42,6 +42,19 @@ void test_stringtoint32() {
 #endif
 }
 
+void test_caseconversion() {
+    string s("Hello world!");
+    string up(upcaseString(s));
+    string down(downcaseString(s));
+    
+    SINVARIANT(downcaseString(up) == down);
+    SINVARIANT(upcaseString(down) == up);
+
+    string empty;
+    SINVARIANT(upcaseString(empty) == empty);
+    SINVARIANT(downcaseString(empty) == empty);
+}
+
 // TODO: see if we can do something to support wstring on cygwin
 #ifndef __CYGWIN__
 void test_string2wstring() {
@@ -64,6 +77,7 @@ void test_wstring2string() {
 int main(int argc, char *argv[]) {
     test_splitjoin();
     test_stringtoint32();
+    test_caseconersion();
 // TODO: see if we can do something to support wstring on cygwin
 #ifndef __CYGWIN__
     test_string2wstring();
