@@ -25,6 +25,9 @@ void test_splitjoin() {
     SINVARIANT(out.size() == 4 && out[0] == "a" && out[1] == "bcd" &&
 	       out[2] == "" && out[3] == "ef");
 
+    vector<string> out2 = split(in, "-");
+    SINVARIANT(out == out2);
+
     string ojoin = join("/", out);
     SINVARIANT(ojoin == "a/bcd//ef");
 }

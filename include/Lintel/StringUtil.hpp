@@ -23,6 +23,14 @@
 void split(const std::string &instr, const std::string &splitstr, 
 	   std::vector<std::string> &bits);
 
+/** more normal usage variant of split, but probably slower (unchecked) */
+inline std::vector<std::string>
+split(const std::string &instr, const std::string &splitstr) {
+    std::vector<std::string> ret;
+    split(instr, splitstr, ret);
+    return ret;
+}
+
 /** join parts, each entry separated by joinstr */
 std::string join(const std::string &joinstr, const std::vector<std::string> &parts);
 
