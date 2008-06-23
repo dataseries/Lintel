@@ -10,6 +10,8 @@
 
 #define __STDC_LIMIT_MACROS
 
+#include <cctype>
+
 #include <arpa/inet.h>
 #include <ctype.h>
 #include <errno.h>
@@ -422,6 +424,40 @@ string stringError(int errnum)
 	return "(NULL)";
     }
 }
+
+static string tolower(const string &s)
+{
+    string r(s);
+    string::size_type len = r.length();
+    
+    for (string::size_type i = 0; i < len; i++) {
+	r[i] = tolower(r[i]);
+    }
+    return r;
+}
+
+string downcaseString(const string &s)
+{
+    string r(s);
+    string::size_type len = r.length();
+    
+    for (string::size_type i = 0; i < len; i++) {
+	r[i] = tolower(r[i]);
+    }
+    return r;
+}
+
+string upcaseString(const string &s)
+{
+    string r(s);
+    string::size_type len = r.length();
+    
+    for (string::size_type i = 0; i < len; i++) {
+	r[i] = toupper(r[i]);
+    }
+    return r;
+}
+
 
 // TODO: see if we need to do something to support wstring on cygwin
 #ifndef __CYGWIN__

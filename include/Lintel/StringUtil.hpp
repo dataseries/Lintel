@@ -95,6 +95,14 @@ std::string getHostFQDN();
 /** This is a form of strerror_r(3) that is convenient to use. */
 std::string stringError(int errnum);
 
+/** Applies tolower to each character in the supplied string s
+    and returns the result. */
+std::string downcaseString(const std::string &s);
+
+/** Applies toupper to each character in the supplied string s
+    and returns the result. */
+std::string upcaseString(const std::string &s);
+
 // TODO: see if we can do something to support wstring on cygwin
 #ifndef __CYGWIN__
 /** Converts a string to a wstring, using the supplied locale, which
