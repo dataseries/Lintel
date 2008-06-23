@@ -77,7 +77,7 @@ void test_wstring2string() {
 int main(int argc, char *argv[]) {
     test_splitjoin();
     test_stringtoint32();
-    test_caseconersion();
+    test_caseconversion();
 // TODO: see if we can do something to support wstring on cygwin
 #ifndef __CYGWIN__
     test_string2wstring();
