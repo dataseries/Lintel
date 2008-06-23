@@ -29,14 +29,14 @@ public:
     virtual void reset();		///< Reset to original values
 
     //----Query functions
-    const unsigned resets()      const { return reset_count; };
-    virtual const double min()	 const = 0;
-    virtual const double max()	 const = 0;
-    virtual const double mean()     const = 0;
-    virtual const double stddev()   const;
-    virtual const double variance() const = 0;
-    virtual const double conf95()   const = 0;
-    virtual const double relconf95()   const;
+    unsigned resets()      const { return reset_count; };
+    virtual double min()	 const = 0;
+    virtual double max()	 const = 0;
+    virtual double mean()     const = 0;
+    virtual double stddev()   const;
+    virtual double variance() const = 0;
+    virtual double conf95()   const = 0;
+    virtual double relconf95()   const;
 
     /// Emit data about this value.
     virtual std::string debugString() const = 0;
@@ -70,18 +70,18 @@ public:
     virtual void reset();
 
     // ----Query functions (not inherited from StatsBase):
-    const unsigned long count()  const { return (unsigned long)number; };
-    const unsigned long long countll() const { return number; };
-    const double total()  const { return sum; };
-    const double total_sq()  const { return sumsq; };
+    unsigned long count()  const { return (unsigned long)number; };
+    unsigned long long countll() const { return number; };
+    double total()  const { return sum; };
+    double total_sq()  const { return sumsq; };
 
     // ----Query functions (inherited from StatsBase):
-    virtual const double min()	 const { return min_value; };
-    virtual const double max()	 const { return max_value; };
-    const unsigned resets()      const { return reset_count; };
-    virtual const double mean()     const;
-    virtual const double variance() const;
-    virtual const double conf95()   const;
+    virtual double min()	 const { return min_value; };
+    virtual double max()	 const { return max_value; };
+    unsigned resets()      const { return reset_count; };
+    virtual double mean()     const;
+    virtual double variance() const;
+    virtual double conf95()   const;
 
     //----Printing functions
     virtual std::string debugString() const;

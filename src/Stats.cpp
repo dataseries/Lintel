@@ -51,7 +51,7 @@ StatsBase::reset()
     reset_count++;
 }
 
-const double
+double
 StatsBase::stddev() const
 {
     DEBUG_SINVARIANT(checkInvariants());
@@ -64,7 +64,7 @@ StatsBase::stddev() const
     return sqrt(sigsq);
 }
 
-const double 
+double 
 StatsBase::relconf95() const
 {
     DEBUG_SINVARIANT(checkInvariants());
@@ -140,7 +140,7 @@ Stats::addTimeSeq(const double value, const double timeSeq)
 
 // Accessor functions
 
-const double Stats::mean() const
+double Stats::mean() const
 {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0)
@@ -150,7 +150,7 @@ const double Stats::mean() const
 };
 
 
-const double Stats::variance() const
+double Stats::variance() const
 {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return 0.0;
@@ -160,7 +160,7 @@ const double Stats::variance() const
 
 
 
-const double Stats::conf95() const
+double Stats::conf95() const
 {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return DBL_MAX; // **** Should really be NaN if count==0
