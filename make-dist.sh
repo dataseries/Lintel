@@ -64,20 +64,16 @@ for i in $PACKAGES; do
     echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
     echo "Creation-Date: $NOW" >>Release.info
     echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}'`"
-    echo "   autoreconf; logging to /tmp/make-dist/autoreconf.$i.log"
-    [ $i = Lintel ] || /tmp/make-dist/build/bin/lintel-acinclude >../autoreconf.$i.log
-    autoreconf --install >>../autoreconf.$i.log 2>&1
-    rm -rf autom4te.cache
     cd ..
     [ ! -d build/$i ] || rm -rf build/$i
     mkdir build/$i
     cd build/$i
-    echo "   configure; logging to /tmp/make-dist/build/$i/configure.log"
-    ../../$i-$NOW/configure --prefix=/tmp/make-dist/build --enable-optmode=optimize >configure.log 2>&1
+    echo "   cmake; logging to /tmp/make-dist/build/$i/cmake.log"
+    cmake -D CMAKE_INSTALL_PREFIX=/tmp/make-dist/build CMAKE_BUILD_TYPE=RelWithDebInfo /tmp/make-dist/$i-$NOW >cmake.log 2>&1
     echo "   compiling (-j $PROCESSORS); logging to /tmp/make-dist/build/$i/compile.log"
     make -j $PROCESSORS >compile.log 2>&1
-    echo "   checking; logging to /tmp/make-dist/build/$i/check.log"
-    make -j $PROCESSORS check >check.log 2>&1
+    echo "   testing; logging to /tmp/make-dist/build/$i/test.log"
+    make test >test.log 2>&1
     echo "   installing; logging to /tmp/make-dist/build/$i/install.log"
     make install >install.log 2>&1
     cd ../..
