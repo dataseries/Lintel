@@ -1,7 +1,7 @@
 #!/bin/sh
 PACKAGES="Lintel DataSeries"
 [ "$CLEAN" = "" ] && CLEAN=true
-TEST_HOSTS="batch-master-1.u.hpl.hp.com anderse-tengig-1.u.hpl.hp.com"
+TEST_HOSTS="batch-master-1.u.hpl.hp.com keyvalue-debian-x86-1.u.hpl.hp.com"
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 set -e
@@ -16,12 +16,12 @@ if [ "$1" = "--test" -a "$2" != "" ]; then
 	tar xvvfj $i-$2.tar.bz2
 	mkdir build/$i
 	cd build/$i
-	echo "MAKE-DIST: configure $i"
-	../../$i-$2/configure --prefix=/tmp/make-dist 
+	echo "MAKE-DIST: cmake $i"
+	cmake -D CMAKE_INSTALL_PREFIX=/tmp/make-dist ../../$i-$2
 	echo "MAKE-DIST: compile $i"
 	make -j $PROCESSORS
-	echo "MAKE-DIST: check $i"
-	make -j $PROCESSORS check
+	echo "MAKE-DIST: test $i"
+	make -j $PROCESSORS test
 	echo "MAKE-DIST: install $i"
 	make install
         cd ../..
@@ -69,7 +69,7 @@ for i in $PACKAGES; do
     mkdir build/$i
     cd build/$i
     echo "   cmake; logging to /tmp/make-dist/build/$i/cmake.log"
-    cmake -D CMAKE_INSTALL_PREFIX=/tmp/make-dist/build CMAKE_BUILD_TYPE=RelWithDebInfo /tmp/make-dist/$i-$NOW >cmake.log 2>&1
+    cmake -D CMAKE_INSTALL_PREFIX=/tmp/make-dist/build -D CMAKE_BUILD_TYPE=RelWithDebInfo /tmp/make-dist/$i-$NOW >cmake.log 2>&1
     echo "   compiling (-j $PROCESSORS); logging to /tmp/make-dist/build/$i/compile.log"
     make -j $PROCESSORS >compile.log 2>&1
     echo "   testing; logging to /tmp/make-dist/build/$i/test.log"

@@ -1,28 +1,71 @@
+2008-06-23: 
+  * Lintel should work on Cygwin.  The environment variable to
+    control the number of processors in PThread was changed to
+    NUMBER_OF_PROCESSORS from LINTEL_NCPUS to match with what windows sets.
+     
+2008-06-12: 
+  * New make batch-parallel module that is a little easier to use
+    for doing simple transforms than writing a new module.
+
+2008-06-11: 
+  * LintelFind cmake module that has support for searching for
+    includes, libraries and programs in a standard way that either requires
+    a dependency or gives the user a WITH_... variable to control if
+    it should be used.
+
+2008-06-05: 
+  * Added LintelDocs cmake module for building documentation in the
+    same way in all packages.
+
+2008-05-26: 
+  * Added PointerUtil.hpp header file that performs safe casting of
+    bother pointers and boost::shared_ptr's.
+
+2008-05-25: 
+  * Added LintelLog tools for performing very low overhead logging
+    w/o requiring any additional code beyond just writing the debugging 
+    statements.
+
+2008-05-23: 
+  * Added SimpleMutex class that can be used without linking with -lpthread.
+
+2008-05-19: 
+  * Removed all uses of LintelAssert from the source code.
+
 2008-05-09: 
-   * Switched over to using cmake for building instead of autoconf.  This
-     change is intended to move us toward being able to build on Windows.
-     As part of this change, we discovered that boost support is pretty 
-     much required, so explicitly made it so. Also, dropped support for 
-     gc and makebits; those are both old and unused.  
+  * Switched over to using cmake for building instead of autoconf.  
+    This change is intended to move us toward being able to build on Windows.
+    As part of this change, we discovered that boost support is pretty 
+    much required, so explicitly made it so. Also, dropped support for 
+    gc and makebits; those are both old and unused.  
+
+2008-04-02: 
+  * PThreadAutoLocker class renamed to PThreadScopedLock to follow
+    the boost naming convention
 
 2008-03-23: 
-   * Clock routines now check for frequency scaling and will not continue
-     if frequency scaling is enabled and the user has not accepted potentially
-     incorrect results.
+  * Clock routines now check for frequency scaling and will not 
+    continue if frequency scaling is enabled and the user has not
+    accepted potentially incorrect results.
 
-2008-03-04:
-   * Add segment plotting to mercury-plot
+2008-03-21: 
+  * Transitioned to includes as .hpp rather than .H; old .H files 
+    still exist for transition.  A warning will be put in for one
+    release, and then they will be removed.
 
-2008-02-14:
-   * Added tar batch-parallel module for taking a group of files in
-     directories and creating tar files out of them of a specified size.
+2008-03-04: 
+  * Add segment plotting to mercury-plot
 
-2008-02-08:
-   * Added documentation generation/installation; depends on cmake to work
-     since eventually we will transition entirely to cmake.
+2008-02-14: 
+  * Added tar batch-parallel module for taking a group of files in
+    directories and creating tar files out of them of a specified size.
 
-2008-02-05:
-   * Add a RotatingHashMap class that is useful for aging out old
-     values from a cache with low overhead.
+2008-02-08: 
+  * Added documentation generation/installation; depends on
+    cmake to work since eventually we will transition entirely to cmake.
+
+2008-02-05: 
+  * Add a RotatingHashMap class that is useful for aging out
+    old values from a cache with low overhead.
 
 ---- Updates before here not yet put into NEWS ----
