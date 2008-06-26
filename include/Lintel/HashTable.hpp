@@ -14,6 +14,7 @@
 
 #include <inttypes.h>
 
+#include <iterator>
 #include <vector>
 
 #include <Lintel/AssertBoost.hpp>
@@ -236,78 +237,100 @@ public:
 	 }
      }
 
-     class iterator {
-     public:
-	 iterator(HashTable &_mytable, int32_t start_chain = 0) 
-	     : mytable(_mytable), cur_chain(start_chain), chain_loc(-1) {
-	     findNonemptyChain();
-	 }
-	 iterator &operator++() { increment(); return *this; }
-	 iterator operator++(int) {
-	     iterator tmp = *this;
-	     increment();
-	     return tmp;
-	 }
-	 bool operator==(const iterator &y) const {
-	     return &mytable == &y.mytable && 
-		 cur_chain == y.cur_chain && 
-		 chain_loc == y.chain_loc;
-	 }
-	 bool operator!=(const iterator &y) const {
-	     return !(*this == y);
-	 }
-	 D &operator *() { 
-	     INVARIANT(chain_loc >= 0 && 
-		       chain_loc < static_cast<int>(mytable.chains.size()),
-		       "Bad use of iterator");
-	     return mytable.chains[chain_loc].data;
-	 }
-	 D *operator ->() {
-	     return &(operator *());
-	 }	    
-	 // use this while iterating over an entire hash table, but you
-	 // don't want to do the entire scan as a single operation (for
-	 // example for time reasons), this operation allows you to
-	 // restart the scan operation partway through after doing some
-	 // number of updates safely.
-	 void partialReset() {
-	     if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
-		 chain_loc = mytable.entry_points[cur_chain];
-		 findNonemptyChain();
-	     } else {
-		 SINVARIANT(cur_chain == static_cast<int>(mytable.entry_points.size()));
-	     }
-	 }
-	 void reset() {
-	     cur_chain = 0;
-	     findNonemptyChain();
-	 }
-	 int32_t getCurChain() {
-	     return cur_chain;
-	 }
-     private:
-	 void findNonemptyChain() {
-	     while(cur_chain < static_cast<int>(mytable.entry_points.size()) &&
-		   mytable.entry_points[cur_chain] == -1) {
-		 cur_chain += 1;
-	     }
-	     if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
-		 chain_loc = mytable.entry_points[cur_chain];
-	     }
-	 }
-	 void increment() {
-	     INVARIANT(chain_loc >= 0 && 
-		       chain_loc < static_cast<int>(mytable.chains.size()),
-		       "bad use of iterator");
-	     chain_loc = mytable.chains[chain_loc].next;
-	     if (chain_loc == -1) {
-		 cur_chain += 1;
-		 findNonemptyChain();
-	     }
+private:
+    template<typename t_value_type, class t_hashtable_type>
+    class iterator_base {
+    public:
+	typedef class iterator_base<t_value_type, t_hashtable_type> SelfT;
+	typedef std::forward_iterator_tag iterator_category;
+	typedef t_value_type value_type;
+	typedef value_type* pointer;
+	typedef value_type& reference;
+	typedef std::ptrdiff_t difference_type;
+
+	bool operator==(const SelfT &y) const {
+	    return &this->mytable == &y.mytable 
+ 	        && this->cur_chain == y.cur_chain 
+	        && this->chain_loc == y.chain_loc;
 	}
-	HashTable &mytable;
+
+	bool operator!=(const SelfT &y) const {
+	    return !(*this == y);
+	}
+
+	t_value_type &operator *() { 
+	    INVARIANT(this->chain_loc >= 0 && 
+		      this->chain_loc < static_cast<int32_t>(this->mytable.chains.size()),
+		      "Bad use of iterator");
+	    return this->mytable.chains[this->chain_loc].data;
+	}
+
+	t_value_type *operator ->() {
+	    return &(operator *());
+	}	    
+
+	/// use this while iterating over an entire hash table, but you
+	/// don't want to do the entire scan as a single operation (for
+	/// example for time reasons), this operation allows you to
+	/// restart the scan operation partway through after doing some
+	/// number of updates safely.
+	void partialReset() {
+	    if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
+		chain_loc = mytable.entry_points[cur_chain];
+		findNonemptyChain();
+	    } else {
+		SINVARIANT(cur_chain == static_cast<int>(mytable.entry_points.size()));
+	    }
+	}
+	void reset() {
+	    cur_chain = 0;
+	    findNonemptyChain();
+	}
+	int32_t getCurChain() {
+	    return cur_chain;
+	}
+    protected:
+	iterator_base(t_hashtable_type &_mytable, int32_t start_chain = 0) 
+	    : mytable(_mytable), cur_chain(start_chain), chain_loc(-1) {
+		findNonemptyChain();
+	    }
+	void findNonemptyChain() {
+	    while(cur_chain < static_cast<int>(mytable.entry_points.size()) &&
+		  mytable.entry_points[cur_chain] == -1) {
+		      cur_chain += 1;
+		  }
+	    if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
+		chain_loc = mytable.entry_points[cur_chain];
+	    }
+	}
+	void increment() {
+	    INVARIANT(chain_loc >= 0 && 
+		      chain_loc < static_cast<int>(mytable.chains.size()),
+		      "bad use of iterator");
+	    chain_loc = mytable.chains[chain_loc].next;
+	    if (chain_loc == -1) {
+		cur_chain += 1;
+		findNonemptyChain();
+	    }
+	}
+	t_hashtable_type &mytable;
 	int32_t cur_chain;
 	int32_t chain_loc;
+    };
+public:
+    // TODO: finish making this satisfy all the bits from
+    // /usr/include/boost/concept_archetype
+    class iterator : public iterator_base<D, HashTable> {
+    public:
+	iterator(HashTable &mytable, int32_t start_chain = 0)
+	    : iterator_base<D, HashTable>(mytable, start_chain) { }
+	
+	iterator &operator++() { this->increment(); return *this; }
+	iterator operator++(int) {
+	    iterator tmp = *this;
+	    this->increment();
+	    return tmp;
+	}
     };
     
     iterator begin(int32_t start_chain = 0) {
@@ -316,7 +339,28 @@ public:
     iterator end() {
 	return iterator(*this,entry_points.size());
     }
-    
+
+    class const_iterator : public iterator_base<const D, const HashTable> {
+    public:
+	const_iterator(const HashTable &mytable, int32_t start_chain = 0)
+	    : iterator_base<const D, const HashTable>(mytable, start_chain) { }
+	
+	const_iterator &operator++() { this->increment(); return *this; }
+	const_iterator operator++(int) {
+	    const_iterator tmp = *this;
+	    this->increment();
+	    return tmp;
+	}
+    };
+
+    const_iterator begin(int32_t start_chain = 0) const {
+	return const_iterator(*this, start_chain);
+    }
+
+    const_iterator end() const {
+	return const_iterator(*this, entry_points.size());
+    }
+
     // TODO: count the size of the free list so this function is constant
     // time rather than linear in the number of currently free entries.
     uint32_t size() const {

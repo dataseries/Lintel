@@ -14,6 +14,7 @@
 
 #include <Lintel/HashMap.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
+#include "boost_foreach.hpp"
 
 using namespace std;
 using boost::format;
@@ -125,6 +126,31 @@ void test_types() {
     SINVARIANT(test_int_type<int>("int") == 122073032);
 }
 
+void test_foreach() {
+    map<uint32_t, uint32_t> test_map;
+    typedef map<uint32_t, uint32_t>::value_type test_map_vt;
+    HashMap<uint32_t, uint32_t> test_hm;
+    typedef HashMap<uint32_t, uint32_t>::value_type test_hm_vt;
+
+    for(unsigned i = 0; i < 100; ++i) {
+	uint32_t v = rng.randInt();
+	test_map[v] = ~v;
+	test_hm[v] = ~v;
+    }
+    
+    BOOST_FOREACH(const test_map_vt &i, test_map) {
+	SINVARIANT(i.first == ~i.second);
+	SINVARIANT(test_hm[i.first] == i.second);
+    }
+
+    BOOST_FOREACH(const test_hm_vt &i, test_hm) {
+	SINVARIANT(i.first == ~i.second);
+	SINVARIANT(test_map[i.first] == i.second);
+    }
+    cout << "Finished testing with foreach.\n";
+}
+
 int main() {
     test_types();
+    test_foreach();
 }

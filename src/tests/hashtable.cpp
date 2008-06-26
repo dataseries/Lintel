@@ -60,6 +60,38 @@ stringHTTests()
 
 }
 
+typedef HashTable<int,intHash,intEqual> inttable;
+
+void nonconstHTTest(inttable &table, size_t maxi) {
+    vector<bool> found;
+    found.resize(maxi);
+    for(inttable::iterator i = table.begin();
+	i != table.end(); ++i) {
+	SINVARIANT(*i < maxi);
+	SINVARIANT(found[*i] == false);
+	found[*i] = true;
+    }
+
+    for(size_t i=0; i<maxi; ++i) {
+	SINVARIANT(found[i]);
+    }
+}
+
+void constHTTest(const inttable &table, size_t maxi) {
+    vector<bool> found;
+    found.resize(maxi);
+    for(inttable::const_iterator i = table.begin();
+	i != table.end(); ++i) {
+	SINVARIANT(*i < maxi);
+	SINVARIANT(found[*i] == false);
+	found[*i] = true;
+    }
+
+    for(size_t i=0; i<maxi; ++i) {
+	SINVARIANT(found[i]);
+    }
+}
+
 int main()
 {
     printf("test collision add/remove\n");
@@ -80,7 +112,6 @@ int main()
     }
     
     size_t maxi = 20000;
-    typedef HashTable<int,intHash,intEqual> inttable;
     inttable table;
     
     printf("test adding...\n");
@@ -88,6 +119,10 @@ int main()
 	SINVARIANT(table.size() == i);
 	table.add(i);
     }
+    
+    nonconstHTTest(table, maxi);
+    constHTTest(table, maxi);
+
     for(int i=0;i<maxi;i++) {
 	SINVARIANT(table.lookup(i) != NULL);
 	SINVARIANT(*table.lookup(i) == i);

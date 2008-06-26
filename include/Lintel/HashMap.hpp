@@ -27,13 +27,6 @@
 
 #include <boost/type_traits/is_integral.hpp>
 
-template <class K, class V> struct HashMap_val {
-    K first;
-    V second;
-    HashMap_val(K &k, V &v) : first(k), second(v) { }
-    HashMap_val(const K &k) : first(k), second() { }
-};
-
 /// template to hash integral type things; this lets us handle all of
 /// the combinations of int64_t, long long, etc., without having to
 /// have different variants for all of the sub-types, which is
@@ -111,23 +104,23 @@ template <class K, class V,
           class KEqual = std::equal_to<const K> >
 class HashMap {
 public:
-    typedef HashMap_val<K,V> hmval;
-    struct hmvalHash {
+    typedef std::pair<K,V> value_type;
+    struct value_typeHash {
 	KHash khash;
-	uint32_t operator()(const hmval &hmv) {
+	uint32_t operator()(const value_type &hmv) {
 	    return khash(hmv.first);
 	}
     };
-    struct hmvalEqual {
+    struct value_typeEqual {
 	KEqual kequal;
-	bool operator()(const hmval &a, const hmval &b) {
+	bool operator()(const value_type &a, const value_type &b) {
 	    return kequal(a.first,b.first);
 	}
     };
 
     V *lookup(const K &k) {
-	hmval fullval(k);
-	hmval *v = hashtable.lookup(fullval);
+	value_type fullval; fullval.first = k;
+	value_type *v = hashtable.lookup(fullval);
 	if (v == NULL) {
 	    return NULL;
 	} else {
@@ -136,8 +129,8 @@ public:
     }
 
     V &operator[] (const K &k) {
-	hmval fullval(k);
-	hmval *v = hashtable.lookup(fullval);
+	value_type fullval; fullval.first = k;
+	value_type *v = hashtable.lookup(fullval);
 	if (v == NULL) {
 	    return hashtable.add(fullval)->second;
 	} else {
@@ -145,23 +138,13 @@ public:
 	}
     }
 
-//    V &operator[] (K &k) {
-//	hmval fullval(k);
-//	hmval *v = hashtable.lookup(fullval);
-//	if (v == NULL) {
-//	    return hashtable.add(fullval)->second;
-//	} else {
-//	    return v->second;
-//	}
-//    }
-
     bool exists(const K &k) {
 	return lookup(k) != NULL;
     }
 
     /** returns true if something was removed */
     bool remove(const K &k, bool must_exist = true) {
-	hmval fullval(k);
+	value_type fullval; fullval.first = k;
 	return hashtable.remove(fullval, must_exist);
     }
 
@@ -177,13 +160,21 @@ public:
 	return hashtable.empty();
     }
 
-    typedef HashTable<hmval,hmvalHash,hmvalEqual> HashTableT;
+    typedef HashTable<value_type,value_typeHash,value_typeEqual> HashTableT;
     typedef typename HashTableT::iterator iterator;
+    typedef typename HashTableT::const_iterator const_iterator;
 
     iterator begin() {
 	return hashtable.begin();
     }
     iterator end() {
+	return hashtable.end();
+    }
+
+    const_iterator begin() const {
+	return hashtable.begin();
+    }
+    const_iterator end() const {
 	return hashtable.end();
     }
 
