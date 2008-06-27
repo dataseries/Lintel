@@ -107,10 +107,10 @@ int main()
     SINVARIANT(safeCrossCast<base2>(p_d1_b1) == p_d1_b2);
     SINVARIANT(safeCrossCast<base1>(p_d1_b2) == p_d1_b1);
 
-    TEST_INVARIANTMSG(safeDownCast<derived2>(p_d1_b1) == 0,
+    TEST_INVARIANTMSG(SINVARIANT(safeDownCast<derived2>(p_d1_b1) == 0),
 	              "dynamic downcast failed in boost::shared_ptr<T> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]");
     
-    TEST_INVARIANTMSG(safeCrossCast<unrelated>(p_d1_b1) == 0,
+    TEST_INVARIANTMSG(SINVARIANT(safeCrossCast<unrelated>(p_d1_b1) == 0),
 		      "dynamic crosscast failed in boost::shared_ptr<T> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]");
 
     return 0;

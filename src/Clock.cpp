@@ -315,8 +315,8 @@ Clock::todcc_recalibrate()
     INVARIANT(cur_us >= last_calibrate_tod,
 	      format("Whoa, tod_epoch() went backwards %.2f < %.2f")
 	      % cur_us % last_calibrate_tod);
-    if ((end_cycle < start_cycle) ||
-	(end_cycle - start_cycle) > max_recalibrate_measure_time) {
+    if ((end_cycle < start_cycle) || (end_cycle - start_cycle) 
+	> static_cast<uint64_t>(max_recalibrate_measure_time)) {
 #if 0
 	fprintf(stderr,"Whoa, bad todcc_recalibrate getting %lld took %lld to %lld = %lld, or %.3g us\n",cur_us, start_cycle, end_cycle, end_cycle - start_cycle, est_todus);
 	if (end_cycle == start_cycle) {

@@ -321,8 +321,10 @@ void RandH::init(const unsigned input_array_size,
 		 const double *x_in, 
 		 const double *y_in)
 {
+#if DEBUG
   const double epsilon = 1e-10;	// allowable rounding error on 
 				// the "sums to 1.0" test
+#endif
 
   x_table = new double[table_size]; // copy of what is passed in
   y_table = new double[table_size]; // cumulative histogram of input
@@ -349,9 +351,11 @@ void RandH::init(const unsigned input_array_size,
                   (y_table[i]-y_table[i-1]);
   }
 
+#if DEBUG
   // The last element in y_array should be ~1.0
   double last_y = y_table[input_array_size];
   DEBUG_SINVARIANT(1.0-epsilon <= last_y  &&  last_y <= 1.0+epsilon);
+#endif
 }
 
 

@@ -37,10 +37,10 @@ void test_stringtoint32() {
     SINVARIANT(stringToInt32("-2133324") == -2133324);
 
 #ifdef __CYGWIN__
-    TEST_INVARIANTMSG(stringToInt32("abcdef") == 5,
+    TEST_INVARIANTMSG(SINVARIANT(stringToInt32("abcdef") == 5),
 		      "error in conversion of 'abcdef' base 10 to int32: No error");
 #else
-    TEST_INVARIANTMSG(stringToInt32("abcdef") == 5,
+    TEST_INVARIANTMSG(SINVARIANT(stringToInt32("abcdef") == 5),
 		      "error in conversion of 'abcdef' base 10 to int32: Success");
 #endif
 }

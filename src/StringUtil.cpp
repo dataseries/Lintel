@@ -425,17 +425,6 @@ string stringError(int errnum)
     }
 }
 
-static string tolower(const string &s)
-{
-    string r(s);
-    string::size_type len = r.length();
-    
-    for (string::size_type i = 0; i < len; i++) {
-	r[i] = tolower(r[i]);
-    }
-    return r;
-}
-
 string downcaseString(const string &s)
 {
     string r(s);

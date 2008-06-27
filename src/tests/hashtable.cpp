@@ -62,7 +62,7 @@ stringHTTests()
 
 typedef HashTable<int,intHash,intEqual> inttable;
 
-void nonconstHTTest(inttable &table, size_t maxi) {
+void nonconstHTTest(inttable &table, int maxi) {
     vector<bool> found;
     found.resize(maxi);
     for(inttable::iterator i = table.begin();
@@ -72,12 +72,12 @@ void nonconstHTTest(inttable &table, size_t maxi) {
 	found[*i] = true;
     }
 
-    for(size_t i=0; i<maxi; ++i) {
+    for(int i=0; i<maxi; ++i) {
 	SINVARIANT(found[i]);
     }
 }
 
-void constHTTest(const inttable &table, size_t maxi) {
+void constHTTest(const inttable &table, int maxi) {
     vector<bool> found;
     found.resize(maxi);
     for(inttable::const_iterator i = table.begin();
@@ -87,7 +87,7 @@ void constHTTest(const inttable &table, size_t maxi) {
 	found[*i] = true;
     }
 
-    for(size_t i=0; i<maxi; ++i) {
+    for(int i=0; i<maxi; ++i) {
 	SINVARIANT(found[i]);
     }
 }
@@ -111,12 +111,12 @@ int main()
 		  boost::format("?! %d %d") % count % collisiontable.size());
     }
     
-    size_t maxi = 20000;
+    int maxi = 20000;
     inttable table;
     
     printf("test adding...\n");
-    for(size_t i=0;i<maxi;i++) {
-	SINVARIANT(table.size() == i);
+    for(int i=0;i<maxi;i++) {
+	SINVARIANT(table.size() == static_cast<size_t>(i));
 	table.add(i);
     }
     
