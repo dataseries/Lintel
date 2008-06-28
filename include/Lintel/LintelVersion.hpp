@@ -12,6 +12,6 @@
 // need the extern "C" to make the autoconf checks work easier; which
 // is really why this file exists at all.
 extern "C" {
-    char *lintelVersion();
-    char *libtoolLibLintelVersion();
+    const char *lintelVersion();
+    const char *libtoolLibLintelVersion();
 }
