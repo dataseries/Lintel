@@ -180,6 +180,11 @@ public:
 	return hashtable.end();
     }
 
+    iterator find(const K &k) {
+	value_type fullval; fullval.first = k;
+	return hashtable.find(fullval);
+    }
+    
     explicit HashMap(double target_chain_length) 
 	: hashtable(target_chain_length)
     { }

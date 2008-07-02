@@ -290,9 +290,13 @@ private:
 	    return cur_chain;
 	}
     protected:
-	iterator_base(t_hashtable_type &_mytable, int32_t start_chain = 0) 
-	    : mytable(_mytable), cur_chain(start_chain), chain_loc(-1) {
-		findNonemptyChain();
+	iterator_base(t_hashtable_type &_mytable, int32_t start_chain = 0,
+		      int32_t _chain_loc = -1) 
+	    : mytable(_mytable), cur_chain(start_chain), 
+	      chain_loc(_chain_loc) {
+		  if (chain_loc == -1) {
+		      findNonemptyChain();
+		  }
 	    }
 	void findNonemptyChain() {
 	    while(cur_chain < static_cast<int>(mytable.entry_points.size()) &&
@@ -322,8 +326,9 @@ public:
     // /usr/include/boost/concept_archetype
     class iterator : public iterator_base<D, HashTable> {
     public:
-	iterator(HashTable &mytable, int32_t start_chain = 0)
-	    : iterator_base<D, HashTable>(mytable, start_chain) { }
+	iterator(HashTable &mytable, int32_t start_chain = 0, 
+		 int32_t chain_loc = -1)
+	    : iterator_base<D, HashTable>(mytable, start_chain, chain_loc) { }
 	
 	iterator &operator++() { this->increment(); return *this; }
 	iterator operator++(int) {
@@ -336,8 +341,22 @@ public:
     iterator begin(int32_t start_chain = 0) {
 	return iterator(*this,start_chain);
     }
+
     iterator end() {
 	return iterator(*this,entry_points.size());
+    }
+
+    iterator find(const D &key) {
+	if (entry_points.size() == 0) {
+	    return end();
+	}
+	uint32_t hash = hashof(key) % entry_points.size();
+	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
+	    if (equal(key,chains[i].data)) {
+		return iterator(*this, hash, i);
+	    }
+	}
+	return end();
     }
 
     class const_iterator : public iterator_base<const D, const HashTable> {

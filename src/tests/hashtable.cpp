@@ -125,10 +125,13 @@ int main()
 
     for(int i=0;i<maxi;i++) {
 	SINVARIANT(table.lookup(i) != NULL);
+	SINVARIANT(table.find(i) != table.end());
 	SINVARIANT(*table.lookup(i) == i);
+	SINVARIANT(*table.find(i) == i);
     }
     for(inttable::iterator i = table.begin();i != table.end();i++) {
 	SINVARIANT(*i >= 0 && *i < maxi);
+	SINVARIANT(table.find(*i) == i);
     }
     printf("test copying...\n");
     inttable table2;
@@ -181,6 +184,7 @@ int main()
 	    SINVARIANT(x != NULL && *x == i);
 	} else {
 	    SINVARIANT(x == NULL);
+	    SINVARIANT(table.find(i) == table.end());
 	}
     }
 

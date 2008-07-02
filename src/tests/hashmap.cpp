@@ -187,8 +187,12 @@ void test_struct() {
 	    int *v = test_map.lookup(tmp);
 	    if (v == NULL) {
 		SINVARIANT(j >= 0 || i < 0);
+		SINVARIANT(test_map.find(tmp) == test_map.end());
 	    } else {
 		SINVARIANT(j < 0 && i >= 0 && *v == i + j);
+		HashMap<foo, int>::iterator k = test_map.find(tmp);
+		SINVARIANT(k != test_map.end() && k->first == tmp
+			   && k->second == *v);
 	    }
 	}
     }
