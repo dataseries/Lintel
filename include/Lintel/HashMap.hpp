@@ -98,7 +98,9 @@ template<> struct HashMap_hash_int<true, 8> : HashMap_hash<const uint64_t> {
 
 /// HashMap class; in our testing almost as fast as the google dense
 /// map, but uses almost as little memory as the sparse map.  Note
-/// that class K can't be const, see src/tests/hashmap.cpp for details.
+/// that class K can't be const, see src/tests/hashmap.cpp for
+/// details.  An example of extending the HashMap to have a structure
+/// as a key are also included in src/tests/hashmap.cpp.
 template <class K, class V, 
           class KHash = HashMap_hash<const K>, 
           class KEqual = std::equal_to<const K> >

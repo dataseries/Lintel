@@ -150,7 +150,52 @@ void test_foreach() {
     cout << "Finished testing with foreach.\n";
 }
 
+struct foo {
+    int32_t x, y;
+    string str;
+    bool operator==(const foo &right) const {
+	return x == right.x && y == right.y && str == right.str;
+    }
+    foo() : x(0), y(0) { }
+
+    foo(int32_t a, int32_t b, const string &c) : x(a), y(b), str(c) { }
+};
+
+template <> struct HashMap_hash<const foo> {
+    uint32_t operator()(const foo &a) const {
+	// 2001 is an arbitrary constant; could also use the return
+	// from hashbytes, which will make up a start hash if one
+	// isn't provided.
+	uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
+	return HashTable_hashbytes(a.str.data(), a.str.size(), partial_hash);
+    }
+};
+
+
+void test_struct() {
+    HashMap<foo, int> test_map;
+
+    for(int i=0; i < 10; ++i) {
+	for(int j=-10; j < 0; ++j) {
+	    test_map[foo(i, j, (format("%d,%d") % i % j).str())] = i + j;
+	}
+    }
+
+    for(int j=-10; j < 10; ++j) {
+	for(int i=-10; i < 10; ++i) {
+	    foo tmp(i, j, (format("%d,%d") % i % j).str());
+	    int *v = test_map.lookup(tmp);
+	    if (v == NULL) {
+		SINVARIANT(j >= 0 || i < 0);
+	    } else {
+		SINVARIANT(j < 0 && i >= 0 && *v == i + j);
+	    }
+	}
+    }
+}
+
 int main() {
     test_types();
     test_foreach();
+    test_struct();
 }
