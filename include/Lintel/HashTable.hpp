@@ -1,4 +1,3 @@
-/* -*-C++-*- */
 /*
    (c) Copyright 2002-2005, Hewlett-Packard Development Company, LP
 
