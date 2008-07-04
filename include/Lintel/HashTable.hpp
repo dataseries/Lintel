@@ -325,6 +325,9 @@ public:
     // /usr/include/boost/concept_archetype
     class iterator : public iterator_base<D, HashTable> {
     public:
+	iterator(const iterator &from) 
+	    : iterator_base<D, HashTable>
+  	          (from.mytable, from.cur_chain, from.chain_loc) { }
 	iterator(HashTable &mytable, int32_t start_chain = 0, 
 		 int32_t chain_loc = -1)
 	    : iterator_base<D, HashTable>(mytable, start_chain, chain_loc) { }
@@ -334,6 +337,12 @@ public:
 	    iterator tmp = *this;
 	    this->increment();
 	    return tmp;
+	}
+	iterator &operator =(const iterator &right) {
+	    this->mytable = right.mytable;
+	    this->cur_chain = right.cur_chain;
+	    this->chain_loc = right.chain_loc;
+	    return *this;
 	}
     };
     

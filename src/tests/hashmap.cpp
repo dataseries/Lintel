@@ -198,8 +198,51 @@ void test_struct() {
     }
 }
 
+// Following just verifies that it compiles; somehow doing this in a
+// class differs from doing it in a function and requires an operator=
+// in the iterator to work.
+
+class Test {
+public:
+    typedef HashMap<int, int> Map;
+    typedef Map::iterator iterator;
+    
+    Test() : foo(foomap.begin()) { }
+	
+    void test();
+
+    private:
+	Map foomap;
+	iterator foo;
+};
+
+void Test::test() {
+    foo = foomap.begin();
+}
+
+void test_iterator() {
+    HashMap<int, int> test_map;
+
+    test_map[3] = 3;
+    
+    SINVARIANT(test_map.begin() != test_map.end());
+    SINVARIANT(test_map.begin()->first == 3);
+    
+    HashMap<int, int>::iterator a = test_map.begin();
+    HashMap<int, int>::iterator b = a;
+    HashMap<int, int>::iterator c(a);
+	    
+    ++a;
+    SINVARIANT(a != b && b == c);
+    ++b;
+    SINVARIANT(a == b && b != c);
+    ++c;
+    SINVARIANT(a == b && b == c);
+}
+    
 int main() {
     test_types();
     test_foreach();
     test_struct();
+    test_iterator();
 }
