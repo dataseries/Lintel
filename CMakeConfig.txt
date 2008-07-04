@@ -33,6 +33,7 @@ ENDIF(NOT PERL_BINARY)
 ##### Optional bits
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
+OPTION(ENABLE_CLOCK_TEST "Enable the cycle-counter clock test; has trouble in virtual machines" ON)
 
 ### Library type
 

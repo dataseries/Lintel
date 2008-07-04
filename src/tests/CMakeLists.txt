@@ -17,7 +17,6 @@ ENDMACRO(LINTEL_SIMPLE_TEST)
 
 ################################## TESTS
 
-LINTEL_SIMPLE_TEST(clock)
 LINTEL_SIMPLE_TEST(hashtable)
 LINTEL_SIMPLE_TEST(hashmap)
 LINTEL_SIMPLE_TEST(least_squares)
@@ -45,6 +44,10 @@ LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
 ################################## CONDITIONAL BITS
+
+IF(ENABLE_CLOCK_TEST)
+    LINTEL_SIMPLE_TEST(clock)
+ENDIF(ENABLE_CLOCK_TEST)
 
 IF(TCL_ENABLED)
     INCLUDE_DIRECTORIES(${TCL_INCLUDE_PATH})
