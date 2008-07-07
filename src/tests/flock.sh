@@ -28,7 +28,7 @@ PERL5LIB=$srcdir:$installdir/share/perl5:$PERL5LIB
 export srcdir builddir installdir LOCKFILE PERL5LIB
 
 verify_unlocked() {
-    V=`perl $builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=0`
+    V=`$builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=0`
     if [ $? != 0 ]; then
 	echo "$LOCKFILE unexpectedly locked"
 	exit 1
@@ -36,7 +36,7 @@ verify_unlocked() {
 }
 
 verify_locked() {
-    V=`perl $builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=0`
+    V=`$builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=0`
     if [ $? = 0 ]; then
 	echo "$LOCKFILE unexpectedly unlocked"
 	exit 1
@@ -51,9 +51,9 @@ verify_locked() {
 
 verify_unlocked
 echo "Starting sleep..."
-perl $builddir/lintel-flock --filename=$LOCKFILE --command='sleep 5' &
+$builddir/lintel-flock --filename=$LOCKFILE --command='sleep 5' &
 echo "Starting lock timeout..."
-V=`perl $builddir/lintel-flock --filename=$LOCKFILE --command=false --waittime=2`
+V=`$builddir/lintel-flock --filename=$LOCKFILE --command=false --waittime=2`
 verify_locked
 echo "lock timeout succeeded"
 wait
@@ -65,7 +65,7 @@ verify_unlocked
 echo "Starting parallel test ($0)"
 echo 0 >$LOCKFILE-count
 for i in 1 2 3 4 5 6 7 8 9 10; do
-    perl $builddir/lintel-flock --filename=$LOCKFILE --command="$0 -count $LOCKFILE-count" &
+    $builddir/lintel-flock --filename=$LOCKFILE --command="$0 -count $LOCKFILE-count" &
 done
 wait
 if [ "`cat $LOCKFILE-count`" = "10" ]; then
@@ -97,7 +97,7 @@ verify_unlocked
 (
     for i in 1 2 3; do
 	echo "  a-lock-$i"
-	unlock=`perl $builddir/lintel-flock --filename=$LOCKFILE --callpid=$$`
+	unlock=`$builddir/lintel-flock --filename=$LOCKFILE --callpid=$$`
 	case $unlock in 
 	    success:*) : ;;
             *) echo "?"; exit 1 ;;
@@ -114,7 +114,7 @@ verify_unlocked
 	[ -f $LOCKFILE-locked-$i ] || exit 1
 	rm $LOCKFILE-locked-$i
 	
-	perl $builddir/lintel-flock --unlock="$unlock"
+	$builddir/lintel-flock --unlock="$unlock"
 
 	while [ ! -f $LOCKFILE-unlocked-$i ]; do
 	    perl -e 'select(undef,undef,undef,0.1);'
@@ -133,9 +133,9 @@ verify_unlocked
 	echo "  b-wait-$i"
 	waiting=true
 	while $waiting; do
-	    unlock=`perl $builddir/lintel-flock --filename=$LOCKFILE --callpid=$$ --waittime=1`
+	    unlock=`$builddir/lintel-flock --filename=$LOCKFILE --callpid=$$ --waittime=1`
 	    case $unlock in 
-		success:*) perl $builddir/lintel-flock --unlock="$unlock" ;;
+		success:*) $builddir/lintel-flock --unlock="$unlock" ;;
 	        timeout) waiting=false ;;
 		*) echo "?"; exit 1 ;;
 	    esac
@@ -147,7 +147,7 @@ verify_unlocked
 	touch $LOCKFILE-locked-$i
 	
 	echo "  b-wait2-$i"
-	perl $builddir/lintel-flock --filename=$LOCKFILE --command=true
+	$builddir/lintel-flock --filename=$LOCKFILE --command=true
 	[ $? = 0 ] || exit 1
 	
 	echo "  b-unlocked-$i"
