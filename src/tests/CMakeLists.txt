@@ -43,6 +43,8 @@ ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
+ADD_TEST(flock ${CMAKE_CURRENT_SOURCE_DIR}/flock.sh ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/.. ${CMAKE_INSTALL_PREFIX})
+
 ################################## CONDITIONAL BITS
 
 IF(ENABLE_CLOCK_TEST)

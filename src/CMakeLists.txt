@@ -73,7 +73,8 @@ LINTEL_INSTALL_FILE_PATH(${CMAKE_INSTALL_PREFIX}/share/perl5
 	Text/ExpandInt.pm
 	Plot/Mercury.pm
 	Plot/Mercury/Tics.pm
-	Lintel/Net/SSH/KnownHostsFile.pm	
+	Lintel/Net/SSH/KnownHostsFile.pm
+	Lintel/File/Lock.pm
 )
 
 ################################## CONDITIONAL BITS
@@ -152,6 +153,7 @@ LINTEL_INSTALL_CONFIG_PROGRAM(batch-parallel)
 LINTEL_INSTALL_CONFIG_PROGRAM(mercury-plot)
 LINTEL_INSTALL_CONFIG_PROGRAM(lintel-config)
 LINTEL_INSTALL_CONFIG_PROGRAM(lintel-acinclude)
+LINTEL_INSTALL_CONFIG_PROGRAM(lintel-flock)
 LINTEL_INSTALL_CONFIG_FILE(redhat-rules 
 	${CMAKE_INSTALL_PREFIX}/share/packaging)
 

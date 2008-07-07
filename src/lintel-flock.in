@@ -1,0 +1,215 @@
+#!@PERL_BINARY@ -w
+# -*- Perl -*-
+#
+#  (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# Script for locking a file and optionally running a command under it.
+
+use Getopt::Long;
+use Sys::Hostname;
+use Pod::Usage;
+
+@PERL5_MODULES_INC_UNSHIFT@;
+
+use Lintel::File::Lock;
+
+my $waittime;
+my $unlock;
+my $filename;
+my $verbose;
+my $callpid;
+my $command;
+my $print_manpage;
+
+my $ret = GetOptions('waittime=i' => \$waittime,
+		     'unlock=s' => \$unlock,
+		     'filename=s' => \$filename,
+		     'verbose!' => \$verbose,
+		     'callpid=i' => \$callpid,
+		     'command=s' => \$command,
+		     'man!' => \$print_manpage);
+
+if ($print_manpage) {
+    pod2usage(-verbose => 2, -exitval => 0);
+}
+
+pod2usage() unless $ret && @ARGV == 0;
+
+if (defined $unlock) {
+    if (unlock($unlock)) {
+	exit(0);
+    } else {
+	exit(1);
+    }
+} 
+
+die "Invalid waittime $waittime, should be >= 0"
+    if defined $waittime && $waittime < 0;
+
+die "missing filename for lock"
+    unless defined $filename;
+
+if (defined $command) {
+    my $fh = Lintel::File::Lock::getLock($filename, $waittime, $verbose);
+
+    if (defined $fh) {
+	my $ret = system($command);
+	my $exit = $ret >> 8;
+	$exit = 233 if $exit == 0 && $ret != 0;
+	exit($exit);
+	# don't need to unlock, lock will automatically vanish when we exit
+    } else {
+	print "Unable to get lock, not running command\n";
+	exit(1);
+    }
+} else {
+    die("missing callpid argument or command argument")
+	unless defined $callpid;
+    my $fh = Lintel::File::Lock::getLock($filename, $waittime, $verbose);
+    print STDERR "XX $fh\n" if $verbose;
+    if (defined $fh) {
+	background($fh, $callpid, $verbose);
+	exit(0);
+    } elsif (defined $waittime) {
+	print "timeout\n";
+	exit(1);
+    } else {
+	die "internal error, didn't get lock, no waittime";
+    }
+}
+
+sub background {
+    my($fh, $callpid, $verbose) = @_;
+
+    die "?" unless defined $fh;
+    print STDERR "waiting for pid $callpid to exit\n"
+	if $verbose;
+    my $pid = fork();
+    unless(defined $pid && $pid >= 0) {
+	die "fork failed: $!";
+    }
+    if ($pid == 0) { # child
+	close(STDOUT);
+	close(STDIN);
+	# leave stderr open for verbose messages
+
+	my $hostname = hostname();
+	seek($fh, 0, 0) or die "seek failed: $!";
+	print $fh "locked for pid $callpid on $hostname\n"
+	    or die "print failed: $!";
+	seek($fh, 0, 0) or die "seek failed: $!";
+	while(1) {
+	    my $count = kill 0, $callpid;
+	    if ($count == 0) {
+		print STDERR "parent exited, exiting\n"
+		    if $verbose;
+		print $fh "unlocked\n"
+		    or die "print failed: $!";
+		exit(0);
+	    } else {
+		print STDERR "parent $callpid still there, waiting\n"
+		    if defined $verbose && $verbose > 1;
+		sleep(1);
+	    }
+	}
+    } else {
+	print "success: V1: $pid\n";
+	return 0;
+    }
+}
+
+sub unlock { # die on error, true on success
+    my($unlock, $verbose) = @_;
+
+    if ($unlock =~ /^success: V1: (\d+)$/o) {
+	my $pid = $1;
+	while(1) {
+	    kill 'TERM', $pid;
+	    select(undef,undef,undef,0.1);
+	    if ((kill 0, $pid) == 0) {
+		return 1;
+	    } else {
+		print STDERR "waiting for $pid to exit.\n" 
+		    if $verbose;
+	    }
+	}
+    } else {
+	die "invalid argument to unlock '$unlock'";
+    }
+    return 1;
+}
+
+
+__END__
+
+=pod
+
+=head1 NAME
+
+lintel-flock - a program for running exclusive operations
+
+=head1 SYNOPSIS
+
+ % lintel-flock [--verbose] [--man]
+  Lock mode options:
+    --filename=<lock filename> [--waittime=<seconds>] 
+    either of next two lines: 
+      --command='...', runs command under a lock, releases lock on completiong
+      --callpid=<pid>
+  Unlock mode options:
+    --unlock=<string from lock command with callpid>
+  Note: filename should be on the local filesystem.  Shared filesystems
+     often don't implement locking correctly.
+
+=head1 DESCRIPTION
+
+C<lintel-flock> is a simple script that helps in running exclusive
+operations.  It has two primary modes: 1) command execution mode and
+2) script mode.  
+
+In command execution mode, you just specify a lock filename and a
+command.  C<lintel-flock> will wait for the lock to be available, and
+then run the command.  You can optionally specify a maximum time to
+wait for the lock to become available, if the lock remains held until
+that time, C<lintel-flock> will exit with an error.
+
+In script mode, you specify a lock filename and a calling pid.
+C<lintel-flock> will wait for the lock to become available or the
+timeout to expire.  If the lock becomes available, it will print out a
+string matching "success:*"; if the lock times out, it will print out
+a string maching "timeout"; otherwise some error occurred.  If the script
+exits, the lock will be automatically released.  The script can manually
+release the lock by calling C<lintel-flock> with the --unlock option
+passing in the string that was printed from the successful lock.
+
+=head1 EXAMPLES
+
+  # make sure only one compilation runs at a time.
+  % lintel-flock --filename=/tmp/do-compile --command=make
+
+  # try to lock the file, the following would all be in one script
+  
+  RET=`lintel-flock --filename=/tmp/do-compile --callpid=$$ --timeout=5`
+  case "$RET" in
+    success:*) echo "Got the lock." ;;
+    timeout) echo "Timed, out, aborting"; exit 0 ;;
+    *) echo "ERROR: $RET"; exit 1 ;;
+  esac
+
+  make
+
+  lintel-flock --unlock="$RET"
+
+  ... do more stuff after lock is released ...
+
+=head1 AUTHOR
+
+Eric Anderson <anderse@hpl.hp.com>
+
+=head1 SEE ALSO
+
+Lintel::File::Lock(3), perl(1)
+
+

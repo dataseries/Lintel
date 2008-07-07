@@ -81,9 +81,11 @@ ENDMACRO(LINTEL_FIND_PERL_MODULE)
 # need unshift so that if we have commonly installed perl modules
 # and user installed ones that the user installed ones take precedence.
 SET(PERL_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'${CMAKE_INSTALL_PREFIX}/share/perl5') if grep(\$_ eq '${CMAKE_INSTALL_PREFIX}/share/perl5', @INC) == 0;};")
-# need this so that we can regression test without having to install first.
-# and can't do it through the standard PERLLIB env variable as that
-# would get overridden by the earlier unshift.
-# TODO: check to see if setting PERL5LIB with PERL_SHAREDIR and this one works now.
+
+# TODO: setting PERL5LIB with both the install prefix and the override
+# seems to work; (see tests/flock.sh); once everything is switched
+# over, to PERL5_MODULES_INC_UNSHIFT, we can drop the old one
+
+SET(PERL5_MODULES_INC_UNSHIFT ${PERL_MODULES_INC_UNSHIFT})
 SET(PERL_MODULES_INC_UNSHIFT "${PERL_MODULES_INC_UNSHIFT} BEGIN { unshift(@INC, \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}) if defined \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}; };")
 
