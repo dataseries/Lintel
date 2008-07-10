@@ -183,8 +183,13 @@ ENDMACRO(LINTEL_REQUIRED_LIBRARY variable header libname)
 
 MACRO(LINTEL_FIND_PROGRAM variable program)
     IF(${variable}_PATH)
-        # Already in cache, be silent
-	SET(${variable}_FIND_QUIETLY YES)
+	IF(NOT EXISTS "${${variable}_PATH}")
+	    MESSAGE(STATUS "WARNING: ${${variable}_PATH} vanished.")
+	    SET(${variable}_PATH ${variable}-NOTFOUND)
+	ELSE(NOT EXISTS "${${variable}_PATH}")
+	    # Already in cache, be silent
+	    SET(${variable}_FIND_QUIETLY YES)
+	ENDIF(NOT EXISTS "${${variable}_PATH}")
     ENDIF(${variable}_PATH)
 
     FIND_PROGRAM(${variable}_PATH ${program}
