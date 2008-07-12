@@ -96,6 +96,32 @@ template<> struct HashMap_hash_int<true, 8> : HashMap_hash<const uint64_t> {
     BOOST_STATIC_ASSERT(sizeof(uint64_t) == 8);
 };
 
+/// Object comparison by pointer, useful for making a hash structure
+/// on objects where each object instance is separate.  Instantiated
+/// separately rather than as a variant of HashMap_hash because having
+/// this as the default behavior doesn't seem safe; people could
+/// reasonably expect the comparison to be done as hash(*a) also.
+/// Used by HashMap<K, V, PointerHashMapHash<K>,
+/// PointerHashMapEqual<K> >
+template<typename T> struct PointerHashMapHash {
+    uint32_t operator()(const T *a) const {
+	BOOST_STATIC_ASSERT(sizeof(a) == 4 || sizeof(a) == 8);
+	if (sizeof(a) == 4) {
+	    return reinterpret_cast<uint32_t>(a);
+	} else if (sizeof(a) == 8) {
+	    return BobJenkinsHashMixULL(reinterpret_cast<uint64_t>(a));
+	}
+    }
+};
+
+/// Object equality check -- unnecessary unless operators have been
+/// defined.
+template<typename T> struct PointerHashMapEqual {
+    bool operator()(const T *a, const T *b) const {
+	return a == b;
+    }
+};
+
 /// HashMap class; in our testing almost as fast as the google dense
 /// map, but uses almost as little memory as the sparse map.  Note
 /// that class K can't be const, see src/tests/hashmap.cpp for
