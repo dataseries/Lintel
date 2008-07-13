@@ -80,6 +80,48 @@ IF(WITH_THREADS AND NOT THREADS_ENABLED)
     MESSAGE("  LintelPThread library will be skipped.")
 ENDIF(WITH_THREADS AND NOT THREADS_ENABLED)
 
+IF(WITH_THREADS AND THREADS_ENABLED AND NOT HAS_PTHREAD_ISLOCKED)
+    MESSAGE("Trying to figure out how to calculate PThreadMutex::isLocked()")
+    EXECUTE_PROCESS(COMMAND uname OUTPUT_VARIABLE HOST_TYPE
+                    OUTPUT_STRIP_TRAILING_WHITESPACE)
+    IF(0)
+    ELSEIF("${HOST_TYPE}" STREQUAL "HP-UX")
+        SET(TMP_HAS_PTHREAD_ISLOCKED 1)
+	SET(TMP_PTHREAD_ISLOCKED_EXPR "((char *)&m)[67] == 0")
+    ELSEIF("${HOST_TYPE}" STREQUAL "Linux")
+	TRY_COMPILE(LINUX_ISLOCKED_1 ${CMAKE_BINARY_DIR}/config 
+	            ${CMAKE_CURRENT_SOURCE_DIR}/config/linux-islocked-1.cpp)
+	TRY_COMPILE(LINUX_ISLOCKED_2 ${CMAKE_BINARY_DIR}/config 
+	            ${CMAKE_CURRENT_SOURCE_DIR}/config/linux-islocked-2.cpp)
+        IF(0)     		    
+        ELSEIF(LINUX_ISLOCKED_1)
+	    SET(TMP_HAS_PTHREAD_ISLOCKED 1)
+	    SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__m_lock.__status != 0")
+        ELSEIF(LINUX_ISLOCKED_2)
+	    SET(TMP_HAS_PTHREAD_ISLOCKED 1)
+	    SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__data.__lock != 0")
+        ELSE(0)
+	    SET(TMP_HAS_PTHREAD_ISLOCKED 0)
+        ENDIF(0)
+    ELSE(0)
+        SET(TMP_HAS_PTHREAD_ISLOCKED 0)
+    ENDIF(0)
+
+    SET(HAS_PTHREAD_ISLOCKED ${TMP_HAS_PTHREAD_ISLOCKED} CACHE INTERNAL 
+        "do we have islocked" FORCE)
+    SET(PTHREAD_ISLOCKED_EXPR "${TMP_PTHREAD_ISLOCKED_EXPR}" CACHE INTERNAL 
+       "what expression calculates islocked?" FORCE)
+
+    IF(HAS_PTHREAD_ISLOCKED)
+        MESSAGE("  Success, using ${PTHREAD_ISLOCKED_EXPR}")
+    ELSE(HAS_PTHREAD_ISLOCKED)
+        MESSAGE("  Unable to figure out how to determine if a mutex is locked")
+    ENDIF(HAS_PTHREAD_ISLOCKED)
+    CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/Lintel/PThread.hpp.in
+                   ${CMAKE_CURRENT_BINARY_DIR}/include/Lintel/PThread.hpp
+		   @ONLY)
+ENDIF(WITH_THREADS AND THREADS_ENABLED AND NOT HAS_PTHREAD_ISLOCKED)
+
 ### LibXML2
 
 INCLUDE(FindLibXml2)
