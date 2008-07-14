@@ -59,6 +59,7 @@ public:
     int kill(int sig);
 
 private:
+    bool thread_live;
     pthread_t last_tid;
     pthread_attr_t attr;
 };
