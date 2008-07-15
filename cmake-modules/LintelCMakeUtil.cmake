@@ -99,7 +99,7 @@ ENDMACRO(LINTEL_LATEX_CONFIG)
 # Automatically picks up the *.tex, *.eps dependencies; others can be
 # specified in ${basename}_EXTRA_DEPENDS
 
- MACRO(LINTEL_LATEX basename)
+MACRO(LINTEL_LATEX basename)
     IF(LINTEL_LATEX_REBUILD_ENABLED)
 	FILE(GLOB_RECURSE ${basename}_TEX_DEPENDS
 	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.tex)

@@ -47,7 +47,7 @@ rebuild() {
 echo -n "initial latex rounds:"
 rebuild
 rebuild
-echo "done."
+echo " done."
 
 i=0
 # Run lots of times until it converges
