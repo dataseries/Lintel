@@ -1,7 +1,7 @@
 #!/bin/sh
 PACKAGES="Lintel DataSeries"
 [ "$CLEAN" = "" ] && CLEAN=true
-TEST_HOSTS="batch-master-1.u.hpl.hp.com keyvalue-debian-x86-1.u.hpl.hp.com"
+TEST_HOSTS="batch-master-1.u.hpl.hp.com keyvalue-debian-x86-1.u.hpl.hp.com ch-x86-debian-01.u.hpl.hp.com"
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 set -e

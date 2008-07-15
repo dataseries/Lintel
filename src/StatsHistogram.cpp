@@ -219,7 +219,7 @@ const double
 StatsHistogramUniform::percentile(double p) const
 {
     SINVARIANT(checkInvariants());
-    SINVARIANT(0.0 <= p  &&  p <= 1.0	|| "argument is outside range"==0);
+    INVARIANT(0.0 <= p  && p <= 1.0, "argument is outside range");
 
     double targetnumber = p * count();
     unsigned long lowend = 0;
@@ -519,7 +519,7 @@ const double
 StatsHistogramLog::percentile(double p) const
 {
     SINVARIANT(checkInvariants());
-    SINVARIANT(0.0 <= p  &&  p <= 1.0	|| "argument is outside range"==0);
+    INVARIANT(0.0 <= p && p <= 1.0, "argument is outside range");
 
     double targetnumber = p * count();
     unsigned long lowend = 0;
