@@ -1,0 +1,104 @@
+#!/bin/sh
+#
+# (c) Copyright 2008, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# script for rebuilding latex files
+
+usage() {
+    [ "$1" != "" ] && echo "$@"
+    echo "Usage: $0 <srcdir> <main-texfile-basename>"
+    exit 0
+}
+
+[ $# != 2 -o "$1" = "-h" ] && usage "Missing arguments ($#)"
+
+[ ! -d "$1" ] && usage "'$1' is not a directory"
+[ ! -f "$1/$2.tex" ] && usage "'$1/$2.tex' is not a file"
+[ `echo "$2" | wc -w` != 1 ] && usage "Main texfile is not one word"
+
+# Trailing : is important; it causes the standard directories to be included.
+if [ "$TEXINPUTS" = "" ]; then
+    TEXINPUTS=$1:
+else 
+    TEXINPUTS=$1:$TEXINPUTS
+fi
+if [ "$BIBINPUTS" = "" ]; then
+    BIBINPUTS=$1:
+else
+    BIBINPUTS=$1:$BIBINPUTS
+fi
+
+export TEXINPUTS
+export BIBINPUTS
+TEXFILE=$2
+
+rebuild() {
+    echo -n " latex"
+    @LATEX_COMPILER@ $TEXFILE.tex </dev/null >$TEXFILE.rebuild.out 2>&1
+    latex_err=$?
+    echo -n " bibtex"
+    @BIBTEX_COMPILER@ $TEXFILE >>$TEXFILE.rebuild.out 2>&1
+    bibtex_err=$?
+}
+
+# Two initial rounds to get enough far through that it could be stable
+echo -n "initial latex rounds:"
+rebuild
+rebuild
+echo "done."
+
+i=0
+# Run lots of times until it converges
+while [ "`grep -c 'Rerun to get' $TEXFILE.rebuild.out`" != 0 ]; do
+    i=`expr $i + 1`
+    if [ $i -gt 10 ]; then
+	echo "ERROR: unable to achieve latex convergence after 9 tries."
+	echo "Log file is $TEXFILE.rebuild.out"
+	exit 1
+    fi
+    echo -n "latex convergence round $i:" 
+    rebuild
+    echo
+done
+
+dvips_err=0
+dvipdf_err=0
+if [ $latex_err = 0 -a $bibtex_err = 0 ]; then
+    @DVIPS_CONVERTER@ -tletter -o$TEXFILE.ps $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
+    dvips_err=$?
+    @DVIPDF_CONVERTER@ $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
+    dvipdf_err=$?
+fi
+
+if [ $latex_err != 0 ]; then
+    any_err=latex
+elif [ $bibtex_err != 0 ]; then
+    any_err=bibtex
+elif [ $dvips_err != 0 ]; then
+    any_err=dvips
+elif [ $dvipdf_err != 0 ]; then
+    any_err=dvipdf
+fi
+
+if [ "$any_err" = "" ]; then
+    echo "--------- Warnings ----------"
+    grep -i warning $TEXFILE.rebuild.out
+    echo "--------- Warnings ----------"
+    echo "Full log file is $TEXFILE.rebuild.out"
+    echo "Successful latex rebuild." 
+exit 0
+else 
+    echo "--------- ERROR -----------"
+    tail -50 $TEXFILE.rebuild.out
+    echo "--------- ERROR -----------"
+    echo "Full log file is $TEXFILE.rebuild.out"
+    echo "$any_err failed, removing $TEXFILE.{dvi,ps,pdf} files"
+    rm $TEXFILE.dvi $TEXFILE.ps $TEXFILE.pdf
+    exit 1
+fi
+
+
+    
+
