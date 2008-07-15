@@ -78,7 +78,7 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
     return nprocs;
 }
 
-PThread::PThread() {
+PThread::PThread() : thread_live(false) {
     // memset needed on cygwin so it doesn't think attr is already initialized
     memset(&attr,0,sizeof(attr)); 
     int ret = pthread_attr_init(&attr);
@@ -143,19 +143,23 @@ static void * pthread_starter(void *arg) {
 }
 
 pthread_t PThread::start() {
+    SINVARIANT(!thread_live);
     pthread_t tid;
     int ret = pthread_create(&tid,&attr,pthread_starter,this);
 
     INVARIANT(ret == 0, format("pthread_create failed: %s") % strerror(ret));
     
+    thread_live = true;
     last_tid = tid;
     return tid;
 }
 
 void * PThread::join() {
+    SINVARIANT(thread_live);
     void *retval = NULL;
     int tmp = pthread_join(last_tid, &retval);
     INVARIANT(tmp == 0, format("pthread_join failed: %s") % strerror(tmp));
+    thread_live = false;
     return retval;
 }
 

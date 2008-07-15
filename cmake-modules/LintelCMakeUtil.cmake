@@ -90,3 +90,37 @@ SET(PERL_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'${CMAKE_INSTALL_PREFIX}/shar
 SET(PERL5_MODULES_INC_UNSHIFT ${PERL_MODULES_INC_UNSHIFT})
 SET(PERL_MODULES_INC_UNSHIFT "${PERL_MODULES_INC_UNSHIFT} BEGIN { unshift(@INC, \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}) if defined \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}; };")
 
+# Set LINTEL_LATEX_REBUILD_REQUIRED to force this to be found
+MACRO(LINTEL_LATEX_CONFIG)
+    INCLUDE(LintelFind)
+    LINTEL_WITH_PROGRAM(LINTEL_LATEX_REBUILD lintel-latex-rebuild)
+ENDMACRO(LINTEL_LATEX_CONFIG)
+
+# Automatically picks up the *.tex, *.eps dependencies; others can be
+# specified in ${basename}_EXTRA_DEPENDS
+
+MACRO(LINTEL_LATEX basename)
+    IF(LINTEL_LATEX_REBUILD_ENABLED)
+	FILE(GLOB_RECURSE ${basename}_TEX_DEPENDS
+	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.tex)
+	FILE(GLOB_RECURSE ${basename}_EPS_DEPENDS
+	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.eps)
+	SET(${basename}_REBUILD_OUTPUTS
+	    ${CMAKE_CURRENT_BINARY_DIR}/${basename}.dvi
+	    ${CMAKE_CURRENT_BINARY_DIR}/${basename}.ps
+            ${CMAKE_CURRENT_BINARY_DIR}/${basename}.pdf)
+
+	ADD_CUSTOM_COMMAND(
+	    OUTPUT ${${basename}_REBUILD_OUTPUTS}
+            COMMAND ${LINTEL_LATEX_REBUILD_PATH}
+	    ARGS
+	        ${CMAKE_CURRENT_SOURCE_DIR} ${basename}
+            DEPENDS
+		${${basename}_TEX_DEPENDS}
+		${${basename}_EPS_DEPENDS}
+	        ${${basename}_EXTRA_DEPENDS}
+        )
+	ADD_CUSTOM_TARGET(latex_${basename} ALL
+	                  DEPENDS ${${basename}_REBUILD_OUTPUTS})
+    ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
+ENDMACRO(LINTEL_LATEX)
