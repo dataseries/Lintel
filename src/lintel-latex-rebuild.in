@@ -83,16 +83,16 @@ elif [ $dvipdf_err != 0 ]; then
 fi
 
 if [ "$any_err" = "" ]; then
-    echo "--------- Warnings ----------"
+    echo "--------- Warnings for $TEXFILE ----------"
     grep -i warning $TEXFILE.rebuild.out
-    echo "--------- Warnings ----------"
+    echo "--------- Warnings for $TEXFILE ----------"
     echo "Full log file is $TEXFILE.rebuild.out"
     echo "Successful latex rebuild." 
 exit 0
 else 
-    echo "--------- ERROR -----------"
+    echo "--------- ERROR in $TEXFILE -----------"
     tail -50 $TEXFILE.rebuild.out
-    echo "--------- ERROR -----------"
+    echo "--------- ERROR in $TEXFILE -----------"
     echo "Full log file is $TEXFILE.rebuild.out"
     echo "$any_err failed, removing $TEXFILE.{dvi,ps,pdf} files"
     rm $TEXFILE.dvi $TEXFILE.ps $TEXFILE.pdf
