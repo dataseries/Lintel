@@ -103,6 +103,8 @@ MACRO(LINTEL_LATEX basename)
     IF(LINTEL_LATEX_REBUILD_ENABLED)
 	FILE(GLOB_RECURSE ${basename}_TEX_DEPENDS
 	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.tex)
+	FILE(GLOB_RECURSE ${basename}_BIB_DEPENDS
+	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.bib)
 	FILE(GLOB_RECURSE ${basename}_EPS_DEPENDS
 	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.eps)
 	SET(${basename}_REBUILD_OUTPUTS
@@ -117,6 +119,7 @@ MACRO(LINTEL_LATEX basename)
 	        ${CMAKE_CURRENT_SOURCE_DIR} ${basename}
             DEPENDS
 		${${basename}_TEX_DEPENDS}
+		${${basename}_BIB_DEPENDS}
 		${${basename}_EPS_DEPENDS}
 	        ${${basename}_EXTRA_DEPENDS}
         )
