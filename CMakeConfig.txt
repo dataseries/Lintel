@@ -84,27 +84,33 @@ IF(WITH_THREADS AND THREADS_ENABLED)
     IF(HAS_PTHREAD_ISLOCKED)
         SET(PTHREAD_ISLOCKED_QUIET ON)
     ELSE(HAS_PTHREAD_ISLOCKED)
+        INCLUDE(LintelCMakeUtil)
         MESSAGE("Determining expression for PThreadMutex::isLocked()")
         EXECUTE_PROCESS(COMMAND uname OUTPUT_VARIABLE HOST_TYPE
                         OUTPUT_STRIP_TRAILING_WHITESPACE)
         IF(0)
         ELSEIF("${HOST_TYPE}" STREQUAL "HP-UX")
             SET(TMP_HAS_PTHREAD_ISLOCKED 1)
-    	SET(TMP_PTHREAD_ISLOCKED_EXPR "((char *)&m)[67] == 0")
+    	    SET(TMP_PTHREAD_ISLOCKED_EXPR "((char *)&m)[67] == 0")
         ELSEIF("${HOST_TYPE}" STREQUAL "Linux")
-    	TRY_COMPILE(LINUX_ISLOCKED_1 ${CMAKE_BINARY_DIR}/config 
-    	            ${CMAKE_CURRENT_SOURCE_DIR}/config/linux-islocked-1.cpp)
-    	TRY_COMPILE(LINUX_ISLOCKED_2 ${CMAKE_BINARY_DIR}/config 
-    	            ${CMAKE_CURRENT_SOURCE_DIR}/config/linux-islocked-2.cpp)
-            IF(0)     		    
+	    LINTEL_TRY_RUN(LINUX_ISLOCKED_1 config/linux-islocked-1.cpp
+	                   CMAKE_FLAGS -DLINK_LIBRARIES=-lpthread)
+	    LINTEL_TRY_RUN(LINUX_ISLOCKED_2 config/linux-islocked-2.cpp
+	                   CMAKE_FLAGS -DLINK_LIBRARIES=-lpthread)
+	    LINTEL_TRY_RUN(LINUX_ISLOCKED_3 config/linux-islocked-3.cpp
+	                   CMAKE_FLAGS -DLINK_LIBRARIES=-lpthread)
+            IF(0)    
             ELSEIF(LINUX_ISLOCKED_1)
-    	    SET(TMP_HAS_PTHREAD_ISLOCKED 1)
-    	    SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__m_lock.__status != 0")
+                SET(TMP_HAS_PTHREAD_ISLOCKED 1)
+                SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__m_lock.__status != 0")
             ELSEIF(LINUX_ISLOCKED_2)
-    	    SET(TMP_HAS_PTHREAD_ISLOCKED 1)
-    	    SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__data.__lock != 0")
+                SET(TMP_HAS_PTHREAD_ISLOCKED 1)
+                SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__data.__lock != 0")
+            ELSEIF(LINUX_ISLOCKED_3)
+                SET(TMP_HAS_PTHREAD_ISLOCKED 1)
+                SET(TMP_PTHREAD_ISLOCKED_EXPR "m.__m_reserved != 0")
             ELSE(0)
-    	    SET(TMP_HAS_PTHREAD_ISLOCKED 0)
+                SET(TMP_HAS_PTHREAD_ISLOCKED 0)
             ENDIF(0)
         ELSE(0)
             SET(TMP_HAS_PTHREAD_ISLOCKED 0)
@@ -118,14 +124,14 @@ IF(WITH_THREADS AND THREADS_ENABLED)
 
     IF(HAS_PTHREAD_ISLOCKED)
         IF(NOT PTHREAD_ISLOCKED_QUIET)
-	    MESSAGE("  Success, using ${PTHREAD_ISLOCKED_EXPR}")
+            MESSAGE("  Success, using ${PTHREAD_ISLOCKED_EXPR}")
         ENDIF(NOT PTHREAD_ISLOCKED_QUIET)
     ELSE(HAS_PTHREAD_ISLOCKED)
         MESSAGE("  Unable to figure out how to determine if a mutex is locked")
     ENDIF(HAS_PTHREAD_ISLOCKED)
     CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/Lintel/PThread.hpp.in
                    ${CMAKE_CURRENT_BINARY_DIR}/include/Lintel/PThread.hpp
-		   @ONLY)
+                   @ONLY)
 ENDIF(WITH_THREADS AND THREADS_ENABLED)
 
 ### LibXML2
@@ -179,7 +185,7 @@ IF(WITH_LATEX)
         SET(LATEX_ENABLED ON)
     ELSE(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
          AND DVIPDF_CONVERTER)
-	SET(LATEX_ENABLED OFF)
+        SET(LATEX_ENABLED OFF)
     ENDIF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
           AND DVIPDF_CONVERTER)
 
