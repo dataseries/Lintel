@@ -29,11 +29,24 @@ if [ "$BIBINPUTS" = "" ]; then
 else
     BIBINPUTS=$1:$BIBINPUTS
 fi
+if [ "$BSTINPUTS" = "" ]; then
+    BSTINPUTS=$1:
+else
+    BSTINPUTS=$1:$BSTINPUTS
+fi
+
 
 export TEXINPUTS
 export BIBINPUTS
+export BSTINPUTS
 TEXFILE=$2
 
+if [ -f $1/$TEXFILE.blg -o -f $1/$TEXFILE.bbl -o -f $1/$TEXFILE.dvi ]; then
+    echo "$1/$TEXFILE.{blg,bbl,dvi} already exist."
+    echo "this is likely to give you the wrong result; make clean in that dir?"
+    exit 1
+fi
+    
 rebuild() {
     echo -n " latex"
     @LATEX_COMPILER@ $TEXFILE.tex </dev/null >$TEXFILE.rebuild.out 2>&1
