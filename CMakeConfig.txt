@@ -166,25 +166,25 @@ ENDIF(WITH_INSTALLED_RPATH)
 ### Latex
 
 INCLUDE(FindLATEX)
-FIND_PROGRAM(DVIPDF_CONVERTER
-  NAMES dvipdf
+FIND_PROGRAM(PS2PDF14_CONVERTER
+  NAMES ps2pdf14
   PATHS ${MIKTEX_BINARY_PATH} 
         /usr/bin
 )
 
-OPTION(WITH_LATEX "Include the latex rebuild script (requires latex, bibtex, dvips, dvipdf)" On)
+OPTION(WITH_LATEX "Include the latex rebuild script (requires latex, bibtex, dvips, ps2pdf14)" On)
 IF(WITH_LATEX)
     IF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
-       AND DVIPDF_CONVERTER)
+       AND PS2PDF14_CONVERTER)
         SET(LATEX_ENABLED ON)
     ELSE(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
-         AND DVIPDF_CONVERTER)
+         AND PS2PDF14_CONVERTER)
 	SET(LATEX_ENABLED OFF)
     ENDIF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
-          AND DVIPDF_CONVERTER)
+          AND PS2PDF14_CONVERTER)
 
     IF(NOT LATEX_ENABLED) 
-        MESSAGE("WITH_LATEX on, but could not find latex, bibtex, dvips, dvipdf")
+        MESSAGE("WITH_LATEX on, but could not find latex, bibtex, dvips, ps2pdf14")
     ENDIF(NOT LATEX_ENABLED) 
 ENDIF(WITH_LATEX)
 

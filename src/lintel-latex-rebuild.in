@@ -68,8 +68,13 @@ dvipdf_err=0
 if [ $latex_err = 0 -a $bibtex_err = 0 ]; then
     @DVIPS_CONVERTER@ -tletter -o$TEXFILE.ps $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
     dvips_err=$?
-    @DVIPDF_CONVERTER@ $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
-    dvipdf_err=$?
+    #Why not run dvipdf?  The current version of dvipdf defaults to A4 paper
+    #and doesn't pass options to dvips (the underlying engine for dvipdf).
+    #so we call dvips and ps2pdf14 directly.
+    @DVIPS_CONVERTER@ -Ppdf -G0 -t letter -o $TEXFILE.pdftemp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
+    dvipstemp_err=$?
+    @PS2PDF14_CONVERTER@ $TEXFILE.pdftemp $TEXFILE.pdf >>$TEXFILE.rebuild.out 2>&1
+    ps2pdf14_err=$?
 fi
 
 if [ $latex_err != 0 ]; then
@@ -78,8 +83,10 @@ elif [ $bibtex_err != 0 ]; then
     any_err=bibtex
 elif [ $dvips_err != 0 ]; then
     any_err=dvips
-elif [ $dvipdf_err != 0 ]; then
-    any_err=dvipdf
+elif [ $dvipstemp_err != 0 ]; then
+    any_err=dvipstemp
+elif [ $ps2pdf14_err != 0 ]; then
+    any_err=ps2pdf14
 fi
 
 if [ "$any_err" = "" ]; then
@@ -95,7 +102,7 @@ else
     echo "--------- ERROR in $TEXFILE -----------"
     echo "Full log file is $TEXFILE.rebuild.out"
     echo "$any_err failed, removing $TEXFILE.{dvi,ps,pdf} files"
-    rm $TEXFILE.dvi $TEXFILE.ps $TEXFILE.pdf
+    rm $TEXFILE.dvi $TEXFILE.ps $TEXFILE.pdf $TEXFILE.pdftemp
     exit 1
 fi
 
