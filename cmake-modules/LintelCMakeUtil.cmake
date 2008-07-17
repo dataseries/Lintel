@@ -127,3 +127,24 @@ MACRO(LINTEL_LATEX basename)
 	                  DEPENDS ${${basename}_REBUILD_OUTPUTS})
     ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
 ENDMACRO(LINTEL_LATEX)
+
+### Try to compile and run some command; set var to TRUE if
+### successfully run, and FALSE otherwise.
+### Usage: LINTEL_TRY_RUN(variable source_file <TRY_RUN extra arguments>)
+### e.g. LINTEL_TRY_RUN(LINTEL_ISLOCKED linux-islocked.cpp 
+###                     CMAKE_FLAGS -DLINK_LIBRARIES=-lpthread)
+
+MACRO(LINTEL_TRY_RUN variable source_file)
+    TRY_RUN(${variable}_RUN ${variable}_COMPILE
+	    ${CMAKE_CURRENT_BINARY_DIR}
+	    ${CMAKE_CURRENT_SOURCE_DIR}/${source_file}
+	    ${ARGN})
+    IF("${variable}_RUN" STREQUAL "0" 
+       AND "${variable}_COMPILE" STREQUAL "TRUE")
+       SET(${variable} TRUE)
+    ELSE("${variable}_RUN" STREQUAL "0" 
+         AND "${variable}_COMPILE" STREQUAL "TRUE")
+       SET(${variable} FALSE)
+    ENDIF("${variable}_RUN" STREQUAL "0" 
+          AND "${variable}_COMPILE" STREQUAL "TRUE")
+ENDMACRO(LINTEL_TRY_RUN)

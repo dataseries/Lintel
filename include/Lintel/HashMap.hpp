@@ -107,7 +107,9 @@ template<typename T> struct PointerHashMapHash {
     uint32_t operator()(const T *a) const {
 	BOOST_STATIC_ASSERT(sizeof(a) == 4 || sizeof(a) == 8);
 	if (sizeof(a) == 4) {
-	    return reinterpret_cast<uint32_t>(a);
+	    // RHEL4 64bit requires two stage cast even though this
+	    // branch should never be executed.
+	    return static_cast<uint32_t>(reinterpret_cast<size_t>(a));
 	} else if (sizeof(a) == 8) {
 	    return BobJenkinsHashMixULL(reinterpret_cast<uint64_t>(a));
 	}

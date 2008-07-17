@@ -1,7 +1,7 @@
 #include <pthread.h>
 #include <string.h>
 
-// islocked === m.__m_lock.__status != 0
+// islocked === m.__m_reserved != 0
 int main() {
     pthread_mutexattr_t attr;
     pthread_mutex_t m;
@@ -11,13 +11,13 @@ int main() {
 
     pthread_mutex_init(&m, &attr);
     
-    if (m.__m_lock.__status != 0)
+    if (m.__m_reserved != 0)
 	return 1; // not initialized to 0
 
     pthread_mutex_lock(&m);
 
-    if (m.__m_lock.__status == 0) 
+    if (m.__m_reserved == 0) 
 	return 1; // not changed from 0 after lock
 
-    return 0;
+    return 0; 
 }
