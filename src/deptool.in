@@ -1,0 +1,258 @@
+#!@PERL_BINARY@ -w
+# -*- Perl -*-
+use strict;
+use Getopt::Long;
+
+sub usage {
+    print "Usage: $0 <command> [-y (yes to prompts)] [args]\n";
+    print "  init [--server=<hostname>] [branch-prefix...]\n";
+    print "  checkout <branch-substring...>\n";
+    print "  pull\n";
+    print "  build [-t (and test)] [-d (debug build)] [-b (optimize build)]\n";
+    print "  commit\n";
+    print "  publish\n";
+    die @_ if @_ > 0;
+    exit(0);
+}
+
+usage("Missing argument") if @ARGV == 0;
+
+my %commands = ('init' => \&depInit,
+		'checkout' => \&depCheckout,
+		'pull' => \&depPull,
+		'build' => \&depBuild,
+		'commit' => \&depCommit,
+		'publish' => \&depPublish);
+
+my $command = shift @ARGV;
+my $monotone_dir = "$ENV{HOME}/.monotone";
+my $fn = $commands{$command};
+my $auto_yes_to_prompts = 0;
+
+usage("Unrecognized command '$command'") unless defined $fn;
+$|=1;
+
+&$fn;
+
+##### Dependency Init
+
+sub depInit {
+    checkForMtn();
+
+    my $server = "usi.hpl.hp.com";
+    my $email;
+    my $result = GetOptions("server=s" => \$server,
+			    "y!" => \$auto_yes_to_prompts);
+    usage("Unknown error") unless $result;
+    my @branch_prefixes = @ARGV;
+    if (@branch_prefixes == 0) {
+	print "Assuming default branch prefixes ssd and simpl\n";
+	@branch_prefixes = ("ssd", "simpl");
+    }
+
+    initMtnDir();
+    initMtnKeysRc();
+
+    initDbs($server, \@branch_prefixes);
+}
+
+sub checkForMtn {
+    my @paths = split(/:/, $ENV{PATH});
+    foreach my $path (@paths) {
+	return if -x "$path/mtn";
+    }
+    die "Unable to find mtn binary in path; you should repair this.
+Usually yum install monotone or apt-get install monotone will work.
+http://usi.hpl.hp.com/twiki/pub/USI/MonotoneVersionControl/mtn-static
+is a static linux binary, alternately, you can get something from
+the monotone web site: http://www.monotone.ca/";
+}
+
+sub initMtnDir {
+    if (! -d $monotone_dir) {
+	userPrompt("Create monotone directory $monotone_dir");
+	mkdir($monotone_dir, 0755) or die "Unable to mkdir $monotone_dir: $!";
+    }
+}
+
+sub initMtnKeysRc {
+    if (! -d "$monotone_dir/keys") {
+	print <<EOF;
+
+The key will be generated with an empty password.  You can change it
+by running mtn chkeypass or mtn passphrase depending on your monotone
+version.
+
+WARNING: if you already have a monotone key, you should ctrl-c now, and copy
+WARNING: your key file over.  Monotone deals poorly with multiple keys with
+WARNING: the same e-mail address.
+EOF
+	
+	print "Enter e-mail address for identifying monotone key: ";
+	my $email = <STDIN>;
+	chomp $email;
+	die "?? $email" unless $email =~ /^\S+\@\w+\.\w+$/o;
+
+	runCommand("yes default-password | mtn genkey $email");
+
+	print "Key generated with password 'default-password'; can be changed with\n";
+	print "mtn chkeypass or mtn passphrase depending on your monotone version\n";
+
+	chmod(0700, "$monotone_dir/keys");
+	if (-f "$monotone_dir/monotonerc") {
+	    print <<"EOF";
+You probably want to add:
+function get_passphrase(keypair_id)
+  return "default-password"
+end
+To your $monotone_dir/monotonerc file
+EOF
+        } else {
+	    userPrompt("Create default monotonerc?");
+	    open(MTNRC, ">$monotone_dir/monotonerc")
+		or die "can't write $monotone_dir/monotonerc: $!";
+	    print MTNRC <<"EOF";
+-- Change with mtn chkeypass or mtn passphrase, then change here.
+function get_passphrase(keypair_id)
+  return "default-password"
+end
+
+-- Next three are for letting you run your own server 
+function get_netsync_read_permitted (collection, identity)
+  return true
+end
+
+function get_netsync_write_permitted (identity)
+  if (identity == "$email") then return true end
+  return false
+end
+
+function get_netsync_anonymous_read_permitted (collection)
+  return true
+end
+
+-- performance optimization
+function get_vcache_size()
+  return 512*1024*1024
+end
+EOF
+            chmod(0700, "$monotone_dir/monotonerc");
+        }
+    }
+}
+
+sub initDbs {
+    my($server, $branch_prefixes) = @_;
+
+    foreach my $branch_prefix (@$branch_prefixes) {
+	my $db = $branch_prefix;
+	$db =~ s/\W.*$//o;
+	die "Invalid branch prefix $branch_prefix, should start with normal chars"
+	    if $db eq '';
+	unless (-f "$monotone_dir/${db}.db") {
+	    userPrompt("create local repository $monotone_dir/${db}.db");
+	    runCommand("mtn -d $monotone_dir/${db}.db db init");
+	}
+
+	userPrompt("pull $branch_prefix* from $server (can take a while)");
+	my $qm = quotemeta $branch_prefix;
+	runCommand("mtn -d $monotone_dir/${db}.db pull $server $qm\\*");
+    }
+}
+
+##### Dependency Checkout
+
+sub depCheckout {
+    my $result = GetOptions("y!" => \$auto_yes_to_prompts);
+    usage("Unknown error") unless $result;
+
+    usage("No branch-substrings specified") unless @ARGV > 0;
+
+    my $projects = $ENV{PROJECTS};
+    unless(defined $projects) {
+	userPrompt("missing \$ENV{PROJECTS}; assume $ENV{HOME}/projects");
+	$projects = "$ENV{HOME}/projects";
+    }
+    
+    my @dbs = glob("$monotone_dir/*.db");
+    die "No *.db files in $monotone_dir; did you run $0 init?"
+	unless @dbs > 0;
+
+    my @branches;
+    my %branch_to_db;
+    foreach my $db (@dbs) {
+	open(TMP, "mtn -d $db list branches |");
+	my @tmp = <TMP>;
+	close(TMP);
+	grep(chomp, @tmp);
+	push(@branches, @tmp);
+	map { 
+	    warn "duplicate db ($db, $branch_to_db{$_}) for branch $_
+will use latter."
+		if defined $branch_to_db{$_};
+	    $branch_to_db{$_} = $db 
+	    } @tmp;
+    }
+
+    my @branch_regexes = (@ARGV);
+    while (@branch_regexes > 0) {
+	my $branch_regex = shift @branch_regexes;
+
+	my @possibles = grep(/$branch_regex/, @branches);
+	die "No branches found matching $branch_regex"
+	    unless @possibles > 0;
+	@possibles = sort { length $a <=> length $b } @possibles;
+	
+	my $branch = shift @possibles;
+	foreach $_ (@possibles) {
+	    die "?? $branch $_" unless /^$branch/;
+	}
+	
+	my $db = $branch_to_db{$branch};
+	my $dir = $branch;
+	$dir =~ s!^\w+(\.\w+)*/!!o; # strip uniqueifier we put on
+	my $path = "$ENV{HOME}/projects/$dir";
+	print "Selected branch $branch\n";
+	print "From database $db\n";
+	print "Inferred projects directory $dir\n";
+	print "Inferred full path $path\n";
+
+	if (-d "$path/_MTN") {
+	    print "Found $path/_MTN; assuming you already have this checked out.\n";
+	    next;
+	}
+
+	userPrompt("continue even though you have a / in the directory")
+	    if $dir =~ m!/!o;
+	userPrompt("continue even though path already exists")
+	    if -d $path;
+	
+	runCommand("mtn -d $db co -b $branch $path");
+    }	
+}
+
+##### Common functions
+
+
+sub userPrompt {
+    my($msg) = @_;
+
+    print "\nDo you want to: $msg\n";
+    print "Return to continue, ctrl-c to abort: ";
+    if ($auto_yes_to_prompts) {
+	print "[auto-yes]\n";
+    } else {
+	$_ = <STDIN>;
+	die "You provided 'n' for input, aborting anyway"
+	    if /^n/io;
+    }
+}
+
+sub runCommand {
+    my($command) = @_;
+
+    print "Running: $command\n";
+    my $ret = system($command);
+
+    die "'$command' failed ($ret)" unless $ret == 0;
+}
