@@ -128,6 +128,23 @@ MACRO(LINTEL_LATEX basename)
     ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
 ENDMACRO(LINTEL_LATEX)
 
+MACRO(LINTEL_LATEX_REQUIRES variable)
+    SET(${variable} ${LINTEL_LATEX_REBUILD_ENABLED})
+    FOREACH(llr_filename ${ARGN})
+	EXECUTE_PROCESS(COMMAND kpsewhich ARGS ${llr_filename}
+                        RESULT_VARIABLE llr_result
+			OUTPUT_VARIABLE llr_output
+			OUTPUT_STRIP_TRAILING_WHITESPACE)
+        IF("${llr_output}" STREQUAL "")
+	    MESSAGE("Unable to find latex file ${llr_filename} for ${variable}")
+	    SET(${variable} FALSE)
+        ELSEIF(NOT EXISTS "${llr_filename}")
+	    MESSAGE("Found ${llr_filename} for ${variable} but it does not exist?")
+	    SET(${variable} FALSE)
+        ENDIF("${llr_output}" STREQUAL "")
+    ENDFOREACH(llr_filename)
+ENDMACRO(LINTEL_LATEX_REQUIRES)	            
+
 ### Try to compile and run some command; set var to TRUE if
 ### successfully run, and FALSE otherwise.
 ### Usage: LINTEL_TRY_RUN(variable source_file <TRY_RUN extra arguments>)
@@ -148,3 +165,4 @@ MACRO(LINTEL_TRY_RUN variable source_file)
     ENDIF("${variable}_RUN" STREQUAL "0" 
           AND "${variable}_COMPILE" STREQUAL "TRUE")
 ENDMACRO(LINTEL_TRY_RUN)
+

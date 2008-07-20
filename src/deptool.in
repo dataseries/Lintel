@@ -68,6 +68,8 @@ my $fn = $commands{$command};
 usage("Unrecognized command '$command'") unless defined $fn;
 $|=1;
 
+# handle case where start dir is a symlink
+aliasChdir($ENV{PWD}) if defined $ENV{PWD};
 &$fn;
 
 ##### Dependency Init
@@ -280,7 +282,7 @@ sub depBuild {
     my %options = @_;
     $options{tests} ||= 0;
 
-    my $cwd = getcwd;
+    my $cwd = aliasGetCwd();
     my $debug = buildDebug();
     if ($cwd =~ /^$debug/o) {
 	$options{mode} = 'debug';
@@ -304,15 +306,16 @@ sub depBuild {
 sub depBuildOne {
     my ($options) = @_;
 
-    my $src = getcwd();
-    die "?" unless $src =~ /^$options->{projects}/o;
+    my $src = aliasGetCwd();
+    die "? '$src' '$options->{projects}'" 
+	unless $src =~ /^$options->{projects}/o;
     my $build = $src;
     $build =~ s!$options->{projects}/!$options->{builddir}/!o;
     print "Building in $build\n" unless $quiet;
     unless(-d $build) {
 	mkpath($build);
     }
-    chdir($build) or die "no cd $build: $!";
+    aliasChdir($build);
     depBuildCheckOld($src, $build, $options);
     depBuildMake($src, $build, $options);
     depBuildTest($build, $options);
@@ -483,7 +486,7 @@ sub depPullMerge {
 	my $fh = new FileHandle "mtn automate heads |";
 	my @heads = getCurHeads();
 	last if @heads == 1;
-	my $cwd = getcwd();
+	my $cwd = aliasGetCwd();
 	print "\n" x 5, "You have multiple heads in $cwd.";
 	userPrompt("merge the heads");
 	runCommand("mtn","merge");
@@ -493,7 +496,7 @@ sub depPullMerge {
 sub depPullUpdate {
     my($options) = @_;
 
-    my $cwd = getcwd();
+    my $cwd = aliasGetCwd();
     my $cur_rev = getCurRevision();
     if (-f depPinFilename()) {
 	my @heads = getCurHeads();
@@ -578,7 +581,7 @@ sub depCommit {
 }
 
 sub depCommitOne {
-    my $cwd = getcwd;
+    my $cwd = aliasGetCwd();
 
     die "depcommit: ERROR missing _MTN directory in $cwd"
 	unless -d "_MTN";
@@ -591,7 +594,7 @@ sub ignoresFileName() {
 }
 
 sub depCommitUnknown { 
-    my $cwd = getcwd;
+    my $cwd = aliasGetCwd();
     return unless depCommitHaveUnknown();
     my @unknown = depCommitGetUnknown();
     while(1) {
@@ -624,7 +627,7 @@ sub depCommitHaveUnknown {
     return 0 if @unknown == 0;
     my $fh = new FileHandle ignoresFileName();
     if ($fh) {
-	my $cwd = getcwd;
+	my $cwd = aliasGetCwd();
 	my $sha1 = sha1_hex(join('', @unknown));
 	while(<$fh>) {
 	    return 0 if $_ eq "$cwd $sha1\n";
@@ -659,7 +662,7 @@ sub depCommitHaveChanges {
 }
     
 sub depCommitDoCommit {
-    my $cwd = getcwd;
+    my $cwd = aliasGetCwd();
     my $first_time = 1;
     while(1) {
 	if (!depCommitHaveChanges()) {
@@ -673,7 +676,7 @@ depcommit: will show differences after successful test\n";
 	userPrompt("build and test");
 	depBuild('tests' => 1);
 	print "\n" x 20;
-	chdir($cwd) or die "?";
+	aliasChdir($cwd);
 	runCommand("mtn","diff");
 	print "\ndepcommit: You have uncommitted differences (shown above) in $cwd\n";
 	userPrompt("commit changes");
@@ -684,7 +687,7 @@ depcommit: will show differences after successful test\n";
 ##### runCMake
 
 sub runCMakeClean {
-    my $cwd = getcwd();
+    my $cwd = aliasGetCwd();
     my $projects = projects();
     my $debug = buildDebug();
     my $opt = buildOpt();
@@ -707,7 +710,7 @@ sub runCMakeClean {
 }
 
 sub runCMakeConfig {
-    my $cwd = getcwd();
+    my $cwd = aliasGetCwd();
     my ($src, $build_subdir) = srcDir();
     my $debug = buildDebug();
     my $opt = buildOpt();
@@ -838,7 +841,7 @@ sub depWalkRecurse {
     print "depwalk: walking in $src\n"
 	unless $quiet;
 
-    chdir($src) or die "chdir($src) failed: $!";
+    aliasChdir($src);
     my @vcdeps = readVCDeps(".version_control_deps");
     if (@vcdeps > 0) {
 	my $projects = projects();
@@ -849,12 +852,12 @@ sub depWalkRecurse {
 	    depWalkRecurse($fn, $depsrc, $visited);
 	}
     }
-    chdir($src) or die "chdir($src) failed: $!";
+    aliasChdir($src);
     &$fn();
 }
 
 sub srcDir {
-    my $start = getcwd();
+    my $start = aliasGetCwd();
     my $projects = projects();
     my $debug = buildDebug();
     my $opt = buildOpt();
@@ -1116,3 +1119,20 @@ sub runCommand {
     die "'" . join(" ", @command) . "' failed ($ret)" unless $ret == 0;
 }
 
+sub aliasChdir {
+    my($dir) = @_;
+
+    chdir($dir) or die "Unable to chdir($dir): $!";
+    my $here = getcwd();
+    return if defined $Cache::alias_cd{$here};
+    print "ACD $here -> $dir\n" if 0;
+    $Cache::alias_cd{$here} = $dir;
+}
+
+sub aliasGetCwd {
+    my $here = getcwd();
+    print "AG $here -> $Cache::alias_cd{$here}\n" if 0;
+    return $Cache::alias_cd{$here} 
+        if defined $Cache::alias_cd{$here};
+    return $here;
+}
