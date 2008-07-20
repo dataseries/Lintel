@@ -54,6 +54,11 @@ my %commands = ('checkout' => \&depCheckout,
 		# below commands don't run in all dep dirs.
 		'init' => \&depInit,
 		'cmake' => \&runCMake,
+		'pin' => \&setPin,
+		'mtnpull' => sub { mtnOp("pull"); },
+		'mtnpush' => sub { mtnOp("push"); },
+		'mtnsync' => sub { mtnOp("sync"); },
+		'mtnserve' => \&mtnServe, 
 		'getenv' => \&getEnv);
 
 my $command = shift @ARGV;
@@ -424,20 +429,147 @@ sub depBuildInstall {
     }
 }
 
+##### Set pin
+
+### setPin -- pin the revision that we will pull to; deals with people 
+### accidentally messing up dependencies while still letting you commit
+
+sub setPin {
+    die "Have unknown files; setpin is disallowed"
+	if depCommitHaveUnknown();
+    die "Have changes; setpin is disallowed"
+	if depCommitHaveChanges();
+    my @heads = getCurHeads();
+    die "Have multiple heads; setpin is disallowed"
+	unless @heads == 1;
+    my($revision) = @ARGV;
+
+    if (defined $revision) {
+	runCommand("mtn","update","-r",$revision);
+    }
+
+    $revision = getCurRevision()
+	unless defined $revision;
+    
+    my $filename = depPinFilename();
+    my $fh = new FileHandle ">>$filename"
+	or die "Unable to open $filename for append: $!";
+    print $fh "$heads[0] $revision\n";
+    print "Pinning to $revision so long as head remains at $heads[0]\n";
+    close($fh);
+}
+
 ##### Dependency pull
 
+### deppull -- pull all of the dependency tree sources
 sub depPull {
     my %options;
     depWalk(sub { depPullOne(\%options); });
 }
 
+### sets $options->{made_changes} if we made changes.
+
 sub depPullOne {
     my($options) = @_;
 
     depCommitOne();
+    mtnOp("pull");
+    depPullMerge();
+    depPullUpdate($options);
+}
+
+sub depPullMerge {
+    while(1) {
+	my $fh = new FileHandle "mtn automate heads |";
+	my @heads = getCurHeads();
+	last if @heads == 1;
+	my $cwd = getcwd();
+	print "\n" x 5, "You have multiple heads in $cwd.";
+	userPrompt("merge the heads");
+	runCommand("mtn","merge");
+    }
+}
+
+sub depPullUpdate {
+    my($options) = @_;
+
+    my $cwd = getcwd();
+    my $cur_rev = getCurRevision();
+    if (-f depPinFilename()) {
+	my @heads = getCurHeads();
+	die "??" unless @heads == 1;
+	
+	if (foundPin($cur_rev, $heads[0])) {
+	    print "deppull: You are currently pinned to revision $cur_rev\n";
+	    return;
+	} else {
+	    print <<"END";
+
+
+You would be pinned to $cur_rev, but the head
+has been updatd.  To reset the pin:
+cd $cwd; deptool pin $cur_rev
+END
+            # skip prompting, will do so for the update.
+	}
+    }
+    while(1) {
+	my $cur_rev = getCurRevision();
+	my @heads = getCurHeads();
+	die "??" unless @heads == 1;
+	last if $cur_rev eq $heads[0];
+	print <<"END";
+You current checkout is not up to date in $cwd.
+$cur_rev != $heads[0]
+END
+        userPrompt("update to the current revision");
+	runCommand("mtn","update");
+	$options->{made_changes} = 1;
+    }
+}
+
+sub foundPin {
+    my($rev, $head) = @_;
+
+    my $filename = depPinFilename();
+    return 0 unless -r $filename;
+    my $fh = new FileHandle($filename)
+	or die "Can't open $filename for read: $!";
+    while(<$fh>) {
+	return 1 if /^$head $rev$/;
+    }
+    return 0;
+}
+
+sub getCurHeads {
+    my($fh) = new FileHandle("mtn automate heads |")
+	or die "Unable to fork: $!";
+    my @heads = <$fh>;
+    close($fh);
+    die "??" unless @heads > 0;
+    grep(chomp, @heads);
+    return @heads;
+}
+
+sub getCurRevision {
+    my($fh) = new FileHandle("mtn automate get_base_revision_id |")
+	or die "Unable to fork: $!";
+
+    local $_ = <$fh>;
+    die "??" unless $_ =~ /^[a-fA-F0-9]{40}$/o;
+    chomp;
+    close($fh);
+    return $_;
+}
+
+sub depPinFilename {
+    return "$ENV{HOME}/.monotone/deptool-version-pins";
 }
 
 ##### Dependency commit
+
+### depcommit -- commit all the files in the dependency tree;
+### generates the variable depcommit_made_changes as a side effect
 
 sub depCommit {
     my %options;
@@ -612,6 +744,83 @@ sub runCMake {
     }
 }
 
+##### Monotone operations
+
+sub mtnOp {
+    my($op) = @_;
+
+    die "??" unless $op =~ /^((pull)|(push)|(sync))$/o;
+    my $src = rootSrcDir();
+    my $fh = new FileHandle("$src/_MTN/options")
+	or die "Can't open $src/_MTN/options for read: $!";
+    my $branch;
+    my $database;
+    while(<$fh>) {
+	$branch = $1 if /^\s*branch \"(.+)\"$/o;
+	$database = $1 if /^\s*database \"(.+)\"$/o;
+    }
+    close($fh);
+    die "? no branch" unless defined $branch;
+    die "? no database" unless defined $database;
+
+    my $syncbranch = $branch;
+    $syncbranch =~ s!^(.*/.*)/.*$!$1!o;
+    my $server = mtnServer();
+    runCommand("mtn","-d",$database,$op,$server,"$syncbranch*");
+    runCommand("mtn","-d",$database,'heads','-b',$branch);
+}
+
+sub mtnServe {
+    my $src = rootSrcDir();
+    my $fh = new FileHandle("$src/_MTN/options")
+	or die "Can't open $src/_MTN/options for read: $!";
+    my $database;
+    while(<$fh>) {
+	$database = $1 if /^\s*database \"(.+)\"$/o;
+    }
+    close($fh);
+    die "? no database" unless defined $database;
+
+    runCommand("mtn","-d",$database,'serve','*');
+}
+
+##### depPublish
+
+### deppublish - command for publishing a set of updates back to a
+### central server
+
+sub depPublish {
+    print "deppublish: committing any outstanding changes\n";
+    depCommit();
+    my %options = ( 'made_changes' => 1 );
+    while ($options{made_changes}) {
+	$options{made_changes} = 0;
+	print "deppublish: verifying current version passes regression tests\n";
+	depBuild('tests' => 1);
+	print "deppublish: pulling in any remote changes\n";
+	depWalk(sub { depPullOne(\%options); });
+
+	unless ($options{made_changes}) {
+	    print "\n" x 5;
+	    print <<"END";
+*** Running the sync.  In the unlikely case that you get any updates, you ***
+*** need to get them tested and synchronized quickly because they made it ***
+*** out so other people can see them. ***
+END
+            depWalk(sub { depSyncOne(\%options); });
+	    print "****** WARNING, got changes; re-running deppublish...\n"
+		if $options{made_changes};
+	}
+    }
+}
+
+sub depSyncOne {
+    my($options) = @_;
+
+    mtnOp("sync");
+    depPullUpdate($options);
+}
+
 ##### Common -- depwalk
 
 sub depWalk {
@@ -685,6 +894,19 @@ sub rootSrcDir {
 
 ##### Env functions
 
+sub printEnv {
+    my($shell, $envvar, $fn) = @_;
+
+    my $val = &$fn();
+    if ($shell eq 'sh') {
+	print qq{export $envvar="$val";\n};
+    } elsif ($shell eq 'csh') {
+	print qq{setenv $envvar "$val";\n};
+    } else {
+	die "?? $shell";
+    }
+}
+
 sub getEnv {
     my $result = GetOptions("y!" => \$auto_yes_to_prompts,
 			    "quiet!" => \$quiet);
@@ -693,13 +915,28 @@ sub getEnv {
     usage("Missing requested env var") unless @ARGV == 1;
 
     my $env = $ARGV[0];
-    usage("Bad env var request") unless $env =~ /^\w+$/o;
-    my $ret = eval "$ARGV[0]()";
-    die "Unknown env var $env"
-	if $@ && $@ =~ /^Undefined subroutine/o;
-    die $@ if $@;
-
-    print "$ret\n";
+    if ($env =~ /^for-((sh)|(csh))$/o) {
+	my $shell = $1;
+	$quiet = 1;
+	$auto_yes_to_prompts = 1;
+	
+	printEnv($shell, 'PROJECTS', \&projects);
+	printEnv($shell, 'BUILD_ROOT', \&buildRoot);
+	printEnv($shell, 'OS', \&operatingSystem);
+	printEnv($shell, 'UNAME_M', \&unameM);
+	printEnv($shell, 'BUILD_DEBUG', \&buildDebug);
+	printEnv($shell, 'BUILD_OPT', \&buildOpt);
+	printEnv($shell, 'MAKE_PARALLELISM', \&makeParallelism);
+	printEnv($shell, 'MTN_SERVER', \&mtnServer);
+    } else {
+	usage("Bad env var request") unless $env =~ /^\w+$/o;
+	my $ret = eval "$ARGV[0]()";
+	die "Unknown env var $env"
+	    if $@ && $@ =~ /^Undefined subroutine/o;
+	die $@ if $@;
+	
+	print "$ret\n";
+    }
 }
 
 sub projects {
@@ -820,6 +1057,15 @@ sub makeParallelism {
 	return 1;
     }
     return POSIX::ceil($nprocessors * 1.5); # oversubscribe by 50%
+}
+
+sub mtnServer {
+    $Cache::mtn_server ||= $ENV{MTN_SERVER};
+    unless(defined $Cache::mtn_server) {
+	userPrompt("assume default mtn server usi.hpl.hp.com (set via \$MTN_SERVER)");
+	$Cache::mtn_server = "usi.hpl.hp.com";
+    }
+    return $Cache::mtn_server;
 }
 
 ##### Common functions
