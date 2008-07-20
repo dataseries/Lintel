@@ -10,11 +10,12 @@ use strict;
 
 use Carp;
 use Cwd;
-use Getopt::Long;
+use Digest::SHA1 'sha1_hex';
 use FileHandle;
 use File::Path;
 use File::Find;
 use File::stat;
+use Getopt::Long;
 use POSIX 'ceil';
 
 sub usage {
@@ -271,8 +272,8 @@ END
 ##### Dependency build
 
 sub depBuild {
-    my %options;
-    $options{tests} = 0;
+    my %options = @_;
+    $options{tests} ||= 0;
 
     my $cwd = getcwd;
     my $debug = buildDebug();
@@ -422,6 +423,133 @@ sub depBuildInstall {
 	$options->{did_install} = 1;
     }
 }
+
+##### Dependency pull
+
+sub depPull {
+    my %options;
+    depWalk(sub { depPullOne(\%options); });
+}
+
+sub depPullOne {
+    my($options) = @_;
+
+    depCommitOne();
+}
+
+##### Dependency commit
+
+sub depCommit {
+    my %options;
+
+    depWalk(\&depCommitOne);
+}
+
+sub depCommitOne {
+    my $cwd = getcwd;
+
+    die "depcommit: ERROR missing _MTN directory in $cwd"
+	unless -d "_MTN";
+    depCommitUnknown();
+    depCommitDoCommit();
+}
+
+sub ignoresFileName() {
+    return "$ENV{HOME}/.monotone/deptool-commit-ignores";
+}
+
+sub depCommitUnknown { 
+    my $cwd = getcwd;
+    return unless depCommitHaveUnknown();
+    my @unknown = depCommitGetUnknown();
+    while(1) {
+	print "You have un-added files in $cwd:\n";
+	print @unknown;
+	print "\nDo you want to ignore or ad them [no-default]?";
+	$_ = <STDIN>; 
+	chomp;
+	if ($_ eq 'ignore') {
+	    my $sha1 = sha1_hex(join('',@unknown));
+	    my $ignores_name = ignoresFileName();
+	    my $fh = new FileHandle ">>$ignores_name"
+		or die "Can't open $ignores_name: $!";
+	    print $fh "$cwd $sha1\n";
+	    close($fh);
+	    return;
+	} elsif ($_ eq 'ad') {
+	    print "Adding files...\n";
+	    runCommand("mtn","add","--unknown");
+	    return;
+	} else {
+	    print "Expected 'ignore' or 'add', not '$_'; try again\n";
+	}
+    }
+}
+
+sub depCommitHaveUnknown {
+    my @unknown = depCommitGetUnknown();
+
+    return 0 if @unknown == 0;
+    my $fh = new FileHandle ignoresFileName();
+    if ($fh) {
+	my $cwd = getcwd;
+	my $sha1 = sha1_hex(join('', @unknown));
+	while(<$fh>) {
+	    return 0 if $_ eq "$cwd $sha1\n";
+	}
+    }
+
+    return 1;
+}
+
+sub depCommitGetUnknown {
+    my $fh = new FileHandle "mtn list unknown |"
+	or die "bad fork mtn: $!";
+    my @unknown = <$fh>;
+    close($fh);
+    die "?? mtn" if $?;
+    
+    return @unknown;
+}
+
+sub depCommitHaveChanges {
+    my $fh = new FileHandle "mtn diff |"
+	or die "fork fail: $!";
+    $_ = <$fh>;
+    return 1 unless $_ eq "#\n";
+    $_ = <$fh>;
+    return 1 unless $_ eq "# no changes\n";
+    $_ = <$fh>;
+    return 1 unless $_ eq "#\n";
+    $_ = <$fh>;
+    return 1 if defined $_;
+    return 0;
+}
+    
+sub depCommitDoCommit {
+    my $cwd = getcwd;
+    my $first_time = 1;
+    while(1) {
+	if (!depCommitHaveChanges()) {
+	    print "depcommit: no changes in $cwd\n"
+		if $first_time;
+	    return;
+	}
+	$first_time = 0;
+	print "depcommit: you have uncommitted differences in $cwd
+depcommit: will show differences after successful test\n";
+	userPrompt("build and test");
+	depBuild('tests' => 1);
+	print "\n" x 20;
+	chdir($cwd) or die "?";
+	runCommand("mtn","diff");
+	print "\ndepcommit: You have uncommitted differences (shown above) in $cwd\n";
+	userPrompt("commit changes");
+	runCommand("mtn","commit");
+    }
+}
+
+##### runCMake
 
 sub runCMakeClean {
     my $cwd = getcwd();
