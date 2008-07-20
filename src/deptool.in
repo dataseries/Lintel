@@ -863,6 +863,8 @@ sub srcDir {
     my $build_subdir;
     if (m!^$projects/!o) { 
 	# in a source directory already
+    } elsif (-d "_MTN") {
+	# in some kind of source directory already.
     } elsif (m!^(($debug)|($opt))/!o) {
 	s!^(($debug)|($opt))/!!o;
 	if (-d "$projects/$_") {
@@ -1021,7 +1023,7 @@ sub buildDebug {
 	    $Cache::build_debug = "$root/debug";
 	} else {
 	    $Cache::build_debug 
-		= join("-", $root, operatingSystem(), unameM());
+		= buildRoot() . "/dbg-" . operatingSystem() . "-" . unameM();
 	}
 	userPrompt("missing \$ENV{BUILD_DEBUG}; assume $Cache::build_debug");
     }
@@ -1036,7 +1038,7 @@ sub buildOpt {
 	    $Cache::build_optimize = "$root/optimize";
 	} else {
 	    $Cache::build_optimize 
-		= join("-", buildRoot(), operatingSystem(), unameM());
+		= buildRoot() . "/opt-" . operatingSystem() . "-" . unameM();
 	}
 	userPrompt("missing \$ENV{BUILD_OPT}; assume $Cache::build_optimize");
     }
