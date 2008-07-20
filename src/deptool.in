@@ -516,11 +516,11 @@ sub depCommitHaveChanges {
     my $fh = new FileHandle "mtn diff |"
 	or die "fork fail: $!";
     $_ = <$fh>;
-    return 1 unless $_ eq "#\n";
+    return 1 unless /^\#\s*$/o;
     $_ = <$fh>;
-    return 1 unless $_ eq "# no changes\n";
+    return 1 unless /^\# no changes\s*$/o;
     $_ = <$fh>;
-    return 1 unless $_ eq "#\n";
+    return 1 unless /^\#\s*$/o;
     $_ = <$fh>;
     return 1 if defined $_;
     return 0;
