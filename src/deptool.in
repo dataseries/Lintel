@@ -367,7 +367,7 @@ sub depBuildMake {
 	print "depbuild: $build already has current build\n";
 	return;
     }
-    if (! -f "Makefile") {
+    if (! -f "Makefile" || ! -d "CMakeFiles") {
 	local @ARGV = ();
 	print "depbuild: creating makefile in $build\n";
 	runCMakeConfig();
@@ -597,7 +597,7 @@ sub depCommitUnknown {
     while(1) {
 	print "You have un-added files in $cwd:\n";
 	print @unknown;
-	print "\nDo you want to ignore or ad them [no-default]?";
+	print "\nDo you want to ignore or add them [no-default]?";
 	$_ = <STDIN>; 
 	chomp;
 	if ($_ eq 'ignore') {
@@ -695,7 +695,8 @@ sub runCMakeClean {
 	unless $quiet;
     my @files; 
     my @dirs;
-    find(sub { push(@files, $File::Find::name) if /^CMakeCache.txt$/o;
+    find(sub { push(@files, $File::Find::name) if /^CMakeCache.txt$/o
+		   || /^Makefile$/o;
 	       push(@dirs, $File::Find::name) if /^CMakeFiles$/o; },
 	 $cwd);
     unlink(@files) == scalar @files
