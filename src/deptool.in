@@ -370,7 +370,7 @@ sub depBuildMake {
 	print "depbuild: $build already has current build\n";
 	return;
     }
-    if (! -f "Makefile" || ! -d "CMakeFiles") {
+    if (! -f "Makefile" || ! -d "CMakeFiles" || ! -f "CMakeCache.txt") {
 	local @ARGV = ();
 	print "depbuild: creating makefile in $build\n";
 	runCMakeConfig();
@@ -411,9 +411,10 @@ sub stamp {
     
     my $filename = ".deptool.${which}_stamp";
     while(1) {
-	my $fh = new FileHandle(">$filename")
+	my $fh = new FileHandle("+>>$filename")
 	    or die "Can't open $filename for append: $!";
 	close($fh);
+	utime undef, undef, $filename;
 	last if $which eq 'build' || stampUpToDate($which);
 	print "deptool: sleep(1) to make sure ${which} timestamp is more recent than build\n";
 	sleep(1);
