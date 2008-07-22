@@ -39,7 +39,6 @@ SET(INCLUDE_FILES
 	StatsSeriesGroup.hpp
 	StringUtil.hpp
 	TestUtil.hpp
-	Uncompress.hpp
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
@@ -71,7 +70,6 @@ SET(TRANSITIONAL_INCLUDE_FILES
 	StatsSeriesGroup.H
 	streamcompat.H
 	StringUtil.H
-	Uncompress.H 
 )
 
 ################################## CONDITIONAL BITS

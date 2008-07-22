@@ -34,9 +34,6 @@ LINTEL_SIMPLE_TEST(stringutil)
 LINTEL_SIMPLE_PROGRAM(check-LintelAssert)
 ADD_TEST(lintel-assert ${CMAKE_CURRENT_SOURCE_DIR}/run-check-LintelAssert.sh ${CMAKE_CURRENT_SOURCE_DIR})
 
-LINTEL_SIMPLE_PROGRAM(check-Uncompress)
-ADD_TEST(lintel-uncompress ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Uncompress.sh ${CMAKE_CURRENT_SOURCE_DIR})
-
 LINTEL_SIMPLE_PROGRAM(lintel_log)
 ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 

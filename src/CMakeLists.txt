@@ -45,7 +45,6 @@ SET(LIBLINTEL_SOURCES
 	StatsSeries.cpp
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
-	Uncompress.cpp
 )
 
 SET(LINTEL_FEATURES boost)
