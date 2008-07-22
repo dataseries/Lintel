@@ -683,7 +683,7 @@ depcommit: will show differences after successful test\n";
 	userPrompt("commit changes");
 	eval { runCommand("mtn","commit"); };
 	if ($@) {
-	    die "$@" if $@ !~ /monotone.*failed/o;
+	    die "$@" if $@ !~ /mtn commit.*failed/o;
 	    warn "$@"; # redundant?
 	}
     }
@@ -1121,7 +1121,7 @@ sub runCommand {
     print "Running: ", join(" ", @command), "\n";
     my $ret = system(@command);
 
-    die "'" . join(" ", @command) . "' failed ($ret)" unless $ret == 0;
+    confess "'" . join(" ", @command) . "' failed ($ret)" unless $ret == 0;
 }
 
 sub aliasChdir {
