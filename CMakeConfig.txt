@@ -12,18 +12,20 @@ IF(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
+#### Windows vs. Linux stuff
+
+IF (WIN32)
+    ADD_DEFINITIONS(/DSYS_NT)
+ELSE (WIN32)
+    ADD_DEFINITIONS(-DSYS_POSIX)
+ENDIF (WIN32)
+
 ##### Required bits
 
 INCLUDE(FindBoost)
 IF(NOT Boost_FOUND)
     MESSAGE(FATAL_ERROR "ERROR: Could NOT find the Boost includes and libraries")
 ENDIF(NOT Boost_FOUND)
-
-# only needed for buildTcl
-FIND_PROGRAM(AWK_PATH awk)
-IF(NOT AWK_PATH)
-    MESSAGE("WARNING: Could NOT find awk, TCL support will be disabled")
-ENDIF(NOT AWK_PATH)
 
 # TODO: what is perl needed for?
 FIND_PROGRAM(PERL_BINARY perl)
@@ -32,6 +34,12 @@ IF (NOT PERL_BINARY)
 ENDIF(NOT PERL_BINARY)
 
 ##### Optional bits
+
+# only needed for buildTcl
+FIND_PROGRAM(AWK_PATH awk)
+IF(NOT AWK_PATH)
+    MESSAGE("WARNING: Could NOT find awk, TCL support will be disabled")
+ENDIF(NOT AWK_PATH)
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
 OPTION(ENABLE_CLOCK_TEST "Enable the cycle-counter clock test; has trouble in virtual machines" ON)
