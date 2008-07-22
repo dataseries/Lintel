@@ -681,7 +681,7 @@ depcommit: will show differences after successful test\n";
 	runCommand("mtn","diff");
 	print "\ndepcommit: You have uncommitted differences (shown above) in $cwd\n";
 	userPrompt("commit changes");
-	eval { runCommand("mtn","commit"); }
+	eval { runCommand("mtn","commit"); };
 	if ($@) {
 	    die "$@" if $@ !~ /monotone.*failed/o;
 	    warn "$@"; # redundant?

@@ -45,6 +45,8 @@ ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
 ADD_TEST(flock ${CMAKE_CURRENT_SOURCE_DIR}/flock.sh ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/.. ${CMAKE_INSTALL_PREFIX})
 
+# just make sure it can compile.
+ADD_TEST(deptool ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
 ################################## CONDITIONAL BITS
 
 IF(ENABLE_CLOCK_TEST)
