@@ -32,17 +32,22 @@ void test_splitjoin() {
     SINVARIANT(ojoin == "a/bcd//ef");
 }
 
+// TODO: change this to test stringToInteger instead
 void test_stringtoint32() {
     SINVARIANT(stringToInt32("77737373") == 77737373);
     SINVARIANT(stringToInt32("-2133324") == -2133324);
+    SINVARIANT(stringToInt32("0x1234abcd", 16) == 305441741);
+    SINVARIANT(stringToInt64("0x1234abcdef5678", 16) == 5124462079858296LL);
 
 #ifdef __CYGWIN__
     TEST_INVARIANTMSG(SINVARIANT(stringToInt32("abcdef") == 5),
-		      "error in conversion of 'abcdef' base 10 to int32: No error");
+		      "error converting 'abcdef' to integer");
 #else
     TEST_INVARIANTMSG(SINVARIANT(stringToInt32("abcdef") == 5),
-		      "error in conversion of 'abcdef' base 10 to int32: Success");
+		      "error converting 'abcdef' to integer");
 #endif
+    TEST_INVARIANTMSG(SINVARIANT(stringToInt32("0xghi", 16) == 0),
+		      "error converting '0xghi' to integer");
 }
 
 void test_caseconversion() {

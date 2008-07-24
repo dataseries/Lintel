@@ -12,26 +12,31 @@
 
 #include <cctype>
 
-#include <arpa/inet.h>
-#include <ctype.h>
+// #include <ctype.h>
 #include <errno.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/types.h>
 
-#include <boost/static_assert.hpp>
+#ifdef SYS_POSIX
+#include <sys/socket.h>
+#include <arpa/inet.h>
+#include <netdb.h>
+#include <netinet/in.h>
+#endif
+
+#ifdef SYS_NT
+#include <winsock2.h>
+#endif
+
 #include <boost/bind.hpp>
+#include <boost/static_assert.hpp>
+#include <boost/lexical_cast.hpp>
+#include <boost/integer_traits.hpp>
+#include <boost/format.hpp>
 
 #include <Lintel/StringUtil.hpp>
 #include <Lintel/AssertBoost.hpp>
-
-#ifdef __HP_aCC
-#include <inttypes.h>
-#endif
 
 using namespace std;
 using boost::format;
@@ -190,32 +195,30 @@ suffixequal(const string &str, const string &prefix)
     return str.compare(str.size() - prefix.size(),prefix.size(),prefix) == 0;
 }
 
-
 string
 ipv4tostring(uint32_t val)
 {
-    char buf[50];
-    sprintf(buf,"%d.%d.%d.%d",
-	    (unsigned int)(val >> 24) & 0xFF,
-	    (unsigned int)(val >> 16) & 0xFF,
-	    (unsigned int)(val >> 8) & 0xFF,
-	    (unsigned int)(val >> 0) & 0xFF);
-    return string(buf);
+    return boost::str(boost::format("%d.%d.%d.%d")
+		      % ((unsigned int)(val >> 24) & 0xFF)
+		      % ((unsigned int)(val >> 16) & 0xFF)
+		      % ((unsigned int)(val >> 8) & 0xFF)
+		      % ((unsigned int)(val >> 0) & 0xFF));
 }
+
+// TODO: in_addr_t and friends under windows needs to be figured out
+#ifdef SYS_POSIX
 
 uint32_t
 stringtoipv4(const string &val)
 {
-#ifdef __CYGWIN__
-    in_addr addr;
-#else
-    struct in_addr addr;
-#endif
-    INVARIANT(inet_aton(val.c_str(), &addr) != 0,
+    in_addr_t addr;
+    INVARIANT((addr = inet_addr(val.c_str())) != (in_addr_t)-1,
 	      boost::format("Unable to convert %s to inet address")
 	      % val);
-    return static_cast<uint32_t>(ntohl(addr.s_addr));
+    return static_cast<uint32_t>(ntohl(addr));
 }
+
+#endif // SYS_POSIX
 
 double
 stringToDouble(const string &str)
@@ -229,127 +232,83 @@ stringToDouble(const string &str)
     return ret;
 }
 
-// TODO: this seems to silently accept longs > 2^31-1 and truncates them to
-// 2^31-1.
+// TODO: is there any (dis)advantage to using lexical_cast ?
+template<typename T>
+T stringToInteger(const std::string &str, int base) {
+    BOOST_STATIC_ASSERT(boost::is_integral<T>::value);
+    T ret = 0;
+    if (base == 10) {
+	try {
+	    ret = boost::lexical_cast<T>(str);
+	}
+	catch (boost::bad_lexical_cast &) {
+	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
+	}
+    }
+    else {
+	std::istringstream iss(str);
+	switch(base) {
+	case 16:
+	    iss >> std::hex >> ret;
+	    break;
+	case 8:
+	    iss >> std::oct >> ret;
+	    break;
+	default:
+	    FATAL_ERROR(boost::format("base %d unsupported: 8, 10 or 16 only") % base);
+	    break;
+	}
+	if (iss.fail()) {
+	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
+	}
+    }
+    return ret;
+}
 
 long
 stringToLong(const string &str, int base)
 {
-    char *endptr = NULL;
-    INVARIANT(!str.empty(), 
-	      "zero length string not valid in conversion to double");
-    long ret = strtol(str.c_str(),&endptr, base);
-    INVARIANT(*endptr == '\0',
-	      boost::format("didn't parse all of '%s' as a long long") % str);
-    return ret;
+    return stringToInteger<long>(str, base);
 }
-
-#ifdef __HP_aCC
-#define strtoll __strtoll
-#endif
 
 long long
 stringToLongLong(const string &str, int base)
 {
-    char *endptr = NULL;
-    INVARIANT(!str.empty(),
-	      "zero length string not valid in conversion to double");
-    long long ret = strtoll(str.c_str(),&endptr, base);
-    INVARIANT(*endptr == '\0',
-	      boost::format("didn't parse all of '%s' as a long long") % str);
-    return ret;
+    return stringToInteger<long long>(str, base);
 }
-
-// FUTURE: Seems there should be some way to templatize the next 4 of
-// these since they're all the same code except substitutions of
-// [u]int{32,64}_t, and strto[u]l[l]
 
 int32_t
 stringToInt32(const string &str, int base)
 {
-    BOOST_STATIC_ASSERT(sizeof(long int) >= sizeof(int32_t));
-
-    errno = 0;
-    char *endptr = NULL;
-    INVARIANT(str.size() > 0,
-	      "string must not be size 0 for convertion to an int32");
-    long int v = strtol(str.c_str(), &endptr, base);
-    if (sizeof(long int) != sizeof(int32_t)) {
-	if (v > INT32_MAX || v < INT32_MIN) {
-	    errno = ERANGE;
-	}
-    }
-    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
-	      boost::format("error in conversion of '%s' base %d to int32: %s")
-	      % str % base % strerror(errno));
-    return v;
+    return stringToInteger<int32_t>(str, base);
 }
 
 uint32_t
 stringToUInt32(const string &str, int base)
 {
-    BOOST_STATIC_ASSERT(sizeof(unsigned long int) >= sizeof(uint32_t));
-
-    errno = 0;
-    char *endptr = NULL;
-    INVARIANT(str.size() > 0,
-	      "string must not be size 0 for convertion to an uint32");
-    unsigned long int v = strtoul(str.c_str(), &endptr, base);
-    if (sizeof(unsigned long int) != sizeof(uint32_t)) {
-	if (v > UINT32_MAX) {
-	    errno = ERANGE;
-	}
-    }
-    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
-	      boost::format("error in conversion of '%s' base %d to uint32: %s")
-	      % str % base % strerror(errno));
-    return v;
+    return stringToInteger<uint32_t>(str, base);
 }
 
 int64_t
 stringToInt64(const string &str, int base)
 {
-    BOOST_STATIC_ASSERT(sizeof(long long int) >= sizeof(int64_t));
-
-    errno = 0;
-    char *endptr = NULL;
-    INVARIANT(str.size() > 0,
-	      "string must not be size 0 for convertion to an int64");
-    long long int v = strtoll(str.c_str(), &endptr, base);
-
-    if (sizeof(long long int) != sizeof(int64_t)) {
-	if (v > INT64_MAX || v < INT64_MIN) {
-	    errno = ERANGE;
-	}
-    }
-    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
-	      boost::format("error in conversion of '%s' base %d to int64: %s")
-	      % str % base % strerror(errno));
-    return v;
+    return stringToInteger<int64_t>(str, base);
 }
 
 uint64_t
 stringToUInt64(const string &str, int base)
 {
-    BOOST_STATIC_ASSERT(sizeof(unsigned long long int) >= sizeof(uint64_t));
-
-    errno = 0;
-    char *endptr = NULL;
-    INVARIANT(str.size() > 0,
-	      "string must not be size 0 for convertion to an uint64");
-    unsigned long long int v = strtoull(str.c_str(), &endptr, base);
-
-    if (sizeof(unsigned long long int) != sizeof(uint64_t)) {
-	if (v > UINT64_MAX) {
-	    errno = ERANGE;
-	}
-    }
-    INVARIANT(errno == 0 && endptr == str.c_str() + str.size(), 
-	      boost::format("error in conversion of '%s' base %d to uint64: %s")
-	      % str % base % strerror(errno));
-    return v;
+    return stringToInteger<uint64_t>(str, base);
 }
-	      
+
+#ifdef SYS_NT
+namespace {
+    // isblank was a later POSIX/C99 addition, never picked up by windows
+    bool isblank(char c) {
+	return (c == ' ' || c == '\t');
+    }
+}
+#endif
 
 bool stringIsBlank(const string &str)
 {
@@ -371,6 +330,8 @@ bool stringIsSpace(const string &str)
     return true;
 }
 
+// not working on windows or cygwin?
+#ifdef SYS_POSIX
 #ifndef __CYGWIN__
 string getHostFQDN()
 {
@@ -380,7 +341,6 @@ string getHostFQDN()
     INVARIANT(rc == 0, "gethostname failed");
     string hostname(buf);
 
-#ifndef __CYGWIN__
     // Try to look up the host via netdb.  This is especially is
     // important on any host running DHCP, where the name returned by
     // gethostname isn't a FQDN on most configurations and usually
@@ -403,26 +363,35 @@ string getHostFQDN()
     }
     
     if (res) freeaddrinfo(res);
-#endif
 
     return hostname;
 }
 
 #endif
+#endif
 
 string stringError(int errnum)
 {
-    size_t buflen = 256;
+    const size_t buflen = 256;
     char buf[buflen];
 
+#ifdef SYS_POSIX
     // Note there are two strerror_r(3). See <string.h> for details.
-
     char *s = ::strerror_r(errnum, buf, buflen);
     if (s != NULL) {
 	return string(s);
     } else {
 	return "(NULL)";
     }
+#endif
+#ifdef SYS_NT
+    if (strerror_s(buf, buflen, errnum)) {
+	return "(NULL)";
+    }
+    else {
+	return string(buf);
+    }
+#endif
 }
 
 string downcaseString(const string &s)

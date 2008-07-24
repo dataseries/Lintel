@@ -24,10 +24,10 @@ LINTEL_SIMPLE_TEST(mersenneTwister)
 LINTEL_SIMPLE_TEST(pointerutil)
 LINTEL_SIMPLE_TEST(rotating_hashmap)
 LINTEL_SIMPLE_TEST(simple_mutex)
+LINTEL_SIMPLE_TEST(stringutil)
 LINTEL_SIMPLE_TEST(stats)
 LINTEL_SIMPLE_TEST(stats_quantile)
 LINTEL_SIMPLE_TEST(stats_sequence)
-LINTEL_SIMPLE_TEST(stringutil)
 
 ################################## SPECIAL TEST PROGRAMS
 

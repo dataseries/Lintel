@@ -14,8 +14,8 @@
 
 #include <string>
 #include <vector>
-#include <inttypes.h>
 #include <locale>
+#include <stdint.h>
 
 /** split instr into all of the separate strings separated by splitstr, and
     put the results into bits; alternately, and probably better, use
@@ -70,6 +70,12 @@ uint32_t stringtoipv4(const std::string &str);
 /** same as strtod, but bails out if the string isn't valid */
 double stringToDouble(const std::string &str);
 
+/** convert a string into the given integer type. Asserts out if given a
+    bad string or value is too large to fit in given type */
+template<typename T>
+T stringToInteger(const std::string &str, int base = 10);
+
+// TODO: deprecate *all*the stringToX functions in favor of stringToInteger
 // TODO: deprecate stringToLong, stringToLongLong in favor of [u]int{32,64}
 /** same as strtol, but bails out if the string isn't valid */
 long stringToLong(const std::string &str, int base = 10);
