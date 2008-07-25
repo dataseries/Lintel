@@ -13,10 +13,11 @@
 #ifndef LINTEL_DEQUE_HPP
 #define LINTEL_DEQUE_HPP
 
+#include <vector>
+
 #include <boost/utility.hpp>
 
 #include <Lintel/AssertBoost.hpp>
-#include <new>
 // don't use deque for runnable; it has horrid performance on
 // HP-UX (~10us / insertion to empty deque) Instead, standard
 // rules on a rotating vector, valid range is [runnable_front
@@ -27,7 +28,7 @@ template <class T>
 class Deque : boost::noncopyable {
 public:
     Deque(unsigned default_size = 8) 
-	: q_front(0), q_back(0), q_size(default_size), is_resizeable(true) {
+	: q_front(0), q_back(0), q_size(default_size) {
 	INVARIANT(q_size > 1, "Must have size at least 2\n");
 	deque = new T[q_size];
     }
@@ -37,19 +38,6 @@ public:
     }
     typedef Deque<T> mytype;
 
-#if ENABLE_SHMEM
-    // Allocating it in this way means you should not! delete the
-    // returned value, and it is not resizeable.
-    static mytype *newSHM(SHMAlloc &shmem, int final_size) {
-	void *_ret = shmem.alloc(sizeof(mytype));
-	
-	mytype *ret = new(_ret) Deque(shmem, final_size);
-	INVARIANT(ret == _ret && ret->is_resizeable == false,
-		  "placement new didn't work correctly??");
-	return ret;
-    }
-#endif
-	
     T &front() {
 	DEBUG_INVARIANT(!empty(), "front() on empty deque"); 
 	return deque[q_front];
@@ -62,22 +50,29 @@ public:
 	DEBUG_INVARIANT(!empty(), "pop_front() on empty dequeue");
 	q_front = (q_front + 1) % q_size;
     }
-    bool push_back(const T &val) { // returns false if unable to push on because it's full
+    void push_back(const T &val) { 
 	unsigned back_next = (q_back + 1) % q_size; 
 	if (back_next != q_front) {
 	    deque[q_back] = val;
 	    q_back = back_next;
-	    return true;
 	} else { 
 	    push_expand(val);
-	    return true;
 	}
     }
+    /// Add in an entire vector of values onto the back.
+    void push_back(const std::vector<T> &vals) {
+	typedef typename std::vector<T> vectorT;
+	typedef typename std::vector<T>::const_iterator vector_iterator;
+	for(vector_iterator i = vals.begin(); 
+	    i != vals.end(); ++i) {
+	    push_back(*i);
+	}
+    }
+
     bool empty() const { return q_front == q_back;} ;
     unsigned size() const { return (q_back + q_size - q_front) % q_size; }
 
     void resize(int new_size) {
-	INVARIANT(is_resizeable,"This deque isn't resizeable!");
 	INVARIANT(empty(),"Lame implementation only does reserve when empty");
 	INVARIANT(new_size > 0, "Must have size at least 1");
 	new_size += 1; // for the empty entry that always exists
@@ -142,17 +137,7 @@ public:
 
 private:
     friend class iterator;
-#if ENABLE_SHMEM
-    Deque(SHMAlloc &shmem, int final_size) 
-	: q_front(0), q_back(0), q_size(final_size), is_resizeable(false) {
-	deque = (T *)shmem.alloc(sizeof(T) * final_size);
-    }
-#endif
     void push_expand(const T &val) {
-	INVARIANT(is_resizeable, 
-		  boost::format("this deque is not resizeable, and is"
-				"full with %d items") % q_size);
-		  
 	T *new_deque = new T[q_size * 2];
 	unsigned i = 0;
 	// copy back to 0 offset
@@ -185,8 +170,6 @@ private:
     unsigned q_front; 
     unsigned q_back;
     unsigned q_size;
-
-    bool is_resizeable;
 };
 
 void DequeTest();

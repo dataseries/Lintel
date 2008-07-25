@@ -28,6 +28,7 @@ LINTEL_SIMPLE_TEST(stringutil)
 LINTEL_SIMPLE_TEST(stats)
 LINTEL_SIMPLE_TEST(stats_quantile)
 LINTEL_SIMPLE_TEST(stats_sequence)
+LINTEL_SIMPLE_TEST(deque)
 
 ################################## SPECIAL TEST PROGRAMS
 
