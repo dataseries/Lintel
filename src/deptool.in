@@ -877,11 +877,12 @@ sub srcDir {
 	s!^(($debug)|($opt))/!!o;
 	if (-d "$projects/$_") {
 	    $_ = "$projects/$_";
-	} elsif (m!^(\w[^/]+)-(\w+)(/.*)?$!o && -d "$projects/$1$3") {
+	} elsif (m!^(\w[^/]+)-(\w+)(/.*)$!o && -d "$projects/$1/$3") {
 	    $build_subdir = $2;
 	    $_ = "$projects/$1$3";
-	} elsif (m!^(\w[^/]+)-(\w+)(/.*)?$!o) {
-	    die "?? '$1' '$2'";
+	} elsif (m!^(\w[^/]+)-(\w+)$!o && -d "$projects/$1") {
+	    $build_subdir = $2;
+	    $_ = "$projects/$1";
 	} else {
 	    die "$start is under a build directory, but can't find related source dir";
 	}
