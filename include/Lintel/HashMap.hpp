@@ -148,6 +148,9 @@ public:
 	}
     };
 
+    // FUTURE: Make this function const. May have to const the returned V*. This
+    // may affect much code, so Jay held off on doing this change for now (July
+    // 28, 2008). --Jay
     V *lookup(const K &k) {
 	value_type fullval; fullval.first = k;
 	value_type *v = hashtable.lookup(fullval);
