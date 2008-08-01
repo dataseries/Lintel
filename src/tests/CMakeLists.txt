@@ -67,3 +67,7 @@ IF(THREADS_ENABLED)
     LINTEL_SIMPLE_TEST(pthread)
     TARGET_LINK_LIBRARIES(pthread LintelPThread)
 ENDIF(THREADS_ENABLED)
+
+IF(LATEX_ENABLED)
+    ADD_TEST(lintel-latex-rebuild ${CMAKE_CURRENT_BINARY_DIR}/../lintel-latex-rebuild --selfcheck)
+ENDIF(LATEX_ENABLED)
