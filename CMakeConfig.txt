@@ -28,10 +28,17 @@ IF(NOT Boost_FOUND)
     MESSAGE(FATAL_ERROR "ERROR: Could NOT find the Boost includes and libraries")
 ENDIF(NOT Boost_FOUND)
 
-# TODO: what is perl needed for?
+INCLUDE(LintelFind)
+SET(BOOST_THREAD_REQUIRED ON)
+LINTEL_FIND_LIBRARY(BOOST_THREAD boost/thread/tss.hpp boost_thread)
+IF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+    MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs")
+ENDIF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+
+# TODO: make this optional and optionalize all of the things that need it.
 FIND_PROGRAM(PERL_BINARY perl)
 IF (NOT PERL_BINARY)
-    MESSAGE(FATAL_ERROR "ERROR: Could NOT find perl")
+    MESSAGE(FATAL_ERROR "ERROR: Could NOT find perl; would not be able to build batch-parallel, deptool, lintel-flock, mercury-plot")
 ENDIF(NOT PERL_BINARY)
 
 ##### Optional bits

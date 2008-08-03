@@ -25,12 +25,14 @@ public:
     unsigned line;
     const std::string msg;
 
-    virtual const char *what();
+    virtual const char *what() throw ();
     const std::string summary();
     AssertBoostException(const char *a, const char *b, unsigned c,
 			 const std::string &d) 
-	: expression(a), filename(b), line(c), msg(d) { }
+	: expression(a), filename(b), line(c), msg(d), save_what() { }
     virtual ~AssertBoostException() throw ();
+private:
+    std::string save_what;
 };
 
 
@@ -93,6 +95,9 @@ extern std::string global_assertboost_no_details;
 	)
 
 #define DEBUG_SINVARIANT(ExpressioN) DEBUG_INVARIANT(ExpressioN, global_assertboost_no_details);
+// TODO: deprecate this, then drop LintelAssert; if we want
+// fine-grained debug checks like this we should be doing something
+// like LintelLog.
 #define DEBUG_CHECK(LeveL, ExpressioN, MessagE) \
 	( \
 	 LIKELY(AssertLevel < (LeveL)) ? (void)0 : \

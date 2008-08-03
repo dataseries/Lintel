@@ -22,53 +22,53 @@ using namespace std;
 
 static vector<assert_hook_fn> pre_msg_fns, post_msg_fns;
 string global_assertboost_no_details("No additional details provided");
+static const char *default_what = 
+   "AssertBoostException: unable to use summary() to get full error -- out of memory?";
 
-const char * AssertBoostException::what() 
-{
-    // can't manufacture a string here or else we space leak.  Grr, why
-    // did the committee not use std::string?
-    return "AssertBoostException, use summary() to get full error";
+const char * AssertBoostException::what() throw () {
+    const char *ret = default_what;
+    try { 
+	if (save_what.empty()) {
+	    save_what = summary();
+	}
+	ret = save_what.c_str();
+    } catch (...) {
+	ret = default_what;
+    }
+    return default_what;
 }
 
-const std::string AssertBoostException::summary()
-{
+const std::string AssertBoostException::summary() {
     return (boost::format("AssertBoostException(%s,%s,%d,%s)")
 	    % expression % filename % line % msg).str();
 }
 
 AssertBoostException::~AssertBoostException() throw ()
-{
-}
+{ }
 
 void AssertBoostThrowExceptionFn(const char *a, const char *b, unsigned c,
-				 const std::string &d)
-{
+				 const std::string &d) {
     throw AssertBoostException(a,b,c,d);
 }
 
 static void noArgHook(void (*fn)(), const char *, const char *, unsigned,
-		      const string &)
-{
+		      const string &) {
     fn();
 }
 
-void AssertBoostFnBefore(const assert_hook_fn &fn)
-{
+void AssertBoostFnBefore(const assert_hook_fn &fn) {
     pre_msg_fns.push_back(fn);
 }
 
-void AssertBoostFnAfter(void (*fn)())
-{
+void AssertBoostFnAfter(void (*fn)()) {
     AssertBoostFnAfter(boost::bind(noArgHook, fn, _1, _2, _3, _4));
 }
 
-void AssertBoostFnAfter(const assert_hook_fn &fn)
-{
+void AssertBoostFnAfter(const assert_hook_fn &fn) {
     post_msg_fns.push_back(fn);
 }
 
-void AssertBoostClearFns()
-{
+void AssertBoostClearFns() {
     pre_msg_fns.clear();
     post_msg_fns.clear();
 }
@@ -76,8 +76,7 @@ void AssertBoostClearFns()
 static bool assert_boost_fail_recurse;
 
 static void AssertBoostFailOutput(const char *expression, const char *file, 
-				  int line, const string &msg)
-{
+				  int line, const string &msg) {
     fflush(stderr);  cerr.flush(); // Belts ...
     fflush(stdout);  cout.flush(); // ... and braces
 	
@@ -93,8 +92,7 @@ static void AssertBoostFailOutput(const char *expression, const char *file,
 
 static void AssertBoostFailDie() FUNC_ATTR_NORETURN;
 
-void AssertBoostFailDie() 
-{
+void AssertBoostFailDie() {
     abort();	 // try to die
     exit(173);   // try harder to die
     kill(getpid(), 9); // try hardest to die
@@ -129,8 +127,7 @@ public:
 };
 
 void AssertBoostFail(const char *expression, const char *file, int line,
-		     const string &msg)
-{
+		     const string &msg) {
     fflush(stderr);  cerr.flush(); // Belts ...
     fflush(stdout);  cout.flush(); // ... and braces
 
@@ -158,8 +155,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 }
 
 void AssertBoostFail(const char *expression, const char *file, int line,
-		     boost::format &format)
-{
+		     boost::format &format) {
     string msg;
     try {
 	msg = format.str();
