@@ -12,6 +12,16 @@ usage() {
     exit 0
 }
 
+if [ "$1" = "--selfcheck" ]; then
+    for i in @LATEX_COMPILER@ @BIBTEX_COMPILER@ @DVIPS_CONVERTER@ @PS2PDF14_CONVERTER@; do
+	if [ ! -x $i ]; then
+	    echo "lintel-latex-rebuild selfcheck failed; $i is missing"
+	    exit 1
+	fi
+    done
+    exit 0
+fi
+
 [ $# != 2 -o "$1" = "-h" ] && usage "Missing arguments ($#)"
 
 [ ! -d "$1" ] && usage "'$1' is not a directory"
