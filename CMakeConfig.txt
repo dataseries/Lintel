@@ -29,7 +29,7 @@ IF(NOT Boost_FOUND)
 ENDIF(NOT Boost_FOUND)
 
 INCLUDE(LintelFind)
-SET(BOOST_THREAD_REQUIRED ON)
+SET(BOOST_THREAD_FIND_REQUIRED ON)
 LINTEL_FIND_LIBRARY(BOOST_THREAD boost/thread/tss.hpp boost_thread)
 IF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
     MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs")
