@@ -11,7 +11,7 @@
 
 #include <stdio.h>
 
-#include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/MersenneTwisterRandom.hpp>
 
 int 
 main()

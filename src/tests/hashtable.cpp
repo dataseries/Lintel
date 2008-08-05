@@ -10,9 +10,9 @@
 
 #include <stdio.h>
 
-#include <Lintel/HashTable.H>
-#include <Lintel/HashMap.H>
-#include <Lintel/AssertBoost.H>
+#include <Lintel/HashTable.hpp>
+#include <Lintel/HashMap.hpp>
+#include <Lintel/AssertBoost.hpp>
 
 using namespace std;
 

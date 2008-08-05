@@ -10,7 +10,7 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <Lintel/LintelAssert.H>
+#include <Lintel/LintelAssert.hpp>
 
 
 ////////////////////////////////////////////////////////////////
