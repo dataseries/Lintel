@@ -84,16 +84,22 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 extern std::string global_assertboost_no_details;
 #define SINVARIANT(ExpressioN) INVARIANT(ExpressioN, global_assertboost_no_details);
 
-#if DEBUG
-#define DEBUG_INVARIANT(ExpressioN, MessagE) \
+#ifdef DEBUG
+#  if DEBUG
+#    define LINTEL_ASSERT_BOOST_DEBUG
+#  endif
+#endif
+
+#ifdef LINTEL_ASSERT_BOOST_DEBUG
+#  define DEBUG_INVARIANT(ExpressioN, MessagE) \
 	( \
          LIKELY(ExpressioN) ? (void)0 : \
 	 AssertBoostFail(#ExpressioN, __FILE__, __LINE__, \
 		         MessagE) \
 	)
 
-#define DEBUG_SINVARIANT(ExpressioN) DEBUG_INVARIANT(ExpressioN, global_assertboost_no_details);
-#define DEBUG_CHECK(LeveL, ExpressioN, MessagE) \
+#  define DEBUG_SINVARIANT(ExpressioN) DEBUG_INVARIANT(ExpressioN, global_assertboost_no_details);
+#  define DEBUG_CHECK(LeveL, ExpressioN, MessagE) \
 	( \
 	 LIKELY(AssertLevel < (LeveL)) ? (void)0 : \
 	 LIKELY(ExpressioN) ? (void)0 : \
@@ -101,11 +107,11 @@ extern std::string global_assertboost_no_details;
 		         MessagE) \
 	)
 
-
+#  undef LINTEL_ASSERT_BOOST_DEBUG
 #else
-#define DEBUG_INVARIANT(ExpressioN, MessagE) do { } while(0)
-#define DEBUG_SINVARIANT(ExpressioN) do { } while(0)
-#define DEBUG_CHECK(LeveL, ExpressioN, MessagE) do { } while(0)
+#  define DEBUG_INVARIANT(ExpressioN, MessagE) do { } while(0)
+#  define DEBUG_SINVARIANT(ExpressioN) do { } while(0)
+#  define DEBUG_CHECK(LeveL, ExpressioN, MessagE) do { } while(0)
 #endif
 
 #endif
