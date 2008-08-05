@@ -214,9 +214,9 @@ string PThreadScopedOnlyMutex::debugInfo() const {
     // glibc 2.5 (but maybe earlier)
     // code by ch
     return (format("mutex %p: recursive-depth %d owner %p kind %d lock %d") 
-	    % reinterpret_cast<void *>(&m) 
+	    % reinterpret_cast<const void *>(&m) 
 	    % m.__data.__count 
-	    % reinterpret_cast<void *>(m.__data.__owner) 
+	    % reinterpret_cast<const void *>(m.__data.__owner) 
 	    % m.__data.__kind 
 	    % m.__data.__lock).str();
 }
