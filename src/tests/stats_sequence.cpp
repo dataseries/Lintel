@@ -7,9 +7,9 @@
 #include <iostream> 
 #include <fstream>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/StatsSequence.H>
-#include <Lintel/MersenneTwisterRandom.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/StatsSequence.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
 
 int
 main()

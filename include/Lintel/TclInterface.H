@@ -1,2 +1,2 @@
-// TODO: generate warning after next release, deprecate after that
+#warning Lintel/TclInterface.H will be removed after the next release.  Please use Lintel/TclInterface.hpp
 #include <Lintel/TclInterface.hpp>

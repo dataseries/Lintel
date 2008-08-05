@@ -16,10 +16,10 @@
 #include <algorithm>
 #include <ostream>
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/Double.H>
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/StatsQuantile.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
 

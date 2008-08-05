@@ -4,7 +4,7 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/Clock.H>
+#include <Lintel/Clock.hpp>
 
 int
 main()

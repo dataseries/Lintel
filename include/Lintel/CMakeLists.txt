@@ -68,7 +68,6 @@ SET(TRANSITIONAL_INCLUDE_FILES
 	StatsSequence.H
 	StatsSeries.H
 	StatsSeriesGroup.H
-	streamcompat.H
 	StringUtil.H
 )
 
