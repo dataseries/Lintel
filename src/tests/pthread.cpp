@@ -38,7 +38,7 @@ void test_isLocked() {
 void test_orderingGroup() {
     PThreadLockOrderingGroup ordering_group;
 
-    PThreadMutex level1,level2,level3;
+    PThreadMutex level1, level2, level3;
 
     // test valid+invalid scope locked
     try {
@@ -90,7 +90,21 @@ void test_orderingGroup() {
 	SINVARIANT(!level3.isLocked());
 #endif
     }
+
+    {
+	PThreadScopedOnlyMutex scoped_only;
+	PThreadScopedLock lock_scoped_only(scoped_only, ordering_group, 0.1);
+	PThreadScopedUnlock unlock_scoped_only(lock_scoped_only);
+    }
+
     cout << "passed test_orderingGroup();\n";
+}
+
+void test_doesNotCompile() {
+    PThreadScopedOnlyMutex m;
+
+    PThreadScopedLock foo(m); // this is fine
+    // m.lock(); // this is not.
 }
 
 int main(int argc, char *argv[]) {

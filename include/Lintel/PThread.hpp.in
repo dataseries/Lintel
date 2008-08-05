@@ -80,25 +80,33 @@ public:
     virtual pthread_t start();
 };
 
-class PThreadMutex : boost::noncopyable {
+class PThreadScopedOnlyMutex : boost::noncopyable {
 public:
 #if DEBUG
-#define DEFAULT_ERRORCHECK true
+#define LINTEL_PTHREAD_DEFAULT_ERRORCHECK true
 #else
-#define DEFAULT_ERRORCHECK false
+#define LINTEL_PTHREAD_DEFAULT_ERRORCHECK false
 #endif
-    PThreadMutex(bool errorcheck = DEFAULT_ERRORCHECK);
-    ~PThreadMutex();
-    void lock() {
-	if (trylock()) {
-	    return;
-	}
-	int ret = pthread_mutex_lock(&m);
-	INVARIANT(ret==0, boost::format("pthread_mutex_lock failed: %s") 
-		  % strerror(ret));
-	++ncontention;
+    PThreadScopedOnlyMutex(bool errorcheck 
+			   = LINTEL_PTHREAD_DEFAULT_ERRORCHECK);
+    ~PThreadScopedOnlyMutex();
+
+    bool isLocked() const {
+#define LINTEL_PTHREAD_ISLOCKED_AVAILABLE @HAS_PTHREAD_ISLOCKED@
+#if @HAS_PTHREAD_ISLOCKED@
+	return @PTHREAD_ISLOCKED_EXPR@;
+#else
+	FATAL_ERROR("don't know how to implement PThreadMutex.islocked() on this platform");
+#endif
     }
 
+    unsigned getContention() const{ 
+	return ncontention;
+    }
+
+    std::string debugInfo() const;
+
+protected:
     bool trylock() {
         int ret = pthread_mutex_trylock(&m);
         if (ret == 0) {
@@ -110,6 +118,16 @@ public:
         return false;
     }
 
+    void lock() {
+	if (trylock()) {
+	    return;
+	}
+	int ret = pthread_mutex_lock(&m);
+	INVARIANT(ret==0, boost::format("pthread_mutex_lock failed: %s") 
+		  % strerror(ret));
+	++ncontention;
+    }
+
     void unlock() {
 	int ret = pthread_mutex_unlock(&m);
 	INVARIANT(ret==0,
@@ -117,24 +135,33 @@ public:
 		  % strerror(ret));
     }
     
-    bool isLocked() const {
-#define LINTEL_PTHREAD_ISLOCKED_AVAILABLE @HAS_PTHREAD_ISLOCKED@
-#if @HAS_PTHREAD_ISLOCKED@
-	return @PTHREAD_ISLOCKED_EXPR@;
-#else
-	FATAL_ERROR("don't know how to implement PThreadMutex.islocked() on this platform");
-#endif
-    }
-
-    unsigned getContention() { 
-	return ncontention;
-    }
-    std::string debugInfo();
-
-private:
     friend class PThreadCond;
+    friend class PThreadScopedLock;
+    friend class PThreadScopedUnlock;
+
     unsigned ncontention;
     pthread_mutex_t m;
+};
+
+class PThreadMutex : public PThreadScopedOnlyMutex {
+public:
+    PThreadMutex(bool errorcheck = LINTEL_PTHREAD_DEFAULT_ERRORCHECK)
+	: PThreadScopedOnlyMutex(errorcheck) 
+    { }
+    ~PThreadMutex() { }
+
+    bool trylock() {
+	return PThreadScopedOnlyMutex::trylock();
+    }
+
+    void lock() {
+	PThreadScopedOnlyMutex::lock();
+    }
+
+    void unlock() {
+	PThreadScopedOnlyMutex::unlock();
+    }
+
 };
 
 /// Use this class to define a set of related mutexes/locks that will
@@ -183,16 +210,18 @@ private:
 /// when the stack frame goes out of scope.
 class PThreadScopedLock : boost::noncopyable {
 public:
-    explicit PThreadScopedLock(PThreadMutex &_mutex) 
+#ifndef LINTEL_PTHREAD_DISABLE_NONORDERED_SCOPED_LOCK
+    explicit PThreadScopedLock(PThreadScopedOnlyMutex &_mutex) 
 	: mutex(_mutex), ordering_group(NULL), old_level(0), mutex_level(0)
     {
 	mutex.lock();
     }
+#endif
 
     /// Define this lock as part of an ordered group; it is ok to take
     /// a lock at a higher level, but not one at a lower level.
-    PThreadScopedLock(PThreadMutex &_mutex, PThreadLockOrderingGroup &group,
-		      double _mutex_level) 
+    PThreadScopedLock(PThreadScopedOnlyMutex &_mutex, 
+		      PThreadLockOrderingGroup &group, double _mutex_level) 
 	: mutex(_mutex), ordering_group(NULL), mutex_level(_mutex_level)
     {
 	old_level = group.scopeDown(mutex_level);
@@ -217,7 +246,7 @@ public:
 
 private:
     friend class PThreadScopedUnlock;
-    PThreadMutex &mutex;
+    PThreadScopedOnlyMutex &mutex;
     PThreadLockOrderingGroup *ordering_group;
     double old_level, mutex_level;
 };
@@ -249,6 +278,7 @@ private:
     PThreadScopedLock &parent;
 };
 
+#ifndef LINTEL_PTHREAD_DISABLE_NONORDERED_SCOPED_LOCK
 /// Old name for PThreadScopedLock; it was renamed to match with the
 /// naming convention from the boost libraries.
 class PThreadAutoLocker : public PThreadScopedLock {
@@ -257,7 +287,7 @@ public:
 	: PThreadScopedLock(_lock) 
     { }
 };
-
+#endif
 
 class PThreadCond : boost::noncopyable {
 public:
