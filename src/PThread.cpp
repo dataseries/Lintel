@@ -169,7 +169,9 @@ int PThread::kill(int sig) {
     return rc;
 }
 
-PThreadMutex::PThreadMutex(bool errorcheck) : ncontention(0) {
+PThreadScopedOnlyMutex::PThreadScopedOnlyMutex(bool errorcheck) 
+    : ncontention(0) 
+{
     pthread_mutexattr_t attr;
     SINVARIANT(pthread_mutexattr_init(&attr)==0);
 #if __linux__
@@ -187,7 +189,7 @@ PThreadMutex::PThreadMutex(bool errorcheck) : ncontention(0) {
     SINVARIANT(pthread_mutex_init(&m,&attr)==0);
 }
 
-PThreadMutex::~PThreadMutex() {
+PThreadScopedOnlyMutex::~PThreadScopedOnlyMutex() {
     int ret = pthread_mutex_destroy(&m);
     INVARIANT(ret == 0,
 	      format("unable to destroy mutex: %s") % strerror(ret));
@@ -195,12 +197,12 @@ PThreadMutex::~PThreadMutex() {
 
 #if GLIBC_PTHREADS && GLIBC_OLD_PTHREADS
 #define PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED 1
-string PThreadMutex::debugInfo() {
+string PThreadScopedOnlyMutex::debugInfo() const {
     // this is for some version of glibc prior to 2.5 (but maybe earlier)
     // code by ea
     return (format("mutex %p: recursive-depth %d owner %p kind %d status %d spinlock %d") 
-	    % reinterpret_cast<void *>(&m) % m.__m_count 
-	    % reinterpret_cast<void *>(m.__m_owner) % m.__m_kind 
+	    % reinterpret_cast<const void *>(&m) % m.__m_count 
+	    % reinterpret_cast<const void *>(m.__m_owner) % m.__m_kind 
 	    % m.__m_lock.__status 
 	    % static_cast<uint32_t>(m.__m_lock.__spinlock)).str();
 }
@@ -208,7 +210,7 @@ string PThreadMutex::debugInfo() {
 
 #if GLIBC_PTHREADS && !GLIBC_OLD_PTHREADS
 #define PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED 1
-string PThreadMutex::debugInfo() {
+string PThreadScopedOnlyMutex::debugInfo() const {
     // glibc 2.5 (but maybe earlier)
     // code by ch
     return (format("mutex %p: recursive-depth %d owner %p kind %d lock %d") 
@@ -222,7 +224,7 @@ string PThreadMutex::debugInfo() {
 
 // fallback definition
 #if !defined(PTHREADMUTEX_PLATFORM_DEBUG_INFO_DEFINED)
-string PThreadMutex::debugInfo() {
+string PThreadScopedOnlyMutex::debugInfo() const {
     return "no debugging information available on this platform";
 }
 #endif

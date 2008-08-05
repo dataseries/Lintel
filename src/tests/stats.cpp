@@ -4,10 +4,10 @@
    See the file named COPYING for license details
 */
 
-#include <Lintel/AssertBoost.H>
-#include <Lintel/Double.H>
-#include <Lintel/MersenneTwisterRandom.H>
-#include <Lintel/Stats.H>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/Stats.hpp>
 
 void
 checkEqual(Stats &a, Stats &b)
