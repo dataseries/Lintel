@@ -13,9 +13,11 @@
 using namespace std;
 
 #include <stdio.h>
+#ifdef SYS_POSIX
 #include <sys/time.h>
-#include <sys/types.h>
 #include <dirent.h>
+#endif
+#include <sys/types.h>
 
 #include <algorithm>
 #include <vector>

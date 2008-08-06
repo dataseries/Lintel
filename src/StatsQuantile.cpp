@@ -417,7 +417,7 @@ StatsQuantile::collapse()
     INVARIANT(buffer_level[first_buffer] >= 0,
 	      "Whoa, buffer level should be positive");
     // first, sort each of the unsorted input buffers 
-    long long total_weight = 0;
+    int total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
 	total_weight += buffer_weight[i];
 	INVARIANT(buffer_weight[i] > 0,
@@ -490,7 +490,7 @@ StatsQuantile::collapse()
     }
     INVARIANT(next_quantile_offset / total_weight == buffer_size,
 	      boost::format("Huh, didn't get to correct quantile"
-			    " offset %lld/%lldd != %d?!")
+			    " offset %lld/%d != %d?!")
 	      % next_quantile_offset % total_weight % buffer_size);
 
     // update all_buffers[first_buffer]

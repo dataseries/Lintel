@@ -8,7 +8,9 @@
 #include <iostream>
 #include <queue>
 
+#ifdef SYS_POSIX
 #include <sys/time.h>
+#endif
 
 #include <boost/smart_ptr.hpp>
 #include <boost/utility.hpp>

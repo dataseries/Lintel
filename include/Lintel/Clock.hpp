@@ -13,10 +13,12 @@
 
 #include <math.h>
 #include <time.h>
+#ifdef SYS_POSIX
 #include <sys/time.h>
-#include <stdint.h>
 #include <pthread.h>
+#endif
 
+#include <stdint.h>
 #include <limits>
 
 #include <Lintel/AssertBoost.hpp>
@@ -37,6 +39,23 @@ extern "C" {
 
 #if defined(__linux__) && defined(__x86_64__)
 #include <asm/msr.h>
+#define HAVE_RDTSCLL 1
+#endif
+
+//TODO: how to determine processor architecture?
+#ifdef SYS_NT
+namespace {
+uint64_t rdtsc(void) {
+    __asm {
+	rdtsc
+        ret
+    }
+}
+
+void rdtscll(uint64_t &val) {
+    val = rdtsc();
+}
+}
 #define HAVE_RDTSCLL 1
 #endif
 
