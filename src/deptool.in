@@ -612,7 +612,7 @@ sub depCommitUnknown {
 	    print $fh "$cwd $sha1\n";
 	    close($fh);
 	    return;
-	} elsif ($_ eq 'ad') {
+	} elsif ($_ eq 'add') {
 	    print "Adding files...\n";
 	    runCommand("mtn","add","--unknown");
 	    return;
