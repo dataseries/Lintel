@@ -172,17 +172,13 @@ std::string
 StatsSeries::debugString() const
 {
     SINVARIANT(checkInvariants());
-
-    char line[1024];
-    if (count() == 0)
-	snprintf(line, sizeof line-1, "count 0");
-    else
-	snprintf(line, sizeof line-1, 
-		 "count %ld mean %G stddev %G var %G"
-		 " 95%%conf %G rel95%%conf %G min %G max %G samples %d maxlag %d",
-		 count(), mean(), stddev(), variance(),
-		 conf95(), relconf95(), min(), max(), sampleno, maxlag());
-    return std::string(line);
+    
+    return boost::str(boost::format("count %ld mean %G stddev %G var %G"
+				    " 95%%conf %G rel95%%conf %G min %G"
+				    " max %G samples %d maxlag %d")
+		      % count() % mean() % stddev() % variance()
+		      % conf95() % relconf95() % min()
+		      % max() % sampleno % maxlag());
 };
 
 

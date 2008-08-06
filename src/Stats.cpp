@@ -177,17 +177,15 @@ std::string Stats::debugString() const
     // XXX rewrite using std::ostrstream.
     DEBUG_SINVARIANT(checkInvariants());
 
-    char line[1024];
     if (count() == 0)
-	sprintf(line, "count 0");
+	return "count 0";
     else
-	sprintf(line,
-		"count %ld mean %G stddev %G var %G"
-		" 95%%conf %G rel95%%conf %G min %G max %G",
-		count(), mean(), stddev(), variance(),
-		conf95(), relconf95(), min(), max());
-    DEBUG_SINVARIANT(strlen(line) < 1024);
-    return std::string(line);
+	return boost::str(boost::format("count %ld mean %G stddev %G var %G"
+					" 95%%conf %G rel95%%conf %G"
+					" min %G max %G")
+			  % count() % mean() % stddev() % variance()
+			  % conf95() % relconf95() 
+			  % min() % max());
 };
 
 

@@ -17,25 +17,34 @@
 #include <fpu_control.h>
 #endif
 
-#include <math.h>
+#include <limits>
+
 #include <Lintel/Double.hpp>
 #include <Lintel/AssertBoost.hpp>
 
 double Double::default_epsilon = 1e-12;
 
-/*
- * this is how these used to be defined, before C9X was usable. Kept in case
- * we port to a system on which it isn't available.
- */
-
-// The warning about dividing by zero is unavoidable, sorry
 #ifndef NAN
-#define NAN 0.0/0.0
+#define NAN std::numeric_limits<double>::quiet_NaN()
 #endif
 #ifndef INFINITY
-#define INFINITY 1.0/0.0
+#define INFINITY std::numeric_limits<double>::infinity()
 #endif
 
+#ifdef SYS_NT
+inline bool isnan(double v)
+{
+    // comparisons with nan always fail
+    return !(v <= std::numeric_limits<double>::infinity())
+	|| !(v >= -std::numeric_limits<double>::infinity());
+}
+
+inline bool isinf(double v)
+{
+    return v == INFINITY || v == -INFINITY;
+}
+
+#endif
 
 // This is here because icc doesn't correctly handle the direct
 // assignment correctly; I don't know why and this problem is separate from

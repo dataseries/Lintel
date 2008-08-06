@@ -66,7 +66,7 @@ public:
 	BOOST_STATIC_ASSERT(sizeof(ConstantStringValue *) == 4 ||
 			    sizeof(ConstantStringValue *) == 8);
 	if (sizeof(ConstantStringValue *) == 4) {
-	    // guarenteed to be unique!
+	    // guaranteed to be unique!
 	    // Cast through size_t because on 64bit gcc 3.4.6
 	    // complains about the cast losing precision even though
 	    // this branch of the if is dead.
@@ -75,7 +75,7 @@ public:
 	} else if (sizeof(ConstantStringValue *) == 8) {
 	    // likely to be unique
 	    uint64_t v = reinterpret_cast<uint64_t>(myptr);
-	    return (v & 0xFFFFFFFFULL) ^ (v >> 32);
+	    return static_cast<uint32_t>((v & 0xFFFFFFFFULL) ^ (v >> 32));
 	} 
     }
     int compare(const ConstantString &rhs) const {

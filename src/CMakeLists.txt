@@ -18,23 +18,29 @@ IF(CMAKE_COMPILER_IS_GNUCXX)
     ADD_DEFINITIONS(-Wall)
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
+# these rely on threading support. Currently, Lintel only knows pthreads.
+IF (THREADS_ENABLED)
+    SET (LIBLINTEL_THREAD_SOURCES
+	Clock.cpp
+	LintelLog.cpp
+	SimpleMutex.cpp
+    )
+ENDIF (THREADS_ENABLED)
+
 SET(LIBLINTEL_SOURCES
 	AssertBoost.cpp
 	AssertException.cpp
-	Clock.cpp
 	ConstantString.cpp
 	Deque.cpp
 	Double.cpp
 	HashTable.cpp
 	LeastSquares.cpp
 	LintelAssert.cpp
-	LintelLog.cpp
 	LintelVersion.cpp
 	MathSpecialFunctions.cpp
 	Matrix.cpp
 	MersenneTwisterRandom.cpp
 	PriorityQueue.cpp
-	SimpleMutex.cpp
 	Stats.cpp
 	StatsEMA.cpp
 	StatsHistogram.cpp
@@ -45,6 +51,7 @@ SET(LIBLINTEL_SOURCES
 	StatsSeries.cpp
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
+	${LIBLINTEL_THREAD_SOURCES}
 )
 
 SET(LINTEL_FEATURES boost)

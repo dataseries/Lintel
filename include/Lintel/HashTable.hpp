@@ -11,7 +11,7 @@
 #ifndef LINTEL_HASH_TABLE_HPP
 #define LINTEL_HASH_TABLE_HPP
 
-#include <inttypes.h>
+#include <stdint.h>
 
 #include <iterator>
 #include <vector>

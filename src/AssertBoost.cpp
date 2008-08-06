@@ -92,13 +92,24 @@ static void AssertBoostFailOutput(const char *expression, const char *file,
 
 static void AssertBoostFailDie() FUNC_ATTR_NORETURN;
 
+#ifdef SYS_NT
+#include <windows.h> // for Sleep, see below
+#endif
+
 void AssertBoostFailDie() {
     abort();	 // try to die
     exit(173);   // try harder to die
+#ifdef SYS_POSIX
     kill(getpid(), 9); // try hardest to die
+#endif
     while(1) {
 	cerr << "**** Help, I'm still not dead????" << endl;
+#ifdef SYS_POSIX
 	sleep(1);
+#endif
+#ifdef SYS_NT
+	Sleep(1000);
+#endif
     }
     /*NOTREACHED*/
 }
@@ -159,9 +170,9 @@ void AssertBoostFail(const char *expression, const char *file, int line,
     string msg;
     try {
 	msg = format.str();
-    } catch (boost::io::too_many_args &e) {
+    } catch (boost::io::too_many_args &) {
 	msg = "**** Programmer error, format given too many arguments";
-    } catch (boost::io::too_few_args &e) {
+    } catch (boost::io::too_few_args &) {
 	msg = "**** Programmer error, format given too few arguments";
     } catch(...) {
 	msg = "**** Unknown error, exception thrown during format evaluation";

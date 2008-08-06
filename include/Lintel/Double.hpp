@@ -15,6 +15,11 @@
 #include <algorithm>
 #include <math.h>
 
+#ifdef SYS_NT
+inline bool isnan(double);
+inline bool isinf(double);
+#endif
+
 #undef abs
 // Performance notes for floating point: 
 // on T2600:

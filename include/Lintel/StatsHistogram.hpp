@@ -49,7 +49,9 @@
 #include <vector>
 #include <math.h>
 #ifndef __CYGWIN__
+#ifndef SYS_NT
 #include <values.h>
+#endif
 #endif
 #include <iostream>
 #include <fstream>

@@ -16,41 +16,37 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/MathSpecialFunctions.hpp>
 
+// TODO: how many of these are supported in boost::math?
 
+/*  Find  x such that  erf(x) == y ; use Newton's method */
 double inverseErf(double y)
 {
-  /*  Find  x such that  erf(x) == y ; use Newton's method */
-  double x0, y0, upperBound, lowerBound;
-  if (y >= 1.0) {
-    // %%% FIXME: There is a #define for NaN in some header file.
-    // %%% It is even an ANSI or POSIX standard. Use that instead.
-    #ifdef HUGE_VAL
-    return HUGE_VAL;
-    #else
-    return 1.0 / 0.0;	// +Infinity; should really return NaN for |y|>1 
-    #endif
-  }
-  else if (y <= -1.0) {
-    #ifdef HUGE_VAL
-    return -HUGE_VAL;
-    #else
-    return -1.0 / 0.0; // -Infinity 
-    #endif
-  }
+    // return NaN for |y|>1 
+    if (fabs(y) >= 1.0) {
+	return std::numeric_limits<double>::quiet_NaN();
+    }
 
-  /*An initial guess, based on a formula from Abramovitz & Stegun Ch 26. */
-  x0=sqrt(-2.*log(0.5*(1 - y))); 
-  x0=0.7071067811865476*(x0 - (2.515517 + x0*(0.802853 + x0*0.010328))/
-        (1.0 + x0*(1.432788 + x0*(0.189269 + x0*0.001308))));
+    /*An initial guess, based on a formula from Abramovitz & Stegun Ch 26. */
+    double x0=sqrt(-2.*log(0.5*(1 - y))); 
+    x0=0.7071067811865476*(x0 - (2.515517 + x0*(0.802853 + x0*0.010328))/
+			   (1.0 + x0*(1.432788 + x0*(0.189269 + x0*0.001308))));
 
-  upperBound=y*1.00000000000001;
-  lowerBound=y*0.99999999999999;
-  y0=erf(x0);
-  do {
-    x0 += (y - y0)*exp(x0*x0)*0.886226925452758; 
-    y0 = erf(x0); 
-  } while(y0>upperBound||y0<lowerBound);
-  return x0;
+    double upperBound=y*1.00000000000001;
+    double lowerBound=y*0.99999999999999;
+#if BOOST_VERSION >= 103500
+    double y0=boost::math::erf<double>(x0);
+#else
+    double y0=erf(x0);
+#endif
+    do {
+	x0 += (y - y0)*exp(x0*x0)*0.886226925452758; 
+#if BOOST_VERSION >= 103500
+	y0 = boost::math::erf<double>(x0); 
+#else
+	y0 = erf(x0); 
+#endif
+    } while(y0>upperBound||y0<lowerBound);
+    return x0;
 }
 
 //////////////////////////////////////////////////////////////////////////////

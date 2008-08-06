@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <limits>
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/StatsHistogram.hpp>
@@ -118,8 +119,8 @@ StatsHistogramUniform::add(const double value)
     if (is_growable  &&  (value < bin_low || value >= bin_high)) {
 	num_rescales++;		// About to do a reset, so count it
 	
-	if (value >= bin_high) {
-	    INVARIANT(value < MAXFLOAT/2, 
+	if (value >= bin_high) { 
+	    INVARIANT(value < std::numeric_limits<double>::max()/2, 
 		      boost::format("StatsHistogramUniform: unreasonably"
 				    "large upper value: %g") % value);
 	    unsigned new_num_bins // round to an even number
@@ -137,7 +138,7 @@ StatsHistogramUniform::add(const double value)
 	    num_bins = new_num_bins;
 	    bin_high = bin_low + new_num_bins * bin_width;
 	} else {
-	    INVARIANT(-value < MAXFLOAT/2,
+	    INVARIANT(-value < std::numeric_limits<double>::max()/2,
 		      boost::format("unreasonably large lower value: %lg")
 		      % value);
 	    unsigned new_num_bins // round to an even number
@@ -261,12 +262,9 @@ StatsHistogramUniform::debugString() const
 	return stat;
     }
 
-    char line[1024];		// Generate extra info into this
-    sprintf(line, " bins %u width %G range %G - %G rescales %u mode %G", 
-	    num_bins, bin_width, bin_low, bin_high, num_rescales,
-	    double(mode()));
-				// Then copy it and the base stuff together
-    return stat + line;
+    return stat + boost::str(boost::format(" bins %u width %G range %G - %G rescales %u mode %G")
+			     % num_bins % bin_width % bin_low % bin_high 
+			     % num_rescales % double(mode()));
 };
 
 
@@ -561,11 +559,10 @@ StatsHistogramLog::debugString() const
 	return stat;
     }
 
-    char line[1024];
-    sprintf(line, " bins %u smallest %G high %G mode %G", 
-	    num_bins, smallest_bin, bin_high, double(mode()));
-    return stat + line;
-};
+    return stat + boost::str(boost::format(" bins %u smallest %G high %G mode %G")
+			     % num_bins % smallest_bin % bin_high 
+			     % double(mode()));
+}
 
 void
 StatsHistogramLog::printRome(int depth, std::ostream &out)  const{

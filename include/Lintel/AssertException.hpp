@@ -25,7 +25,11 @@ public:
     }
     virtual ~AssertExceptionT() throw();
 
-    static std::string stringPrintF(const char *format, ...) __attribute__ ((format (printf,1,2)));
+    static std::string stringPrintF(const char *format, ...) 
+#ifdef __GNUC__
+       __attribute__ ((format (printf,1,2)))
+#endif
+	;
     const std::string condition;
     const std::string message;
     const char *filename;

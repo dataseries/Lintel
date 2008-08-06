@@ -14,24 +14,51 @@
 
 #include <math.h>
 
+#include <boost/version.hpp>
+/* TODO: when we decide to stop supporting older boost versions, this 
+   should be removed. Also, note the equivalent checks later in the file
+   and in the .cpp
+*/
+#if BOOST_VERSION >= 103500
+#include <boost/math/special_functions/erf.hpp>
+#else
+   // no erf() on windows
+#  if defined(SYS_NT)
+#     error need boost version >= 1.35
+#  endif
+#endif
+
 //////////////////////////////////////////////////////////////////////////////
 // Functions
 //////////////////////////////////////////////////////////////////////////////
 
 // The inverse of the Erf function, defined over the domain -1 < y < 1.
+// TODO: should probably be deprecated in favor of boost::math::erfc() ?
 double inverseErf(double y);
 
 // The cumulative distribution function of the unit Normal RV U;
 // unitNormalCDF(x) = Prob[U < x] = (1+erf(x/sqrt(2)))/2
-inline double unitNormalCDF(double x) 
-  {return 0.5*(1.0+ erf(0.70710678118654752440084436210485*x));};
+inline double unitNormalCDF(double x)
+{
+#if BOOST_VERSION >= 103500
+    return 0.5*(1.0+ boost::math::erf<double>(0.70710678118654752440084436210485*x));
+#else
+    return 0.5*(1.0+ erf(0.70710678118654752440084436210485*x));    
+#endif
+}
 
 // The probability that the absolute value of a measurement of a
 // unit normal-distributed quantity is above X.  This is the same
 // as the two-side folded cumulative distribution function of the
 // unit normal RV U:
 inline double probAbsNormal(double x)
-{ return 1. - erf(0.70710678118654752440084436210485*fabs(x)); }
+{
+#if BOOST_VERSION >= 103500
+    return 1. - boost::math::erf<double>(0.70710678118654752440084436210485*fabs(x));
+#else
+    return 1. - erf(0.70710678118654752440084436210485*fabs(x));
+#endif
+}
 
 // The probability density function of the unit Normal RV U;
 // unitNormalPDF(x) = unitNormalCDF'(x) = exp(-x*x/2)/sqrt(2 Pi)

@@ -8,8 +8,15 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
+#ifdef SYS_POSIX
 #include <sys/time.h>
 #include <unistd.h>
+#endif
+#ifdef SYS_NT
+#include <windows.h>
+#include <Wincrypt.h>
+#endif
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
@@ -70,10 +77,20 @@ MersenneTwisterRandom MTRandom;
 MersenneTwisterRandom::MersenneTwisterRandom(uint32_t seed)
 {
   if (seed == 0) {
+#ifdef SYS_POSIX
     seed = getpid() ^ (getppid() << 16);
     struct timeval t;
     gettimeofday(&t,NULL);
     seed = seed ^ t.tv_sec ^ (t.tv_usec << 10);
+#endif
+#ifdef SYS_NT
+    HCRYPTPROV handle;
+    CHECKED(CryptAcquireContext(&handle, NULL, NULL, PROV_RSA_FULL, 0), 
+	    "can't acquire crypt context");
+    CHECKED(CryptGenRandom(handle, 4, reinterpret_cast<BYTE *>(&seed)), 
+	    "CryptGenRandom failure");
+    CHECKED(CryptReleaseContext(handle, 0), "can't release crypt context");
+#endif
   }
   init(seed);
 }
