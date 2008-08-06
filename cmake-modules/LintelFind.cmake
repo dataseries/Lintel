@@ -59,12 +59,12 @@ MACRO(LINTEL_FIND_HEADER variable header)
         NO_DEFAULT_PATH
     )
 
-    FIND_PATH(${variable}_INCLUDE_DIR ${header})
-
     IF(${variable}_EXTRA_INCLUDE_PATHS)
 	FIND_PATH(${variable}_INCLUDE_DIR ${header}
-	          PATHS ${${variable}_EXTRA_INCLUDE_PATHS})
+	          PATHS ${${variable}_EXTRA_INCLUDE_PATHS} NO_DEFAULT_PATH)
     ENDIF(${variable}_EXTRA_INCLUDE_PATHS)
+
+    FIND_PATH(${variable}_INCLUDE_DIR ${header})
 
     MARK_AS_ADVANCED(${variable}_INCLUDE_DIR)
 
@@ -126,6 +126,13 @@ MACRO(LINTEL_FIND_LIBRARY variable header libname)
         NAMES ${libname} 
         PATHS ${CMAKE_INSTALL_PREFIX}/lib
         NO_DEFAULT_PATH)
+
+    IF(${variable}_EXTRA_LIBRARY_PATHS)
+        FIND_LIBRARY(${variable}_LIBRARY
+            NAMES ${libname}
+            PATHS ${${variable}_EXTRA_LIBRARY_PATHS} 
+            NO_DEFAULT_PATH)
+    ENDIF(${variable}_EXTRA_LIBRARY_PATHS)
 
     FIND_LIBRARY(${variable}_LIBRARY NAMES ${libname})
 

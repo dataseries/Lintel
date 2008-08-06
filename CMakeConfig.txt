@@ -30,9 +30,11 @@ ENDIF(NOT Boost_FOUND)
 
 INCLUDE(LintelFind)
 SET(BOOST_THREAD_FIND_REQUIRED ON)
+SET(BOOST_THREAD_EXTRA_INCLUDE_PATHS ${Boost_INCLUDE_DIRS})
+SET(BOOST_THREAD_EXTRA_LIBRARY_PATHS ${Boost_LIBRARY_DIRS})
 LINTEL_FIND_LIBRARY(BOOST_THREAD boost/thread/tss.hpp boost_thread)
 IF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
-    MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs")
+    MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs '${BOOST_THREAD_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
 ENDIF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
 
 # TODO: make this optional and optionalize all of the things that need it.
