@@ -131,8 +131,11 @@ private:
     // related thing, e.g. weight, level, sorted(probably)
 
     one_buffer *all_buffers;
-    int *buffer_weight;
-    int *buffer_level;
+    // int64 is necessary for very big counts, with small buffers
+    // (~100 elements at 0.1 epsilon, ~1000 at 0.01 epsilon), we could
+    // overflow an int32 at 200 billion - 2 trillion added values.
+    int64_t *buffer_weight; 
+    int *buffer_level; // int is sufficient, goes up by one each time we collapse
     int cur_buffer, cur_buffer_pos; // cur_buffer_pos points to the current empty position in cur_buffer
     bool *buffer_sorted; // makes output faster by eliminating the need for
     // re-sorting
