@@ -13,7 +13,7 @@
 
 #include <math.h>
 #include <time.h>
-#ifdef SYS_POSIX
+#if defined(SYS_POSIX) || defined(__unix) || defined(__linux)
 #include <sys/time.h>
 #include <pthread.h>
 #endif
