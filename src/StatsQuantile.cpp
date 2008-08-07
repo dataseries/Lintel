@@ -99,7 +99,7 @@ StatsQuantile::init(int _nbuffers, int _buffer_size)
     for(int i = 0; i < nbuffers; ++i) {
 	all_buffers[i] = NULL;
     }
-    buffer_weight = new int[nbuffers];
+    buffer_weight = new int64_t[nbuffers];
     buffer_level = new int[nbuffers];
     buffer_sorted = new bool[nbuffers];
     tmp_buffer = new double[buffer_size];
@@ -242,7 +242,7 @@ StatsQuantile::add(const Stats &_stat)
 	double *abuf = stat->all_buffers[i];
 	for(int j=0; j < stat->buffer_size; ++j) {
 	    double v = abuf[j];
-	    for(int k=0; k < stat->buffer_weight[i]; ++k) {
+	    for(int64_t k=0; k < stat->buffer_weight[i]; ++k) {
 		addQuantile(v);
 	    }
 	}
@@ -250,7 +250,7 @@ StatsQuantile::add(const Stats &_stat)
     double *abuf = stat->all_buffers[stat->cur_buffer];
     for (int j=0; j < stat->cur_buffer_pos; ++j) {
 	double v = abuf[j];
-	for(int k=0; k < stat->buffer_weight[stat->cur_buffer]; ++k) {
+	for(int64_t k=0; k < stat->buffer_weight[stat->cur_buffer]; ++k) {
 	    addQuantile(v);
 	}
     }
@@ -285,6 +285,10 @@ StatsQuantile::getQuantile(double quantile) const
 
     for(int i = 0; i <= cur_buffer; i++) {
 	collapse_pos[i] = 0;
+	// TODO: add a check that the total weight covered by all the
+	// current buffers is exactly the number of elements that we
+	// have.  Have to be a little careful on the last buffer to
+	// only count the values that we have actually inserted.
 	if (!buffer_sorted[i]) {
 	    if (i < cur_buffer) {
 		sort(all_buffers[i],all_buffers[i] + buffer_size,
@@ -319,11 +323,12 @@ StatsQuantile::getQuantile(double quantile) const
 	      "May be safe to decrease rounding adjustment to 0.5e-15, but will be getting very\n"
 	      "close to the limit of precision in floating point.  How did you get this many\n"
 	      "entries into the table??");
-    long long target_index = (long long)ceil(nentries * (quantile - 1e-15));
+    int64_t target_index 
+	= static_cast<int64_t>(ceil(nentries * (quantile - 1e-15)));
     if (target_index == nentries) {
 	target_index = (long long)(nentries - 1);
     }
-    long long cur_index = 0;
+    int64_t cur_index = 0;
 
     double second_min_val = Double::Inf;
     int second_min_buffer = -1;
@@ -417,7 +422,7 @@ StatsQuantile::collapse()
     INVARIANT(buffer_level[first_buffer] >= 0,
 	      "Whoa, buffer level should be positive");
     // first, sort each of the unsorted input buffers 
-    int total_weight = 0;
+    int64_t total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
 	total_weight += buffer_weight[i];
 	INVARIANT(buffer_weight[i] > 0,
@@ -457,8 +462,8 @@ StatsQuantile::collapse()
     next_quantile_offset -= 1;
     DEBUG_SINVARIANT(next_quantile_offset >= 0);
 
-    long long cur_quantile_offset = 0;
-    long long next_output_pos = 0;
+    int64_t cur_quantile_offset = 0;
+    int64_t next_output_pos = 0;
     double prev_val = -Double::Inf;
 
     while(next_output_pos < buffer_size) {
@@ -517,8 +522,8 @@ StatsQuantile::dumpState()
 	   cur_buffer,cur_buffer_pos);
 
     for(int i=0;i<=cur_buffer;i++) {
-	printf("  buffer %d, level %d, weight %d:\n    ",i,buffer_level[i],
-	       buffer_weight[i]);
+	cout << boost::format("  buffer %d, level %d, weight %d:\n    ")
+	    % i % buffer_level[i] % buffer_weight[i];
 	int max = i == cur_buffer ? cur_buffer_pos : buffer_size;
 	for(int j=0;j<max;j++) {
 	    printf("%.4g, ",all_buffers[i][j]);
