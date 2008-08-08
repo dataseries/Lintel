@@ -43,11 +43,11 @@ template <class K, class V,
 class RotatingHashMap {
 public:
     typedef boost::function<void (const K &, const V &)> rotate_fn;
-    typedef HashMap<K,V> HashMapT;
+    typedef HashMap<K,V,KHash,KEqual> HashMapT;
 
     RotatingHashMap() {
-	table_recent = new HashMap<K,V>;
-	table_old = new HashMap<K,V>;
+	table_recent = new HashMapT; // HashMap<K,V>;
+	table_old = new HashMapT; // HashMap<K,V>;
     }
 
     ~RotatingHashMap() {
@@ -97,7 +97,7 @@ public:
     void rotate() {
 	delete table_old;
 	table_old = table_recent;
-	table_recent = new HashMap<K,V>();
+	table_recent = new HashMapT; // HashMap<K,V>();
     }
 
     /** use like rotate(boost::bind(test_fn, _1, _2)); with test_fn
@@ -157,7 +157,8 @@ public:
     }
 private:
     typedef typename HashMapT::iterator hm_iterator;
-    HashMap<K,V> *table_recent, *table_old;
+    // HashMap<K,V> *table_recent, *table_old;
+    HashMapT *table_recent, *table_old;
 };
 
 #endif
