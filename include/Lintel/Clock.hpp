@@ -21,6 +21,8 @@
 #include <stdint.h>
 #include <limits>
 
+#include <boost/config.hpp>
+
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Stats.hpp>
 
@@ -43,7 +45,7 @@ extern "C" {
 #endif
 
 //TODO: how to determine processor architecture?
-#if defined(SYS_NT) || defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
+#if defined(BOOST_MSVC)
 namespace {
 uint64_t rdtsc(void) {
     __asm {
