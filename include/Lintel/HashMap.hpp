@@ -161,6 +161,9 @@ public:
 	}
     }
 
+    /// Returns the value associated with the key, if it exists. Otherwise,
+    /// creates an entry initialized with the default value.
+    
     V &operator[] (const K &k) {
 	value_type fullval; fullval.first = k;
 	value_type *v = hashtable.lookup(fullval);

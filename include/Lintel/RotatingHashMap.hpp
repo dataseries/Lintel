@@ -70,6 +70,10 @@ public:
 	return ret;
     }
 
+    /// Returns the value associated with the key, if it exists. Otherwise,
+    /// creates an entry initialized with the default value. If it exists in the
+    /// old hashmap, it moves the key-value pair to the recent hashmap.
+    
     V &operator[](const K &k) {
 	V *v = lookup(k);
 	if (v == NULL) {
