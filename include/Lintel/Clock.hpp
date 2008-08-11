@@ -43,7 +43,7 @@ extern "C" {
 #endif
 
 //TODO: how to determine processor architecture?
-#ifdef SYS_NT
+#if defined(SYS_NT) || defined(_WIN32) || defined(__WIN32__) || defined(WIN32)
 namespace {
 uint64_t rdtsc(void) {
     __asm {
