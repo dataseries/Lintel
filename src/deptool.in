@@ -16,6 +16,7 @@ use File::Path;
 use File::Find;
 use File::stat;
 use Getopt::Long;
+use File::Basename;
 use POSIX 'ceil';
 
 sub usage {
@@ -32,10 +33,12 @@ sub usage {
 
 my $auto_yes_to_prompts = 0;
 my $quiet = 0;
+my $noconfig = 0;
 
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
 	   "quiet!" => \$quiet, 
+	   "noconfig!" => \$noconfig,
            "projects=s" => \$Cache::projects,
 	   "root|build-root=s" => \$Cache::build_root,
 	   "operating-system=s" => \$Cache::operating_system,
@@ -43,6 +46,18 @@ GetOptions("y!" => \$auto_yes_to_prompts,
 	   "build-debug=s" => \$Cache::build_debug,
 	   "build-opt=s" => \$Cache::build_optimize);
 Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
+
+# Read configuration file
+my $cfile = "$ENV{HOME}/.deptoolrc";
+if (! $noconfig && -f $cfile && -r $cfile ) {
+    open CONFIG, "<$cfile";
+    while (<CONFIG>) {
+        chomp;
+	my ($key, $value) = split /=/;
+	$ENV{$key}=$value;
+    }
+    close CONFIG;
+}
 
 usage("Missing argument") if @ARGV == 0;
 
@@ -804,8 +819,8 @@ sub depPublish {
     my %options = ( 'made_changes' => 1 );
     while ($options{made_changes}) {
 	$options{made_changes} = 0;
-	print "deppublish: verifying current version passes regression tests\n";
-	depBuild('tests' => 1);
+#	print "deppublish: verifying current version passes regression tests\n";
+#	depBuild('tests' => 1);
 	print "deppublish: pulling in any remote changes\n";
 	depWalk(sub { depPullOne(\%options); });
 
@@ -819,6 +834,17 @@ END
             depWalk(sub { depSyncOne(\%options); });
 	    print "****** WARNING, got changes; re-running deppublish...\n"
 		if $options{made_changes};
+	}
+    }
+
+    if ( defined $ENV{TESTHOST} ) {
+	my $src = rootSrcDir();
+	my $project = basename( $src);
+	my $user = $ENV{MAILADDR};
+	print( "ssh -t $ENV{TESTHOST} testbuild $project $user background\n");
+	system( "ssh -t $ENV{TESTHOST} testbuild $project $user background");
+	if ( $? > 0) {
+	    croak("Unable to ssh $ENV{TESTHOST} testbuild");
 	}
     }
 }
@@ -851,6 +877,7 @@ sub depWalkRecurse {
     if (@vcdeps > 0) {
 	my $projects = projects();
 	foreach my $dep (@vcdeps) {
+            $dep =~ s%^.*/%%;
 	    my $depsrc = "$projects/$dep";
 	    die "Unable to find dependency $dep as $projects/$dep"
 		unless -d $depsrc;
