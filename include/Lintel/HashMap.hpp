@@ -127,8 +127,39 @@ template<typename T> struct PointerHashMapEqual {
 /// HashMap class; in our testing almost as fast as the google dense
 /// map, but uses almost as little memory as the sparse map.  Note
 /// that class K can't be const, see src/tests/hashmap.cpp for
-/// details.  An example of extending the HashMap to have a structure
-/// as a key are also included in src/tests/hashmap.cpp.
+/// details.  
+/// 
+/// To create a hashmap on a separate type, you need to define two
+/// additional operations.  For example, with:
+/// \code
+/// struct example { 
+///    int32_t x, y;
+///    std::string str;
+///    bool operator==(const example &rhs) const;
+/// }
+/// \endcode
+/// you would need to define the HashMap_hash<example> and operator ==
+/// on struct example.  To define HashMap_hash<example>>, you would write:
+/// \code
+/// template<> struct HashMap_hash<const example> {
+///     uint32_t operator()(const example &a) {
+///         uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
+///         return HasHTable_hashbytes(a.str().data, a.str.size(), partial_hash);
+///     }
+/// } 
+/// \endcode
+/// To define operator ==, you can either define it as part of the
+/// class as shown above in the structure example (normally you would
+/// define it inline), or you can define an external operator == as in:
+/// \code
+/// bool operator==(const example &a, const example &b) {
+///    return a.x == b.x && a.y == b.y && a.str == b.str;
+/// }
+/// \endcode
+///
+/// Then you can define your hash map:
+/// HashMap<example, int> example_to_int;
+
 template <class K, class V, 
           class KHash = HashMap_hash<const K>, 
           class KEqual = std::equal_to<const K> >

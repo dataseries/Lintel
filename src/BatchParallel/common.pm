@@ -273,7 +273,7 @@ sub run {
     my $this = shift;
 
     unless (defined $this->{verbose_level}) {
-	warn "forcing value for \$this->{verbose_level}";
+	warn "forcing value of 1 for \$this->{verbose_level}";
 	$this->{verbose_level} = 1;
     }
 	

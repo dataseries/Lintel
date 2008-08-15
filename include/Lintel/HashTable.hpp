@@ -544,6 +544,11 @@ inline uint32_t HashTable_hashbytes(const void *bytes,
     return BobJenkinsHash(prev_hash, bytes, size);
 }
 
+// TODO: update with the revised hash function at:
+// http://burtleburtle.net/bob/hash/doobs.html
+// or the alternative one at:
+// http://murmurhash.googlepages.com/
+
 // A fast way of doing an inline mix of three integers; used in the
 // BobJenkins Hash as a core operation; this is placed here so that
 // hashing on a bunch of small integers can be done quickly without a
@@ -563,17 +568,16 @@ inline uint32_t HashTable_hashbytes(const void *bytes,
   c -= a; c -= b; c ^= (b>>15); \
 }
 
-static inline uint32_t BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c)
-{
+static inline uint32_t BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) {
     BobJenkinsHashMix(a,b,c);
     return c;
 }
 
-static inline uint32_t BobJenkinsHashMixULL(uint64_t v)
-{
+static inline uint32_t 
+BobJenkinsHashMixULL(uint64_t v, uint32_t partial = 1972) {
     uint32_t a = static_cast<uint32_t>(v & 0xFFFFFFFF);
     uint32_t b = static_cast<uint32_t>((v >> 32) & 0xFFFFFFFF);
-    uint32_t c = 1972;
+    uint32_t c = partial;
     BobJenkinsHashMix(a,b,c);
     return c;
 }
