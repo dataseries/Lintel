@@ -162,7 +162,7 @@ struct foo {
 };
 
 template <> struct HashMap_hash<const foo> {
-    uint32_t operator()(const foo &a) const {
+    uint32_t operator()(const foo &a) {
 	// 2001 is an arbitrary constant; could also use the return
 	// from hashbytes, which will make up a start hash if one
 	// isn't provided.
