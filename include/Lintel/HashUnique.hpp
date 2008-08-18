@@ -81,6 +81,13 @@ public:
     void reserve(unsigned expected_entries) {
 	hashtable.reserve(expected_entries);
     }
+
+    /// Get statistics for the chain lengths of all the chains in the
+    /// underlying hash table.  Useful for detecting a bad hash
+    /// function.
+    void chainLengthStats(Stats &stats) {
+	return hashtable.chainLengthStats(stats);
+    }
 private:
     HashTableT hashtable;
 };

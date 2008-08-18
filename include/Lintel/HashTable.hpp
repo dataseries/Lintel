@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/Stats.hpp>
 extern uint32_t HashTable_prime_list[];
 
 /// This is out here because C++ templates are sub-optimal.  All
@@ -235,6 +236,18 @@ public:
 	     entry_points[i] = -1;
 	 }
      }
+
+    /// Get statistics for the chain lengths of all the chains in a
+    /// hash table.  Useful for detecting a bad hash function.
+    void chainLengthStats(Stats &stats) {
+	 for(uint32_t i=0;i<entry_points.size();i++) {
+	     uint32_t len = 0;
+	     for(int32_t j = entry_points[i]; j != -1; j = chains[j].next) {
+		 ++len;
+	     }
+	     stats.add(len);
+	 }
+    }
 
 private:
     template<typename t_value_type, class t_hashtable_type>

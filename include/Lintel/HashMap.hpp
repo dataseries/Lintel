@@ -279,6 +279,13 @@ public:
 	return hashtable.memoryUsage();
     }
 
+    /// Get statistics for the chain lengths of all the chains in the
+    /// underlying hash table.  Useful for detecting a bad hash
+    /// function.
+    void chainLengthStats(Stats &stats) {
+	return hashtable.chainLengthStats(stats);
+    }
+
     // primiarily here so that you can get at unsafeGetRawDataVector, with
     // all the caveats that go with that function.
     HashTableT &getHashTable() {
