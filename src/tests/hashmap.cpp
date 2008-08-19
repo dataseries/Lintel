@@ -162,7 +162,7 @@ struct foo {
 };
 
 template <> struct HashMap_hash<const foo> {
-    uint32_t operator()(const foo &a) {
+    uint32_t operator()(const foo &a) const {
 	// 2001 is an arbitrary constant; could also use the return
 	// from hashbytes, which will make up a start hash if one
 	// isn't provided.
@@ -258,10 +258,35 @@ void test_pointermap() {
     SINVARIANT(test_map[a] == 1 && test_map[b] == 2);
 }
     
+void test_constA(const HashMap<int, int> &test_map,
+		 const HashMap<int, int> &test_map2) {
+    HashMap<int, int>::const_iterator i = test_map.find(5);
+    SINVARIANT(i != test_map.end() && i->second == 5);
+    i = test_map.find(6);
+    SINVARIANT(i == test_map.end());
+
+    i = test_map2.find(5);
+    SINVARIANT(i == test_map2.end());
+    i = test_map2.find(6);
+    SINVARIANT(i != test_map2.end() && i->second == 6);
+}
+
+void test_const() {
+    HashMap<int, int> test_map;
+    HashMap<int, int> test_map2;
+
+    test_map[5] = 5;
+    test_map2[6] = 6;
+    test_constA(test_map, test_map2);
+    SINVARIANT(test_map[5] == 5 && test_map2[6] == 6 &&
+	       test_map.size() == 1 && test_map2.size() == 1);
+}
+
 int main() {
     test_types();
     test_foreach();
     test_struct();
     test_iterator();
     test_pointermap();
+    test_const();
 }

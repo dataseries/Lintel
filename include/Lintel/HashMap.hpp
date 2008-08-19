@@ -142,7 +142,7 @@ template<typename T> struct PointerHashMapEqual {
 /// on struct example.  To define HashMap_hash<example>>, you would write:
 /// \code
 /// template<> struct HashMap_hash<const example> {
-///     uint32_t operator()(const example &a) {
+///     uint32_t operator()(const example &a) const {
 ///         uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
 ///         return HasHTable_hashbytes(a.str().data, a.str.size(), partial_hash);
 ///     }
@@ -168,13 +168,13 @@ public:
     typedef std::pair<K,V> value_type;
     struct value_typeHash {
 	KHash khash;
-	uint32_t operator()(const value_type &hmv) {
+	uint32_t operator()(const value_type &hmv) const {
 	    return khash(hmv.first);
 	}
     };
     struct value_typeEqual {
 	KEqual kequal;
-	bool operator()(const value_type &a, const value_type &b) {
+	bool operator()(const value_type &a, const value_type &b) const {
 	    return kequal(a.first,b.first);
 	}
     };
@@ -250,6 +250,12 @@ public:
 	return hashtable.find(fullval);
     }
     
+    const_iterator find(const K &k) const {
+	value_type fullval; fullval.first = k;
+	return hashtable.find(fullval);
+    }
+	
+
     explicit HashMap(double target_chain_length) 
 	: hashtable(target_chain_length)
     { }

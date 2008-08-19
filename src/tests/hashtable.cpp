@@ -20,21 +20,21 @@ HashMap<string,string> test;
 
 class intHash {
 public:
-    unsigned int operator()(const int k) {
+    unsigned int operator()(const int k) const {
 	return k;
     }
 };
 
 class collisionHash {
 public:
-    unsigned int operator()(const int k) {
+    unsigned int operator()(const int k) const {
 	return 0;
     }
 };
 
 class intEqual {
 public:
-    bool operator()(const int a, const int b) {
+    bool operator()(const int a, const int b) const {
 	return a == b;
     }
 };
@@ -86,6 +86,9 @@ void constHTTest(const inttable &table, int maxi) {
 	SINVARIANT(found[*i] == false);
 	found[*i] = true;
     }
+
+    inttable::const_iterator j = table.find(5);
+    j = table.find(6);
 
     for(int i=0; i<maxi; ++i) {
 	SINVARIANT(found[i]);

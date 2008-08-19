@@ -261,7 +261,7 @@ private:
 	typedef std::ptrdiff_t difference_type;
 
 	bool operator==(const SelfT &y) const {
-	    return &this->mytable == &y.mytable 
+	    return this->mytable == y.mytable 
  	        && this->cur_chain == y.cur_chain 
 	        && this->chain_loc == y.chain_loc;
 	}
@@ -272,9 +272,9 @@ private:
 
 	t_value_type &operator *() { 
 	    INVARIANT(this->chain_loc >= 0 && 
-		      this->chain_loc < static_cast<int32_t>(this->mytable.chains.size()),
+		      this->chain_loc < static_cast<int32_t>(this->mytable->chains.size()),
 		      "Bad use of iterator");
-	    return this->mytable.chains[this->chain_loc].data;
+	    return this->mytable->chains[this->chain_loc].data;
 	}
 
 	t_value_type *operator ->() {
@@ -287,11 +287,11 @@ private:
 	/// restart the scan operation partway through after doing some
 	/// number of updates safely.
 	void partialReset() {
-	    if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
-		chain_loc = mytable.entry_points[cur_chain];
+	    if (cur_chain < static_cast<int>(mytable->entry_points.size())) {
+		chain_loc = mytable->entry_points[cur_chain];
 		findNonemptyChain();
 	    } else {
-		SINVARIANT(cur_chain == static_cast<int>(mytable.entry_points.size()));
+		SINVARIANT(cur_chain == static_cast<int>(mytable->entry_points.size()));
 	    }
 	}
 	void reset() {
@@ -302,7 +302,7 @@ private:
 	    return cur_chain;
 	}
     protected:
-	iterator_base(t_hashtable_type &_mytable, int32_t start_chain = 0,
+	iterator_base(t_hashtable_type *_mytable, int32_t start_chain = 0,
 		      int32_t _chain_loc = -1) 
 	    : mytable(_mytable), cur_chain(start_chain), 
 	      chain_loc(_chain_loc) {
@@ -311,25 +311,25 @@ private:
 		  }
 	    }
 	void findNonemptyChain() {
-	    while(cur_chain < static_cast<int>(mytable.entry_points.size()) &&
-		  mytable.entry_points[cur_chain] == -1) {
+	    while(cur_chain < static_cast<int>(mytable->entry_points.size()) &&
+		  mytable->entry_points[cur_chain] == -1) {
 		      cur_chain += 1;
 		  }
-	    if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
-		chain_loc = mytable.entry_points[cur_chain];
+	    if (cur_chain < static_cast<int>(mytable->entry_points.size())) {
+		chain_loc = mytable->entry_points[cur_chain];
 	    }
 	}
 	void increment() {
 	    INVARIANT(chain_loc >= 0 && 
-		      chain_loc < static_cast<int>(mytable.chains.size()),
+		      chain_loc < static_cast<int>(mytable->chains.size()),
 		      "bad use of iterator");
-	    chain_loc = mytable.chains[chain_loc].next;
+	    chain_loc = mytable->chains[chain_loc].next;
 	    if (chain_loc == -1) {
 		cur_chain += 1;
 		findNonemptyChain();
 	    }
 	}
-	t_hashtable_type &mytable;
+	t_hashtable_type *mytable;
 	int32_t cur_chain;
 	int32_t chain_loc;
     };
@@ -343,7 +343,7 @@ public:
   	          (from.mytable, from.cur_chain, from.chain_loc) { }
 	iterator(HashTable &mytable, int32_t start_chain = 0, 
 		 int32_t chain_loc = -1)
-	    : iterator_base<D, HashTable>(mytable, start_chain, chain_loc) { }
+	    : iterator_base<D, HashTable>(&mytable, start_chain, chain_loc) { }
 	
 	iterator &operator++() { this->increment(); return *this; }
 	iterator operator++(int) {
@@ -382,8 +382,11 @@ public:
 
     class const_iterator : public iterator_base<const D, const HashTable> {
     public:
-	const_iterator(const HashTable &mytable, int32_t start_chain = 0)
-	    : iterator_base<const D, const HashTable>(mytable, start_chain) { }
+	const_iterator(const HashTable &mytable, int32_t start_chain = 0,
+		       int32_t chain_loc = -1)
+	    : iterator_base<const D, const HashTable>
+	          (&mytable, start_chain, chain_loc) 
+	{ }
 	
 	const_iterator &operator++() { this->increment(); return *this; }
 	const_iterator operator++(int) {
@@ -399,6 +402,19 @@ public:
 
     const_iterator end() const {
 	return const_iterator(*this, entry_points.size());
+    }
+
+    const_iterator find(const D &key) const {
+	if (entry_points.size() == 0) {
+	    return end();
+	}
+	uint32_t hash = hashof(key) % entry_points.size();
+	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
+	    if (equal(key, chains[i].data)) {
+		return const_iterator(*this, hash, i);
+	    }
+	}
+	return end();
     }
 
     // TODO: count the size of the free list so this function is constant
@@ -467,7 +483,7 @@ public:
 	return chains;
     }
 private:
-    uint32_t hashof(const D &data) {
+    uint32_t hashof(const D &data) const {
 	return static_cast<uint32_t>(hashfn(data));
     }
 
