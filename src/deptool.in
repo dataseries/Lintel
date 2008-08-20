@@ -11,10 +11,13 @@ use strict;
 use Carp;
 use Cwd;
 use Digest::SHA1 'sha1_hex';
-use FileHandle;
+use English;
+use File::Compare;
+use File::Copy;
 use File::Path;
 use File::Find;
 use File::stat;
+use FileHandle;
 use Getopt::Long;
 use POSIX 'ceil';
 
@@ -55,6 +58,7 @@ my %commands = ('checkout' => \&depCheckout,
 		'init' => \&depInit,
 		'cmake' => \&runCMake,
 		'pin' => \&setPin,
+		'code-review' => \&codeReview,
 		'mtnpull' => sub { mtnOp("pull"); },
 		'mtnpush' => sub { mtnOp("push"); },
 		'mtnsync' => sub { mtnOp("sync"); },
@@ -760,15 +764,10 @@ sub mtnOp {
 
     die "??" unless $op =~ /^((pull)|(push)|(sync))$/o;
     my $src = rootSrcDir();
-    my $fh = new FileHandle("$src/_MTN/options")
-	or die "Can't open $src/_MTN/options for read: $!";
-    my $branch;
-    my $database;
-    while(<$fh>) {
-	$branch = $1 if /^\s*branch \"(.+)\"$/o;
-	$database = $1 if /^\s*database \"(.+)\"$/o;
-    }
-    close($fh);
+    my %mtn_opts = readMtnOptions($src);
+    my $branch = $mtn_opts{branch};
+    my $database = $mtn_opts{database};
+
     die "? no branch" unless defined $branch;
     die "? no database" unless defined $database;
 
@@ -781,16 +780,10 @@ sub mtnOp {
 
 sub mtnServe {
     my $src = rootSrcDir();
-    my $fh = new FileHandle("$src/_MTN/options")
-	or die "Can't open $src/_MTN/options for read: $!";
-    my $database;
-    while(<$fh>) {
-	$database = $1 if /^\s*database \"(.+)\"$/o;
-    }
-    close($fh);
-    die "? no database" unless defined $database;
+    my %mtn_opts = readMtnOptions($src);
+    die "? no database" unless defined $mtn_opts{database};
 
-    runCommand("mtn","-d",$database,'serve','*');
+    runCommand("mtn","-d",$mtn_opts{database},'serve','*');
 }
 
 ##### depPublish
@@ -828,6 +821,375 @@ sub depSyncOne {
 
     mtnOp("sync");
     depPullUpdate($options);
+}
+
+##### Code review diff
+
+sub codeReview {
+    my @revisions = @ARGV;
+
+    eval 'use File::Copy::Recursive "rcopy";';
+    die "aptitude install libfile-copy-recursive-perl?\n$@" if $@;
+    my %parents;
+    my %dates;
+    foreach my $revision (@revisions) {
+	my @output = getCmdOutput("mtn log -r $revision --last=1");
+
+	my %info = simpleParse(\@output, 
+			       [ qr/^-+$/o => undef,
+				 qr/^Revision: (\S+)$/o => 'revision',
+				 qr/^Ancestor: (\S+)$/o => 'ancestor',
+				 qr/^Author:/o => undef,
+				 qr/^Date: (\S+)$/o => 'date' ]);
+	
+	$parents{$info{revision}} = $info{ancestor};
+	$dates{$info{revision}} = $info{date};
+    }
+
+    @revisions = sort { $dates{$a} cmp $dates{$b} } keys %parents;
+
+    my $basedir = "/tmp/code-review-" . getpwuid($UID);
+    my $original_dir = $parents{$revisions[0]};
+    my $final_dir = $revisions[@revisions - 1];
+    if (-d $basedir && -d "$basedir/$original_dir" &&
+	-d "$basedir/$final_dir" && -f "$basedir/diff-order") {
+	print "$basedir already exists, as do the relevant
+first and last revisions and the diff-order file.  
+Assuming you just want to continue editing.\n";
+    } else {
+	print "Missing expected files to continue diffing in $basedir\n";
+	print "Return to delete, ctrl-c to abort: ";
+	$_ = <STDIN>;
+	runCommand("rm -rf $basedir");
+    }
+
+    if (! -d $basedir) {
+	mkdir($basedir, 0755) or die "unable to mkdir $basedir: $!";
+	codeReviewSequence(\@revisions, \%parents, $basedir);
+    } else {
+	kdiffDirs($basedir, $original_dir, $final_dir);
+    }
+}
+
+sub codeReviewSequence {
+    my ($revs, $parents, $basedir) = @_;
+
+    my @revisions = @$revs;
+    my %mtn_options = readMtnOptions();
+    my $database = $mtn_options{database};
+    die "missing db in .../_MTN/options" 
+	unless defined $database;
+    
+    my $start = $parents->{$revisions[0]};
+
+    print "Trying to build single sequence diff from ", 
+      substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
+      "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
+
+    codeReviewCheckout($database, "$basedir/$start", $start);
+    
+    my $last = $start;
+    while (@revisions > 0) {
+	my $to = $revisions[0];
+	my $from = $parents->{$to};
+
+	print "Trying to patch $last\n   with ", substr($from, 0, 20), 
+	    " -> ", substr($to, 0, 20), "\n";
+
+	codeReviewPatch($database, $basedir, $last, $from, $to);
+	$last = $to;
+	shift @revisions;
+    }
+
+    print "Successfully built single sequence for review.\n";
+
+    makeDiffOrder($basedir, $start, $last);
+    kdiffDirs($basedir, $start, $last);
+}
+
+sub makeDiffOrder {
+    my ($basedir, $original_dir, $final_dir) = @_;
+
+    my $reference_file = "/tmp/diff-order-$final_dir.txt";
+    if (-f $reference_file) {
+	print "$reference_file exits; just using it.\n";
+	copy($reference_file, "$basedir/diff-order")
+	    or die "copy failed: $!";
+	return;
+    }
+    my @changed = getChanged($basedir, $original_dir, $final_dir);
+
+    my %file_key;
+    map { die "?? $_" unless m!^(.+/)?([^/]+)\.(\w+)$!o;
+	  my ($dir, $name, $suffix) = ($1, $2, $3);
+	  my $test_key = $dir =~ m!/tests\b!o ? 0 : 1;
+	  my $header_key = $suffix eq 'hpp' ? 0 : 1;
+	  my $cmake_key = $name =~ /^CMake/o ? 0 : 1;
+	  
+          # sort cmake files first, then tests, then by filename 
+	  # sorting headers before sources.
+	  
+	  $file_key{$_} = "$cmake_key-$test_key-$name-$header_key";
+      } @changed;
+    @changed = sort { $file_key{$a} cmp $file_key{$b} } @changed;
+    
+    my $fh = new FileHandle ">$basedir/diff-order"
+	or die "bad";
+    print $fh join("\n", @changed), "\n";
+    close($fh);
+
+    print "store this file as $reference_file to automatically use it.";
+    print "Changed:\n", join("\n", @changed), "\n";
+}
+
+sub kdiffDirs {
+    my ($basedir, $original_dir, $final_dir) = @_;
+
+    my $cur = '*start*';
+    my $auto = undef;
+    while(1) {
+	print "\n";
+	print "------------------------------------------------------------\n";
+	print "Last file diffed: $cur\n";
+	my $next = getNextDiffFile($basedir, $cur);
+	print "Current next file to diff: $next\n";
+	print "Editable diff ordering file: $basedir/diff-order\n";
+	my $default = "diff $next";
+	$default = "finish" if $next eq '*end*';
+	print "commands: auto, files, exit, finish, help\n";
+	print "Enter filename substring or command [$default]: ";
+	if (defined $auto && (-M "$basedir/diff-order") == $auto) {
+	    print "[auto]\n";
+	    $_ = '';
+	} else {
+	    $_ = <STDIN>;
+	    chomp;
+	}
+	if ($_ eq '') {
+	    last if $default eq 'exit';
+	    my $check_next = getNextDiffFile($basedir, $cur);
+	    if ($check_next ne $next) {
+		print "\n***ordering file changed***\n";
+		redo;
+	    }
+	    my $original = "$basedir/$original_dir/$next";
+	    my $final = "$basedir/$final_dir/$next";
+	    unless (-f $original) {
+		print "Assuming $final is new file, creating empty temporary\n";
+		my $fh = new FileHandle ">$original"
+		    or die "bad: $!";
+		close($fh);
+	    }
+	    if (! (-f $original && -f $final)) {
+		warn "$original or $final missing; looping";
+		$auto = undef;
+		redo;
+	    }
+	    eval {
+		runCommand('kdiff3','--L1', "original ($next)", '--L2', "new ($next)", 
+			   "$basedir/$original_dir/$next", 
+			   "$basedir/$final_dir/$next");
+	    };
+	    # warn "kdiff3 command failed (ignoring)" if $@;
+	    $cur = $next;
+	} elsif ($_ eq 'auto') {
+	    $auto = -M "$basedir/diff-order";
+	} elsif ($_ eq 'files') {
+	    my @files = getDiffOrder($basedir);
+	    print "\n\nFiles:\n", join("\n", @files), "\n";
+	} elsif ($_ eq 'exit') {
+	    last;
+	} elsif ($_ eq 'finish') {
+	    runCommand("rm -rf $basedir");
+	    last;
+	} elsif ($_ eq 'help') {
+	    print <<"END_OF_HELP";
+
+auto: skip the prompt for a command until the next file to diff changes
+files: list the files we will diff.
+exit: exit from deptool code-review-diff
+finish: delete the code review temporary directories and exit
+help: show this help
+*: try to find a file with this as a substring and diff it next.
+END_OF_HELP
+	} else { 
+	    $cur = selectPrevDiffFile($basedir, $_, $cur);
+	}
+    }
+}
+
+sub getChanged {
+    my ($basedir, $start, $last) = @_;
+
+    my @old_files = findFilesPrefix("$basedir/$start");
+    my @new_files = findFilesPrefix("$basedir/$last");
+    die "??" if @new_files == 0;
+    my @changed;
+    my %old;
+    map { $old{$_} = 1 } @old_files;
+    map { 
+	if (defined $old{$_}) {
+	    ++$old{$_};
+	    my $old = "$basedir/$start/$_";
+	    my $new = "$basedir/$last/$_";
+	    if (-d $old && -d $new) {
+		# ignore
+	    } else {
+		die "? $_" if -d $old || -d $new;
+		push(@changed, $_) unless compare($old, $new) == 0;
+	    }
+	} else {
+	    push(@changed, $_)
+		unless -d "$basedir/$last/$_" || /\.orig$/o || /\.rej$/o;
+	}
+      } @new_files;
+
+    while(my($k,$v) = each %old) {
+	die "old file $k missing" unless $v == 2;
+    }
+
+    return @changed;
+}
+
+sub getNextDiffFile {
+    my($basedir, $cur) = @_;
+
+    my @order = getDiffOrder($basedir);
+    return $order[0] if $cur eq '*start*';
+    for(my $i=0; $i < @order; ++$i) {
+	if ($order[$i] eq $cur) {
+	    return '*end*' if $i + 1 == @order;
+	    return $order[$i+1];
+	}
+    }
+    return "**ERROR: Unable to find file $cur";
+}
+
+sub selectPrevDiffFile {
+    my ($basedir, $target, $cur) = @_;
+
+    my @order = getDiffOrder($basedir);
+    my @match = grep(/$target/, @order);
+    if (@match == 0) {
+	print "\n\n************\nNo match for $target found. Choices:\n", 
+	    join("\n", @order), "\n";
+	return $cur;
+    } elsif (@match > 1) {
+	print "\n\n************\nMultiple matches for $target found:\n",
+	    join("\n", @match), "\n";
+	return $cur;
+    } else {
+	for(my $i=0; $i < @order; ++$i) {
+	    if ($order[$i] eq $match[0]) {
+		return "*start" if $i == 0;
+		return $order[$i-1];
+	    }
+	}
+	die "??";
+    }
+}
+
+sub getDiffOrder {
+    my($basedir) = @_;
+
+    my $fh = new FileHandle "$basedir/diff-order"
+	or die "Can't open $basedir/diff-order for read: $!";
+    my @order = <$fh>;
+    close($fh);
+    grep(chomp, @order);
+
+    return @order;
+}
+
+sub getCmdOutput {
+    my($cmd) = @_;
+
+    my $fh = new FileHandle "$cmd 2>/dev/null |" 
+	or die "Unable to run $cmd: $!";
+    my @ret = <$fh>;
+    close($fh) or die "close failed: $!";
+    die "$cmd failed" unless $? == 0;
+    return @ret;
+}
+
+sub simpleParse {
+    my($data, $matches) = @_;
+
+    my %ret;
+
+    # print join(", ", @$matches);
+    die "bad parse" unless @$data >= @$matches;
+    for(my $i=0; $i < @$matches/2; ++$i) {
+	local $_ = $data->[$i];
+	chomp;
+	my $match = $matches->[2*$i];
+	my $var = $matches->[2*$i+1];
+
+	die "?? $i" unless defined $match;
+	die "Error on line $i expected $match, got '$_'"
+	    unless /$match/;
+	$ret{$var} = $1 if defined $var;
+    }
+    return %ret;
+}
+
+sub codeReviewCheckout {
+    my($database, $targetdir, $revision) = @_;
+
+    quietRunCommand('mtn', 'checkout', '-d', $database, 
+		    '-r', $revision, $targetdir);
+}
+
+sub codeReviewPatch {
+    my ($database, $basedir, $last, $from, $to) = @_;
+
+    rcopy("$basedir/$last", "$basedir/$to")
+	or die "copy ($basedir/$last,$basedir/$to) failed: $!";
+    quietRunCommand("mtn diff -d $database -r $from -r $to >$basedir/$to.patch");
+    eval {
+	quietRunCommand("patch -U -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
+    };
+    if ($@) {
+	my @failed = grep(/\.rej$/o, findFilesPrefix("$basedir/$to"));
+	print "\n\n**************\n";
+	print "Patch failed for files: ", join(", ", @failed), "\n";
+
+	foreach my $file (@failed) {
+	    my $patch = $file;
+	    $file =~ s/\.rej$//o;
+	    my $repairpatch = $file;
+	    $repairpatch =~ s!/!_!go;
+	    $repairpatch = "/tmp/repair-$to-$repairpatch";
+	    if (-f $repairpatch) {
+		print "$repairpatch exists; will just apply\n";
+		runCommand("patch -p4 -d $basedir/$to < $repairpatch");
+	    } else {
+		print "will start $ENV{EDITOR} for $file and rejected patch\n";
+		print "return to continue, ctrl-c to abort: ";
+		$_ = <STDIN>;
+		copy("$basedir/$to/$file","$basedir/$to/$file-pre-fix");
+		runCommand("mtn cat -r $to $file >$basedir/$to/$file-final-version");
+		runCommand("$ENV{EDITOR} $basedir/$to/$file $basedir/$to/$patch $basedir/$to/$file-final-version");
+		if (compare("$basedir/$to/$file-pre-fix","$basedir/$to/$file") == 0) {
+		    print "No changes made.  Return to save empty patch, ctrl-c to abort: ";
+		    $_ = <STDIN>;
+		}
+
+		print "Saving repair difference as $repairpatch\n";
+		eval { runCommand("diff -u $basedir/$to/$file-pre-fix $basedir/$to/$file >$repairpatch"); };
+	    }
+	}
+    }
+}
+
+sub findFilesPrefix {
+    my ($prefix) = @_;
+
+    my @ret;
+    find(sub { local $_ = $File::Find::name;
+	       die "??" unless s,^$prefix\b/?,,;
+	       push(@ret, $_); }, $prefix);
+    return @ret;
 }
 
 ##### Common -- depwalk
@@ -1120,6 +1482,12 @@ sub runCommand {
     my(@command) = @_;
 
     print "Running: ", join(" ", @command), "\n";
+    quietRunCommand(@command);
+}
+
+sub quietRunCommand {
+    my(@command) = @_;
+
     my $ret = system(@command);
 
     confess "'" . join(" ", @command) . "' failed ($ret)" unless $ret == 0;
@@ -1142,3 +1510,20 @@ sub aliasGetCwd {
         if defined $Cache::alias_cd{$here};
     return $here;
 }
+
+sub readMtnOptions {
+    my ($src) = @_;
+
+    $src = rootSrcDir() unless defined $src;
+    my $fh = new FileHandle("$src/_MTN/options")
+	or die "Can't open $src/_MTN/options for read: $!";
+    my %ret;
+    while(<$fh>) {
+	$ret{branch} = $1 if /^\s*branch \"(.+)\"$/o;
+	$ret{database} = $1 if /^\s*database \"(.+)\"$/o;
+    }
+    close($fh);
+
+    return %ret;
+}
+
