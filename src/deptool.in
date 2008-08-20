@@ -856,7 +856,7 @@ sub codeReview {
 	print "$basedir already exists, as do the relevant
 first and last revisions and the diff-order file.  
 Assuming you just want to continue editing.\n";
-    } else {
+    } elsif (-d $basedir) {
 	print "Missing expected files to continue diffing in $basedir\n";
 	print "Return to delete, ctrl-c to abort: ";
 	$_ = <STDIN>;
