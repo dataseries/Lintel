@@ -26,6 +26,19 @@ public:
 	}
     };
     
+    HashUnique() {
+    }
+
+    HashUnique(const HashUnique &__in) {
+	hashtable = __in.hashtable;
+    }
+
+    HashUnique &
+    operator=(const HashUnique &__in) {
+	hashtable = __in.hashtable;
+	return *this;
+    }
+
     bool exists(const K &k) {
 	K *v = hashtable.lookup(k);
 	return v != NULL;
@@ -48,7 +61,7 @@ public:
     typedef HashTable<K, KHash, KEqual> HashTableT;
 
     typedef typename HashTableT::iterator iterator;
-
+    
     iterator begin() {
 	return hashtable.begin();
     }
@@ -57,24 +70,21 @@ public:
 	return hashtable.end();
     }
 
-    HashUnique() {
+    typedef typename HashTableT::const_iterator const_iterator;
+
+    const_iterator begin() const {
+	return hashtable.begin();
     }
 
-    HashUnique(const HashUnique &__in) {
-	hashtable = __in.hashtable;
-    }
-
-    HashUnique &
-    operator=(const HashUnique &__in) {
-	hashtable = __in.hashtable;
-	return *this;
+    const_iterator end() const {
+	return hashtable.end();
     }
 
     void clear() {
 	hashtable.clear();
     }
     
-    uint32_t size() {
+    uint32_t size() const {
 	return hashtable.size();
     }
 
@@ -85,7 +95,7 @@ public:
     /// Get statistics for the chain lengths of all the chains in the
     /// underlying hash table.  Useful for detecting a bad hash
     /// function.
-    void chainLengthStats(Stats &stats) {
+    void chainLengthStats(Stats &stats) const {
 	return hashtable.chainLengthStats(stats);
     }
 private:

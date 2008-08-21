@@ -239,7 +239,7 @@ public:
 
     /// Get statistics for the chain lengths of all the chains in a
     /// hash table.  Useful for detecting a bad hash function.
-    void chainLengthStats(Stats &stats) {
+    void chainLengthStats(Stats &stats) const {
 	 for(uint32_t i=0;i<entry_points.size();i++) {
 	     uint32_t len = 0;
 	     for(int32_t j = entry_points[i]; j != -1; j = chains[j].next) {
