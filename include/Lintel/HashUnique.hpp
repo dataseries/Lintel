@@ -54,8 +54,8 @@ public:
 	}
     }
     
-    void remove(const K &k) {
-	hashtable.remove(k);
+    void remove(const K &k, bool must_exist = true) {
+	hashtable.remove(k, must_exist);
     }
 
     typedef HashTable<K, KHash, KEqual> HashTableT;
