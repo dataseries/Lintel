@@ -867,7 +867,7 @@ Assuming you just want to continue editing.\n";
 	mkdir($basedir, 0755) or die "unable to mkdir $basedir: $!";
 	codeReviewSequence(\@revisions, \%parents, $basedir);
     } else {
-	kdiffDirs($basedir, $original_dir, $final_dir);
+	kdiffDirs($basedir, $original_dir, $final_dir, \@revisions);
     }
 }
 
@@ -904,7 +904,7 @@ sub codeReviewSequence {
     print "Successfully built single sequence for review.\n";
 
     makeDiffOrder($basedir, $start, $last);
-    kdiffDirs($basedir, $start, $last);
+    kdiffDirs($basedir, $start, $last, $revs);
 }
 
 sub makeDiffOrder {
@@ -943,8 +943,14 @@ sub makeDiffOrder {
 }
 
 sub kdiffDirs {
-    my ($basedir, $original_dir, $final_dir) = @_;
+    my ($basedir, $original_dir, $final_dir, $revisions) = @_;
 
+    # TODO-sprint: make this extract the relevant part from each log
+    # message for the file we are reviewing.
+
+    foreach my $rev (@$revisions) {
+	quietRunCommand("mtn log -r $rev --last=1");
+    }
     my $cur = '*start*';
     my $auto = undef;
     while(1) {
@@ -965,8 +971,8 @@ sub kdiffDirs {
 	    $_ = <STDIN>;
 	    chomp;
 	}
+	$_ = 'finish' if $_ eq '' && $default eq 'finish';
 	if ($_ eq '') {
-	    last if $default eq 'exit';
 	    my $check_next = getNextDiffFile($basedir, $cur);
 	    if ($check_next ne $next) {
 		print "\n***ordering file changed***\n";
@@ -1048,6 +1054,7 @@ sub getChanged {
 	die "old file $k missing" unless $v == 2;
     }
 
+    @changed = grep(!/((-final-version)|(-pre-fix))$/o, @changed);
     return @changed;
 }
 
