@@ -21,6 +21,11 @@ use FileHandle;
 use Getopt::Long;
 use POSIX 'ceil';
 
+# TODO: pull should walk in the current directory before walking in the
+# dependent ones since it may need additional dependencies, and/or they
+# may have changed.  Test case is revision in tla that switched the
+# dependencies around.
+
 sub usage {
     print "Usage: $0 <command> [-y (yes to prompts)] [args]\n";
     print "  init [--server=<hostname>] [branch-prefix...]\n";
