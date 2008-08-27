@@ -917,6 +917,7 @@ sub codeReviewSequence {
     kdiffDirs($basedir, $start, $last, $revs);
 }
 
+# TODO-sprint: make .thrift files show up early by default.
 sub makeDiffOrder {
     my ($basedir, $original_dir, $final_dir) = @_;
 
