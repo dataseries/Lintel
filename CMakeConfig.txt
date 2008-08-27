@@ -52,6 +52,9 @@ IF(NOT AWK_PATH)
 ENDIF(NOT AWK_PATH)
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
+# Package for detecting if we are in a virtual machine...
+#  Home page:        http://et.redhat.com/~rjones/virt-what/
+#  Source and RPMs:  http://et.redhat.com/~rjones/virt-what/files/
 OPTION(ENABLE_CLOCK_TEST "Enable the cycle-counter clock test; has trouble in virtual machines" ON)
 
 ### Library type
