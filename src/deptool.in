@@ -836,6 +836,8 @@ sub depSyncOne {
 sub codeReview {
     my @revisions = @ARGV;
 
+    die "No revisions specified." if @revisions == 0;
+
     eval 'use File::Copy::Recursive "rcopy";';
     die "aptitude install libfile-copy-recursive-perl?\n$@" if $@;
     my %parents;
