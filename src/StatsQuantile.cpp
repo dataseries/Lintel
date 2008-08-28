@@ -323,8 +323,11 @@ StatsQuantile::getQuantile(double quantile) const
 	      "May be safe to decrease rounding adjustment to 0.5e-15, but will be getting very\n"
 	      "close to the limit of precision in floating point.  How did you get this many\n"
 	      "entries into the table??");
+    // Subtract 1 because the quantile positions count from 1..n, but
+    // C++ arrays index from 0..n-1
     int64_t target_index 
-	= static_cast<int64_t>(ceil(nentries * (quantile - 1e-15)));
+	= static_cast<int64_t>(ceil(nentries * (quantile - 1e-15))) - 1;
+    if (target_index < 0) target_index = 0;
     if (target_index == nentries) {
 	target_index = (long long)(nentries - 1);
     }

@@ -22,13 +22,48 @@
 #include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
+using boost::format;
 
-void
-checkQuantiles(StatsQuantile &stats,
-	       vector<double> &sorted_list,
-	       Stats &exact_error,
-	       double epsilon)
-{
+static void checkPhi(StatsQuantile &stats, vector<double> &sorted_list,
+		     Stats &exact_error, double epsilon, double phi) {
+    int position_error = (int)ceil(epsilon * stats.count());
+
+    // subtract 1 because the quantiles count sorted entries from 
+    // 1..n, but our arrays index 0..n-1; same thing on min/max
+    double v = stats.getQuantile(phi);
+    int i = static_cast<int>(ceil(phi * sorted_list.size())) - 1;
+    if (i < 0) i = 0;
+    if (i >= static_cast<int>(stats.count())) i = stats.count() - 1;
+#if STATSQUANTILE_TIMING
+	Clock::T clock_0 = Clock::now();
+#endif
+	int match_error,min,max;
+	min = static_cast<int>(ceil((phi - epsilon)*sorted_list.size())) - 1;
+	max = static_cast<int>(ceil((phi + epsilon)*sorted_list.size())) - 1;
+	if (min < 0) min = 0;
+	if (max >= static_cast<int>(stats.count())) {
+	    max = static_cast<int>(stats.count())-1;
+	}
+	for(match_error=0;match_error<=position_error;match_error++) {
+	    if ((i-match_error) >= min && sorted_list[i-match_error] == v) { 
+		break;
+	    }
+	    if ((i+match_error) <= max && sorted_list[i+match_error] == v) {
+		break;
+	    }
+	}
+#if STATSQUANTILE_TIMING
+	Clock::T clock_1 = Clock::now();
+	accum_error += clock_1 - clock_0;
+#endif
+	INVARIANT(match_error <= position_error, 
+		  format("checkQuantiles error; %d > %d") % match_error
+		  % position_error);
+	exact_error.add(match_error);
+}
+
+static void checkQuantiles(StatsQuantile &stats, vector<double> &sorted_list,
+			   Stats &exact_error, double epsilon) {
 #if STATSQUANTILE_TIMING
     stats.accum_gq_all = 0;
     stats.accum_gq_init = 0;
@@ -37,7 +72,8 @@ checkQuantiles(StatsQuantile &stats,
     stats.accum_gq_nelem = 0;
     Clock::T accum_error = 0;
 #endif
-    int position_error = (int)ceil(epsilon * stats.count());
+    SINVARIANT(sorted_list.size() == stats.count());
+    // Check every entry ...
     for(int i=0;i<(int)stats.count();i++) {
 	if ((i % 5000) == 0) {
 	    if ((i % 50000) == 0) {
@@ -64,32 +100,16 @@ checkQuantiles(StatsQuantile &stats,
 	    accum_error = 0;
 	}
 #endif
-	double phi = (double)i / (double)stats.count();
-	double v = stats.getQuantile(phi);
-#if STATSQUANTILE_TIMING
-	Clock::T clock_0 = Clock::now();
-#endif
-	int match_error,min,max;
-	min = i - position_error; 
-	if (min < 0) min = 0;
-	max = i + position_error + 1;
-	if (max > (int)stats.count()) max = (int)stats.count();
-	for(match_error=0;match_error<=position_error;match_error++) {
-	    if ((i-match_error)>=0 && sorted_list[i-match_error] == v) { 
-		break;
-	    }
-	    if ((i+match_error)<(int)sorted_list.size() && 
-		sorted_list[i+match_error] == v) {
-		break;
-	    }
-	}
-#if STATSQUANTILE_TIMING
-	Clock::T clock_1 = Clock::now();
-	accum_error += clock_1 - clock_0;
-#endif
-	INVARIANT(match_error <= position_error, "checkQuantiles error!");
-	exact_error.add(match_error);
+	double phi = (double)(i+1) / (double)stats.count();
+	checkPhi(stats, sorted_list, exact_error, epsilon, phi);
     }
+
+    // Check 1000 equally spaced intervals.
+    for(double phi = 0; phi < 1; phi += 0.001) {
+	checkPhi(stats, sorted_list, exact_error, epsilon, phi);
+    }
+    // Check boundary side at 1, (0 checked in previous loop)
+    checkPhi(stats, sorted_list, exact_error, epsilon, 1.0);
 }
 
 void 
@@ -258,6 +278,23 @@ checkRomePrint()
     }
 }
 
+// Weird things happen if we're looking for lots of quantiles in a
+// very small data set.
+void checkSmall() {
+    StatsQuantile tmp;
+
+    vector<double> vals;
+
+    for(unsigned i = 0; i < 3; ++i) {
+	tmp.add(i);
+	vals.push_back(i);
+    }
+
+    tmp.printTextRanges(cout, 30);
+    Stats exact_error;
+    checkQuantiles(tmp, vals, exact_error, 0.001);
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -308,6 +345,10 @@ main(int argc, char *argv[])
 	}
 	printf("**** LONG TEST SUCCESSFUL\n");
     }	
+
+    if (true) {
+	checkSmall();
+    }
 
     if (true) {
 	// Make sure that the stats object doesn't choke with no sample.
@@ -362,18 +403,18 @@ main(int argc, char *argv[])
 	for(int i=1000;i<2000;i++) {
 	    test1.add(i);
 	}
-	for(int i=0;i<1000;i++) {
-	    double v = test1.getQuantile((double)i/1000.0);
+	for(int i=0; i<1000; i++) {
+	    double v = test1.getQuantile(static_cast<double>(i+1)/1000.0);
 	    INVARIANT(v == i + 1000, boost::format("mismatch %.4g %f.4g")
 		      % v % (i+1000.0));
 	}
 	printf("Simple-1 (add sequential) quantile checking passed.\n");
 	
-	for(int i=2000;i<3000;i++) {
+	for(int i=2000; i<3000; i++) {
 	    test1.add(i);
 	}
-	for(int i=0;i<2000;i++) {
-	    double v = test1.getQuantile((double)i/2000.0);
+	for(int i=0; i<2000; i++) {
+	    double v = test1.getQuantile(static_cast<double>(i+1)/2000.0);
 	    INVARIANT(v == i + 1000,
 		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
@@ -382,7 +423,7 @@ main(int argc, char *argv[])
 	    test1.add(i);
 	}
 	for(int i=0;i<4000;i++) {
-	    double v = test1.getQuantile((double)i/4000.0);
+	    double v = test1.getQuantile(static_cast<double>(i+1)/4000.0);
 	    INVARIANT(v == i + 1000,
 		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
@@ -394,7 +435,7 @@ main(int argc, char *argv[])
 	    test1.add(i);
 	}
 	for(int i=0;i<7000;i++) {
-	    double v = test1.getQuantile((double)i/7000.0);
+	    double v = test1.getQuantile(static_cast<double>(i+1)/7000.0);
 	    INVARIANT(v == i + 1000,
 		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
@@ -406,7 +447,7 @@ main(int argc, char *argv[])
 	    test2.add(i);
 	}
 	for(int i=0;i<30;i++) {
-	    double v = test2.getQuantile((double)i/30.0);
+	    double v = test2.getQuantile(static_cast<double>(i+1)/30.0);
 	    INVARIANT(v == i, boost::format("mismatch %.4g %d") % v % i);
 	}
 	// this add will cause a collapse to occur on the first three
@@ -414,7 +455,7 @@ main(int argc, char *argv[])
 	// 1,4,7,10,13,16,19,22,25,28; and the second 30
 	test2.add(30);
 	for(int i=0;i<31;i++) {
-	    double v = test2.getQuantile((double)i/31.0);
+	    double v = test2.getQuantile(static_cast<double>(i+1)/31.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i == 30) expect_v = 30;
 	    INVARIANT(v == expect_v, 
@@ -426,7 +467,7 @@ main(int argc, char *argv[])
 	// should have all three buckets full again; the first at weight 3
 	// the second two at weight 1
 	for(int i=0;i<50;i++) {
-	    double v = test2.getQuantile((double)i/50.0);
+	    double v = test2.getQuantile(static_cast<double>(i+1)/50.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = i;
 	    INVARIANT(v == expect_v,
@@ -438,7 +479,7 @@ main(int argc, char *argv[])
 	// 30,32,34,36,38,40,42,44,46,48 because we use collapse_even_low
 	// to start, the third bucket has 50
 	for(int i=0;i<51;i++) {
-	    double v = test2.getQuantile((double)i/51.0);
+	    double v = test2.getQuantile(static_cast<double>(i+1)/51.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = 2 * (i / 2);
 	    if (i >= 50) expect_v = i;
@@ -450,7 +491,7 @@ main(int argc, char *argv[])
 	}
 	// all three buckets should be full again, at weights 3, 2, 1
 	for(int i=0;i<60;i++) {
-	    double v = test2.getQuantile((double)i/60.0);
+	    double v = test2.getQuantile(static_cast<double>(i+1)/60.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = 2 * (i / 2);
 	    if (i >= 50) expect_v = i;
@@ -464,7 +505,7 @@ main(int argc, char *argv[])
 	// eight entries in the first bucket are off by +-1, but some error 
 	// is expected as these are approximate bounds
 	for(int i=0;i<61;i++) {
-	    double v = test2.getQuantile((double)i/61.0);
+	    double v = test2.getQuantile(static_cast<double>(i+1)/61.0);
 	    double expect_v = 6 * (i / 6) + 4;
 	    if (i >= 30) expect_v = 6 * (i / 6) + 2;
 	    if (i >= 48) expect_v = 6 * (i / 6) + 3;
