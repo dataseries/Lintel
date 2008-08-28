@@ -917,6 +917,7 @@ sub codeReviewSequence {
     kdiffDirs($basedir, $start, $last, $revs);
 }
 
+# TODO-sprint: make .thrift files show up early by default.
 sub makeDiffOrder {
     my ($basedir, $original_dir, $final_dir) = @_;
 
@@ -1195,6 +1196,8 @@ sub codeReviewPatch {
 		print "Saving repair difference as $repairpatch\n";
 		eval { runCommand("diff -u $basedir/$to/$file-pre-fix $basedir/$to/$file >$repairpatch"); };
 	    }
+	    unlink("$basedir/$to/$file-pre-fix", "$basedir/$to/$patch",
+		   "$basedir/$to/$file-final-version");
 	}
     }
 }

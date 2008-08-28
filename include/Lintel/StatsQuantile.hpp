@@ -28,48 +28,49 @@
 
 class StatsQuantile : public Stats, boost::noncopyable {
 public:
-    // The default tuning parameters use up about 59 KiB/StatsQuantile
-    // and support up to a billion inputs with quantile 0.9 as
-    // guarenteed between 0.089 and 0.091, and potentially much better.
-    // In practice, the actual error appears to be 2-3x better on the
-    // absolute worst number, and about 10x better on average 
-    //
-    // quantile_error means that if with quantile(\phi) = the element at
-    // position \ceil(\phi * N) in the sorted list, then the position
-    // of the returned element is between \ceil((\phi - quantile_error) * N)
-    // and \ceil((\phi + quantile_error) * N) in the sorted list.
-    // if \phi = 0.5, then the value is a median
-    // Nbound has to be larger than N (# elements actually added) for the
-    // quantile error to be guarenteed.
-    //
-    // Here are some statistics on the memory usage of various
-    // quantile errors and Nbounds.  Approximately increasing the
-    // nbound by 10x increases the memory usage by 1.15x, but
-    // decreasing the quantile error by 10x increases the memory usage
-    // by 7x
-    //
-    // quantile_error  Nbound  Approx Memory Usage (MiB)
-    //        0.0001    1e8      2.096 MiB
-    //        0.0001    1e9      2.825 MiB
-    //        0.0001    1e10     4.542 MiB
-    //        0.0001    1e11     5.835 MiB
-    //        0.0001    1e12     7.022 MiB
-    //        0.0001    1e13     8.919 MiB
-    // 	  			     
-    //        0.001     1e8      0.282 MiB
-    //        0.001     1e9      0.454 MiB
-    //        0.001     1e10     0.584 MiB
-    //        0.001     1e11     0.702 MiB
-    //        0.001     1e12     0.892 MiB
-    //        0.001     1e13     1.112 MiB
-    // 	  			     
-    //        0.01      1e8      0.045 MiB
-    //        0.01      1e9      0.058 MiB
-    //        0.01      1e10     0.070 MiB
-    //        0.01      1e11     0.089 MiB
-    //        0.01      1e12     0.111 MiB
-    //        0.01      1e13     0.130 MiB
-
+    /// The default tuning parameters use up about 59 KiB/StatsQuantile
+    /// and support up to a billion inputs with quantile 0.9 as
+    /// guarenteed between 0.89 and 0.91, and potentially much better.
+    /// In practice, the actual error appears to be 2-3x better on the
+    /// absolute worst number, and about 10x better on average 
+    ///
+    /// quantile_error means that if with quantile(\phi) = the element at
+    /// position \ceil(\phi * N) in the sorted list, then the position
+    /// of the returned element is between \ceil((\phi - quantile_error) * N)
+    /// and \ceil((\phi + quantile_error) * N) in the sorted list.
+    /// if \phi = 0.5, then the value is a median
+    /// Nbound has to be larger than N (# elements actually added) for the
+    /// quantile error to be guarenteed.
+    ///
+    /// Here are some statistics on the memory usage of various
+    /// quantile errors and Nbounds.  Approximately increasing the
+    /// nbound by 10x increases the memory usage by 1.15x, but
+    /// decreasing the quantile error by 10x increases the memory usage
+    /// by 7x
+    ///
+    /// \verbatim
+    /// quantile_error  Nbound  Approx Memory Usage (MiB)
+    ///        0.0001    1e8      2.096 MiB
+    ///        0.0001    1e9      2.825 MiB
+    ///        0.0001    1e10     4.542 MiB
+    ///        0.0001    1e11     5.835 MiB
+    ///        0.0001    1e12     7.022 MiB
+    ///        0.0001    1e13     8.919 MiB
+    /// 	  			     
+    ///        0.001     1e8      0.282 MiB
+    ///        0.001     1e9      0.454 MiB
+    ///        0.001     1e10     0.584 MiB
+    ///        0.001     1e11     0.702 MiB
+    ///        0.001     1e12     0.892 MiB
+    ///        0.001     1e13     1.112 MiB
+    /// 	  			     
+    ///        0.01      1e8      0.045 MiB
+    ///        0.01      1e9      0.058 MiB
+    ///        0.01      1e10     0.070 MiB
+    ///        0.01      1e11     0.089 MiB
+    ///        0.01      1e12     0.111 MiB
+    ///        0.01      1e13     0.130 MiB
+    /// \endverbatim
     StatsQuantile(double quantile_error = 0.01, 
 		  long long Nbound = (long long)1000 * 1000 * 1000, 
 		  int print_nrange=10);
