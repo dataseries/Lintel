@@ -70,7 +70,11 @@ my %commands = ('checkout' => \&depCheckout,
 		'mtnpush' => sub { mtnOp("push"); },
 		'mtnsync' => sub { mtnOp("sync"); },
 		'mtnserve' => \&mtnServe, 
-		'getenv' => \&getEnv);
+		'getenv' => \&getEnv,
+		'cdsrc' => \&cdSrc,
+		'cdopt' => sub { cdBuild('opt'); },
+		'cddebug' => sub { cdBuild('debug'); },
+);
 
 my $command = shift @ARGV;
 my $monotone_dir = "$ENV{HOME}/.monotone";
@@ -1212,6 +1216,85 @@ sub findFilesPrefix {
     return @ret;
 }
 
+##### Change Directory functions (kinda, prints out what has to happen)
+
+sub cdInitialPrep {
+    my ($maxargs, $usage) = @_;
+    $maxargs ||= 1;
+    unless (defined $ENV{PROJECTS} && defined $ENV{BUILD_DEBUG} &&
+	    defined $ENV{BUILD_OPT}) {
+	print "echo 'can not use deptool cd operations environment is not set up'\n";
+	exit(1);
+    }
+
+    unless (@ARGV >= 1 && @ARGV <= $maxargs && -d $ARGV[0]) {
+	print "echo 'Usage: deptool $usage'";
+	exit(1);
+    }
+    return $ARGV[0];
+}
+
+# TODO: combine this somehow with srcDir
+sub divideDir {
+    my($dir) = @_;
+    
+    if ($dir =~ m!^$ENV{PROJECTS}/([^/]+)(/.+)?$!o) {
+	return ($1, $2, undef);
+    } elsif ($dir =~ m!^$ENV{BUILD_OPT}/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } elsif ($dir =~ m!^$ENV{BUILD_DEBUG}/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } else {
+	print "echo '$dir is not under $ENV{PROJECTS}, $ENV{BUILD_OPT}, or $ENV{BUILD_DEBUG}'\n";
+	exit(1);
+    }
+}
+
+sub cdSrc {
+    my $cwd = cdInitialPrep(1, 'cdsrc <cur-working-dir>');
+    
+    my ($project, $subprojdir, $buildtype) = divideDir($cwd);
+    $subprojdir ||= '';
+    my $srcdir = "$ENV{PROJECTS}/$project$subprojdir";
+    if (-d $srcdir) {
+	print "cd $srcdir\n";
+	exit(0);
+    } else {
+	print "echo '$srcdir does not exist'\n";
+	exit(1);
+    }
+}
+
+sub cdBuild {
+    my($what) = @_;
+
+    my $cwd = cdInitialPrep(2, "cd${what} <cur-working-dir> [build-type]");
+
+    my ($project, $subprojdir, $buildtype) = divideDir($cwd);
+    $buildtype ||= '';
+    $subprojdir ||= '';
+
+    my $cleanproj = $project;
+    $cleanproj =~ s/\W/_/go;
+
+    $buildtype = $ARGV[1] if @ARGV == 2;
+    my $deptool_env = "deptool_${cleanproj}_subbuild";
+    $buildtype = $ENV{$deptool_env}
+        if $buildtype eq '' && defined $ENV{$deptool_env};
+
+    my $xbuildtype = $buildtype eq '' ? '' : "-$buildtype";
+    my $envvar = $what eq 'opt' ? 'BUILD_OPT' : 'BUILD_DEBUG'; 
+    my $builddir = "$ENV{$envvar}/$project$xbuildtype$subprojdir";
+    if (! -d $builddir) {
+	print STDERR "$builddir missing, creating...\n";
+	mkpath($builddir) or die "Unable to mkdir $builddir: $!";
+    }
+    print "export ${deptool_env}=$buildtype;\n"
+	if $buildtype ne '';
+
+    print "cd $builddir\n";
+}
+
 ##### Common -- depwalk
 
 sub depWalk {
@@ -1243,6 +1326,7 @@ sub depWalkRecurse {
     &$fn();
 }
 
+# TODO: combine this somehow with divideDir
 sub srcDir {
     my $start = aliasGetCwd();
     my $projects = projects();
