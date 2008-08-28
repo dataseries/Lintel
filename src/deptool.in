@@ -315,17 +315,18 @@ sub depBuild {
     $options{builddir} = $options{mode} eq 'debug' ? buildDebug() : buildOpt();
     $options{projects} = projects();
 
-    depWalk(sub { depBuildOne(\%options) });
+    depWalk(sub { depBuildOne(\%options, @_) }, 1);
 }
 
 sub depBuildOne {
-    my ($options) = @_;
+    my ($options, $build_type) = @_;
 
     my $src = aliasGetCwd();
     die "? '$src' '$options->{projects}'" 
 	unless $src =~ /^$options->{projects}/o;
-    my $build = $src;
-    $build =~ s!$options->{projects}/!$options->{builddir}/!o;
+    my($project, $subdir, $tmp) = divideDir($src);
+    my $build = "$options->{builddir}/$project";
+    $build .= "-$build_type" if $build_type ne '';
     print "Building in $build\n" unless $quiet;
     unless(-d $build) {
 	mkpath($build);
@@ -1235,6 +1236,7 @@ sub cdInitialPrep {
 }
 
 # TODO: combine this somehow with srcDir
+# returns (project, subdir, build-type)
 sub divideDir {
     my($dir) = @_;
     
@@ -1297,33 +1299,47 @@ sub cdBuild {
 
 ##### Common -- depwalk
 
+sub depWalkRecurse ($$$$$);
+
 sub depWalk {
-    my($fn) = @_;
+    my($fn, $use_build_type) = @_;
 
     my $src = rootSrcDir();
-    depWalkRecurse($fn, $src, {});
+    depWalkRecurse($fn, $src, {}, $use_build_type, '');
 }
 
-sub depWalkRecurse {
-    my($fn, $src, $visited) = @_;
-    return if $visited->{$src};
-    $visited->{$src} = 1;
-    print "depwalk: walking in $src\n"
-	unless $quiet;
+sub depWalkRecurse ($$$$$) {
+    my($fn, $src, $visited, $use_build_type, $build_type) = @_;
+    if ($use_build_type) {
+	return if $visited->{"$src $build_type"};
+	$visited->{"$src $build_type"} = 1;
+    } else {
+	return if $visited->{$src};
+	$visited->{$src} = 1;
+    }
 
     aliasChdir($src);
     my @vcdeps = readVCDeps(".version_control_deps");
     if (@vcdeps > 0) {
 	my $projects = projects();
 	foreach my $dep (@vcdeps) {
+	    my $sub_build_type = '';
+	    if ($dep =~ /^(.+);(\w+)$/o) {
+		($dep,$sub_build_type) = ($1,$2);
+	    }
+
 	    my $depsrc = "$projects/$dep";
 	    die "Unable to find dependency $dep as $projects/$dep"
 		unless -d $depsrc;
-	    depWalkRecurse($fn, $depsrc, $visited);
+	    depWalkRecurse($fn, $depsrc, $visited, $use_build_type, 
+			   $sub_build_type);
 	}
     }
     aliasChdir($src);
-    &$fn();
+    print "depwalk: running walk function in $src ($build_type)\n\n"
+	unless $quiet;
+    &$fn($build_type);
+    print "\n";
 }
 
 # TODO: combine this somehow with divideDir
