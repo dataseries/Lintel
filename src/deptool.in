@@ -1124,7 +1124,7 @@ sub getCmdOutput {
     my $fh = new FileHandle "$cmd 2>/dev/null |" 
 	or die "Unable to run $cmd: $!";
     my @ret = <$fh>;
-    close($fh) or die "close failed: $!";
+    close($fh) or die "close failed: $!\ncommand is $cmd";
     die "$cmd failed" unless $? == 0;
     return @ret;
 }
