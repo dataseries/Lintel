@@ -114,6 +114,9 @@ public:
     void printTail(FILE *out); 
     virtual void printRome(int depth, std::ostream &out) const;
     virtual void printText(std::ostream &out) const;
+
+    /// How much memory will this StatsQuantile use? 
+    size_t memoryUsage() const;
 private:
     // add for only the quantile portion
     void addQuantile(const double value);

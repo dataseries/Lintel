@@ -284,4 +284,12 @@ sub run {
 	unless $ret == 0;
 }
 
+sub getResourceUsage {
+    my($this, $scheduler) = @_;
+
+    return '' if $scheduler eq 'lsf';
+    warn "Do not recognize scheduler '$scheduler'";
+    return '';
+}
+
 1;

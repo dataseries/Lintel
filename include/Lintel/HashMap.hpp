@@ -281,7 +281,7 @@ public:
 	return hashtable.available();
     }
 
-    size_t memoryUsage() {
+    size_t memoryUsage() const {
 	return hashtable.memoryUsage();
     }
 

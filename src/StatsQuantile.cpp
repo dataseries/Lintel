@@ -637,3 +637,11 @@ StatsQuantile::printText(ostream &out) const
     printTextRanges(out);
     printTextTail(out);
 }
+
+size_t StatsQuantile::memoryUsage() const {
+    // primary data (init_buffers) + secondary metadata (init)
+    return nbuffers * buffer_size * sizeof(double) // primary
+	+ nbuffers * (sizeof(int64_t) + sizeof(int) + sizeof(bool)
+		      + sizeof(double) + sizeof(int)) // secondary
+	+ sizeof(StatsQuantile);
+}

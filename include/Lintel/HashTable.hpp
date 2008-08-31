@@ -460,7 +460,7 @@ public:
 	return chains.available();
     }
 
-    size_t memoryUsage() {
+    size_t memoryUsage() const {
 	return sizeof(hte) * chains.capacity() + sizeof(int) * entry_points.capacity();
     }
 
