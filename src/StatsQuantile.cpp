@@ -139,6 +139,7 @@ StatsQuantile::~StatsQuantile()
     delete[] all_buffers;
     delete[] buffer_weight;
     delete[] buffer_level;
+    delete[] buffer_sorted;
     delete[] tmp_buffer;
     delete[] collapse_pos;
 }
