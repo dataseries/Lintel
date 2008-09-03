@@ -12,9 +12,10 @@
 
 #include <Lintel/RotatingHashMap.hpp>
 
-void test_odd(int k, int v) 
+void test_odd(int k, int &v) 
 {
     SINVARIANT(k == v && k % 2 == 1);
+    v = -1; // test mutability
 }
 
 int main()

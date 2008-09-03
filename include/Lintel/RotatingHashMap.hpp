@@ -42,7 +42,10 @@ template <class K, class V,
 	  class KEqual = std::equal_to<const K> >
 class RotatingHashMap {
 public:
-    typedef boost::function<void (const K &, const V &)> rotate_fn;
+    // Changing the key would destroy the hash table; changing the
+    // value should be valid, although it's about to be removed from
+    // the rotating hash-map.
+    typedef boost::function<void (const K &, V &)> RotateFn;
     typedef HashMap<K,V,KHash,KEqual> HashMapT;
 
     RotatingHashMap() {
@@ -110,7 +113,7 @@ public:
 	Note, it is not safe to access the RotatingHashMap that is being
 	rotated in the bound function.
      */
-    void rotate(const rotate_fn fn) {
+    void rotate(const RotateFn fn) {
 	for(hm_iterator i = table_old->begin();
 	    i != table_old->end(); ++i) {
 		fn(i->first, i->second);
@@ -125,7 +128,7 @@ public:
     }
 
     /*** rotate enough times so that the hash map is empty */
-    void flushRotate(const rotate_fn fn) {
+    void flushRotate(const RotateFn fn) {
 	rotate(fn);
 	rotate(fn);
     }

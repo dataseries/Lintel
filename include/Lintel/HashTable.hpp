@@ -40,6 +40,10 @@ struct HashTable_hte {
 // 2^32-1 entries.  Consider writing a test (64bit only) that can
 // verify proper operation at that size.
 
+/// The HashTable class is the low-level class for working with
+/// hash-tables.  For most uses you probably want to just use HashMap,
+/// or HashUnique.
+///
 /// \code
 /// Sample usage:
 /// struct hteData {
@@ -105,6 +109,9 @@ public:
     typedef std::vector<hte, AllocHTE> hte_vectorT;
     typedef std::vector<int, AllocInt> hash_tableT;
 public:
+    /// Add in a new entry to the hash table; will always add in the
+    /// value even if there is an existing value v that is Equal(data,
+    /// v).
     D *add(const D &data) {
 	if (free_list == -1 && 
 	    chains.size() >= target_chain_length * entry_points.size()) {
