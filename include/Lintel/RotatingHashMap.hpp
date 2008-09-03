@@ -93,8 +93,8 @@ public:
     bool remove(const K &k, bool must_exist = true) {
 	bool exists_recent = table_recent->remove(k, false);
 	bool exists_old = table_old->remove(k, false);
-	SINVARIANT(exists_recent ^ exists_old);
-	SINVARIANT(!must_exist || exists_recent || exists_old);
+	DEBUG_SINVARIANT(!exists_recent || !exists_old);
+ 	SINVARIANT(!must_exist || exists_recent || exists_old);
 	return exists_recent || exists_old;
     }
 
