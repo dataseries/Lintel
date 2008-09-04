@@ -73,10 +73,10 @@ public:
 	return ret;
     }
 
-    /// Returns the value associated with the key, if it exists. Otherwise,
-    /// creates an entry initialized with the default value. If it exists in the
-    /// old hashmap, it moves the key-value pair to the recent hashmap.
-    
+    /// Returns the value associated with the key, if it
+    /// exists. Otherwise, creates an entry initialized with the
+    /// default value. If it exists in the old hashmap, it moves the
+    /// key-value pair to the recent hashmap.
     V &operator[](const K &k) {
 	V *v = lookup(k);
 	if (v == NULL) {
@@ -86,10 +86,20 @@ public:
 	}
     }
 
-    /* Could want to make this take an argument so an exists check
-       does not count as a use for promoting to recent */
+    /// Check to see whether a particular value exists in the rotating
+    /// hash map.  This version of exists counts as an access so will
+    /// promote values to the recent table.
     bool exists(const K &k) {
 	return lookup(k) != NULL;
+    }
+
+    /// Check to see whether a particular value exists in the rotating
+    /// hash map.  This version does not count as an access, so does
+    /// not promote an old value to the recent table.
+    bool existsNoPromote(const K &k) {
+	V *ret = table_recent->lookup(k);
+	if (ret != NULL) return true;
+	return table_old->lookup(k) != NULL;
     }
 
     /** returns true if something was removed */
