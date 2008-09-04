@@ -44,6 +44,9 @@ public:
 	return v != NULL;
     }
     
+    // add the key to the table if it does not exist.  if
+    // it does exist, nothing happens.  returns true iff
+    // an add occurred.
     bool add(const K &k) {
 	K *v = hashtable.lookup(k);
 	if (v == NULL) {
@@ -53,7 +56,15 @@ public:
 	    return false;
 	}
     }
-    
+
+    // add the key or replace it if it exists.  returns true
+    // iff a replacement occurred.
+    bool addOrReplace(const K &k) {
+	bool replaced;
+	hashtable.addOrReplace(k, replaced);
+	return replaced;
+    }
+
     void remove(const K &k, bool must_exist = true) {
 	hashtable.remove(k, must_exist);
     }

@@ -113,44 +113,34 @@ public:
     /// value even if there is an existing value v that is Equal(data,
     /// v).
     D *add(const D &data) {
-	if (free_list == -1 && 
-	    chains.size() >= target_chain_length * entry_points.size()) {
-	    resizeHashTable();
-	}
+	uint32_t hashof_ = hashof(data);
+	return internal_add(data, hashof_);
+    }
 
-	INVARIANT(entry_points.size() > 0, 
-		  "did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C");
-	uint32_t hash = hashof(data) % entry_points.size();
-	if (free_list == -1) {
-	    hte v(data, entry_points[hash]);
-	    DEBUG_SINVARIANT(hash < entry_points.size());
-	    entry_points[hash] = static_cast<int>(chains.size());
-	    chains.push_back(v);
-	    return &(chains.back().data);
+    /// Add in a new entry to the hash table if the key does not
+    /// exist.  If the key does exist, replace the existing data.
+    D *addOrReplace(const D &data, bool &replaced) {
+	uint32_t hashof_ = hashof(data);
+	hte *chain = internal_lookup(data, hashof_);
+	if (chain != NULL) {
+	    replaced = true;
+	    return &(chain->data);
 	} else {
-	    int32_t loc = free_list;
-	    
-	    free_list = chains[free_list].next;
-	    chains[loc].data = data;
-	    chains[loc].next = entry_points[hash];
-	    entry_points[hash] = loc;
-	    return &chains[loc].data;
+	    replaced = false;
+	    return internal_add(data, hashof_);
 	}
     }
 
     // changing the key in the returned key/value data will of course
     // totally screw up the hash table.
-    D *lookup(const D &key) {
-	if (entry_points.size() == 0) {
+    D *lookup(const D &data) {
+	uint32_t hashof_ = hashof(data);
+	hte *chain = internal_lookup(data, hashof_);
+	if (chain != NULL) {
+	    return &(chain->data);
+	} else {
 	    return NULL;
 	}
-	uint32_t hash = hashof(key) % entry_points.size();
-	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
-	    if (equal(key,chains[i].data)) {
-		return &chains[i].data;
-	    }
-	}
-	return NULL;
     }
 
     // Not perfectly random, if there are biases in the hash(key)
@@ -489,9 +479,50 @@ public:
 	INVARIANT(dense(), "If the hash table isn't dense, then there are false values in the vector.");
 	return chains;
     }
+
 private:
     uint32_t hashof(const D &data) const {
 	return static_cast<uint32_t>(hashfn(data));
+    }
+
+    D *internal_add(const D &data, uint32_t hashof_) {
+	if (free_list == -1 && 
+	    chains.size() >= target_chain_length * entry_points.size()) {
+	    resizeHashTable();
+	}
+
+	INVARIANT(entry_points.size() > 0, 
+		  "did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C");
+	uint32_t hash = hashof_ % entry_points.size();
+	if (free_list == -1) {
+	    hte v(data, entry_points[hash]);
+	    DEBUG_SINVARIANT(hash < entry_points.size());
+	    entry_points[hash] = static_cast<int>(chains.size());
+	    chains.push_back(v);
+	    return &(chains.back().data);
+	} else {
+	    int32_t loc = free_list;
+	    
+	    free_list = chains[free_list].next;
+	    chains[loc].data = data;
+	    chains[loc].next = entry_points[hash];
+	    entry_points[hash] = loc;
+	    return &chains[loc].data;
+	}
+    }
+
+    hte *internal_lookup(const D &key, uint32_t hashof_)
+    {
+	if (entry_points.size() == 0) {
+	    return NULL;
+	}
+	uint32_t hash = hashof_ % entry_points.size();
+	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
+	    if (equal(key,chains[i].data)) {
+		return &(chains[i]);
+	    }
+	}
+	return NULL;
     }
 
     void init(double _tcl) {
