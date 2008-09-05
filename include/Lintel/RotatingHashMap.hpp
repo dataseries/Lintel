@@ -143,6 +143,15 @@ public:
 	rotate(fn);
     }
 
+    void walk(const RotateFn fn) {
+	for(hm_iterator i = table_recent->begin(); i != table_recent->end(); ++i) {
+	    fn(i->first, i->second);
+	}
+	for(hm_iterator i = table_old->begin(); i != table_old->end(); ++i) {
+	    fn(i->first, i->second);
+	}
+    }
+
     size_t size_recent() {
 	return table_recent->size();
     }
