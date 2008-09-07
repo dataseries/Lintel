@@ -577,12 +577,11 @@ StatsQuantile::printFile(FILE *out, int nranges)
     fwrite(tmp.str().data(), tmp.str().size(), 1, out);
 }
 
-void
-StatsQuantile::printTextRanges(ostream &out, int nranges) const
-{
+void StatsQuantile::printTextRanges(ostream &out, int nranges, double multiplier) const {
     nranges = (nranges == -1 ? print_nrange : nranges);
     out << boost::format("%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n")
-	% countll() % mean() % stddev() % min() % max();
+	% countll() % (multiplier * mean()) % (multiplier * stddev()) 
+	% (multiplier * min()) % (multiplier * max());
     if (countll() == 0) return;
     out << boost::format("    quantiles about every %.0f data points:")
 	% ((double)countll()/(double)nranges);
@@ -595,7 +594,7 @@ StatsQuantile::printTextRanges(ostream &out, int nranges) const
 	    out << ", ";
 	}
 
-	out << boost::format("%.8g") % getQuantile(quantile);
+	out << boost::format("%.8g") % (multiplier * getQuantile(quantile));
 	++nquantiles;
     }
     out << "\n";
@@ -613,9 +612,7 @@ StatsQuantile::printTail(FILE *out)
 // e.g. 22 data points, should we get the 90%,95% tails?  This happens
 // in the dataseries groupby regression test, but may be otherwise
 // irrelevant.
-void
-StatsQuantile::printTextTail(ostream &out) const
-{
+void StatsQuantile::printTextTail(ostream &out, double multiplier) const {
     double nentries = countll();
     out << "  tails: ";
     for(double tail_frac = 0.1; (tail_frac * nentries) >= 10.0;) {
@@ -623,10 +620,10 @@ StatsQuantile::printTextTail(ostream &out) const
 	    out << ", ";
 	}
 	out << boost::format("%.12g%%: %.8g")
-	    % (100*(1-tail_frac)) % getQuantile(1-tail_frac);
+	    % (100*(1-tail_frac)) % (multiplier * getQuantile(1-tail_frac));
 	tail_frac /= 2.0;
 	out << boost::format(", %.12g%%: %.8g")
-	    % (100*(1-tail_frac)) % getQuantile(1-tail_frac);
+	    % (100*(1-tail_frac)) % (multiplier * getQuantile(1-tail_frac));
 	tail_frac /= 5.0;
     }
     out << "\n";

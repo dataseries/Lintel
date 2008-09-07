@@ -57,11 +57,24 @@ sub find_things_to_build {
 	mkdir($outdir,0755) or die "can't mkdir $outdir: $!";
     }
     my $linenum = 0;
+    my @defines;
     my @possibles;
+    my %define_subs;
     while(<JOBSLIST>) {
 	++$linenum;
+	if (/^#define/o) {
+	    chomp;
+	    die "Bad define on line $linenum"
+		unless /^#define\s+(\w+)\s+(.+)$/o;
+	    my($var, $repl) = ($1,$2);
+	    $define_subs{$var} = $repl;
+	    next;
+	}
 	next if /^#/o;
 	s/[\r\n]$//o;
+	while(my($var,$val) = each %define_subs) {
+	    s/\b$var\b/$val/g;
+	}
 	push(@possibles,[$linenum,$_]);
     }
     close(JOBSLIST) or die "close failed: $!";
@@ -117,6 +130,8 @@ sub rebuild_thing_do {
 	rename($tmpoutfile,$outfile)
 	    or die "Can't rename $tmpoutfile to $outfile: $!";
 	exit(0);
+    } else {
+	rename($tmpoutfile, "$tmpoutfile-err");
     }
     warn "FAILED: $cmd\n";
     exit(1);

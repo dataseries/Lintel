@@ -105,15 +105,24 @@ public:
 #endif
     void setNrange(int _print_nrange) { print_nrange = _print_nrange; }
 
-    void printTextRanges(std::ostream &out, int nranges=-1) const;
-    void printTextTail(std::ostream &out) const;
     // nranges is the number of ranges the printed quantiles will divide
     // [min .. max] into, so to get 10%, 20%, 30%..., nranges = 10
     void printFile(FILE *out, int nranges=-1); 
     // prints the 90% quantile, 95%, 99%, 99.5%, 99.9%, ...
     void printTail(FILE *out); 
     virtual void printRome(int depth, std::ostream &out) const;
+
+    /// calls printTextRanges, printTextTail with default arguments
     virtual void printText(std::ostream &out) const;
+
+    /// nranges specifies how many quantile values to print out.  The
+    /// multiplier allows you to convert the units of the data during
+    /// printing, for example to be able to print data in both MB/s
+    /// and Mbps for network data.
+    void printTextRanges(std::ostream &out, int nranges=-1, double multiplier = 1.0) const;
+
+    /// multiplier is the same as for printTextRanges.
+    void printTextTail(std::ostream &out, double multiplier = 1.0) const;
 
     /// How much memory will this StatsQuantile use? 
     size_t memoryUsage() const;
