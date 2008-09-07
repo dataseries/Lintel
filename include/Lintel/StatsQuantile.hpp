@@ -95,8 +95,8 @@ public:
 
     double getQuantile(double quantile) const;
 
-    const int getBufferSize() { return buffer_size; }
-    const int getNBuffers() { return nbuffers; }
+    int getBufferSize() { return buffer_size; }
+    int getNBuffers() { return nbuffers; }
 
     void dumpState(); // for debugging :(
 #if STATSQUANTILE_TIMING
