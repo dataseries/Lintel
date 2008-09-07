@@ -97,7 +97,7 @@ unsigned long StatsHistogramUniform::operator[](unsigned index) const
     return bins[index];
 }
 
-const unsigned StatsHistogramUniform::sampleBin(const double value) const
+unsigned StatsHistogramUniform::sampleBin(const double value) const
 {
     unsigned bin;		// Target bin for this number
     if (value <= bin_low)
@@ -200,7 +200,7 @@ StatsHistogramUniform::add(const double index_value, const double data_value)
 
 // The mode is the center of the most popular bin
 
-const double
+double
 StatsHistogramUniform::mode() const
 {
     SINVARIANT(checkInvariants());
@@ -216,7 +216,7 @@ StatsHistogramUniform::mode() const
 }
 
 
-const double
+double
 StatsHistogramUniform::percentile(double p) const
 {
     SINVARIANT(checkInvariants());
@@ -431,7 +431,7 @@ unsigned long StatsHistogramLog::operator[](unsigned index) const
 }
 
 
-const unsigned StatsHistogramLog::sampleBin(double x) const
+unsigned StatsHistogramLog::sampleBin(double x) const
 {
     if (x <= smallest_bin)
 	return 0;
@@ -445,7 +445,7 @@ const unsigned StatsHistogramLog::sampleBin(double x) const
 
 // Given a fractional bin-index, return the value that would be "stored" there.
 //
-const double StatsHistogramLog::binOffset(double index) const
+double StatsHistogramLog::binOffset(double index) const
 {
     double ret = smallest_bin * exp(index/bin_scaling);
     return ret;
@@ -497,7 +497,7 @@ StatsHistogramLog::add(const double index_value, const double data_value)
 
 // The mode is the center of the most popular bin
 //
-const double
+double
 StatsHistogramLog::mode() const
 {
     SINVARIANT(checkInvariants());
@@ -513,7 +513,7 @@ StatsHistogramLog::mode() const
 }
 
 
-const double
+double
 StatsHistogramLog::percentile(double p) const
 {
     SINVARIANT(checkInvariants());
