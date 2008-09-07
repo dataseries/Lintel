@@ -341,7 +341,7 @@ public:
   virtual void add(const double index_value, const double data_value);
   
   const StatsHistogram &getHistogram(unsigned int n) const {
-      INVARIANT(n>=0 && n < histograms.size(),
+      INVARIANT(n < histograms.size(),
 		boost::format("Requested out of bounds histogram %d valid range [%d .. %d]")
 		% n % 0 % histograms.size());
     return *histograms[n];
