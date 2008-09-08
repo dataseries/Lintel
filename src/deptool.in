@@ -1244,15 +1244,18 @@ sub cdInitialPrep {
 sub divideDir {
     my($dir) = @_;
     
-    if ($dir =~ m!^$ENV{PROJECTS}/([^/]+)(/.+)?$!o) {
-        return ($1, $2, undef);
-    } elsif ($dir =~ m!^$ENV{BUILD_OPT}/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
-        return ($1, $3, $2);
-    } elsif ($dir =~ m!^$ENV{BUILD_DEBUG}/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
-        return ($1, $3, $2);
+    my $projects = projects();
+    my $opt = buildOpt();
+    my $debug = buildDebug();
+    if ($dir =~ m!^$projects/([^/]+)(/.+)?$!o) {
+	return ($1, $2, undef);
+    } elsif ($dir =~ m!^$opt/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } elsif ($dir =~ m!^$debug/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
     } else {
-        print "echo '$dir is not under $ENV{PROJECTS}, $ENV{BUILD_OPT}, or $ENV{BUILD_DEBUG}'\n";
-        exit(1);
+	print "echo '$dir is not under $projects, $opt, or $debug'\n";
+	exit(1);
     }
 }
 
