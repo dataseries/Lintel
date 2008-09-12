@@ -273,7 +273,7 @@ sub run {
     my $this = shift;
 
     unless (defined $this->{verbose_level}) {
-	warn "forcing value for \$this->{verbose_level}";
+	warn "forcing value of 1 for \$this->{verbose_level}";
 	$this->{verbose_level} = 1;
     }
 	
@@ -282,6 +282,14 @@ sub run {
     my $ret = system(@_);
     confess "Command '" . join(" ", @_), "' failed; return was $ret"
 	unless $ret == 0;
+}
+
+sub getResourceUsage {
+    my($this, $scheduler) = @_;
+
+    return '' if $scheduler eq 'lsf';
+    warn "Do not recognize scheduler '$scheduler'";
+    return '';
 }
 
 1;

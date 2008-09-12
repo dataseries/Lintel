@@ -408,7 +408,10 @@ sub lsf_submit {
     chomp($hostname);
     my $jobname = "batch-parallel:$hostname:$$:$bp_module_name:$hostname:[1-$njobs]%$batch_jobwidth";
 
-    my $cmd = "bsub $queue -J '$jobname' -o $workdir/log.%I $0 --lsfexec=$batch_size $bp_module_name -- $workdir";
+    my $resource_usage = $module->getResourceUsage('lsf');
+    $resource_usage = "-R '$resource_usage'"
+	unless $resource_usage eq '';
+    my $cmd = "bsub $queue -r $resource_usage -J '$jobname' -o $workdir/log.%I $0 --lsfexec=$batch_size $bp_module_name -- $workdir";
     if ($no_exec) {
 	# TODO: make this print out what we will rebuild...
 	print "should run $cmd\n";
@@ -702,6 +705,24 @@ process.
 This function should print out a message about what would be rebuild.
 By default it will only be called when C<batch-parallel> is running in
 no-execute mode.
+
+=head2 Indicating module properties
+
+Modules can have a number of properties that affect how batch-parallel
+should schedule jobs.  One important property is whether the job runs in
+parallel.  Right now we only support module properties for submission into
+a batch scheduler.
+
+=head3 sub getResourceUsage($this, $scheduler)
+
+This function returns the resource usage that the module will use in a
+format acceptable to $scheduler.  For example, the DataSeries dsrepack
+module uses: C<return "rusage[ut=1]" if $scheduler eq 'lsf';> To
+indicate that a single dsrepack execution will consume 100% of the
+utilization on a node.  
+
+Right now the only scheduler is lsf, but this will change so functions 
+should warn the user if they get an unknown scheduler.
 
 =head2 Utility functions
 

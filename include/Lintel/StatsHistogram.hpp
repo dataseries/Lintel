@@ -77,23 +77,23 @@ public:
     virtual void add(const double index_value, const double data_value) = 0;
 
     //----Histogram-wide access functions
-    virtual const double binWidth(unsigned index) const = 0;
-    virtual const double binWidth() const { return binWidth(0); }
-    virtual const double low() const = 0;
-    virtual const double binlow(unsigned index) const = 0;
-    virtual const double bincenter(unsigned index) const = 0;
-    virtual const double high() const = 0;
-    virtual const double binhigh(unsigned index) const = 0;
-    virtual const unsigned numBins() const = 0;
-    virtual const unsigned numRescales() const = 0;
-    virtual const unsigned numGrows() const = 0;
-    virtual const bool isScalable() const = 0;
-    virtual const bool isGrowable() const = 0;
-    virtual const double mode() const = 0;
+    virtual double binWidth(unsigned index) const = 0;
+    virtual double binWidth() const { return binWidth(0); }
+    virtual double low() const = 0;
+    virtual double binlow(unsigned index) const = 0;
+    virtual double bincenter(unsigned index) const = 0;
+    virtual double high() const = 0;
+    virtual double binhigh(unsigned index) const = 0;
+    virtual unsigned numBins() const = 0;
+    virtual unsigned numRescales() const = 0;
+    virtual unsigned numGrows() const = 0;
+    virtual bool isScalable() const = 0;
+    virtual bool isGrowable() const = 0;
+    virtual double mode() const = 0;
     virtual const std::string getType() const = 0;
     virtual void printTabular(int depth, std::ostream &out) const;
     virtual void printHistogramRandomInput(std::ostream& out) const;
-    virtual const double percentile(double p) const = 0;   // 0.0 <=p<= 1.0
+    virtual double percentile(double p) const = 0;   // 0.0 <=p<= 1.0
     virtual unsigned long operator[](unsigned index) const = 0;
 				// returns the count in a particular bin
 
@@ -124,7 +124,7 @@ protected:
     unsigned       num_rescales;// number of times rescaled
     unsigned       num_grows;	// number of times rescaled
 
-    const unsigned sampleBin(const double x) const;
+    unsigned sampleBin(const double x) const;
 
 public:
     StatsHistogramUniform(const unsigned bins_in,
@@ -141,20 +141,20 @@ public:
     virtual void add(const double index_value, const double data_value);
 
     //----Histogram-wide access functions
-    const double binWidth() const { return bin_width; }
-    const double binWidth(unsigned /*index*/) const { return bin_width; }
-    const double   low()          const { return bin_low; }
-    const double binlow(unsigned index) const { return bin_low + index*bin_width; };
-    const double bincenter(unsigned index) const { return bin_low + (index+0.5)*bin_width; };
-    const double   high()         const { return bin_high; }
-    const double binhigh(unsigned index) const { return bin_low + (index+1)*bin_width; };
-    const unsigned  numBins() const { return num_bins; }
-    const unsigned  numRescales()  const { return num_rescales; }
-    const unsigned  numGrows()  const { return num_grows; }
-    const bool     isScalable()   const { return is_scalable; }
-    const bool     isGrowable()   const { return is_growable; }
-    const double   mode() const;
-    const double   percentile(double p) const;   // 0.0 <= p <= 1.0
+    double binWidth() const { return bin_width; }
+    double binWidth(unsigned /*index*/) const { return bin_width; }
+    double   low()          const { return bin_low; }
+    double binlow(unsigned index) const { return bin_low + index*bin_width; };
+    double bincenter(unsigned index) const { return bin_low + (index+0.5)*bin_width; };
+    double   high()         const { return bin_high; }
+    double binhigh(unsigned index) const { return bin_low + (index+1)*bin_width; };
+    unsigned  numBins() const { return num_bins; }
+    unsigned  numRescales()  const { return num_rescales; }
+    unsigned  numGrows()  const { return num_grows; }
+    bool     isScalable()   const { return is_scalable; }
+    bool     isGrowable()   const { return is_growable; }
+    double   mode() const;
+    double   percentile(double p) const;   // 0.0 <= p <= 1.0
     unsigned long  operator[](unsigned index) const;
 				// Count in a particular bin
 
@@ -183,8 +183,8 @@ protected:
     unsigned	  num_rescales; // number of times rescaled
     unsigned long *bins;	// array of bin-counters
 
-    const unsigned sampleBin(double x) const;
-    const double binOffset(double index) const;
+    unsigned sampleBin(double x) const;
+    double binOffset(double index) const;
 
 public:
     StatsHistogramLog(const unsigned bins_in,
@@ -200,20 +200,20 @@ public:
     virtual void add(const double index_value, const double data_value);
 
     //----Histogram-wide access functions
-    const double binWidth() const { return binOffset(1.0); }
-    const double binWidth(unsigned index) const { return binOffset(index+1)-binOffset(index); }
-    const double low() const { return smallest_bin; }
-    const double binlow(unsigned index) const { return binOffset(index);};
-    const double bincenter(unsigned index) const {return binOffset(index+0.5);};
-    const double high() const { return bin_high; };
-    const double binhigh(unsigned index) const { return binOffset(index+1); };
-    const unsigned  numBins() const { return num_bins; }
-    const unsigned  numRescales()  const { return 0; }
-    const bool     isScalable()   const { return false; }
-    const unsigned  numGrows()  const { return 0; }
-    const bool     isGrowable()   const { return false; }
-    const double   mode() const;
-    const double   percentile(double p) const;   // 0.0 <= p <= 1.0
+    double binWidth() const { return binOffset(1.0); }
+    double binWidth(unsigned index) const { return binOffset(index+1)-binOffset(index); }
+    double low() const { return smallest_bin; }
+    double binlow(unsigned index) const { return binOffset(index);};
+    double bincenter(unsigned index) const {return binOffset(index+0.5);};
+    double high() const { return bin_high; };
+    double binhigh(unsigned index) const { return binOffset(index+1); };
+    unsigned  numBins() const { return num_bins; }
+    unsigned  numRescales()  const { return 0; }
+    bool     isScalable()   const { return false; }
+    unsigned  numGrows()  const { return 0; }
+    bool     isGrowable()   const { return false; }
+    double   mode() const;
+    double   percentile(double p) const;   // 0.0 <= p <= 1.0
     unsigned long  operator[](unsigned index) const;  // Count in a particular bin
 
     //----Value-access functions
@@ -340,7 +340,7 @@ public:
   virtual void add(const double index_value, const double data_value);
   
   const StatsHistogram &getHistogram(unsigned int n) const {
-      INVARIANT(n>=0 && n < histograms.size(),
+      INVARIANT(n < histograms.size(),
 		boost::format("Requested out of bounds histogram %d valid range [%d .. %d]")
 		% n % 0 % histograms.size());
     return *histograms[n];

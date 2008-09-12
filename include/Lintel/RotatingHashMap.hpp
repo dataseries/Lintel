@@ -42,12 +42,15 @@ template <class K, class V,
 	  class KEqual = std::equal_to<const K> >
 class RotatingHashMap {
 public:
-    typedef boost::function<void (const K &, const V &)> rotate_fn;
-    typedef HashMap<K,V> HashMapT;
+    // Changing the key would destroy the hash table; changing the
+    // value should be valid, although it's about to be removed from
+    // the rotating hash-map.
+    typedef boost::function<void (const K &, V &)> RotateFn;
+    typedef HashMap<K,V,KHash,KEqual> HashMapT;
 
     RotatingHashMap() {
-	table_recent = new HashMap<K,V>;
-	table_old = new HashMap<K,V>;
+	table_recent = new HashMapT; // HashMap<K,V>;
+	table_old = new HashMapT; // HashMap<K,V>;
     }
 
     ~RotatingHashMap() {
@@ -70,6 +73,10 @@ public:
 	return ret;
     }
 
+    /// Returns the value associated with the key, if it
+    /// exists. Otherwise, creates an entry initialized with the
+    /// default value. If it exists in the old hashmap, it moves the
+    /// key-value pair to the recent hashmap.
     V &operator[](const K &k) {
 	V *v = lookup(k);
 	if (v == NULL) {
@@ -79,25 +86,35 @@ public:
 	}
     }
 
-    /* Could want to make this take an argument so an exists check
-       does not count as a use for promoting to recent */
+    /// Check to see whether a particular value exists in the rotating
+    /// hash map.  This version of exists counts as an access so will
+    /// promote values to the recent table.
     bool exists(const K &k) {
 	return lookup(k) != NULL;
+    }
+
+    /// Check to see whether a particular value exists in the rotating
+    /// hash map.  This version does not count as an access, so does
+    /// not promote an old value to the recent table.
+    bool existsNoPromote(const K &k) {
+	V *ret = table_recent->lookup(k);
+	if (ret != NULL) return true;
+	return table_old->lookup(k) != NULL;
     }
 
     /** returns true if something was removed */
     bool remove(const K &k, bool must_exist = true) {
 	bool exists_recent = table_recent->remove(k, false);
 	bool exists_old = table_old->remove(k, false);
-	SINVARIANT(exists_recent ^ exists_old);
-	SINVARIANT(!must_exist || exists_recent || exists_old);
+	DEBUG_SINVARIANT(!exists_recent || !exists_old);
+ 	SINVARIANT(!must_exist || exists_recent || exists_old);
 	return exists_recent || exists_old;
     }
 
     void rotate() {
 	delete table_old;
 	table_old = table_recent;
-	table_recent = new HashMap<K,V>();
+	table_recent = new HashMapT; // HashMap<K,V>();
     }
 
     /** use like rotate(boost::bind(test_fn, _1, _2)); with test_fn
@@ -106,7 +123,7 @@ public:
 	Note, it is not safe to access the RotatingHashMap that is being
 	rotated in the bound function.
      */
-    void rotate(const rotate_fn fn) {
+    void rotate(const RotateFn fn) {
 	for(hm_iterator i = table_old->begin();
 	    i != table_old->end(); ++i) {
 		fn(i->first, i->second);
@@ -121,9 +138,18 @@ public:
     }
 
     /*** rotate enough times so that the hash map is empty */
-    void flushRotate(const rotate_fn fn) {
+    void flushRotate(const RotateFn fn) {
 	rotate(fn);
 	rotate(fn);
+    }
+
+    void walk(const RotateFn fn) {
+	for(hm_iterator i = table_recent->begin(); i != table_recent->end(); ++i) {
+	    fn(i->first, i->second);
+	}
+	for(hm_iterator i = table_old->begin(); i != table_old->end(); ++i) {
+	    fn(i->first, i->second);
+	}
     }
 
     size_t size_recent() {
@@ -157,7 +183,8 @@ public:
     }
 private:
     typedef typename HashMapT::iterator hm_iterator;
-    HashMap<K,V> *table_recent, *table_old;
+    // HashMap<K,V> *table_recent, *table_old;
+    HashMapT *table_recent, *table_old;
 };
 
 #endif

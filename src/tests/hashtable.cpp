@@ -20,21 +20,21 @@ HashMap<string,string> test;
 
 class intHash {
 public:
-    unsigned int operator()(const int k) {
+    unsigned int operator()(const int k) const {
 	return k;
     }
 };
 
 class collisionHash {
 public:
-    unsigned int operator()(const int k) {
+    unsigned int operator()(const int k) const {
 	return 0;
     }
 };
 
 class intEqual {
 public:
-    bool operator()(const int a, const int b) {
+    bool operator()(const int a, const int b) const {
 	return a == b;
     }
 };
@@ -87,6 +87,9 @@ void constHTTest(const inttable &table, int maxi) {
 	found[*i] = true;
     }
 
+    inttable::const_iterator j = table.find(5);
+    j = table.find(6);
+
     for(int i=0; i<maxi; ++i) {
 	SINVARIANT(found[i]);
     }
@@ -110,6 +113,40 @@ int main()
 	INVARIANT(count == collisiontable.size(),
 		  boost::format("?! %d %d") % count % collisiontable.size());
     }
+
+    // multiple adds of the same key are *supposed* to add multiple times.
+    collisiontable.clear();
+    SINVARIANT(collisiontable.size() == 0);
+    for(int i=0;i<100;i++) {
+	collisiontable.add(i);
+	collisiontable.add(i);
+    }
+    SINVARIANT(collisiontable.size() == 200);
+
+    // remove the keys (each twice)
+    for(int i=0;i<100;i++) {
+	collisiontable.remove(i, true);
+	collisiontable.remove(i, true);
+    }
+    SINVARIANT(collisiontable.size() == 0);
+
+    // an efficient way to do add/replace
+    collisiontable.clear();
+    SINVARIANT(collisiontable.size() == 0);
+    for(int i=0;i<100;i++) {
+	bool replaced;
+	collisiontable.addOrReplace(i, replaced);
+	SINVARIANT(replaced == false);
+	collisiontable.addOrReplace(i, replaced);
+	SINVARIANT(replaced == true);
+    }
+    SINVARIANT(collisiontable.size() == 100);
+
+    // remove the keys
+    for(int i=0;i<100;i++) {
+	collisiontable.remove(i, true);
+    }
+    SINVARIANT(collisiontable.size() == 0);
     
     int maxi = 20000;
     inttable table;
@@ -191,6 +228,20 @@ int main()
     table.clear();
     SINVARIANT(table.size() == 0);
     table.remove(5,false);
+
+    // similar to addOrReplace above, but without 
+    // the forced collisions
+    table.clear();
+    for (int i = 0; i < 1000; i++) {
+	bool replaced;
+	table.addOrReplace(i, replaced);
+	SINVARIANT(replaced == false);
+    }
+    for (int i = 0; i < 1000; i++) {
+	bool replaced;
+	table.addOrReplace(i, replaced);
+	SINVARIANT(replaced == true);
+    }
 
     stringHTTests();
 

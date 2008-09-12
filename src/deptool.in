@@ -11,12 +11,24 @@ use strict;
 use Carp;
 use Cwd;
 use Digest::SHA1 'sha1_hex';
-use FileHandle;
+use English;
+use File::Compare;
+use File::Copy;
 use File::Path;
 use File::Find;
 use File::stat;
+use FileHandle;
 use Getopt::Long;
 use POSIX 'ceil';
+
+# TODO: pull should walk in the current directory before walking in the
+# dependent ones since it may need additional dependencies, and/or they
+# may have changed.  Test case is revision in tla that switched the
+# dependencies around.
+
+# TODO: builds have to be serialized, but tests should be runnable in parallel.
+
+# TODO: keep usage up to date. code-review is missing. 
 
 sub usage {
     print "Usage: $0 <command> [-y (yes to prompts)] [args]\n";
@@ -35,31 +47,36 @@ my $quiet = 0;
 
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
-	   "quiet!" => \$quiet, 
+           "quiet!" => \$quiet, 
            "projects=s" => \$Cache::projects,
-	   "root|build-root=s" => \$Cache::build_root,
-	   "operating-system=s" => \$Cache::operating_system,
-	   "uname-m=s" => \$Cache::uname_m,
-	   "build-debug=s" => \$Cache::build_debug,
-	   "build-opt=s" => \$Cache::build_optimize);
+           "root|build-root=s" => \$Cache::build_root,
+           "operating-system=s" => \$Cache::operating_system,
+           "uname-m=s" => \$Cache::uname_m,
+           "build-debug=s" => \$Cache::build_debug,
+           "build-opt=s" => \$Cache::build_optimize);
 Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
 
 usage("Missing argument") if @ARGV == 0;
 
 my %commands = ('checkout' => \&depCheckout,
-		'pull' => \&depPull,
-		'build' => \&depBuild,
-		'commit' => \&depCommit,
-		'publish' => \&depPublish,
-		# below commands don't run in all dep dirs.
-		'init' => \&depInit,
-		'cmake' => \&runCMake,
-		'pin' => \&setPin,
-		'mtnpull' => sub { mtnOp("pull"); },
-		'mtnpush' => sub { mtnOp("push"); },
-		'mtnsync' => sub { mtnOp("sync"); },
-		'mtnserve' => \&mtnServe, 
-		'getenv' => \&getEnv);
+                'pull' => \&depPull,
+                'build' => \&depBuild,
+                'commit' => \&depCommit,
+                'publish' => \&depPublish,
+                # below commands don't run in all dep dirs.
+                'init' => \&depInit,
+                'cmake' => \&runCMake,
+                'pin' => \&setPin,
+                'code-review' => \&codeReview,
+                'mtnpull' => sub { mtnOp("pull"); },
+                'mtnpush' => sub { mtnOp("push"); },
+                'mtnsync' => sub { mtnOp("sync"); },
+                'mtnserve' => \&mtnServe, 
+                'getenv' => \&getEnv,
+                'cdsrc' => \&cdSrc,
+                'cdopt' => sub { cdBuild('opt'); },
+                'cddebug' => sub { cdBuild('debug'); },
+);
 
 my $command = shift @ARGV;
 my $monotone_dir = "$ENV{HOME}/.monotone";
@@ -83,8 +100,8 @@ sub depInit {
     usage("Unknown error") unless $result;
     my @branch_prefixes = @ARGV;
     if (@branch_prefixes == 0) {
-	print "Assuming default branch prefix ssd\n";
-	@branch_prefixes = ("ssd");
+        print "Assuming default branch prefix ssd\n";
+        @branch_prefixes = ("ssd");
     }
 
     initMtnDir();
@@ -96,7 +113,7 @@ sub depInit {
 sub checkForMtn {
     my @paths = split(/:/, $ENV{PATH});
     foreach my $path (@paths) {
-	return if -x "$path/mtn";
+        return if -x "$path/mtn";
     }
     die "Unable to find mtn binary in path; you should repair this.
 Usually yum install monotone or apt-get install monotone will work.
@@ -107,14 +124,14 @@ the monotone web site: http://www.monotone.ca/";
 
 sub initMtnDir {
     if (! -d $monotone_dir) {
-	userPrompt("Create monotone directory $monotone_dir");
-	mkdir($monotone_dir, 0755) or die "Unable to mkdir $monotone_dir: $!";
+        userPrompt("Create monotone directory $monotone_dir");
+        mkdir($monotone_dir, 0755) or die "Unable to mkdir $monotone_dir: $!";
     }
 }
 
 sub initMtnKeysRc {
     if (! -d "$monotone_dir/keys") {
-	print <<EOF;
+        print <<EOF;
 
 The key will be generated with an empty password.  You can change it
 by running mtn chkeypass or mtn passphrase depending on your monotone
@@ -124,22 +141,22 @@ WARNING: if you already have a monotone key, you should ctrl-c now, and copy
 WARNING: your key file over.  Monotone deals poorly with multiple keys with
 WARNING: the same e-mail address.
 EOF
-	
-	print "Enter e-mail address for identifying monotone key: ";
-	my $email = <STDIN>;
-	chomp $email;
-	die "?? $email" unless $email =~ /^\S+\@\w+\.\w+$/o;
+        
+        print "Enter e-mail address for identifying monotone key: ";
+        my $email = <STDIN>;
+        chomp $email;
+        die "?? $email" unless $email =~ /^\S+\@\w+\.\w+$/o;
 
-	runCommand("yes default-password | mtn genkey $email");
+        runCommand("yes default-password | mtn genkey $email");
 
-	print <<"END";
+        print <<"END";
 Key generated with password 'default-password'; can be changed with
 mtn chkeypass or mtn passphrase depending on your monotone version
 END
 
-	chmod(0700, "$monotone_dir/keys");
-	if (-f "$monotone_dir/monotonerc") {
-	    print <<"EOF";
+        chmod(0700, "$monotone_dir/keys");
+        if (-f "$monotone_dir/monotonerc") {
+            print <<"EOF";
 You probably want to add:
 function get_passphrase(keypair_id)
   return "default-password"
@@ -147,10 +164,10 @@ end
 To your $monotone_dir/monotonerc file
 EOF
         } else {
-	    userPrompt("Create default monotonerc?");
-	    my $mtnrc = new FileHandle(">$monotone_dir/monotonerc")
-		or die "can't write $monotone_dir/monotonerc: $!";
-	    print $mtnrc <<"EOF";
+            userPrompt("Create default monotonerc?");
+            my $mtnrc = new FileHandle(">$monotone_dir/monotonerc")
+                or die "can't write $monotone_dir/monotonerc: $!";
+            print $mtnrc <<"EOF";
 -- Change with mtn chkeypass or mtn passphrase, then change here.
 function get_passphrase(keypair_id)
   return "default-password"
@@ -184,18 +201,18 @@ sub initDbs {
     my($server, $branch_prefixes) = @_;
 
     foreach my $branch_prefix (@$branch_prefixes) {
-	my $db = $branch_prefix;
-	$db =~ s/\W.*$//o;
-	die "Invalid branch prefix $branch_prefix, should start with normal chars"
-	    if $db eq '';
-	unless (-f "$monotone_dir/${db}.db") {
-	    userPrompt("create local repository $monotone_dir/${db}.db");
-	    runCommand("mtn -d $monotone_dir/${db}.db db init");
-	}
+        my $db = $branch_prefix;
+        $db =~ s/\W.*$//o;
+        die "Invalid branch prefix $branch_prefix, should start with normal chars"
+            if $db eq '';
+        unless (-f "$monotone_dir/${db}.db") {
+            userPrompt("create local repository $monotone_dir/${db}.db");
+            runCommand("mtn -d $monotone_dir/${db}.db db init");
+        }
 
-	userPrompt("pull $branch_prefix* from $server (can take a while)");
-	my $qm = quotemeta $branch_prefix;
-	runCommand("mtn -d $monotone_dir/${db}.db pull $server $qm\\*");
+        userPrompt("pull $branch_prefix* from $server (can take a while)");
+        my $qm = quotemeta $branch_prefix;
+        runCommand("mtn -d $monotone_dir/${db}.db pull $server $qm\\*");
     }
 }
 
@@ -211,46 +228,46 @@ sub depCheckout {
     
     my @dbs = glob("$monotone_dir/*.db");
     die "No *.db files in $monotone_dir; did you run $0 init?"
-	unless @dbs > 0;
+        unless @dbs > 0;
 
     my @branches;
     my %branch_to_db;
     foreach my $db (@dbs) {
-	my $tmp = new FileHandle("mtn -d $db list branches |");
-	my @tmp = <$tmp>;
-	close($tmp);
-	grep(chomp, @tmp);
-	push(@branches, @tmp);
-	map { 
-	    warn "duplicate db ($db, $branch_to_db{$_}) for branch $_
+        my $tmp = new FileHandle("mtn -d $db list branches |");
+        my @tmp = <$tmp>;
+        close($tmp);
+        grep(chomp, @tmp);
+        push(@branches, @tmp);
+        map { 
+            warn "duplicate db ($db, $branch_to_db{$_}) for branch $_
 will use latter."
-		if defined $branch_to_db{$_};
-	    $branch_to_db{$_} = $db 
-	    } @tmp;
+                if defined $branch_to_db{$_};
+            $branch_to_db{$_} = $db 
+            } @tmp;
     }
 
     my @branch_regexes = (@ARGV);
     my %did_regex;
     while (@branch_regexes > 0) {
-	my $branch_regex = shift @branch_regexes;
-	next if $did_regex{$branch_regex};
-	$did_regex{$branch_regex} = 1;
+        my $branch_regex = shift @branch_regexes;
+        next if $did_regex{$branch_regex};
+        $did_regex{$branch_regex} = 1;
 
-	my @possibles = grep(/$branch_regex/, @branches);
-	die "No branches found matching $branch_regex"
-	    unless @possibles > 0;
-	@possibles = sort { length $a <=> length $b } @possibles;
-	
-	my $branch = shift @possibles;
-	foreach $_ (@possibles) {
-	    die "?? $branch $_" unless /^$branch/;
-	}
-	
-	my $db = $branch_to_db{$branch};
-	my $dir = $branch;
-	$dir =~ s!^\w+(\.\w+)*/!!o; # strip uniqueifier we put on
-	my $path = "$projects/$dir";
-	print << "END";
+        my @possibles = grep(/$branch_regex/, @branches);
+        die "No branches found matching $branch_regex"
+            unless @possibles > 0;
+        @possibles = sort { length $a <=> length $b } @possibles;
+        
+        my $branch = shift @possibles;
+        foreach $_ (@possibles) {
+            die "?? $branch $_" unless /^$branch/;
+        }
+        
+        my $db = $branch_to_db{$branch};
+        my $dir = $branch;
+        $dir =~ s!^\w+(\.\w+)*/!!o; # strip uniqueifier we put on
+        my $path = "$projects/$dir";
+        print << "END";
 
 Selected branch $branch
 From database $db
@@ -258,22 +275,22 @@ Inferred projects directory $dir
 Inferred full path $path
 END
 
-	if (-d "$path/_MTN") {
-	    print "Found $path/_MTN; skipping redundant checkout.\n";
-	} else {
-	    userPrompt("continue even though you have a / in the directory")
-		if $dir =~ m!/!o;
-	    userPrompt("continue even though path already exists")
-		if -d $path;
-	
-	    runCommand("mtn -d $db co -b $branch $path");
-	}
-	my @vcdeps = readVCDeps("$path/.version_control_deps");
-	if (@vcdeps > 0) {
-	    print "Adding VC dependencies: ", join(" ", @vcdeps), "\n";
-	    push(@branch_regexes, @vcdeps);
-	}
-    }	
+        if (-d "$path/_MTN") {
+            print "Found $path/_MTN; skipping redundant checkout.\n";
+        } else {
+            userPrompt("continue even though you have a / in the directory")
+                if $dir =~ m!/!o;
+            userPrompt("continue even though path already exists")
+                if -d $path;
+        
+            runCommand("mtn -d $db co -b $branch $path");
+        }
+        my @vcdeps = readVCDeps("$path/.version_control_deps");
+        if (@vcdeps > 0) {
+            print "Adding VC dependencies: ", join(" ", @vcdeps), "\n";
+            push(@branch_regexes, @vcdeps);
+        }
+    }        
 }
 
 ##### Dependency build
@@ -285,35 +302,36 @@ sub depBuild {
     my $cwd = aliasGetCwd();
     my $debug = buildDebug();
     if ($cwd =~ /^$debug/o) {
-	$options{mode} = 'debug';
+        $options{mode} = 'debug';
     } else {
-	$options{mode} = 'optimize';
+        $options{mode} = 'optimize';
     }
 
     my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
-			 "quiet!" => \$quiet,
-			 "t|tests!" => \$options{tests},
-			 "o|optimize" => sub { $options{mode} = 'optimize' },
-			 "d|debug" => sub { $options{mode} = 'debug' });
+                         "quiet!" => \$quiet,
+                         "t|tests!" => \$options{tests},
+                         "o|optimize" => sub { $options{mode} = 'optimize' },
+                         "d|debug" => sub { $options{mode} = 'debug' });
     usage("unknown option to build") unless $ret;
 
     $options{builddir} = $options{mode} eq 'debug' ? buildDebug() : buildOpt();
     $options{projects} = projects();
 
-    depWalk(sub { depBuildOne(\%options) });
+    depWalk(sub { depBuildOne(\%options, @_) }, 1);
 }
 
 sub depBuildOne {
-    my ($options) = @_;
+    my ($options, $build_type) = @_;
 
     my $src = aliasGetCwd();
     die "? '$src' '$options->{projects}'" 
-	unless $src =~ /^$options->{projects}/o;
-    my $build = $src;
-    $build =~ s!$options->{projects}/!$options->{builddir}/!o;
+        unless $src =~ /^$options->{projects}/o;
+    my($project, $subdir, $tmp) = divideDir($src);
+    my $build = "$options->{builddir}/$project";
+    $build .= "-$build_type" if $build_type ne '';
     print "Building in $build\n" unless $quiet;
     unless(-d $build) {
-	mkpath($build);
+        mkpath($build);
     }
     aliasChdir($build);
     depBuildCheckOld($src, $build, $options);
@@ -328,21 +346,21 @@ sub depBuildCheckOld {
     print "depbuild: Checking if any files in $src\n";
     print "depbuild: are out of date w.r.t $build\n";
     if (! -f ".deptool.build_stamp") {
-	print "depbuild:  missing .deptool.build_stamp, build definitely out of date\n";
-	return;
+        print "depbuild:  missing .deptool.build_stamp, build definitely out of date\n";
+        return;
     }
     if ($options->{did_install}) {
-	print "depbuild:  did an install in another directory, so we are out of date\n";
-	unlink(".deptool.build_stamp") or die "?";
-	return;
+        print "depbuild:  did an install in another directory, so we are out of date\n";
+        unlink(".deptool.build_stamp") or die "?";
+        return;
     }
     my @old_files = depBuildFindOld($src);
     if (@old_files > 0) {
-	print "\n" x 5;
-	print join("\n", @old_files, '');
-	print "depbuild: out of date w.r.t above files.";
-	unlink(".deptool.build_stamp") or die "?";
-	return;
+        print "\n" x 5;
+        print join("\n", @old_files, '');
+        print "depbuild: out of date w.r.t above files.";
+        unlink(".deptool.build_stamp") or die "?";
+        return;
     }
     print "depbuild:  up to date in $build\n";
 }
@@ -352,14 +370,14 @@ sub depBuildFindOld {
     die "??" unless defined $src;
 
     my $ref_stat = stat(".deptool.build_stamp")
-	or die "Unable to stat .deptool.build_stamp: $!";
+        or die "Unable to stat .deptool.build_stamp: $!";
     my @newer;
     find(sub { return unless -f $_;
-	       return if $File::Find::name =~ m!^$src/_MTN!;
-	       my $stat = stat($_) or die "can't stat $_: $!";
-	       push(@newer, $File::Find::name)
-		   if $stat->mtime() > $ref_stat->mtime(); }, $src);
-	       
+               return if $File::Find::name =~ m!^$src/_MTN!;
+               my $stat = stat($_) or die "can't stat $_: $!";
+               push(@newer, $File::Find::name)
+                   if $stat->mtime() > $ref_stat->mtime(); }, $src);
+               
     return @newer;
 }
 
@@ -367,13 +385,13 @@ sub depBuildMake {
     my($src, $build, $options) = @_;
 
     if (-f ".deptool.build_stamp") {
-	print "depbuild: $build already has current build\n";
-	return;
+        print "depbuild: $build already has current build\n";
+        return;
     }
     if (! -f "Makefile" || ! -d "CMakeFiles" || ! -f "CMakeCache.txt") {
-	local @ARGV = ();
-	print "depbuild: creating makefile in $build\n";
-	runCMakeConfig();
+        local @ARGV = ();
+        print "depbuild: creating makefile in $build\n";
+        runCMakeConfig();
     }
 
     print "depbuild: building...\n";
@@ -387,11 +405,11 @@ sub depBuildTest {
     return unless $options->{tests};
 
     if (stampUpToDate("test")) {
-	print "depbuild: Tests are up to date in $build\n";
+        print "depbuild: Tests are up to date in $build\n";
     } else {
-	print "depbuild: Running tests in $build...\n";
-	runCommand("make","test");
-	stamp("test");
+        print "depbuild: Running tests in $build...\n";
+        runCommand("make","test");
+        stamp("test");
     } 
 }
 
@@ -400,9 +418,9 @@ sub stampUpToDate {
 
     return 0 unless -f ".deptool.${which}_stamp";
     my $build_stat = stat(".deptool.build_stamp")
-	or die "Unable to stat .deptool.build_stamp: $!";
+        or die "Unable to stat .deptool.build_stamp: $!";
     my $which_stat = stat(".deptool.${which}_stamp")
-	or die "Unable to stat .deptool.${which}_stamp: $!";
+        or die "Unable to stat .deptool.${which}_stamp: $!";
     return $which_stat->mtime() > $build_stat->mtime();
 }
 
@@ -411,13 +429,13 @@ sub stamp {
     
     my $filename = ".deptool.${which}_stamp";
     while(1) {
-	my $fh = new FileHandle("+>>$filename")
-	    or die "Can't open $filename for append: $!";
-	close($fh);
-	utime undef, undef, $filename;
-	last if $which eq 'build' || stampUpToDate($which);
-	print "deptool: sleep(1) to make sure ${which} timestamp is more recent than build\n";
-	sleep(1);
+        my $fh = new FileHandle("+>>$filename")
+            or die "Can't open $filename for append: $!";
+        close($fh);
+        utime undef, undef, $filename;
+        last if $which eq 'build' || stampUpToDate($which);
+        print "deptool: sleep(1) to make sure ${which} timestamp is more recent than build\n";
+        sleep(1);
     }
 }
 
@@ -425,11 +443,11 @@ sub depBuildInstall {
     my($build, $options) = @_;
 
     if (stampUpToDate("install","build")) {
-	print "depbuild: Install up to date in $build\n";
+        print "depbuild: Install up to date in $build\n";
     } else {
-	runCommand("make","install");
-	stamp("install");
-	$options->{did_install} = 1;
+        runCommand("make","install");
+        stamp("install");
+        $options->{did_install} = 1;
     }
 }
 
@@ -440,24 +458,24 @@ sub depBuildInstall {
 
 sub setPin {
     die "Have unknown files; setpin is disallowed"
-	if depCommitHaveUnknown();
+        if depCommitHaveUnknown();
     die "Have changes; setpin is disallowed"
-	if depCommitHaveChanges();
+        if depCommitHaveChanges();
     my @heads = getCurHeads();
     die "Have multiple heads; setpin is disallowed"
-	unless @heads == 1;
+        unless @heads == 1;
     my($revision) = @ARGV;
 
     if (defined $revision) {
-	runCommand("mtn","update","-r",$revision);
+        runCommand("mtn","update","-r",$revision);
     }
 
     $revision = getCurRevision()
-	unless defined $revision;
+        unless defined $revision;
     
     my $filename = depPinFilename();
     my $fh = new FileHandle ">>$filename"
-	or die "Unable to open $filename for append: $!";
+        or die "Unable to open $filename for append: $!";
     print $fh "$heads[0] $revision\n";
     print "Pinning to $revision so long as head remains at $heads[0]\n";
     close($fh);
@@ -484,13 +502,13 @@ sub depPullOne {
 
 sub depPullMerge {
     while(1) {
-	my $fh = new FileHandle "mtn automate heads |";
-	my @heads = getCurHeads();
-	last if @heads == 1;
-	my $cwd = aliasGetCwd();
-	print "\n" x 5, "You have multiple heads in $cwd.";
-	userPrompt("merge the heads");
-	runCommand("mtn","merge");
+        my $fh = new FileHandle "mtn automate heads |";
+        my @heads = getCurHeads();
+        last if @heads == 1;
+        my $cwd = aliasGetCwd();
+        print "\n" x 5, "You have multiple heads in $cwd.";
+        userPrompt("merge the heads");
+        runCommand("mtn","merge");
     }
 }
 
@@ -500,14 +518,14 @@ sub depPullUpdate {
     my $cwd = aliasGetCwd();
     my $cur_rev = getCurRevision();
     if (-f depPinFilename()) {
-	my @heads = getCurHeads();
-	die "??" unless @heads == 1;
-	
-	if (foundPin($cur_rev, $heads[0])) {
-	    print "deppull: You are currently pinned to revision $cur_rev\n";
-	    return;
-	} else {
-	    print <<"END";
+        my @heads = getCurHeads();
+        die "??" unless @heads == 1;
+        
+        if (foundPin($cur_rev, $heads[0])) {
+            print "deppull: You are currently pinned to revision $cur_rev\n";
+            return;
+        } else {
+            print <<"END";
 
 
 You would be pinned to $cur_rev, but the head
@@ -515,20 +533,20 @@ has been updatd.  To reset the pin:
 cd $cwd; deptool pin $cur_rev
 END
             # skip prompting, will do so for the update.
-	}
+        }
     }
     while(1) {
-	my $cur_rev = getCurRevision();
-	my @heads = getCurHeads();
-	die "??" unless @heads == 1;
-	last if $cur_rev eq $heads[0];
-	print <<"END";
+        my $cur_rev = getCurRevision();
+        my @heads = getCurHeads();
+        die "??" unless @heads == 1;
+        last if $cur_rev eq $heads[0];
+        print <<"END";
 You current checkout is not up to date in $cwd.
 $cur_rev != $heads[0]
 END
         userPrompt("update to the current revision");
-	runCommand("mtn","update");
-	$options->{made_changes} = 1;
+        runCommand("mtn","update");
+        $options->{made_changes} = 1;
     }
 }
 
@@ -538,16 +556,16 @@ sub foundPin {
     my $filename = depPinFilename();
     return 0 unless -r $filename;
     my $fh = new FileHandle($filename)
-	or die "Can't open $filename for read: $!";
+        or die "Can't open $filename for read: $!";
     while(<$fh>) {
-	return 1 if /^$head $rev$/;
+        return 1 if /^$head $rev$/;
     }
     return 0;
 }
 
 sub getCurHeads {
     my($fh) = new FileHandle("mtn automate heads |")
-	or die "Unable to fork: $!";
+        or die "Unable to fork: $!";
     my @heads = <$fh>;
     close($fh);
     die "??" unless @heads > 0;
@@ -557,7 +575,7 @@ sub getCurHeads {
 
 sub getCurRevision {
     my($fh) = new FileHandle("mtn automate get_base_revision_id |")
-	or die "Unable to fork: $!";
+        or die "Unable to fork: $!";
 
     local $_ = <$fh>;
     die "??" unless $_ =~ /^[a-fA-F0-9]{40}$/o;
@@ -585,7 +603,7 @@ sub depCommitOne {
     my $cwd = aliasGetCwd();
 
     die "depcommit: ERROR missing _MTN directory in $cwd"
-	unless -d "_MTN";
+        unless -d "_MTN";
     depCommitUnknown();
     depCommitDoCommit();
 }
@@ -599,26 +617,26 @@ sub depCommitUnknown {
     return unless depCommitHaveUnknown();
     my @unknown = depCommitGetUnknown();
     while(1) {
-	print "You have un-added files in $cwd:\n";
-	print @unknown;
-	print "\nDo you want to ignore or add them [no-default]?";
-	$_ = <STDIN>; 
-	chomp;
-	if ($_ eq 'ignore') {
-	    my $sha1 = sha1_hex(join('',@unknown));
-	    my $ignores_name = ignoresFileName();
-	    my $fh = new FileHandle ">>$ignores_name"
-		or die "Can't open $ignores_name: $!";
-	    print $fh "$cwd $sha1\n";
-	    close($fh);
-	    return;
-	} elsif ($_ eq 'add') {
-	    print "Adding files...\n";
-	    runCommand("mtn","add","--unknown");
-	    return;
-	} else {
-	    print "Expected 'ignore' or 'add', not '$_'; try again\n";
-	}
+        print "You have un-added files in $cwd:\n";
+        print @unknown;
+        print "\nDo you want to ignore or add them [no-default]?";
+        $_ = <STDIN>; 
+        chomp;
+        if ($_ eq 'ignore') {
+            my $sha1 = sha1_hex(join('',@unknown));
+            my $ignores_name = ignoresFileName();
+            my $fh = new FileHandle ">>$ignores_name"
+                or die "Can't open $ignores_name: $!";
+            print $fh "$cwd $sha1\n";
+            close($fh);
+            return;
+        } elsif ($_ eq 'add') {
+            print "Adding files...\n";
+            runCommand("mtn","add","--unknown");
+            return;
+        } else {
+            print "Expected 'ignore' or 'add', not '$_'; try again\n";
+        }
     }
 }
 
@@ -628,11 +646,11 @@ sub depCommitHaveUnknown {
     return 0 if @unknown == 0;
     my $fh = new FileHandle ignoresFileName();
     if ($fh) {
-	my $cwd = aliasGetCwd();
-	my $sha1 = sha1_hex(join('', @unknown));
-	while(<$fh>) {
-	    return 0 if $_ eq "$cwd $sha1\n";
-	}
+        my $cwd = aliasGetCwd();
+        my $sha1 = sha1_hex(join('', @unknown));
+        while(<$fh>) {
+            return 0 if $_ eq "$cwd $sha1\n";
+        }
     }
 
     return 1;
@@ -640,7 +658,7 @@ sub depCommitHaveUnknown {
 
 sub depCommitGetUnknown {
     my $fh = new FileHandle "mtn list unknown |"
-	or die "bad fork mtn: $!";
+        or die "bad fork mtn: $!";
     my @unknown = <$fh>;
     close($fh);
     die "?? mtn" if $?;
@@ -650,7 +668,7 @@ sub depCommitGetUnknown {
 
 sub depCommitHaveChanges {
     my $fh = new FileHandle "mtn diff |"
-	or die "fork fail: $!";
+        or die "fork fail: $!";
     $_ = <$fh>;
     return 1 unless /^\#\s*$/o;
     $_ = <$fh>;
@@ -666,26 +684,27 @@ sub depCommitDoCommit {
     my $cwd = aliasGetCwd();
     my $first_time = 1;
     while(1) {
-	if (!depCommitHaveChanges()) {
-	    print "depcommit: no changes in $cwd\n"
-		if $first_time;
-	    return;
-	}
-	$first_time = 0;
-	print "depcommit: you have uncommitted differences in $cwd
+        if (!depCommitHaveChanges()) {
+            print "depcommit: no changes in $cwd\n"
+                if $first_time;
+            return;
+        }
+        $auto_yes_to_prompts = 0 unless $first_time;
+        $first_time = 0;
+        print "depcommit: you have uncommitted differences in $cwd
 depcommit: will show differences after successful test\n";
-	userPrompt("build and test");
-	depBuild('tests' => 1);
-	print "\n" x 20;
-	aliasChdir($cwd);
-	runCommand("mtn","diff");
-	print "\ndepcommit: You have uncommitted differences (shown above) in $cwd\n";
-	userPrompt("commit changes");
-	eval { runCommand("mtn","commit"); };
-	if ($@) {
-	    die "$@" if $@ !~ /mtn commit.*failed/o;
-	    warn "$@"; # redundant?
-	}
+        userPrompt("build and test");
+        depBuild('tests' => 1);
+        print "\n" x 20;
+        aliasChdir($cwd);
+        runCommand("mtn","diff");
+        print "\ndepcommit: You have uncommitted differences (shown above) in $cwd\n";
+        userPrompt("commit changes");
+        eval { runCommand("mtn","commit"); };
+        if ($@) {
+            die "$@" if $@ !~ /mtn commit.*failed/o;
+            warn "$@"; # redundant?
+        }
     }
 }
 
@@ -698,17 +717,17 @@ sub runCMakeClean {
     my $opt = buildOpt();
 
     die "Will not clean unless under projects, debug or optimize dir"
-	unless $cwd =~ m!^(($projects)|($debug)|($opt))/!o;
+        unless $cwd =~ m!^(($projects)|($debug)|($opt))/!o;
     print "Cleaning cmake files out of $cwd\n"
-	unless $quiet;
+        unless $quiet;
     my @files; 
     my @dirs;
     find(sub { push(@files, $File::Find::name) if /^CMakeCache.txt$/o
-		   || /^Makefile$/o;
-	       push(@dirs, $File::Find::name) if /^CMakeFiles$/o; },
-	 $cwd);
+                   || /^Makefile$/o;
+               push(@dirs, $File::Find::name) if /^CMakeFiles$/o; },
+         $cwd);
     unlink(@files) == scalar @files
-	or die "Unable to unlink one of @files: $!";
+        or die "Unable to unlink one of @files: $!";
     rmtree(\@dirs);
     map { die "unable to delete $_" if -d $_ } @dirs;
     return 0;
@@ -721,21 +740,21 @@ sub runCMakeConfig {
     my $opt = buildOpt();
 
     die "Unable to find expected _MTN directory in $src"
-	unless -d "$src/_MTN";
+        unless -d "$src/_MTN";
 
     my @cmakecmd = ('cmake');
     if ($cwd =~ /^$debug/o) {
-	push(@cmakecmd, "-D", "CMAKE_INSTALL_PREFIX=$debug", "-D",
-	     "CMAKE_BUILD_TYPE=Debug");
+        push(@cmakecmd, "-D", "CMAKE_INSTALL_PREFIX=$debug", "-D",
+             "CMAKE_BUILD_TYPE=Debug");
     } elsif ($cwd =~ /^$opt/o) {
-	push(@cmakecmd, "-D", "CMAKE_INSTALL_PREFIX=$opt", "-D",
-	     "CMAKE_BUILD_TYPE=RelWithDebInfo");
+        push(@cmakecmd, "-D", "CMAKE_INSTALL_PREFIX=$opt", "-D",
+             "CMAKE_BUILD_TYPE=RelWithDebInfo");
     } else {
-	die "Not under optimize or debug directory; aborting";
+        die "Not under optimize or debug directory; aborting";
     }
 
     if (defined $build_subdir) {
-	push(@cmakecmd, "-D", "BUILD_SUBDIR=$build_subdir");
+        push(@cmakecmd, "-D", "BUILD_SUBDIR=$build_subdir");
     }
     push(@cmakecmd, @ARGV, $src);
     runCommand(@cmakecmd);
@@ -747,9 +766,9 @@ sub runCMake {
     usage("Unknown argument to runCMake") unless $result;
 
     if ($clean) {
-	runCMakeClean();
+        runCMakeClean();
     } else {
-	runCMakeConfig();
+        runCMakeConfig();
     }
 }
 
@@ -760,15 +779,10 @@ sub mtnOp {
 
     die "??" unless $op =~ /^((pull)|(push)|(sync))$/o;
     my $src = rootSrcDir();
-    my $fh = new FileHandle("$src/_MTN/options")
-	or die "Can't open $src/_MTN/options for read: $!";
-    my $branch;
-    my $database;
-    while(<$fh>) {
-	$branch = $1 if /^\s*branch \"(.+)\"$/o;
-	$database = $1 if /^\s*database \"(.+)\"$/o;
-    }
-    close($fh);
+    my %mtn_opts = readMtnOptions($src);
+    my $branch = $mtn_opts{branch};
+    my $database = $mtn_opts{database};
+
     die "? no branch" unless defined $branch;
     die "? no database" unless defined $database;
 
@@ -781,16 +795,10 @@ sub mtnOp {
 
 sub mtnServe {
     my $src = rootSrcDir();
-    my $fh = new FileHandle("$src/_MTN/options")
-	or die "Can't open $src/_MTN/options for read: $!";
-    my $database;
-    while(<$fh>) {
-	$database = $1 if /^\s*database \"(.+)\"$/o;
-    }
-    close($fh);
-    die "? no database" unless defined $database;
+    my %mtn_opts = readMtnOptions($src);
+    die "? no database" unless defined $mtn_opts{database};
 
-    runCommand("mtn","-d",$database,'serve','*');
+    runCommand("mtn","-d",$mtn_opts{database},'serve','*');
 }
 
 ##### depPublish
@@ -803,23 +811,23 @@ sub depPublish {
     depCommit();
     my %options = ( 'made_changes' => 1 );
     while ($options{made_changes}) {
-	$options{made_changes} = 0;
-	print "deppublish: verifying current version passes regression tests\n";
-	depBuild('tests' => 1);
-	print "deppublish: pulling in any remote changes\n";
-	depWalk(sub { depPullOne(\%options); });
+        $options{made_changes} = 0;
+        print "deppublish: verifying current version passes regression tests\n";
+        depBuild('tests' => 1);
+        print "deppublish: pulling in any remote changes\n";
+        depWalk(sub { depPullOne(\%options); });
 
-	unless ($options{made_changes}) {
-	    print "\n" x 5;
-	    print <<"END";
+        unless ($options{made_changes}) {
+            print "\n" x 5;
+            print <<"END";
 *** Running the sync.  In the unlikely case that you get any updates, you ***
 *** need to get them tested and synchronized quickly because they made it ***
 *** out so other people can see them. ***
 END
             depWalk(sub { depSyncOne(\%options); });
-	    print "****** WARNING, got changes; re-running deppublish...\n"
-		if $options{made_changes};
-	}
+            print "****** WARNING, got changes; re-running deppublish...\n"
+                if $options{made_changes};
+        }
     }
 }
 
@@ -830,37 +838,517 @@ sub depSyncOne {
     depPullUpdate($options);
 }
 
-##### Common -- depwalk
+##### Code review diff
 
-sub depWalk {
-    my($fn) = @_;
+sub codeReview {
+    my @revisions = @ARGV;
 
-    my $src = rootSrcDir();
-    depWalkRecurse($fn, $src, {});
+    die "No revisions specified." if @revisions == 0;
+
+    eval 'use File::Copy::Recursive "rcopy";';
+    die "aptitude install libfile-copy-recursive-perl?\n$@" if $@;
+    my %parents;
+    my %dates;
+    foreach my $revision (@revisions) {
+        my @output = getCmdOutput("mtn log -r $revision --last=1");
+
+        my %info = simpleParse(\@output, 
+                               [ qr/^-+$/o => undef,
+                                 qr/^Revision: (\S+)$/o => 'revision',
+                                 qr/^Ancestor: (\S+)$/o => 'ancestor',
+                                 qr/^Author:/o => undef,
+                                 qr/^Date: (\S+)$/o => 'date' ]);
+        
+        $parents{$info{revision}} = $info{ancestor};
+        $dates{$info{revision}} = $info{date};
+    }
+
+    @revisions = sort { $dates{$a} cmp $dates{$b} } keys %parents;
+
+    my $basedir = "/tmp/code-review-" . getpwuid($UID);
+    my $original_dir = $parents{$revisions[0]};
+    my $final_dir = $revisions[@revisions - 1];
+    if (-d $basedir && -d "$basedir/$original_dir" &&
+        -d "$basedir/$final_dir" && -f "$basedir/diff-order") {
+        print "$basedir already exists, as do the relevant
+first and last revisions and the diff-order file.  
+Assuming you just want to continue editing.\n";
+    } elsif (-d $basedir) {
+        print "Missing expected files to continue diffing in $basedir\n";
+        print "Return to delete, ctrl-c to abort: ";
+        $_ = <STDIN>;
+        runCommand("rm -rf $basedir");
+    }
+
+    if (! -d $basedir) {
+        mkdir($basedir, 0755) or die "unable to mkdir $basedir: $!";
+        codeReviewSequence(\@revisions, \%parents, $basedir);
+    } else {
+        kdiffDirs($basedir, $original_dir, $final_dir, \@revisions);
+    }
 }
 
-sub depWalkRecurse {
-    my($fn, $src, $visited) = @_;
-    return if $visited->{$src};
-    $visited->{$src} = 1;
-    print "depwalk: walking in $src\n"
-	unless $quiet;
+sub codeReviewSequence {
+    my ($revs, $parents, $basedir) = @_;
+
+    my @revisions = @$revs;
+    my %mtn_options = readMtnOptions();
+    my $database = $mtn_options{database};
+    die "missing db in .../_MTN/options" 
+        unless defined $database;
+    
+    my $start = $parents->{$revisions[0]};
+
+    print "Trying to build single sequence diff from ", 
+      substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
+      "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
+
+    codeReviewCheckout($database, "$basedir/$start", $start);
+    
+    my $last = $start;
+    while (@revisions > 0) {
+        my $to = $revisions[0];
+        my $from = $parents->{$to};
+
+        print "Trying to patch $last\n   with ", substr($from, 0, 20), 
+            " -> ", substr($to, 0, 20), "\n";
+
+        codeReviewPatch($database, $basedir, $last, $from, $to);
+        $last = $to;
+        shift @revisions;
+    }
+
+    print "Successfully built single sequence for review.\n";
+
+    makeDiffOrder($basedir, $start, $last);
+    kdiffDirs($basedir, $start, $last, $revs);
+}
+
+# TODO-sprint: make .thrift files show up early by default.
+sub makeDiffOrder {
+    my ($basedir, $original_dir, $final_dir) = @_;
+
+    my $reference_file = "/tmp/diff-order-$final_dir.txt";
+    if (-f $reference_file) {
+        print "$reference_file exits; just using it.\n";
+        copy($reference_file, "$basedir/diff-order")
+            or die "copy failed: $!";
+        return;
+    }
+    my @changed = getChanged($basedir, $original_dir, $final_dir);
+
+    my %file_key;
+    map { die "?? $_" unless m!^(.+/)?([^/]+)\.(\w+)$!o;
+          my ($dir, $name, $suffix) = ($1, $2, $3);
+          my $test_key = $dir =~ m!/tests\b!o ? 0 : 1;
+          my $header_key = $suffix eq 'hpp' ? 0 : 1;
+          my $cmake_key = $name =~ /^CMake/o ? 0 : 1;
+          
+          # sort cmake files first, then tests, then by filename 
+          # sorting headers before sources.
+          
+          $file_key{$_} = "$cmake_key-$test_key-$name-$header_key";
+      } @changed;
+    @changed = sort { $file_key{$a} cmp $file_key{$b} } @changed;
+    
+    my $fh = new FileHandle ">$basedir/diff-order"
+        or die "bad";
+    print $fh join("\n", @changed), "\n";
+    close($fh);
+
+    print "store this file as $reference_file to automatically use it.";
+    print "Changed:\n", join("\n", @changed), "\n";
+}
+
+sub kdiffDirs {
+    my ($basedir, $original_dir, $final_dir, $revisions) = @_;
+
+    # TODO-sprint: make this extract the relevant part from each log
+    # message for the file we are reviewing.
+
+    foreach my $rev (@$revisions) {
+        quietRunCommand("mtn log -r $rev --last=1");
+    }
+    my $cur = '*start*';
+    my $auto = undef;
+    while(1) {
+        print "\n";
+        print "------------------------------------------------------------\n";
+        print "Last file diffed: $cur\n";
+        my $next = getNextDiffFile($basedir, $cur);
+        print "Current next file to diff: $next\n";
+        print "Editable diff ordering file: $basedir/diff-order\n";
+        my $default = "diff $next";
+        $default = "finish" if $next eq '*end*';
+        print "commands: auto, files, exit, finish, help\n";
+        print "Enter filename substring or command [$default]: ";
+        if (defined $auto && (-M "$basedir/diff-order") == $auto) {
+            print "[auto]\n";
+            $_ = '';
+        } else {
+            $_ = <STDIN>;
+            chomp;
+        }
+        $_ = 'finish' if $_ eq '' && $default eq 'finish';
+        if ($_ eq '') {
+            my $check_next = getNextDiffFile($basedir, $cur);
+            if ($check_next ne $next) {
+                print "\n***ordering file changed***\n";
+                redo;
+            }
+            my $original = "$basedir/$original_dir/$next";
+            my $final = "$basedir/$final_dir/$next";
+            unless (-f $original) {
+                print "Assuming $final is new file, creating empty temporary\n";
+                my $fh = new FileHandle ">$original"
+                    or die "bad: $!";
+                close($fh);
+            }
+            if (! (-f $original && -f $final)) {
+                warn "$original or $final missing; looping";
+                $auto = undef;
+                redo;
+            }
+            eval {
+                runCommand('kdiff3','--L1', "original ($next)", '--L2', "new ($next)", 
+                           "$basedir/$original_dir/$next", 
+                           "$basedir/$final_dir/$next");
+            };
+            # warn "kdiff3 command failed (ignoring)" if $@;
+            $cur = $next;
+        } elsif ($_ eq 'auto') {
+            $auto = -M "$basedir/diff-order";
+        } elsif ($_ eq 'files') {
+            my @files = getDiffOrder($basedir);
+            print "\n\nFiles:\n", join("\n", @files), "\n";
+        } elsif ($_ eq 'exit') {
+            last;
+        } elsif ($_ eq 'finish') {
+            runCommand("rm -rf $basedir");
+            last;
+        } elsif ($_ eq 'help') {
+            print <<"END_OF_HELP";
+
+auto: skip the prompt for a command until the next file to diff changes
+files: list the files we will diff.
+exit: exit from deptool code-review-diff
+finish: delete the code review temporary directories and exit
+help: show this help
+*: try to find a file with this as a substring and diff it next.
+END_OF_HELP
+        } else { 
+            $cur = selectPrevDiffFile($basedir, $_, $cur);
+        }
+    }
+}
+
+sub getChanged {
+    my ($basedir, $start, $last) = @_;
+
+    my @old_files = findFilesPrefix("$basedir/$start");
+    my @new_files = findFilesPrefix("$basedir/$last");
+    die "??" if @new_files == 0;
+    my @changed;
+    my %old;
+    map { $old{$_} = 1 } @old_files;
+    map { 
+        if (defined $old{$_}) {
+            ++$old{$_};
+            my $old = "$basedir/$start/$_";
+            my $new = "$basedir/$last/$_";
+            if (-d $old && -d $new) {
+                # ignore
+            } else {
+                die "? $_" if -d $old || -d $new;
+                push(@changed, $_) unless compare($old, $new) == 0;
+            }
+        } else {
+            push(@changed, $_)
+                unless -d "$basedir/$last/$_" || /\.orig$/o || /\.rej$/o;
+        }
+      } @new_files;
+
+    while(my($k,$v) = each %old) {
+        die "old file $k missing" unless $v == 2;
+    }
+
+    @changed = grep(!/((-final-version)|(-pre-fix))$/o, @changed);
+    return @changed;
+}
+
+sub getNextDiffFile {
+    my($basedir, $cur) = @_;
+
+    my @order = getDiffOrder($basedir);
+    return $order[0] if $cur eq '*start*';
+    for(my $i=0; $i < @order; ++$i) {
+        if ($order[$i] eq $cur) {
+            return '*end*' if $i + 1 == @order;
+            return $order[$i+1];
+        }
+    }
+    return "**ERROR: Unable to find file $cur";
+}
+
+sub selectPrevDiffFile {
+    my ($basedir, $target, $cur) = @_;
+
+    my @order = getDiffOrder($basedir);
+    my @match = grep(/$target/, @order);
+    if (@match == 0) {
+        print "\n\n************\nNo match for $target found. Choices:\n", 
+            join("\n", @order), "\n";
+        return $cur;
+    } elsif (@match > 1) {
+        print "\n\n************\nMultiple matches for $target found:\n",
+            join("\n", @match), "\n";
+        return $cur;
+    } else {
+        for(my $i=0; $i < @order; ++$i) {
+            if ($order[$i] eq $match[0]) {
+                return "*start" if $i == 0;
+                return $order[$i-1];
+            }
+        }
+        die "??";
+    }
+}
+
+sub getDiffOrder {
+    my($basedir) = @_;
+
+    my $fh = new FileHandle "$basedir/diff-order"
+        or die "Can't open $basedir/diff-order for read: $!";
+    my @order = <$fh>;
+    close($fh);
+    grep(chomp, @order);
+
+    return @order;
+}
+
+sub getCmdOutput {
+    my($cmd) = @_;
+
+    my $fh = new FileHandle "$cmd 2>/dev/null |" 
+        or die "Unable to run $cmd: $!";
+    my @ret = <$fh>;
+    close($fh) or die "close failed: $!\ncommand is $cmd";
+    die "$cmd failed" unless $? == 0;
+    return @ret;
+}
+
+sub simpleParse {
+    my($data, $matches) = @_;
+
+    my %ret;
+
+    # print join(", ", @$matches);
+    die "bad parse" unless @$data >= @$matches;
+    for(my $i=0; $i < @$matches/2; ++$i) {
+        local $_ = $data->[$i];
+        chomp;
+        my $match = $matches->[2*$i];
+        my $var = $matches->[2*$i+1];
+
+        die "?? $i" unless defined $match;
+        die "Error on line $i expected $match, got '$_'"
+            unless /$match/;
+        $ret{$var} = $1 if defined $var;
+    }
+    return %ret;
+}
+
+sub codeReviewCheckout {
+    my($database, $targetdir, $revision) = @_;
+
+    quietRunCommand('mtn', 'checkout', '-d', $database, 
+                    '-r', $revision, $targetdir);
+}
+
+sub codeReviewPatch {
+    my ($database, $basedir, $last, $from, $to) = @_;
+
+    rcopy("$basedir/$last", "$basedir/$to")
+        or die "copy ($basedir/$last,$basedir/$to) failed: $!";
+    quietRunCommand("mtn diff -d $database -r $from -r $to >$basedir/$to.patch");
+    eval {
+        quietRunCommand("patch -U -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
+    };
+    if ($@) {
+        my @failed = grep(/\.rej$/o, findFilesPrefix("$basedir/$to"));
+        print "\n\n**************\n";
+        print "Patch failed for files: ", join(", ", @failed), "\n";
+
+        foreach my $file (@failed) {
+            my $patch = $file;
+            $file =~ s/\.rej$//o;
+            my $repairpatch = $file;
+            $repairpatch =~ s!/!_!go;
+            $repairpatch = "/tmp/repair-$to-$repairpatch";
+            if (-f $repairpatch) {
+                print "$repairpatch exists; will just apply\n";
+                runCommand("patch -p4 -d $basedir/$to < $repairpatch");
+            } else {
+                print "will start $ENV{EDITOR} for $file and rejected patch\n";
+                print "return to continue, ctrl-c to abort: ";
+                $_ = <STDIN>;
+                copy("$basedir/$to/$file","$basedir/$to/$file-pre-fix");
+                runCommand("mtn cat -r $to $file >$basedir/$to/$file-final-version");
+                runCommand("$ENV{EDITOR} $basedir/$to/$file $basedir/$to/$patch $basedir/$to/$file-final-version");
+                if (compare("$basedir/$to/$file-pre-fix","$basedir/$to/$file") == 0) {
+                    print "No changes made.  Return to save empty patch, ctrl-c to abort: ";
+                    $_ = <STDIN>;
+                }
+
+                print "Saving repair difference as $repairpatch\n";
+                eval { runCommand("diff -u $basedir/$to/$file-pre-fix $basedir/$to/$file >$repairpatch"); };
+            }
+            unlink("$basedir/$to/$file-pre-fix", "$basedir/$to/$patch",
+                   "$basedir/$to/$file-final-version");
+        }
+    }
+}
+
+sub findFilesPrefix {
+    my ($prefix) = @_;
+
+    my @ret;
+    find(sub { local $_ = $File::Find::name;
+               die "??" unless s,^$prefix\b/?,,;
+               push(@ret, $_); }, $prefix);
+    return @ret;
+}
+
+##### Change Directory functions 
+# Actually just prints out what has to happen such that eval of returned string
+# in bourne shells will change the directory.
+
+sub cdInitialPrep {
+    my ($maxargs, $usage) = @_;
+    $maxargs ||= 1;
+    unless (defined $ENV{PROJECTS} && defined $ENV{BUILD_DEBUG} &&
+            defined $ENV{BUILD_OPT}) {
+        print "echo 'can not use deptool cd operations environment is not set up'\n";
+        exit(1);
+    }
+
+    unless (@ARGV >= 1 && @ARGV <= $maxargs && -d $ARGV[0]) {
+        print "echo 'Usage: deptool $usage'";
+        exit(1);
+    }
+    return $ARGV[0];
+}
+
+# TODO: combine this somehow with srcDir
+# returns (project, subdir, build-type)
+sub divideDir {
+    my($dir) = @_;
+    
+    my $projects = projects();
+    my $opt = buildOpt();
+    my $debug = buildDebug();
+    if ($dir =~ m!^$projects/([^/]+)(/.+)?$!o) {
+	return ($1, $2, undef);
+    } elsif ($dir =~ m!^$opt/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } elsif ($dir =~ m!^$debug/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } else {
+	print "echo '$dir is not under $projects, $opt, or $debug'\n";
+	exit(1);
+    }
+}
+
+sub cdSrc {
+    my $cwd = cdInitialPrep(1, 'cdsrc <cur-working-dir>');
+    
+    my ($project, $subprojdir, $buildtype) = divideDir($cwd);
+    $subprojdir ||= '';
+    my $srcdir = "$ENV{PROJECTS}/$project$subprojdir";
+    if (-d $srcdir) {
+        print "cd $srcdir\n";
+        exit(0);
+    } else {
+        print "echo '$srcdir does not exist'\n";
+        exit(1);
+    }
+}
+
+sub cdBuild {
+    my($what) = @_;
+
+    my $cwd = cdInitialPrep(2, "cd${what} <cur-working-dir> [build-type]");
+
+    my ($project, $subprojdir, $buildtype) = divideDir($cwd);
+    $subprojdir ||= '';
+    $buildtype ||= '';
+
+    my $cleanproj = $project;
+    $cleanproj =~ s/\W/_/go;
+
+    my $deptool_env = "deptool_${cleanproj}_subbuild";
+    $buildtype = $ENV{$deptool_env}
+        if $buildtype eq '' && defined $ENV{$deptool_env};
+    $buildtype = $ARGV[1] if @ARGV == 2;
+
+    my $xbuildtype = $buildtype eq '' ? '' : "-$buildtype";
+    my $envvar = $what eq 'opt' ? 'BUILD_OPT' : 'BUILD_DEBUG'; 
+    my $builddir = "$ENV{$envvar}/$project$xbuildtype$subprojdir";
+    if (! -d $builddir) {
+        print STDERR "$builddir missing, creating...\n";
+        mkpath($builddir) or die "Unable to mkdir $builddir: $!";
+    }
+
+    print "export ${deptool_env}=$buildtype;\n";
+    print "cd $builddir\n";
+}
+
+##### Common -- depwalk
+
+sub depWalkRecurse ($$$$$);
+
+sub depWalk {
+    my($fn, $use_build_type) = @_;
+
+    my $src = rootSrcDir();
+    depWalkRecurse($fn, $src, {}, $use_build_type, '');
+}
+
+sub depWalkRecurse ($$$$$) {
+    my($fn, $src, $visited, $use_build_type, $build_type) = @_;
+    if ($use_build_type) {
+        return if $visited->{"$src $build_type"};
+        $visited->{"$src $build_type"} = 1;
+    } else {
+        return if $visited->{$src};
+        $visited->{$src} = 1;
+    }
 
     aliasChdir($src);
     my @vcdeps = readVCDeps(".version_control_deps");
     if (@vcdeps > 0) {
-	my $projects = projects();
-	foreach my $dep (@vcdeps) {
-	    my $depsrc = "$projects/$dep";
-	    die "Unable to find dependency $dep as $projects/$dep"
-		unless -d $depsrc;
-	    depWalkRecurse($fn, $depsrc, $visited);
-	}
+        my $projects = projects();
+        foreach my $dep (@vcdeps) {
+            my $sub_build_type = '';
+            if ($dep =~ /^(.+);(\w+)$/o) {
+                ($dep,$sub_build_type) = ($1,$2);
+            }
+
+            my $depsrc = "$projects/$dep";
+            die "Unable to find dependency $dep as $projects/$dep"
+                unless -d $depsrc;
+            depWalkRecurse($fn, $depsrc, $visited, $use_build_type, 
+                           $sub_build_type);
+        }
     }
     aliasChdir($src);
-    &$fn();
+    print "depwalk: running walk function in $src ($build_type)\n\n"
+        unless $quiet;
+    &$fn($build_type);
+    print "\n";
 }
 
+# TODO: combine this somehow with divideDir
 sub srcDir {
     my $start = aliasGetCwd();
     my $projects = projects();
@@ -870,24 +1358,24 @@ sub srcDir {
     local $_ = $start;
     my $build_subdir;
     if (m!^$projects/!o) { 
-	# in a source directory already
+        # in a source directory already
     } elsif (-d "_MTN") {
-	# in some kind of source directory already.
+        # in some kind of source directory already.
     } elsif (m!^(($debug)|($opt))/!o) {
-	s!^(($debug)|($opt))/!!o;
-	if (-d "$projects/$_") {
-	    $_ = "$projects/$_";
-	} elsif (m!^(\w[^/]+)-(\w+)(/.*)$!o && -d "$projects/$1/$3") {
-	    $build_subdir = $2;
-	    $_ = "$projects/$1$3";
-	} elsif (m!^(\w[^/]+)-(\w+)$!o && -d "$projects/$1") {
-	    $build_subdir = $2;
-	    $_ = "$projects/$1";
-	} else {
-	    die "$start is under a build directory, but can't find related source dir";
-	}
+        s!^(($debug)|($opt))/!!o;
+        if (-d "$projects/$_") {
+            $_ = "$projects/$_";
+        } elsif (m!^(\w[^/]+)-(\w+)(/.*)$!o && -d "$projects/$1/$3") {
+            $build_subdir = $2;
+            $_ = "$projects/$1$3";
+        } elsif (m!^(\w[^/]+)-(\w+)$!o && -d "$projects/$1") {
+            $build_subdir = $2;
+            $_ = "$projects/$1";
+        } else {
+            die "$start is under a build directory, but can't find related source dir";
+        }
     } else {
-	die "$_ is not under a projects or build directory";
+        die "$_ is not under a projects or build directory";
     }
     return ($_, $build_subdir) if wantarray;
     return $_;
@@ -897,9 +1385,9 @@ sub rootSrcDir {
     my $start = srcDir();
     local $_ = $start;
     while (! -d "$_/_MTN") {
-	s!/[^/]+$!!o;
-	die "Unable to find _MTN directory anywhere under $start"
-	    if $_ eq '';
+        s!/[^/]+$!!o;
+        die "Unable to find _MTN directory anywhere under $start"
+            if $_ eq '';
     }
     return $_;
 }
@@ -911,51 +1399,51 @@ sub printEnv {
 
     my $val = &$fn();
     if ($shell eq 'sh') {
-	print qq{export $envvar="$val";\n};
+        print qq{export $envvar="$val";\n};
     } elsif ($shell eq 'csh') {
-	print qq{setenv $envvar "$val";\n};
+        print qq{setenv $envvar "$val";\n};
     } else {
-	die "?? $shell";
+        die "?? $shell";
     }
 }
 
 sub getEnv {
     my $result = GetOptions("y!" => \$auto_yes_to_prompts,
-			    "quiet!" => \$quiet);
-			    
+                            "quiet!" => \$quiet);
+                            
     usage("Unknown error") unless $result;
     usage("Missing requested env var") unless @ARGV == 1;
 
     my $env = $ARGV[0];
     if ($env =~ /^for-((sh)|(csh))$/o) {
-	my $shell = $1;
-	$quiet = 1;
-	$auto_yes_to_prompts = 1;
-	
-	printEnv($shell, 'PROJECTS', \&projects);
-	printEnv($shell, 'BUILD_ROOT', \&buildRoot);
-	printEnv($shell, 'OS', \&operatingSystem);
-	printEnv($shell, 'UNAME_M', \&unameM);
-	printEnv($shell, 'BUILD_DEBUG', \&buildDebug);
-	printEnv($shell, 'BUILD_OPT', \&buildOpt);
-	printEnv($shell, 'MAKE_PARALLELISM', \&makeParallelism);
-	printEnv($shell, 'MTN_SERVER', \&mtnServer);
+        my $shell = $1;
+        $quiet = 1;
+        $auto_yes_to_prompts = 1;
+        
+        printEnv($shell, 'PROJECTS', \&projects);
+        printEnv($shell, 'BUILD_ROOT', \&buildRoot);
+        printEnv($shell, 'OS', \&operatingSystem);
+        printEnv($shell, 'UNAME_M', \&unameM);
+        printEnv($shell, 'BUILD_DEBUG', \&buildDebug);
+        printEnv($shell, 'BUILD_OPT', \&buildOpt);
+        printEnv($shell, 'MAKE_PARALLELISM', \&makeParallelism);
+        printEnv($shell, 'MTN_SERVER', \&mtnServer);
     } else {
-	usage("Bad env var request") unless $env =~ /^\w+$/o;
-	my $ret = eval "$ARGV[0]()";
-	die "Unknown env var $env"
-	    if $@ && $@ =~ /^Undefined subroutine/o;
-	die $@ if $@;
-	
-	print "$ret\n";
+        usage("Bad env var request") unless $env =~ /^\w+$/o;
+        my $ret = eval "$ARGV[0]()";
+        die "Unknown env var $env"
+            if $@ && $@ =~ /^Undefined subroutine/o;
+        die $@ if $@;
+        
+        print "$ret\n";
     }
 }
 
 sub projects {
     $Cache::projects ||= $ENV{PROJECTS};
     unless(defined $Cache::projects) {
-	userPrompt("missing \$ENV{PROJECTS}; assume $ENV{HOME}/projects");
-	$Cache::projects = "$ENV{HOME}/projects";
+        userPrompt("missing \$ENV{PROJECTS}; assume $ENV{HOME}/projects");
+        $Cache::projects = "$ENV{HOME}/projects";
     }
     return $Cache::projects;
 }
@@ -963,8 +1451,8 @@ sub projects {
 sub buildRoot {
     $Cache::build_root ||= $ENV{BUILD_ROOT};
     unless(defined $Cache::build_root) {
-	userPrompt("missing \$ENV{BUILD_ROOT}; assume $ENV{HOME}/build");
-	$Cache::build_root = "$ENV{HOME}/build";
+        userPrompt("missing \$ENV{BUILD_ROOT}; assume $ENV{HOME}/build");
+        $Cache::build_root = "$ENV{HOME}/build";
     }
     return $Cache::build_root;
 }
@@ -972,40 +1460,40 @@ sub buildRoot {
 sub operatingSystem {
     $Cache::operating_system ||= $ENV{OS};
     unless(defined $Cache::operating_system) {
-	if (-f "/etc/debian_version") {
-	    my $debver = new FileHandle("/etc/debian_version") 
-		or die "Can't open /etc/debian_version for read: $!";
-	    $_ = <$debver>;
-	    close($debver);
-	    chomp;
-	    if (/^\d+\.\d+$/o) {
-		$Cache::operating_system = "debian-$_";
-	    } elsif (m!^([a-z]+)/sid$!o) {
-		$Cache::operating_system = "debian-$1-unstable";
-	    } elsif (m!^testing$!o) {
-		$Cache::operating_system = "debian-testing-unstable";
-	    } else {
-		s/\W//go;
-		$Cache::operating_system = "debian-unknown-$_";
-	    }
-	} elsif (-f "/etc/redhat-release") {
-	    my $rhver = new FileHandle("/etc/redhat-release")
-		or die "Can't open /etc/redhat-release for read: $!";
-	    $_ = <$rhver>;
-	    close($rhver);
-	    chomp;
-	    if (/^Red Hat Enterprise Linux.+release (\d+)\b/o) {
-		$Cache::operating_system = "rhel$1";
-	    } else {
-		s/\W//go;
-		$Cache::operating_system = "rh-unknown-$_";
-	    }
-	} else {
-	    $Cache::operating_system = "unknown";
-	}
-	if ($Cache::operating_system =~ /unknown/o) {
-	    warn "Unknown OS, using $Cache::operating_system";
-	}
+        if (-f "/etc/debian_version") {
+            my $debver = new FileHandle("/etc/debian_version") 
+                or die "Can't open /etc/debian_version for read: $!";
+            $_ = <$debver>;
+            close($debver);
+            chomp;
+            if (/^\d+\.\d+$/o) {
+                $Cache::operating_system = "debian-$_";
+            } elsif (m!^([a-z]+)/sid$!o) {
+                $Cache::operating_system = "debian-$1-unstable";
+            } elsif (m!^testing$!o) {
+                $Cache::operating_system = "debian-testing-unstable";
+            } else {
+                s/\W//go;
+                $Cache::operating_system = "debian-unknown-$_";
+            }
+        } elsif (-f "/etc/redhat-release") {
+            my $rhver = new FileHandle("/etc/redhat-release")
+                or die "Can't open /etc/redhat-release for read: $!";
+            $_ = <$rhver>;
+            close($rhver);
+            chomp;
+            if (/^Red Hat Enterprise Linux.+release (\d+)\b/o) {
+                $Cache::operating_system = "rhel$1";
+            } else {
+                s/\W//go;
+                $Cache::operating_system = "rh-unknown-$_";
+            }
+        } else {
+            $Cache::operating_system = "unknown";
+        }
+        if ($Cache::operating_system =~ /unknown/o) {
+            warn "Unknown OS, using $Cache::operating_system";
+        }
     }
     return $Cache::operating_system;
 }
@@ -1014,12 +1502,12 @@ sub unameM {
     $Cache::uname_m ||= $ENV{UNAME_M};
 
     unless(defined $Cache::uname_m) {
-	$Cache::uname_m = `uname -m`;
-	chomp $Cache::uname_m;
-	if ($Cache::uname_m eq '') {
-	    $Cache::uname_m = "arch_unknown";
-	    warn "Unknown architecture, using arch_unknown";
-	}
+        $Cache::uname_m = `uname -m`;
+        chomp $Cache::uname_m;
+        if ($Cache::uname_m eq '') {
+            $Cache::uname_m = "arch_unknown";
+            warn "Unknown architecture, using arch_unknown";
+        }
     }
     return $Cache::uname_m;
 }
@@ -1027,14 +1515,14 @@ sub unameM {
 sub buildDebug {
     $Cache::build_debug ||= $ENV{BUILD_DEBUG};
     unless(defined $Cache::build_debug) {
-	my $root = buildRoot();
-	if (-d "$root/debug") {
-	    $Cache::build_debug = "$root/debug";
-	} else {
-	    $Cache::build_debug 
-		= buildRoot() . "/dbg-" . operatingSystem() . "-" . unameM();
-	}
-	userPrompt("missing \$ENV{BUILD_DEBUG}; assume $Cache::build_debug");
+        my $root = buildRoot();
+        if (-d "$root/debug") {
+            $Cache::build_debug = "$root/debug";
+        } else {
+            $Cache::build_debug 
+                = buildRoot() . "/dbg-" . operatingSystem() . "-" . unameM();
+        }
+        userPrompt("missing \$ENV{BUILD_DEBUG}; assume $Cache::build_debug");
     }
     return $Cache::build_debug;
 }
@@ -1042,14 +1530,14 @@ sub buildDebug {
 sub buildOpt {
     $Cache::build_optimize ||= $ENV{BUILD_OPT};
     unless(defined $Cache::build_optimize) {
-	my $root = buildRoot();
-	if (-d "$root/optimize") {
-	    $Cache::build_optimize = "$root/optimize";
-	} else {
-	    $Cache::build_optimize 
-		= buildRoot() . "/opt-" . operatingSystem() . "-" . unameM();
-	}
-	userPrompt("missing \$ENV{BUILD_OPT}; assume $Cache::build_optimize");
+        my $root = buildRoot();
+        if (-d "$root/optimize") {
+            $Cache::build_optimize = "$root/optimize";
+        } else {
+            $Cache::build_optimize 
+                = buildRoot() . "/opt-" . operatingSystem() . "-" . unameM();
+        }
+        userPrompt("missing \$ENV{BUILD_OPT}; assume $Cache::build_optimize");
     }
     return $Cache::build_optimize;
 }
@@ -1058,15 +1546,15 @@ sub makeParallelism {
     my $fh = new FileHandle("/proc/cpuinfo");
     my $nprocessors = 0;
     if ($fh) {
-	while(<$fh>) {
-	    ++$nprocessors if /^processor\s+:\s+\d+$/o;
-	}
-	close($fh);
+        while(<$fh>) {
+            ++$nprocessors if /^processor\s+:\s+\d+$/o;
+        }
+        close($fh);
     }
     if ($nprocessors == 0) {
-	print "Warning: unable to find \# processors in /proc/cpuinfo\n"
-	    unless $quiet;
-	return 1;
+        print "Warning: unable to find \# processors in /proc/cpuinfo\n"
+            unless $quiet;
+        return 1;
     }
     return POSIX::ceil($nprocessors * 1.5); # oversubscribe by 50%
 }
@@ -1074,8 +1562,8 @@ sub makeParallelism {
 sub mtnServer {
     $Cache::mtn_server ||= $ENV{MTN_SERVER};
     unless(defined $Cache::mtn_server) {
-	userPrompt("assume default mtn server usi.hpl.hp.com (set via \$MTN_SERVER)");
-	$Cache::mtn_server = "usi.hpl.hp.com";
+        userPrompt("assume default mtn server usi.hpl.hp.com (set via \$MTN_SERVER)");
+        $Cache::mtn_server = "usi.hpl.hp.com";
     }
     return $Cache::mtn_server;
 }
@@ -1088,13 +1576,13 @@ sub readVCDeps {
     return () unless -r $filename;
 
     my $vcdeps = new FileHandle("$filename")
-	or die "Can't read $filename: $!";
+        or die "Can't read $filename: $!";
     my @ret;
     while(<$vcdeps>) {
-	chomp;
-	s/^\s+//o; s/\s+$//o;
-	next unless /\w/o;
-	push(@ret, split(/\s+/o));
+        chomp;
+        s/^\s+//o; s/\s+$//o;
+        next unless /\w/o;
+        push(@ret, split(/\s+/o));
     }
     close($vcdeps);
     return @ret;
@@ -1108,11 +1596,11 @@ sub userPrompt {
     print STDERR "\nDo you want to: $msg\n";
     print STDERR "Return to continue, ctrl-c to abort: ";
     if ($auto_yes_to_prompts) {
-	print STDERR "[auto-yes]\n";
+        print STDERR "[auto-yes]\n";
     } else {
-	$_ = <STDIN>;
-	die "You provided 'n' for input, aborting anyway"
-	    if /^n/io;
+        $_ = <STDIN>;
+        die "You provided 'n' for input, aborting anyway"
+            if /^n/io;
     }
 }
 
@@ -1120,6 +1608,12 @@ sub runCommand {
     my(@command) = @_;
 
     print "Running: ", join(" ", @command), "\n";
+    quietRunCommand(@command);
+}
+
+sub quietRunCommand {
+    my(@command) = @_;
+
     my $ret = system(@command);
 
     confess "'" . join(" ", @command) . "' failed ($ret)" unless $ret == 0;
@@ -1142,3 +1636,20 @@ sub aliasGetCwd {
         if defined $Cache::alias_cd{$here};
     return $here;
 }
+
+sub readMtnOptions {
+    my ($src) = @_;
+
+    $src = rootSrcDir() unless defined $src;
+    my $fh = new FileHandle("$src/_MTN/options")
+        or die "Can't open $src/_MTN/options for read: $!";
+    my %ret;
+    while(<$fh>) {
+        $ret{branch} = $1 if /^\s*branch \"(.+)\"$/o;
+        $ret{database} = $1 if /^\s*database \"(.+)\"$/o;
+    }
+    close($fh);
+
+    return %ret;
+}
+

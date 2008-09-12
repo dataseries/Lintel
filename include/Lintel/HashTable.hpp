@@ -17,6 +17,7 @@
 #include <vector>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/Stats.hpp>
 extern uint32_t HashTable_prime_list[];
 
 /// This is out here because C++ templates are sub-optimal.  All
@@ -39,6 +40,10 @@ struct HashTable_hte {
 // 2^32-1 entries.  Consider writing a test (64bit only) that can
 // verify proper operation at that size.
 
+/// The HashTable class is the low-level class for working with
+/// hash-tables.  For most uses you probably want to just use HashMap,
+/// or HashUnique.
+///
 /// \code
 /// Sample usage:
 /// struct hteData {
@@ -104,45 +109,38 @@ public:
     typedef std::vector<hte, AllocHTE> hte_vectorT;
     typedef std::vector<int, AllocInt> hash_tableT;
 public:
+    /// Add in a new entry to the hash table; will always add in the
+    /// value even if there is an existing value v that is Equal(data,
+    /// v).
     D *add(const D &data) {
-	if (free_list == -1 && 
-	    chains.size() >= target_chain_length * entry_points.size()) {
-	    resizeHashTable();
-	}
+	uint32_t hashof_ = hashof(data);
+	return internal_add(data, hashof_);
+    }
 
-	INVARIANT(entry_points.size() > 0, 
-		  "did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C");
-	uint32_t hash = hashof(data) % entry_points.size();
-	if (free_list == -1) {
-	    hte v(data, entry_points[hash]);
-	    DEBUG_SINVARIANT(hash < entry_points.size());
-	    entry_points[hash] = static_cast<int>(chains.size());
-	    chains.push_back(v);
-	    return &(chains.back().data);
+    /// Add in a new entry to the hash table if the key does not
+    /// exist.  If the key does exist, replace the existing data.
+    D *addOrReplace(const D &data, bool &replaced) {
+	uint32_t hashof_ = hashof(data);
+	hte *chain = internal_lookup(data, hashof_);
+	if (chain != NULL) {
+	    replaced = true;
+	    return &(chain->data);
 	} else {
-	    int32_t loc = free_list;
-	    
-	    free_list = chains[free_list].next;
-	    chains[loc].data = data;
-	    chains[loc].next = entry_points[hash];
-	    entry_points[hash] = loc;
-	    return &chains[loc].data;
+	    replaced = false;
+	    return internal_add(data, hashof_);
 	}
     }
 
     // changing the key in the returned key/value data will of course
     // totally screw up the hash table.
-    D *lookup(const D &key) {
-	if (entry_points.size() == 0) {
+    D *lookup(const D &data) {
+	uint32_t hashof_ = hashof(data);
+	hte *chain = internal_lookup(data, hashof_);
+	if (chain != NULL) {
+	    return &(chain->data);
+	} else {
 	    return NULL;
 	}
-	uint32_t hash = hashof(key) % entry_points.size();
-	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
-	    if (equal(key,chains[i].data)) {
-		return &chains[i].data;
-	    }
-	}
-	return NULL;
     }
 
     // Not perfectly random, if there are biases in the hash(key)
@@ -236,6 +234,18 @@ public:
 	 }
      }
 
+    /// Get statistics for the chain lengths of all the chains in a
+    /// hash table.  Useful for detecting a bad hash function.
+    void chainLengthStats(Stats &stats) const {
+	 for(uint32_t i=0;i<entry_points.size();i++) {
+	     uint32_t len = 0;
+	     for(int32_t j = entry_points[i]; j != -1; j = chains[j].next) {
+		 ++len;
+	     }
+	     stats.add(len);
+	 }
+    }
+
 private:
     template<typename t_value_type, class t_hashtable_type>
     class iterator_base {
@@ -248,7 +258,7 @@ private:
 	typedef std::ptrdiff_t difference_type;
 
 	bool operator==(const SelfT &y) const {
-	    return &this->mytable == &y.mytable 
+	    return this->mytable == y.mytable 
  	        && this->cur_chain == y.cur_chain 
 	        && this->chain_loc == y.chain_loc;
 	}
@@ -259,9 +269,9 @@ private:
 
 	t_value_type &operator *() { 
 	    INVARIANT(this->chain_loc >= 0 && 
-		      this->chain_loc < static_cast<int32_t>(this->mytable.chains.size()),
+		      this->chain_loc < static_cast<int32_t>(this->mytable->chains.size()),
 		      "Bad use of iterator");
-	    return this->mytable.chains[this->chain_loc].data;
+	    return this->mytable->chains[this->chain_loc].data;
 	}
 
 	t_value_type *operator ->() {
@@ -274,11 +284,11 @@ private:
 	/// restart the scan operation partway through after doing some
 	/// number of updates safely.
 	void partialReset() {
-	    if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
-		chain_loc = mytable.entry_points[cur_chain];
+	    if (cur_chain < static_cast<int>(mytable->entry_points.size())) {
+		chain_loc = mytable->entry_points[cur_chain];
 		findNonemptyChain();
 	    } else {
-		SINVARIANT(cur_chain == static_cast<int>(mytable.entry_points.size()));
+		SINVARIANT(cur_chain == static_cast<int>(mytable->entry_points.size()));
 	    }
 	}
 	void reset() {
@@ -289,7 +299,7 @@ private:
 	    return cur_chain;
 	}
     protected:
-	iterator_base(t_hashtable_type &_mytable, int32_t start_chain = 0,
+	iterator_base(t_hashtable_type *_mytable, int32_t start_chain = 0,
 		      int32_t _chain_loc = -1) 
 	    : mytable(_mytable), cur_chain(start_chain), 
 	      chain_loc(_chain_loc) {
@@ -298,25 +308,25 @@ private:
 		  }
 	    }
 	void findNonemptyChain() {
-	    while(cur_chain < static_cast<int>(mytable.entry_points.size()) &&
-		  mytable.entry_points[cur_chain] == -1) {
+	    while(cur_chain < static_cast<int>(mytable->entry_points.size()) &&
+		  mytable->entry_points[cur_chain] == -1) {
 		      cur_chain += 1;
 		  }
-	    if (cur_chain < static_cast<int>(mytable.entry_points.size())) {
-		chain_loc = mytable.entry_points[cur_chain];
+	    if (cur_chain < static_cast<int>(mytable->entry_points.size())) {
+		chain_loc = mytable->entry_points[cur_chain];
 	    }
 	}
 	void increment() {
 	    INVARIANT(chain_loc >= 0 && 
-		      chain_loc < static_cast<int>(mytable.chains.size()),
+		      chain_loc < static_cast<int>(mytable->chains.size()),
 		      "bad use of iterator");
-	    chain_loc = mytable.chains[chain_loc].next;
+	    chain_loc = mytable->chains[chain_loc].next;
 	    if (chain_loc == -1) {
 		cur_chain += 1;
 		findNonemptyChain();
 	    }
 	}
-	t_hashtable_type &mytable;
+	t_hashtable_type *mytable;
 	int32_t cur_chain;
 	int32_t chain_loc;
     };
@@ -330,7 +340,7 @@ public:
   	          (from.mytable, from.cur_chain, from.chain_loc) { }
 	iterator(HashTable &mytable, int32_t start_chain = 0, 
 		 int32_t chain_loc = -1)
-	    : iterator_base<D, HashTable>(mytable, start_chain, chain_loc) { }
+	    : iterator_base<D, HashTable>(&mytable, start_chain, chain_loc) { }
 	
 	iterator &operator++() { this->increment(); return *this; }
 	iterator operator++(int) {
@@ -369,8 +379,11 @@ public:
 
     class const_iterator : public iterator_base<const D, const HashTable> {
     public:
-	const_iterator(const HashTable &mytable, int32_t start_chain = 0)
-	    : iterator_base<const D, const HashTable>(mytable, start_chain) { }
+	const_iterator(const HashTable &mytable, int32_t start_chain = 0,
+		       int32_t chain_loc = -1)
+	    : iterator_base<const D, const HashTable>
+	          (&mytable, start_chain, chain_loc) 
+	{ }
 	
 	const_iterator &operator++() { this->increment(); return *this; }
 	const_iterator operator++(int) {
@@ -386,6 +399,19 @@ public:
 
     const_iterator end() const {
 	return const_iterator(*this, entry_points.size());
+    }
+
+    const_iterator find(const D &key) const {
+	if (entry_points.size() == 0) {
+	    return end();
+	}
+	uint32_t hash = hashof(key) % entry_points.size();
+	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
+	    if (equal(key, chains[i].data)) {
+		return const_iterator(*this, hash, i);
+	    }
+	}
+	return end();
     }
 
     // TODO: count the size of the free list so this function is constant
@@ -431,7 +457,7 @@ public:
 	return chains.available();
     }
 
-    size_t memoryUsage() {
+    size_t memoryUsage() const {
 	return sizeof(hte) * chains.capacity() + sizeof(int) * entry_points.capacity();
     }
 
@@ -453,9 +479,50 @@ public:
 	INVARIANT(dense(), "If the hash table isn't dense, then there are false values in the vector.");
 	return chains;
     }
+
 private:
-    uint32_t hashof(const D &data) {
+    uint32_t hashof(const D &data) const {
 	return static_cast<uint32_t>(hashfn(data));
+    }
+
+    D *internal_add(const D &data, uint32_t hashof_) {
+	if (free_list == -1 && 
+	    chains.size() >= target_chain_length * entry_points.size()) {
+	    resizeHashTable();
+	}
+
+	INVARIANT(entry_points.size() > 0, 
+		  "did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C");
+	uint32_t hash = hashof_ % entry_points.size();
+	if (free_list == -1) {
+	    hte v(data, entry_points[hash]);
+	    DEBUG_SINVARIANT(hash < entry_points.size());
+	    entry_points[hash] = static_cast<int>(chains.size());
+	    chains.push_back(v);
+	    return &(chains.back().data);
+	} else {
+	    int32_t loc = free_list;
+	    
+	    free_list = chains[free_list].next;
+	    chains[loc].data = data;
+	    chains[loc].next = entry_points[hash];
+	    entry_points[hash] = loc;
+	    return &chains[loc].data;
+	}
+    }
+
+    hte *internal_lookup(const D &key, uint32_t hashof_)
+    {
+	if (entry_points.size() == 0) {
+	    return NULL;
+	}
+	uint32_t hash = hashof_ % entry_points.size();
+	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
+	    if (equal(key,chains[i].data)) {
+		return &(chains[i]);
+	    }
+	}
+	return NULL;
     }
 
     void init(double _tcl) {
@@ -544,6 +611,11 @@ inline uint32_t HashTable_hashbytes(const void *bytes,
     return BobJenkinsHash(prev_hash, bytes, size);
 }
 
+// TODO: update with the revised hash function at:
+// http://burtleburtle.net/bob/hash/doobs.html
+// or the alternative one at:
+// http://murmurhash.googlepages.com/
+
 // A fast way of doing an inline mix of three integers; used in the
 // BobJenkins Hash as a core operation; this is placed here so that
 // hashing on a bunch of small integers can be done quickly without a
@@ -563,17 +635,16 @@ inline uint32_t HashTable_hashbytes(const void *bytes,
   c -= a; c -= b; c ^= (b>>15); \
 }
 
-static inline uint32_t BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c)
-{
+static inline uint32_t BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) {
     BobJenkinsHashMix(a,b,c);
     return c;
 }
 
-static inline uint32_t BobJenkinsHashMixULL(uint64_t v)
-{
+static inline uint32_t 
+BobJenkinsHashMixULL(uint64_t v, uint32_t partial = 1972) {
     uint32_t a = static_cast<uint32_t>(v & 0xFFFFFFFF);
     uint32_t b = static_cast<uint32_t>((v >> 32) & 0xFFFFFFFF);
-    uint32_t c = 1972;
+    uint32_t c = partial;
     BobJenkinsHashMix(a,b,c);
     return c;
 }

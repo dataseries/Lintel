@@ -112,6 +112,10 @@ public:
 			    "invalid use of iterator");
 	    return mydeque.deque[cur_pos];
 	}
+	T *operator ->() {
+	    return &(operator *());
+	}
+
     private:
 	void increment() {
 	    DEBUG_INVARIANT(cur_pos < mydeque.q_size,
@@ -133,6 +137,10 @@ public:
     void clear() {
 	q_front = q_back = 0;
 	DEBUG_SINVARIANT(empty());
+    }
+
+    size_t memoryUsage() {
+	return q_size * sizeof(T) + sizeof(Deque<T>);
     }
 
 private:

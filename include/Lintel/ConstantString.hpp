@@ -104,13 +104,13 @@ public:
     // the c_str() pointer of a thing is the same as the pointer
     class hteHash {
     public:
-	unsigned int operator()(const ConstantStringValue *k) {
+	unsigned int operator()(const ConstantStringValue *k) const {
 	    return HashTable_hashbytes(ConstantString_c_str(k),ConstantString_length(k));
 	}
     };
     class hteEqual {
     public:
-	bool operator()(const ConstantStringValue *a, const ConstantStringValue *b) {
+	bool operator()(const ConstantStringValue *a, const ConstantStringValue *b) const {
 	    uint32_t len_a = ConstantString_length(a);
 	    uint32_t len_b = ConstantString_length(b);
 	    if (len_a != len_b) {

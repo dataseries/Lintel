@@ -139,6 +139,7 @@ StatsQuantile::~StatsQuantile()
     delete[] all_buffers;
     delete[] buffer_weight;
     delete[] buffer_level;
+    delete[] buffer_sorted;
     delete[] tmp_buffer;
     delete[] collapse_pos;
 }
@@ -323,8 +324,11 @@ StatsQuantile::getQuantile(double quantile) const
 	      "May be safe to decrease rounding adjustment to 0.5e-15, but will be getting very\n"
 	      "close to the limit of precision in floating point.  How did you get this many\n"
 	      "entries into the table??");
+    // Subtract 1 because the quantile positions count from 1..n, but
+    // C++ arrays index from 0..n-1
     int64_t target_index 
-	= static_cast<int64_t>(ceil(nentries * (quantile - 1e-15)));
+	= static_cast<int64_t>(ceil(nentries * (quantile - 1e-15))) - 1;
+    if (target_index < 0) target_index = 0;
     if (target_index == nentries) {
 	target_index = (long long)(nentries - 1);
     }
@@ -573,12 +577,11 @@ StatsQuantile::printFile(FILE *out, int nranges)
     fwrite(tmp.str().data(), tmp.str().size(), 1, out);
 }
 
-void
-StatsQuantile::printTextRanges(ostream &out, int nranges) const
-{
+void StatsQuantile::printTextRanges(ostream &out, int nranges, double multiplier) const {
     nranges = (nranges == -1 ? print_nrange : nranges);
     out << boost::format("%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n")
-	% countll() % mean() % stddev() % min() % max();
+	% countll() % (multiplier * mean()) % (multiplier * stddev()) 
+	% (multiplier * min()) % (multiplier * max());
     if (countll() == 0) return;
     out << boost::format("    quantiles about every %.0f data points:")
 	% ((double)countll()/(double)nranges);
@@ -591,7 +594,7 @@ StatsQuantile::printTextRanges(ostream &out, int nranges) const
 	    out << ", ";
 	}
 
-	out << boost::format("%.8g") % getQuantile(quantile);
+	out << boost::format("%.8g") % (multiplier * getQuantile(quantile));
 	++nquantiles;
     }
     out << "\n";
@@ -609,9 +612,7 @@ StatsQuantile::printTail(FILE *out)
 // e.g. 22 data points, should we get the 90%,95% tails?  This happens
 // in the dataseries groupby regression test, but may be otherwise
 // irrelevant.
-void
-StatsQuantile::printTextTail(ostream &out) const
-{
+void StatsQuantile::printTextTail(ostream &out, double multiplier) const {
     double nentries = countll();
     out << "  tails: ";
     for(double tail_frac = 0.1; (tail_frac * nentries) >= 10.0;) {
@@ -619,10 +620,10 @@ StatsQuantile::printTextTail(ostream &out) const
 	    out << ", ";
 	}
 	out << boost::format("%.12g%%: %.8g")
-	    % (100*(1-tail_frac)) % getQuantile(1-tail_frac);
+	    % (100*(1-tail_frac)) % (multiplier * getQuantile(1-tail_frac));
 	tail_frac /= 2.0;
 	out << boost::format(", %.12g%%: %.8g")
-	    % (100*(1-tail_frac)) % getQuantile(1-tail_frac);
+	    % (100*(1-tail_frac)) % (multiplier * getQuantile(1-tail_frac));
 	tail_frac /= 5.0;
     }
     out << "\n";
@@ -633,4 +634,12 @@ StatsQuantile::printText(ostream &out) const
 {
     printTextRanges(out);
     printTextTail(out);
+}
+
+size_t StatsQuantile::memoryUsage() const {
+    // primary data (init_buffers) + secondary metadata (init)
+    return nbuffers * buffer_size * sizeof(double) // primary
+	+ nbuffers * (sizeof(int64_t) + sizeof(int) + sizeof(bool)
+		      + sizeof(double) + sizeof(int)) // secondary
+	+ sizeof(StatsQuantile);
 }

@@ -3,7 +3,7 @@ set -e
 
 ./testutil >testutil.out 2>&1 || true
 
-sed 's/Assertion failure in file .*testutil.cpp, line.*/Assertion failure in testutil.cpp/' < testutil.out | grep -v '^Aborted$' >testutil.check
+sed 's/Assertion failure in file .*testutil.cpp, line.*/Assertion failure in testutil.cpp/' < testutil.out | grep -v '^Aborted' >testutil.check
 
 cat >testutil.good <<EOF 
 
