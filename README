@@ -47,9 +47,9 @@ BUILDING
 2) configure the package:
    mkdir -p ~/build/optimize/Lintel
    cd ~/build/optimize/Lintel
-   ~/projects/Lintel/configure --enable-optmode=optimize
+   ccmake ~/projects/Lintel
 
 3) compile and install the package:
    cd ~/build/optimize/Lintel:
-   make && make check && make install
+   make && make test && make install
 
