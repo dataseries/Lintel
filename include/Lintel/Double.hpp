@@ -15,7 +15,9 @@
 #include <algorithm>
 #include <math.h>
 
-#ifdef SYS_NT
+#include <boost/config.hpp>
+
+#ifdef BOOST_MSVC
 inline bool isnan(double);
 inline bool isinf(double);
 #endif

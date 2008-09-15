@@ -1,5 +1,5 @@
 /* -*-C++-*-
-   (c) Copyright 2001-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2001-2008, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -31,7 +31,7 @@ double Double::default_epsilon = 1e-12;
 #define INFINITY std::numeric_limits<double>::infinity()
 #endif
 
-#ifdef SYS_NT
+#ifdef BOOST_MSVC
 inline bool isnan(double v)
 {
     // comparisons with nan always fail

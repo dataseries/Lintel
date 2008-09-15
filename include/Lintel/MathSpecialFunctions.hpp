@@ -15,6 +15,7 @@
 #include <math.h>
 
 #include <boost/version.hpp>
+#include <boost/config.hpp>
 /* TODO: when we decide to stop supporting older boost versions, this 
    should be removed. Also, note the equivalent checks later in the file
    and in the .cpp
@@ -23,7 +24,7 @@
 #include <boost/math/special_functions/erf.hpp>
 #else
    // no erf() on windows
-#  if defined(SYS_NT)
+#  if defined(BOOST_MSVC)
 #     error need boost version >= 1.35
 #  endif
 #endif
