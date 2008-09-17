@@ -317,9 +317,9 @@ private:
 	    }
 	}
 	void increment() {
-	    INVARIANT(chain_loc >= 0 && 
-		      chain_loc < static_cast<int>(mytable->chains.size()),
-		      "bad use of iterator");
+	    INVARIANT(chain_loc >= 0 && chain_loc < static_cast<int>(mytable->chains.size()),
+		      boost::format("bad use of iterator %d not in [0,%d[") % chain_loc
+		      % mytable->chains.size());
 	    chain_loc = mytable->chains[chain_loc].next;
 	    if (chain_loc == -1) {
 		cur_chain += 1;
