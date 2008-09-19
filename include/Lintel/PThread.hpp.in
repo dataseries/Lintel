@@ -1,5 +1,5 @@
 /* -*- C++ -*-
-   (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2000-2008, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -15,10 +15,13 @@
 #include <string.h>
 
 #include <boost/utility.hpp>
-#include <boost/thread/tss.hpp>
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Clock.hpp>
+#include <Lintel/LockOrderingGroup.hpp>
+
+// TODO: remove this.
+typedef LockOrderingGroup PThreadLockOrderingGroup;
 
 #if __linux__
 extern "C" {
@@ -163,47 +166,6 @@ public:
     }
 
 };
-
-/// Use this class to define a set of related mutexes/locks that will
-/// be tested to verify that the locking is all globally ordered.
-/// Right now you can only use this with the ScopedLock/Unlock classes
-/// as they will properly manipulate the lock ordering when
-/// taking/releasing locks.  Lock ordering levels are defined as
-/// higher is more important, so it is ok to override a lower level
-/// lock with a higher level one, but not in the reverse.
-class PThreadLockOrderingGroup : boost::noncopyable {
-public:
-    PThreadLockOrderingGroup() { 
-	cur_level.reset(new double);
-	*cur_level = 0;
-    }
-
-    double curLevel() const {
-	return *cur_level;
-    }
-private:
-    friend class PThreadScopedLock;
-    friend class PThreadScopedUnlock;
-
-    boost::thread_specific_ptr<double> cur_level;
-
-    double scopeDown(double new_level) {
-	double old_level = *cur_level;
-	INVARIANT(old_level < new_level, 
-		  boost::format("lock scope down failed: %.6g >= %.6g") 
-		  % old_level % new_level);
-	*cur_level = new_level;
-	return old_level;
-    }
-
-    void scopeUp(double down_level, double old_level) {
-	INVARIANT(*cur_level == down_level,
-		  boost::format("lock scope up failed: %.6g != %.6g") 
-		  % *cur_level % down_level);
-	*cur_level = old_level;
-    }
-};
-	
 
 /// Allocate this as an automatic in your stack frame.  It will
 /// lock the mutex on construction and unlock it on destruction,

@@ -20,6 +20,7 @@ SET(INCLUDE_FILES
 	LintelAssert.hpp
 	LintelLog.hpp
 	LintelVersion.hpp
+	LockOrderingGroup.hpp
 	MathSpecialFunctions.hpp
 	Matrix.hpp
 	MersenneTwisterRandom.hpp
