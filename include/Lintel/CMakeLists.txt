@@ -13,8 +13,10 @@ SET(INCLUDE_FILES
 	ConstantString.hpp
 	Deque.hpp
 	Double.hpp
+	HashFns.hpp
 	HashMap.hpp
 	HashTable.hpp
+	HashTupleStats.hpp
 	HashUnique.hpp
 	LeastSquares.hpp
 	LintelAssert.hpp
@@ -40,6 +42,7 @@ SET(INCLUDE_FILES
 	StatsSeriesGroup.hpp
 	StringUtil.hpp
 	TestUtil.hpp
+	Tuples.hpp
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
