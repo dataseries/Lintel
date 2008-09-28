@@ -30,6 +30,7 @@
 
 #include <string>
 
+#include <boost/shared_ptr.hpp>
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_integral.hpp>
 
@@ -197,7 +198,9 @@ namespace lintel {
     /// Not a default implementation for pointers because that isn't
     /// safe.  People could reasonably expect the comparison to be
     /// done as hash(*a) also.  Used by HashMap<K, V,
-    /// PointerHashMapHash<K>, PointerHashMapEqual<K> >
+    /// lintel::PointerHash<K>, lintel::PointerEqual<K> > the last bit
+    /// can be left out if there are no operator == (const K *, const
+    /// K *) functions defined.
     template<typename T> struct PointerHash {
 	uint32_t operator()(const T *a) const {
 	    BOOST_STATIC_ASSERT(sizeof(a) == 4 || sizeof(a) == 8);
@@ -210,12 +213,36 @@ namespace lintel {
 	    }
 	}
     };
-
+    
     /// Object equality check -- unnecessary unless operators have been
     /// defined.
     template<typename T> struct PointerEqual {
 	bool operator()(const T *a, const T *b) const {
 	    return a == b;
+	}
+    };
+
+    /// SharedPointerHashing, same as PointerHash
+    template<typename T> struct SharedPointerHash {
+	uint32_t operator()(const boost::shared_ptr<T> &a) const {
+	    BOOST_STATIC_ASSERT(sizeof(a.get()) == 4 || sizeof(a.get()) == 8);
+	    if (sizeof(a.get()) == 4) {
+		// RHEL4 64bit requires two stage cast even though this
+		// branch should never be executed.
+		return static_cast<uint32_t>
+		    (reinterpret_cast<size_t>(a.get()));
+	    } else if (sizeof(a) == 8) {
+		return BobJenkinsHashMixULL
+		    (reinterpret_cast<uint64_t>(a.get()));
+	    }
+	}
+    };
+    
+    /// SharedPointerEqual; may always be needed as opposed to PointerEqual
+    template<typename T> struct SharedPointerEqual {
+	bool operator()(const boost::shared_ptr<T> &a, 
+			const boost::shared_ptr<T> &b) const {
+	    return a.get() == b.get();
 	}
     };
 
