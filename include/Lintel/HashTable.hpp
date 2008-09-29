@@ -217,6 +217,7 @@ public:
 
 	bool ret = true;
 	if (equal(key,chains[loc].data)) {
+	    chains[loc].data = D();
 	    entry_points[hash] = chains[loc].next;
 	    chains[loc].next = free_list;
 	    free_list = loc;
@@ -232,6 +233,7 @@ public:
 		    break;
 		}
 		if (equal(key,chains[loc].data)) {
+		    chains[loc].data = D();
 		    chains[prev].next = chains[loc].next;
 		    chains[loc].next = free_list;
 		    free_list = loc;
