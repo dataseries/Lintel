@@ -24,6 +24,8 @@
 // .. runnable_back -1] (wrapping), one slot is wasted, front ==
 // back -> empty
 
+// TODO: following boost::circular_buffer, redo this to use allocators
+// so that we don't need a () constructor.
 template <class T>
 class Deque : boost::noncopyable {
 public:
@@ -48,6 +50,7 @@ public:
     }
     void pop_front() {
 	DEBUG_INVARIANT(!empty(), "pop_front() on empty dequeue");
+	deque[q_front] = T();
 	q_front = (q_front + 1) % q_size;
     }
     void push_back(const T &val) { 
