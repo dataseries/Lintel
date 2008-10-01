@@ -23,106 +23,17 @@
 
 #include <boost/static_assert.hpp>
 
+#include <Lintel/HashFns.hpp>
 #include <Lintel/HashTable.hpp>
 
-#include <boost/type_traits/is_integral.hpp>
+// propagate things into the global namespace
 
-/// template to hash integral type things; this lets us handle all of
-/// the combinations of int64_t, long long, etc., without having to
-/// have different variants for all of the sub-types, which is
-/// currently impossible because we can't have both long long and
-/// int64_t instantiations of the HashMap_hash template.  32bit x86
-/// Debian etch thinks those types are the same, so it complains about
-/// duplicate templates, but 64bit x86_64 RHEL4 thinks the types are
-/// different so requires both of them.  
-template<bool isIntegral, int size> struct HashMap_hash_int {
+template <class K> struct HashMap_hash : lintel::Hash<K> {
     //    uint32_t operator()(const K &a) const;
 };
 
-template <class K> 
-struct HashMap_hash 
-    : HashMap_hash_int<boost::is_integral<K>::value, sizeof(K)> {
-    //    uint32_t operator()(const K &a) const;
-};
-
-/// Specialization for std::string
-template <> struct HashMap_hash<const std::string> {
-    uint32_t operator()(const std::string &a) const {
-	return HashTable_hashbytes(a.data(),a.size());
-    }
-};
-
-/// Specialization for char *
-template <> struct HashMap_hash<const char * const> {
-    uint32_t operator()(const char * const a) const {
-	return HashTable_hashbytes(a,strlen(a));
-    }
-};
-
-/// To achieve the HashMap_hash_int thing, need to have
-/// specializations for the different sizes; this is 4 byte size.
-template <> struct HashMap_hash<const uint32_t> {
-    uint32_t operator()(const uint32_t _a) const {
-	// This turns out to be slow, so turn it back into just using
-	// the underlying integer; if someone does put "bad" integers
-	// into the system then they can make their own hash function
-
-	// doesn't increase the entropy, but shuffles the entropy across
-	// the entire integer, meaning the low bits get shuffled even if they
-	// are constant for some reason
-//	int a = _a;
-//	int b = 0xBEEFCAFE;
-//	int ret = 1972;
-//	BobJenkinsHashMix(a,b,ret);
-//	return ret;
-	return static_cast<uint32_t>(_a);
-    }
-};
-
-/// specialization for 8 byte integers
-template <> struct HashMap_hash<const uint64_t> {
-    uint32_t operator()(const uint64_t _a) const {
-	return BobJenkinsHashMixULL(_a);
-    }
-};
-
-/// general 4 byte integer hashing
-template<> struct HashMap_hash_int<true, 4> : HashMap_hash<const uint32_t> {
-    BOOST_STATIC_ASSERT(sizeof(uint32_t) == 4);
-};
-
-// general 8 byte integer hashing
-template<> struct HashMap_hash_int<true, 8> : HashMap_hash<const uint64_t> {
-    BOOST_STATIC_ASSERT(sizeof(uint64_t) == 8);
-};
-
-/// Object comparison by pointer, useful for making a hash structure
-/// on objects where each object instance is separate.  Instantiated
-/// separately rather than as a variant of HashMap_hash because having
-/// this as the default behavior doesn't seem safe; people could
-/// reasonably expect the comparison to be done as hash(*a) also.
-/// Used by HashMap<K, V, PointerHashMapHash<K>,
-/// PointerHashMapEqual<K> >
-template<typename T> struct PointerHashMapHash {
-    uint32_t operator()(const T *a) const {
-	BOOST_STATIC_ASSERT(sizeof(a) == 4 || sizeof(a) == 8);
-	if (sizeof(a) == 4) {
-	    // RHEL4 64bit requires two stage cast even though this
-	    // branch should never be executed.
-	    return static_cast<uint32_t>(reinterpret_cast<size_t>(a));
-	} else if (sizeof(a) == 8) {
-	    return BobJenkinsHashMixULL(reinterpret_cast<uint64_t>(a));
-	}
-    }
-};
-
-/// Object equality check -- unnecessary unless operators have been
-/// defined.
-template<typename T> struct PointerHashMapEqual {
-    bool operator()(const T *a, const T *b) const {
-	return a == b;
-    }
-};
+template<typename T> struct PointerHashMapHash : lintel::PointerHash<T> { };
+template<typename T> struct PointerHashMapEqual : lintel::PointerEqual<T> { };
 
 /// HashMap class; in our testing almost as fast as the google dense
 /// map, but uses almost as little memory as the sparse map.  Note
@@ -136,18 +47,30 @@ template<typename T> struct PointerHashMapEqual {
 ///    int32_t x, y;
 ///    std::string str;
 ///    bool operator==(const example &rhs) const;
+///    uint32_t hash() const;
 /// }
 /// \endcode
-/// you would need to define the HashMap_hash<example> and operator ==
-/// on struct example.  To define HashMap_hash<example>>, you would write:
+/// you would need to define a hash function and operator == for
+/// struct example.  The operator definition can be seen above.  There are
+/// two options for the hash function.  Either it is a hash method on the
+/// object itself, with the signature shown above.  Or it is a 
+/// hashType(const Example &v) function defined in the same namespace as
+/// the underlying type or the lintel namespace.  So you could write either:
 /// \code
-/// template<> struct HashMap_hash<const example> {
-///     uint32_t operator()(const example &a) const {
-///         uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
-///         return HasHTable_hashbytes(a.str().data, a.str.size(), partial_hash);
-///     }
-/// } 
+/// uint32_t example::hash() const {
+///     uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
+///     return HasHTable_hashbytes(a.str().data, a.str.size(), partial_hash);
+/// }
 /// \endcode
+/// or
+/// \code
+/// uint32_t hashType(const example &v) {
+///     uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
+///     return HasHTable_hashbytes(a.str().data, a.str.size(), partial_hash);
+/// }
+/// \endcode
+/// If both are defined, the hash function on the object takes precedence.
+///
 /// To define operator ==, you can either define it as part of the
 /// class as shown above in the structure example (normally you would
 /// define it inline), or you can define an external operator == as in:

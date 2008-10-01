@@ -33,6 +33,7 @@ SET(LIBLINTEL_SOURCES
 	ConstantString.cpp
 	Deque.cpp
 	Double.cpp
+	HashFns.cpp
 	HashTable.cpp
 	LeastSquares.cpp
 	LintelAssert.cpp

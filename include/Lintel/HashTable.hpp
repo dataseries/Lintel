@@ -17,7 +17,23 @@
 #include <vector>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/HashFns.hpp>
 #include <Lintel/Stats.hpp>
+
+// these used to be in the global namespace; preserve that for now.
+// TODO: stop with them in the global namespace.
+inline uint32_t BobJenkinsHash(const uint32_t prev_hash,
+			       const void *bytes, const size_t size) {
+    return lintel::bobJenkinsHash(prev_hash, bytes, size);
+}
+inline uint32_t HashTable_hashbytes(const void *bytes, const size_t size,
+				    const uint32_t prev_hash = 1972) { 
+    return lintel::hashBytes(bytes, size, prev_hash);
+}
+using lintel::BobJenkinsHashMix3;
+using lintel::BobJenkinsHashMixULL;
+#define BobJenkinsHashMix lintel_BobJenkinsHashMix
+
 extern uint32_t HashTable_prime_list[];
 
 /// This is out here because C++ templates are sub-optimal.  All
@@ -201,6 +217,7 @@ public:
 
 	bool ret = true;
 	if (equal(key,chains[loc].data)) {
+	    chains[loc].data = D();
 	    entry_points[hash] = chains[loc].next;
 	    chains[loc].next = free_list;
 	    free_list = loc;
@@ -216,6 +233,7 @@ public:
 		    break;
 		}
 		if (equal(key,chains[loc].data)) {
+		    chains[loc].data = D();
 		    chains[prev].next = chains[loc].next;
 		    chains[loc].next = free_list;
 		    free_list = loc;
@@ -589,64 +607,5 @@ private:
     HashFn hashfn;
     Equal equal;
 };
-
-// prev_hash allows you to hash data where the key is in separate pieces
-// it may not get the same hash as concatenating the key would give
-// 1972 is an arbitrary start
-
-// note that the order of arguments here is different than for the
-// HashTable_hashbytes function; this is to make the order consistent
-// with how the crc/adler hash's work in both zlib and lzo library, and
-// the ordering for the md5, sha1, etc. hashs from openssl; the order for 
-// the other function is retained as the common usage is to not specify a
-// previous hash
-
-
-uint32_t BobJenkinsHash(const uint32_t prev_hash,
-			const void *bytes, const size_t size);
-inline uint32_t HashTable_hashbytes(const void *bytes, 
-				    const size_t size,
-				    const uint32_t prev_hash = 1972)
-{ 
-    return BobJenkinsHash(prev_hash, bytes, size);
-}
-
-// TODO: update with the revised hash function at:
-// http://burtleburtle.net/bob/hash/doobs.html
-// or the alternative one at:
-// http://murmurhash.googlepages.com/
-
-// A fast way of doing an inline mix of three integers; used in the
-// BobJenkins Hash as a core operation; this is placed here so that
-// hashing on a bunch of small integers can be done quickly without a
-// function call and all of the variable length overhead inherent in
-// the general purpose hash.
-
-#define BobJenkinsHashMix(a,b,c) \
-{ \
-  a -= b; a -= c; a ^= (c>>13); \
-  b -= c; b -= a; b ^= (a<<8); \
-  c -= a; c -= b; c ^= (b>>13); \
-  a -= b; a -= c; a ^= (c>>12);  \
-  b -= c; b -= a; b ^= (a<<16); \
-  c -= a; c -= b; c ^= (b>>5); \
-  a -= b; a -= c; a ^= (c>>3);  \
-  b -= c; b -= a; b ^= (a<<10); \
-  c -= a; c -= b; c ^= (b>>15); \
-}
-
-static inline uint32_t BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) {
-    BobJenkinsHashMix(a,b,c);
-    return c;
-}
-
-static inline uint32_t 
-BobJenkinsHashMixULL(uint64_t v, uint32_t partial = 1972) {
-    uint32_t a = static_cast<uint32_t>(v & 0xFFFFFFFF);
-    uint32_t b = static_cast<uint32_t>((v >> 32) & 0xFFFFFFFF);
-    uint32_t c = partial;
-    BobJenkinsHashMix(a,b,c);
-    return c;
-}
 
 #endif
