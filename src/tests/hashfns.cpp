@@ -80,7 +80,11 @@ int main() {
     check(i, 1129882560UL);
     check(j, 33380);
     check(k, 4111);
-    check(l, 313515111);
+    if (sizeof(long) == 4) {
+	check(l, 313515111);
+    } else {
+	check(l, 3341577989);
+    }
     check(m, 4217888175U);
     check(n, 2039183822U);
     check(o, 15 ^ 127);
