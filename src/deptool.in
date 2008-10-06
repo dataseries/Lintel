@@ -30,6 +30,11 @@ use POSIX 'ceil';
 
 # TODO: keep usage up to date. code-review is missing. 
 
+# TODO: check for make file left overs in source directory (these should only
+# be in build, or debug, or etc. directories). Jay at least seems to futz up
+# and make crap in src every so often those breaking depbuild (or at least
+# misleading it as to what has been created and what should be recreated).
+
 sub usage {
     print "Usage: $0 <command> [-y (yes to prompts)] [args]\n";
     print "  init [--server=<hostname>] [branch-prefix...]\n";
@@ -38,6 +43,13 @@ sub usage {
     print "  build [-t (and test)] [-d (debug build)] [-b (optimize build)]\n";
     print "  commit\n";
     print "  publish\n";
+    print "  cmake\n";
+    print "  pin\n";
+    print "  code-review\n";
+    print "  mtnpull\n";
+    print "  mtnpush\n";
+    print "  mtnsync\n";
+    print "  mtnserve\n";
     confess @_ if @_ > 0;
     exit(0);
 }
@@ -76,6 +88,10 @@ my %commands = ('checkout' => \&depCheckout,
                 'cdsrc' => \&cdSrc,
                 'cdopt' => sub { cdBuild('opt'); },
                 'cddebug' => sub { cdBuild('debug'); },
+		# get usage without error message
+		'-h' => \&usage,
+		'--help' => \&usage,
+		'help' => \&usage,
 );
 
 my $command = shift @ARGV;
