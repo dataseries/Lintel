@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <sys/types.h>
+#include <string.h>
 
 #include <string>
 
