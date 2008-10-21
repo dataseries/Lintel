@@ -343,7 +343,6 @@ sub write_joblist {
     if (defined $batch_groupsize) {
 	$batch_size = $batch_groupsize;
 	$batch_maxgroups = 2*@things_to_build / $batch_size;
-	$batch_maxgroups = 2000 unless defined $batch_maxgroups;
 	if (scalar @things_to_build / $batch_size > $batch_maxgroups) {
 	    print "WARNING, increasing batch size from $batch_size to ";
 	    $batch_size = ceil(scalar @things_to_build / $batch_size);

@@ -20,6 +20,7 @@ use File::stat;
 use FileHandle;
 use Getopt::Long;
 use POSIX 'ceil';
+use Pod::Usage;
 
 # TODO: pull should walk in the current directory before walking in the
 # dependent ones since it may need additional dependencies, and/or they
@@ -28,34 +29,46 @@ use POSIX 'ceil';
 
 # TODO: builds have to be serialized, but tests should be runnable in parallel.
 
-# TODO: keep usage up to date. code-review is missing. 
-
 # TODO: check for make file left overs in source directory (these should only
 # be in build, or debug, or etc. directories). Jay at least seems to futz up
 # and make crap in src every so often those breaking depbuild (or at least
 # misleading it as to what has been created and what should be recreated).
 
+# TODO: think about how to check for rebuild after make clean
+# TODO: allow for commits without testing (with an option)
+# TODO: separate between short and long tests
+
 sub usage {
-    print "Usage: $0 <command> [-y (yes to prompts)] [args]\n";
-    print "  init [--server=<hostname>] [branch-prefix...]\n";
-    print "  checkout <branch-substring...>\n";
-    print "  pull\n";
-    print "  build [-t (and test)] [-d (debug build)] [-b (optimize build)]\n";
-    print "  commit\n";
-    print "  publish\n";
-    print "  cmake\n";
-    print "  pin\n";
-    print "  code-review\n";
-    print "  mtnpull\n";
-    print "  mtnpush\n";
-    print "  mtnsync\n";
-    print "  mtnserve\n";
+    pod2usage(-exitval => 'NOEXIT', -verbose => 0);
     confess @_ if @_ > 0;
     exit(0);
 }
 
+=pod
+
+=head1 NAME
+
+deptool - a program for helping with the software engineering lifecycle
+
+=head1 SYNOPSIS
+
+ % deptool <command> [-y (auto-yes to prompts)] [--man] [options] [args]
+   init [--server=<hostname>] [branch-prefix...]
+   checkout <branch-substring...> # checkout branch and dependencies
+   pull # pull branch and dependencies
+   build [-t (and test)] [-d (debug build)] [-b (optimize build)]
+   commit # commit branch after dependencies
+   publish # publish branch and dependencies
+   cmake # run cmake with special options for current branch
+   pin <revision> # pin branch at a particular revision
+   code-review <revision...> # code-review a revision
+   help [commands|options|environment|command-name] # get help
+
+=cut
+
 my $auto_yes_to_prompts = 0;
 my $quiet = 0;
+my $print_manpage = 0;
 
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
@@ -65,10 +78,12 @@ GetOptions("y!" => \$auto_yes_to_prompts,
            "operating-system=s" => \$Cache::operating_system,
            "uname-m=s" => \$Cache::uname_m,
            "build-debug=s" => \$Cache::build_debug,
-           "build-opt=s" => \$Cache::build_optimize);
+           "build-opt=s" => \$Cache::build_optimize,
+	   "man!" => \$print_manpage);
 Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
 
 usage("Missing argument") if @ARGV == 0;
+help("all") if $print_manpage;
 
 my %commands = ('checkout' => \&depCheckout,
                 'pull' => \&depPull,
@@ -91,8 +106,122 @@ my %commands = ('checkout' => \&depCheckout,
 		# get usage without error message
 		'-h' => \&usage,
 		'--help' => \&usage,
-		'help' => \&usage,
+		'help' => sub { help(@ARGV); },
 );
+
+=pod
+
+=head1 COMMANDS
+
+Further details on all commands can be found by running C<deptool
+help> I<command>
+
+=over 4
+
+=item init [I<--server=hostname>] [I<branch-prefix>]
+
+Initialize the system, this will create the appropriate version
+control files, and will pull the initial database(s). 
+
+=item checkout I<branch-substring>
+
+Select a particular branch by using branch-substring.  Checkout that
+branch and all of its dependencies into $PROJECTS.
+
+=item pull 
+
+Select the current branch based on the current directory.  Pull the
+current branch and all it's dependencies from the server specified in
+the _MTN directory.
+
+=item build [I<-t>] [I<-d>] [I<-b>]
+
+Build and install the current branch after building and installing its
+dependencies.  Select the type of build (debug or optimized) based on
+the current directory or the options.  
+
+=item commit
+
+Commit the current branch after committing its dependencies.  If there
+are unknown files, prompt for them to be either added or ignored.  If
+there are changes, perform a build and test before performing the
+commit.
+
+=item publish
+
+Perform the full publishing steps; first run a commit, then build and
+test, next pull and update.  If no changes were made, synchronize the
+updates to the central server.  Alternately, restart the loop at the
+build and test stage.
+
+=item cmake [I<--clean> | I<clean>]
+
+Run the cmake configuration command, or clean out the cmake
+configuration files.  See help cmake for details on how cmake is
+run.
+
+=item pin I<revision>
+
+Pin the current source directory to a particular revision after
+updating the current source directory to that revision.
+
+=item code-review I<revision>...
+
+Perform a code review of the selected revisions.  This will treat the
+collection of revisions as if they were a single change.  Currently it
+works poorly if there are renames in the changes.
+
+=item mtnpull
+
+Run the mtn pull operation with the appropriate options based on the
+current directory.
+
+=item mtnpush
+
+Run the mtn push operation with the appropriate options based on the
+current directory.
+
+=item mtnsync
+
+Run the mtn sync operation with the appropriate options based on the
+current directory.
+
+=item mtnserve
+
+Start up a monotone server based on the database for the current
+directory.
+
+=item getenv I<variable> I<for-{sh,csh}>
+
+Print the selected environment information.  If a variable is
+specified, then just that variable will be printed.  If for-sh or
+for-csh is specified, then all environment variables will be printed
+using the syntax of the specified shell.
+
+=item cdsrc I<dir>
+
+Print out the command to cd to the source directory for the specified
+directory.
+
+=item cdopt I<dir> [I<build-type>]
+
+Print out the command to cd to the optimized build directory for the
+specified directory and optional build type.  Currently does not work
+for csh-style shells.
+
+=item cddebug I<dir> [I<build-type>]
+
+Same as cdopt, except for the debug build directory.
+
+=back
+
+=head1 OPTIONS
+
+...
+
+=head1 COMMAND DETAILS
+
+=cut
 
 my $command = shift @ARGV;
 my $monotone_dir = "$ENV{HOME}/.monotone";
@@ -105,7 +234,34 @@ $|=1;
 aliasChdir($ENV{PWD}) if defined $ENV{PWD};
 &$fn;
 
+sub help {
+    my ($what) = @_;
+    $what ||= 'all';
+    if ($what eq 'all') {
+	pod2usage(-verbose => 2, -exitval => 0);
+    } elsif ($what eq 'commands') {
+	pod2usage(-verbose => 99, -sections => 'COMMANDS', -exitval => 0);
+    } elsif (defined $commands{$what}) {
+	pod2usage(-verbose => 99, -sections => "COMMAND DETAILS/$what", 
+		  -exitval => 0);
+    } else {
+	usage("Unknown option to help '$what'");
+    }
+
+    exit(0);
+}
+
 ##### Dependency Init
+
+=pod
+
+=head2 init
+
+It will connect by default to usi.hpl.hp.com as the server, and will
+use ssd as the default branch prefix.  Databases will be named based
+on the branch prefix.
+
+=cut
 
 sub depInit {
     checkForMtn();
@@ -311,6 +467,18 @@ END
 
 ##### Dependency build
 
+=pod
+
+=head2 build
+
+If we are in the projects directory, default
+to an optimized build.  If -t is specified, run the tests before
+installing.  If -d is specified, perform a debug build regardless of
+what directory we are in.  If -b is specified, perform an optimized build
+regardless of what directory we are in.
+
+=cut
+
 sub depBuild {
     my %options = @_;
     $options{tests} ||= 0;
@@ -324,7 +492,6 @@ sub depBuild {
     }
 
     my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
-                         "quiet!" => \$quiet,
                          "t|tests!" => \$options{tests},
                          "o|optimize" => sub { $options{mode} = 'optimize' },
                          "d|debug" => sub { $options{mode} = 'debug' });
@@ -781,12 +948,25 @@ sub runCMake {
     my $result = GetOptions("clean!" => \$clean);
     usage("Unknown argument to runCMake") unless $result;
 
-    if ($clean) {
+    if ($clean || $ARGV[0] eq 'clean') {
         runCMakeClean();
     } else {
         runCMakeConfig();
     }
 }
+
+=pod
+
+=head2 cmake
+
+This command has to be run in either the build or debug directory.
+In the build directory, it will set the install prefix to $BUILD_OPT
+and the cmake build type to RelWithDebInfo.  In the debug directory,
+it will set the install prefix to $BUILD_DEBUG and the cmake build
+type to Debug.  If you are in a sub-....
+
+=cut
+
 
 ##### Monotone operations
 
@@ -954,8 +1134,9 @@ sub makeDiffOrder {
     my @changed = getChanged($basedir, $original_dir, $final_dir);
 
     my %file_key;
-    map { die "?? $_" unless m!^(.+/)?([^/]+)\.(\w+)$!o;
+    map { die "?? $_" unless m!^(.+/)?([^/]+)(?:\.(\w+))?$!o;
           my ($dir, $name, $suffix) = ($1, $2, $3);
+	  $suffix ||= 'no-suffix';
           my $test_key = $dir =~ m!/tests\b!o ? 0 : 1;
           my $header_key = $suffix eq 'hpp' ? 0 : 1;
           my $cmake_key = $name =~ /^CMake/o ? 0 : 1;
@@ -1122,7 +1303,7 @@ sub selectPrevDiffFile {
     } else {
         for(my $i=0; $i < @order; ++$i) {
             if ($order[$i] eq $match[0]) {
-                return "*start" if $i == 0;
+                return "*start*" if $i == 0;
                 return $order[$i-1];
             }
         }
