@@ -40,7 +40,14 @@ extern "C" {
 #endif
 
 #if defined(__linux__) && defined(__x86_64__)
-#include <asm/msr.h>
+// cannot count on msr.h to define this in recent
+// kernels.  this was ripped verbatim from RHEL4's
+// /usr/include/asm-x86_64/msr.h
+#define rdtscll(val) do { \
+     unsigned int a,d; \
+     asm volatile("rdtsc" : "=a" (a), "=d" (d)); \
+     (val) = ((unsigned long)a) | (((unsigned long)d)<<32); \
+} while(0)
 #define HAVE_RDTSCLL 1
 #endif
 
