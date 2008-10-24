@@ -614,10 +614,10 @@ END
         if (-d "$path/_MTN") {
             print "Found $path/_MTN; skipping redundant checkout.\n";
         } else {
+	    die "$path already exists; mtn checkout would fail"
+		if -d $path;
             userPrompt("continue even though you have a / in the directory")
                 if $dir =~ m!/!o;
-            userPrompt("continue even though path already exists")
-                if -d $path;
         
             runCommand("mtn -d $db co -b $branch $path");
         }
@@ -904,17 +904,21 @@ sub depPullUpdate {
         die "??" unless @heads == 1;
         
         if (foundPin($cur_rev, $heads[0])) {
-            print "deppull: You are currently pinned to revision $cur_rev\n";
+	    print << "END";
+****
+  You are currently pinned to revision $cur_rev
+  The head revision has not changed, so the pin remains.
+  To remove the pin, edit $deppin_filename
+****
+END
             return;
-        } else {
+        } elsif (hadPin($cur_rev)) {
             print <<"END";
-
-
+****
 You would be pinned to $cur_rev, but the head
 has been updated.  To reset the pin:
 cd $cwd; deptool pin $cur_rev
-To clear the pin, edit $deppin_filename 
-and remove the $cur_rev line.
+****
 END
             # skip prompting, will do so for the update.
         }
@@ -943,6 +947,19 @@ sub foundPin {
         or die "Can't open $filename for read: $!";
     while(<$fh>) {
         return 1 if /^$head $rev$/;
+    }
+    return 0;
+}
+
+sub hadPin {
+    my($rev) = @_;
+
+    my $filename = depPinFilename();
+    return 0 unless -r $filename;
+    my $fh = new FileHandle($filename)
+        or die "Can't open $filename for read: $!";
+    while(<$fh>) {
+        return 1 if /$rev$/;
     }
     return 0;
 }
