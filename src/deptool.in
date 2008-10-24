@@ -4,8 +4,14 @@
 #  (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
 #
 #  See the file named COPYING for license details
-#
-# Script for checking out and 
+=pod
+
+=head1 NAME
+
+deptool - a program for helping with the software development process
+
+=cut
+
 use strict;
 
 use Carp;
@@ -46,10 +52,6 @@ sub usage {
 
 =pod
 
-=head1 NAME
-
-deptool - a program for helping with the software engineering lifecycle
-
 =head1 SYNOPSIS
 
  % deptool <command> [-y (auto-yes to prompts)] [--man] [options] [args]
@@ -64,6 +66,62 @@ deptool - a program for helping with the software engineering lifecycle
    code-review <revision...> # code-review a revision
    help [commands|options|environment|command-name] # get help
 
+=head1 OVERVIEW
+
+The deptool command is designed to assist with the software
+development process.  In particular, it has support for getting the
+version controlled copy of software via the monotone version control
+system, building, committing, and publishing said software after
+running appropriate tests, and easing code reviews of a collection of
+changes.  Since software often has multiple dependencies that all need
+to be built and updated, deptool is able to handle a related set of
+software via version control dependencies specified as part of the
+source code.  Since you may want to build software with multiple
+options, deptool is able to handle additional build-type directories
+which will automatically enable configuration with additional
+arguments.  Deptool keeps stamp files so that it can avoid rebuilding
+and testing a package which has dependencies from two separate places.
+
+In general, use of deptool consists of the following steps:
+
+    % deptool init # initial environment preparation
+    % deptool checkout branch-substring... # checkout sources
+    % cd ~/projects/project-name
+    % deptool build # build project-name and its dependencies
+    # edit the source code
+    % deptool commit # optional; if it's not yet ready to be public
+    % deptool publish # make changes visible to other people
+
+To set up the environment, and make it easier to move between the
+source and build directories, you probably want to put something like
+the following in your shell startup files; unfortunately the cdopt and
+cddebug bits only work under sh-based shells right now.
+
+    DEPTOOL=`(echo $HOME/build/opt*/bin/deptool) 2>/dev/null | awk '{print $1}'`
+    eval `$DEPTOOL getenv for-sh`
+
+    s () { eval `$DEPTOOL cdsrc $PWD` }
+    b () { eval `$DEPTOOL cdopt $PWD "$@"` }
+    d () { eval `$DEPTOOL cddebug $PWD "$@"` }
+
+
+Occasionally if something has been incorrectly committed, or you want
+to force reconfiguration, you may need commands like:
+
+    % deptool pin <revision> # work around bad published revision
+    % deptool cmake clean # clean out cmake config files
+    % deptool cmake # rebuild the cmake configuration
+    % make -j $MAKE_PARALLELISM # rebuild in parallel using the deptool env
+
+If you need to add a dependency, then you need to edit the file
+.version_control_deps so that it lists the dependencies.  The file
+simply contains one line that lists branch substrings that should be
+built and installed before the current source directory is built.  If
+you want special builds, then you can list them as
+'I<dependency>;I<build-type>' (without the '').  This input has the
+same effect as creating a dependency where you run b I<build-type> and
+then build in that directory.
+
 =cut
 
 my $auto_yes_to_prompts = 0;
@@ -74,18 +132,80 @@ Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
            "quiet!" => \$quiet, 
            "projects=s" => \$Cache::projects,
-           "root|build-root=s" => \$Cache::build_root,
+           "build-root=s" => \$Cache::build_root,
            "operating-system=s" => \$Cache::operating_system,
            "uname-m=s" => \$Cache::uname_m,
            "build-debug=s" => \$Cache::build_debug,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage);
+
+=pod
+
+=head1 OPTIONS
+
+=over 4
+
+=item -y 
+
+Automatically answer 'yes' to all of the prompts that are provided if
+there is a sane default answer.
+
+=item --quiet
+
+Print out less output by default; the output from the commands being
+run will still be printed out.
+
+=item --projects=<path>
+
+Specify the default projects directory.  Normally this would come from
+the PROJECTS environment variable, which defaults to ~/projects.
+
+=item --build-root=<path>
+
+Specify the default root build directory.  Normally this would come from
+the BUILD_ROOT environment variable, which defaults to ~/build.
+
+=item --operating-system=<string>
+
+Specify the operating system's name.  Normally this would be specified
+in the OS environment variable, which defaults to various strings depending
+on the inferred operating system, e.g. debian-etch, or rhel5.
+
+=item --uname-m=<string>
+
+Specify the hardware machine type.  Normally this would be specified
+by the UNAME_M environment variable, which defaults to the output from
+uname -m.
+
+=item --build-debug=<path>
+
+Specify the debugging build directory.  Normally this would be
+specified by the BUILD_DEBUG environment variable, which defaults to
+$BUILD_ROOT/dbg-$OS-$UNAME_M, or $BUILD_ROOT/debug if that directory
+exists.
+
+=item --build-opt=<path>
+
+Specify the optimize build directory.  Normally this would be
+specified by the BUILD_OPT environment variable, which defaults to
+$BUILD_ROOT/opt-$OS-$UNAME_M, or $BUILD_ROOT/optimize if that
+directory exists.
+
+=item --man
+
+Print out the complete manual page.
+
+=back
+
+=cut
+
 Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
 
-usage("Missing argument") if @ARGV == 0;
 help("all") if $print_manpage;
+usage("Missing argument") if @ARGV == 0;
 
 my %commands = ('checkout' => \&depCheckout,
+		'co' => \&depCheckout,
                 'pull' => \&depPull,
                 'build' => \&depBuild,
                 'commit' => \&depCommit,
@@ -126,7 +246,8 @@ control files, and will pull the initial database(s).
 =item checkout I<branch-substring>
 
 Select a particular branch by using branch-substring.  Checkout that
-branch and all of its dependencies into $PROJECTS.
+branch and all of its dependencies into $PROJECTS.  You can use co as
+a shorter alias for this command.
 
 =item pull 
 
@@ -215,10 +336,6 @@ Same as cdopt, except for the debug build directory.
 
 =back
 
-=head1 OPTIONS
-
-...
-
 =head1 COMMAND DETAILS
 
 =cut
@@ -238,11 +355,14 @@ sub help {
     my ($what) = @_;
     $what ||= 'all';
     if ($what eq 'all') {
+	# Might be able to get rid of the 'user contributed perl doc'
+	# stuff in the man page title by invoking perldoc ourselves.
 	pod2usage(-verbose => 2, -exitval => 0);
     } elsif ($what eq 'commands') {
 	pod2usage(-verbose => 99, -sections => 'COMMANDS', -exitval => 0);
     } elsif (defined $commands{$what}) {
-	pod2usage(-verbose => 99, -sections => "COMMAND DETAILS/$what", 
+	pod2usage(-verbose => 99, 
+		  -sections => "COMMAND DETAILS/^$what( .*)?\$", 
 		  -exitval => 0);
     } else {
 	usage("Unknown option to help '$what'");
@@ -255,11 +375,28 @@ sub help {
 
 =pod
 
-=head2 init
+=head2 init [I<branch-prefix>...]
 
-It will connect by default to usi.hpl.hp.com as the server, and will
-use ssd as the default branch prefix.  Databases will be named based
-on the branch prefix.
+The init command will initialize the default setup for the monotone
+version control system.  It will also populate the initial database
+for checkouts, in particular, the one that would contain Lintel since
+deptool is in Lintel.  By default it assumes that usi.hpl.hp.com is
+the central version control server.  It will use ssd as the default
+branch prefix.  If you do not have the environment variables set up by
+using the getenv command, deptool will ask a number of questions about
+where the files should be placed.  It is usually safe to run the init
+command with the -y option so that these questions will be
+automatically answered.  
+
+After you have run init, you will have a key file.  To be able to sync
+to a particular server, you need to send the public key to the
+monotone administrator for that server.  For HPL, the administrator of
+usi.hpl.hp.com is anderse@hpl.hp.com.
+
+B<Warning:> If you already have a key set up on one machine, you
+should just copy your keys directory to the new machine rather than
+creating a new key.  Monotone can get confused by multiple keys with
+the same email address.
 
 =cut
 
@@ -390,6 +527,33 @@ sub initDbs {
 
 ##### Dependency Checkout
 
+=pod
+
+=head2 checkout I<branch-substring>...
+
+The checkout command, which can be abbreviated as co, checks out a
+branch and its dependencies.  It will find the appropriate branch by
+selecting from all the branches in the databases found as
+~/.monotone/*.db.  It will choose the directory name based on the
+branch name after stripping out the initial uniquifier.  This is based
+on the assumption that branches will be named as
+I<uniquifier>/I<branch-name>/I<sub-branch>.  Deptool will
+automatically select the branch that matches with the least length so
+it will ignore sub-branches that may be present.  For example, if you
+ran checkout Data, it would select the ssd.hpl.hp.com/DataSeries
+branch and put the checkout in ~/projects/DataSeries (by default,
+changeable by setting $PROJECTS).  It would then checkout Lintel since
+Lintel is a dependency for DataSeries.
+
+If multiple branches match and they do not share a common prefix,
+deptool will abort the checkout.
+
+=head2 co
+
+See help checkout
+
+=cut
+
 sub depCheckout {
     my $result = GetOptions("y!" => \$auto_yes_to_prompts);
     usage("Unknown error") unless $result;
@@ -469,13 +633,19 @@ END
 
 =pod
 
-=head2 build
+=head2 build [I<-t>] [I<-d>] [I<-b>]
 
-If we are in the projects directory, default
-to an optimized build.  If -t is specified, run the tests before
-installing.  If -d is specified, perform a debug build regardless of
-what directory we are in.  If -b is specified, perform an optimized build
-regardless of what directory we are in.
+This command will build the current project directory after building
+and installing all of the dependencies.  The type of build is
+determined by the current directory and the options.  If either -d or
+-b are specified, then we perform a debug or an optimized build
+respectively.  If we are in the projects directory or an optimized
+build directory, we perform an optimized build.  If we are in a debug
+build directory, we perform a debug build.  If -t is specified, tests
+will be run in addition to building and installing each of the packages.
+
+If a directory hasn't been configured, then the deptool cmake command
+will be automatically run to configure the package before it is built.
 
 =cut
 
@@ -636,8 +806,22 @@ sub depBuildInstall {
 
 ##### Set pin
 
-### setPin -- pin the revision that we will pull to; deals with people 
-### accidentally messing up dependencies while still letting you commit
+=pod
+
+=head2 pin I<revision>
+
+Occasionally someone will publish an update to a project that works
+for that project, but breaks a project that depends on it.  If they
+didn't test that project, then builds will fail until the software is
+repaired.  In order to work around this problem, you can pin the
+revision back to the one that used to work.  This command only works
+in a source directory.  If the current source directory isn't at the
+specified revision, then it will update to the specified revision.
+The pin will remain until the head revision for the project changes,
+as the assumption is that when the head revision changes it has fixed
+the bug.
+
+=cut
 
 sub setPin {
     die "Have unknown files; setpin is disallowed"
@@ -666,7 +850,21 @@ sub setPin {
 
 ##### Dependency pull
 
-### deppull -- pull all of the dependency tree sources
+=pod
+
+=head2 pull
+
+If you want to update your local repositories and projects, but aren't
+yet ready to make your changes available or just want changes other
+people have made, then pull is the command you want to use.  Pull will
+walk all of the directories dependent on your current directory and
+will pull data from the central server and then update the local
+directory.  If you happen to have outstanding changes, pull will
+perform a commit before doing the update so that you wouldn't
+accidentally destroy your current changes.
+
+=cut
+
 sub depPull {
     my %options;
     depWalk(sub { depPullOne(\%options); });
@@ -772,6 +970,18 @@ sub depPinFilename {
 }
 
 ##### Dependency commit
+
+=pod
+
+=head2 commit
+
+If you have a set of changes that are sufficiently complete to pass
+all the tests, but not yet ready for publishing, then you can run
+deptool commit in order to commit all of the changes you have made as
+well as any changes in dependent projects.  Commit will first run all
+of the tests to verify that the changes are internally consistent.
+
+=cut
 
 ### depcommit -- commit all the files in the dependency tree;
 ### generates the variable depcommit_made_changes as a side effect
@@ -893,6 +1103,33 @@ depcommit: will show differences after successful test\n";
 
 ##### runCMake
 
+=pod
+
+=head2 cmake
+
+This command has to be run in either the build or debug directory.  In
+the build directory, it will set the install prefix to $BUILD_OPT and
+the cmake build type to RelWithDebInfo.  In the debug directory, it
+will set the install prefix to $BUILD_DEBUG and the cmake build type
+to Debug.  If you are in a sub-type build directory (see cdopt), then
+the deptool cmake command will automatically add
+-DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that the
+configuration can take into effect the sub-type.
+
+=cut
+
+sub runCMake {
+    my $clean = 0;
+    my $result = GetOptions("clean!" => \$clean);
+    usage("Unknown argument to runCMake") unless $result;
+
+    if ($clean || (defined $ARGV[0] && $ARGV[0] eq 'clean')) {
+        runCMakeClean();
+    } else {
+        runCMakeConfig();
+    }
+}
+
 sub runCMakeClean {
     my $cwd = aliasGetCwd();
     my $projects = projects();
@@ -943,32 +1180,35 @@ sub runCMakeConfig {
     runCommand(@cmakecmd);
 }
 
-sub runCMake {
-    my $clean = 0;
-    my $result = GetOptions("clean!" => \$clean);
-    usage("Unknown argument to runCMake") unless $result;
-
-    if ($clean || $ARGV[0] eq 'clean') {
-        runCMakeClean();
-    } else {
-        runCMakeConfig();
-    }
-}
+##### Monotone operations
 
 =pod
 
-=head2 cmake
+=head2 mtnpull
 
-This command has to be run in either the build or debug directory.
-In the build directory, it will set the install prefix to $BUILD_OPT
-and the cmake build type to RelWithDebInfo.  In the debug directory,
-it will set the install prefix to $BUILD_DEBUG and the cmake build
-type to Debug.  If you are in a sub-....
+Run the appropriate mtn pull command for the current directory.  The
+command will automatically use the right database and branch based on
+the current directory, and can be run in both the source directory and
+the build directory.  Does not update the current directory, and does
+not run for dependencies.
+
+=head2 mtnpush
+
+Run the appropriate mtn push command for the current directory.  The
+command will automatically use the right database and branch based on
+the current directory, and can be run in both the source directory and
+the build directory.  Does not update the current directory, and does
+not run for dependencies.
+
+=head2 mtnsync
+
+Run the appropriate mtn sync command for the current directory.  The
+command will automatically use the right database and branch based on
+the current directory, and can be run in both the source directory and
+the build directory.  Does not update the current directory, and does
+not run for dependencies.
 
 =cut
-
-
-##### Monotone operations
 
 sub mtnOp {
     my($op) = @_;
@@ -989,6 +1229,15 @@ sub mtnOp {
     runCommand("mtn","-d",$database,'heads','-b',$branch);
 }
 
+=pod
+
+=head2 mtnserve
+
+Run the mtn serve command with the appropriate database based on the
+current directory.
+
+=cut
+
 sub mtnServe {
     my $src = rootSrcDir();
     my %mtn_opts = readMtnOptions($src);
@@ -999,8 +1248,26 @@ sub mtnServe {
 
 ##### depPublish
 
-### deppublish - command for publishing a set of updates back to a
-### central server
+=pod
+
+=head2 publish
+
+The publish command is the core logic for making changes globally
+available.  It performs the following steps:
+
+  made_changes = true
+  while made_changes {
+      made_changes = false
+      Build and test (C<deptool build -t>)
+      Commit any local changes (C<deptool commit>)
+      Pull from the central server (C<deptool pull>)
+      if made_changes == false {
+          Synchronize with the central server 
+          # if we got changes here, print a warning before continuing
+      }
+  }
+
+=cut
 
 sub depPublish {
     print "deppublish: committing any outstanding changes\n";
@@ -1035,6 +1302,83 @@ sub depSyncOne {
 }
 
 ##### Code review diff
+
+=pod
+
+=head2 code-review I<revision>...
+
+The code-review command is designed to help performing code reviews of
+a set of related changes.  For a single revision, it is exactly
+equivalent to running kdiff3 on all files that were changed in
+I<revision>.  
+
+If multiple revisions are specified, the first step is to build a
+single diff between the parent of the earliest revision specified and
+the latest revision specified.  Therefore, the code review code will
+first sort the revisions by the date they were committed.  Then it
+will checkout the parent of the first revision.  Then for each
+revision I<r> in date order, it will apply the patch between I<r> and
+I<r>'s parent, which may not be the previous listed revision.
+Assuming each of the patch commands succeeds, the resulting directory
+will be the equivalent of just applying the updates specified by the
+revisions in order.  
+
+If one of the patches does not succeed, the code review will prompt
+the user to make a repair patch, in particular by creating the file
+that should have been created.  The code review tool with then store
+the additional patch in /tmp so that it can be re-applied if
+necessary.
+
+Regardless, eventually a pair of directories will be created, the
+first being the parent of the earliest revision, and the last being
+the result of applying all of the patches for each revision and any
+recovery patches.  The code review tool then will proceed to review
+each of the files that have changed.  It will sort the files such that
+cmake files go before others, tests come next, and then headers and
+c++ files in alphabetical order.  The user can override this default
+order by creating the file /tmp/diff-order-I<last-revision>.txt,
+usually by starting with the one specified.
+
+The tool will then prompt for a command.  Commands include:
+
+=over
+
+=item auto
+
+automatically move onto the next step until we get to the end, or the
+diff ordering file changes.
+
+=item files
+
+print a list of all the files that are going to be compared
+
+=item exit 
+
+stop the code review; do not clean up temporary files.
+
+=item finish
+
+stop the code review; clean up all temporary files.
+
+=item help
+
+get help usage
+
+=item I<filename-substring>
+
+select the unique filename that matches I<filename-substring> to be
+reviewed next, or if multiple files match, then print out an error
+message.
+
+=back
+
+Usually users will just hit return to bring up the kdiff3 window for
+comparing the two files until they get to the end.  They can
+alternately use the auto command to skip having to hit return.
+
+B<Note-bug:> renames currently confuse the code review tool.
+
+=cut
 
 sub codeReview {
     my @revisions = @ARGV;
@@ -1420,41 +1764,48 @@ sub findFilesPrefix {
 # Actually just prints out what has to happen such that eval of returned string
 # in bourne shells will change the directory.
 
-sub cdInitialPrep {
-    my ($maxargs, $usage) = @_;
-    $maxargs ||= 1;
-    unless (defined $ENV{PROJECTS} && defined $ENV{BUILD_DEBUG} &&
-            defined $ENV{BUILD_OPT}) {
-        print "echo 'can not use deptool cd operations environment is not set up'\n";
-        exit(1);
-    }
+=pod
 
-    unless (@ARGV >= 1 && @ARGV <= $maxargs && -d $ARGV[0]) {
-        print "echo 'Usage: deptool $usage'";
-        exit(1);
-    }
-    return $ARGV[0];
-}
+=head2 cdsrc I<cwd>
 
-# TODO: combine this somehow with srcDir
-# returns (project, subdir, build-type)
-sub divideDir {
-    my($dir) = @_;
-    
-    my $projects = projects();
-    my $opt = buildOpt();
-    my $debug = buildDebug();
-    if ($dir =~ m!^$projects/([^/]+)(/.+)?$!o) {
-	return ($1, $2, undef);
-    } elsif ($dir =~ m!^$opt/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
-	return ($1, $3, $2);
-    } elsif ($dir =~ m!^$debug/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
-	return ($1, $3, $2);
-    } else {
-	print "echo '$dir is not under $projects, $opt, or $debug'\n";
-	exit(1);
-    }
-}
+The source and build directories maintain parallel structure.
+Therefore if you are currently in $BUILD_OPT/Lintel/src/tests, it can
+be useful to jump to $PROJECTS/Lintel/src/tests.  The cdsrc command
+will print out the shell command necessary to make this switch.
+Therefore you probably want an alias along the lines of:
+
+    s () { eval `$DEPTOOL cdsrc $PWD` }
+
+to make it easier to type the command in.  The s command will deal
+correctly with sub-build-type directories except it will get confused
+if you have a source directory named project-something.
+
+
+=head2 cdopt I<cwd> [I<build-type>]
+
+The cdopt command performs the reverse jump from cdsrc, it moves from
+a position under $PROJECTS to one under $BUILD_OPT.  The build-type
+optional argument allows you to have multiple directories that all
+build from the source directory with different build options.  Since
+deptool wants to remember the build type for each directory, it
+actually prints out a command that sets the environment variable for
+the build-type if needed.  An alias along the lines of:
+
+    b () { eval `$DEPTOOL cdopt $PWD "$@"` }
+
+will make it easier to issue this command.  Unfortunately because of
+the environment setting, this command only works with bourne-shells
+right now.  If you specify '' as the build type, it will remove the
+build type from whatever directory you are currently in.
+
+=head2 cddebug
+
+The cddebug command is the same as cdopt, except it takes you to the
+debug directory.  The natural alias is therefore: 
+
+    d () { eval `$DEPTOOL cddebug $PWD "$@"` }
+
+=cut
 
 sub cdSrc {
     my $cwd = cdInitialPrep(1, 'cdsrc <cur-working-dir>');
@@ -1498,6 +1849,42 @@ sub cdBuild {
 
     print "export ${deptool_env}=$buildtype;\n";
     print "cd $builddir\n";
+}
+
+sub cdInitialPrep {
+    my ($maxargs, $usage) = @_;
+    $maxargs ||= 1;
+    unless (defined $ENV{PROJECTS} && defined $ENV{BUILD_DEBUG} &&
+            defined $ENV{BUILD_OPT}) {
+        print "echo 'can not use deptool cd operations environment is not set up'\n";
+        exit(1);
+    }
+
+    unless (@ARGV >= 1 && @ARGV <= $maxargs && -d $ARGV[0]) {
+        print "echo 'Usage: deptool $usage'";
+        exit(1);
+    }
+    return $ARGV[0];
+}
+
+# TODO: combine this somehow with srcDir
+# returns (project, subdir, build-type)
+sub divideDir {
+    my($dir) = @_;
+    
+    my $projects = projects();
+    my $opt = buildOpt();
+    my $debug = buildDebug();
+    if ($dir =~ m!^$projects/([^/]+)(/.+)?$!o) {
+	return ($1, $2, undef);
+    } elsif ($dir =~ m!^$opt/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } elsif ($dir =~ m!^$debug/([^/]+?)(?:-(\w+))?(/.+)?$!o) {
+	return ($1, $3, $2);
+    } else {
+	print "echo '$dir is not under $projects, $opt, or $debug'\n";
+	exit(1);
+    }
 }
 
 ##### Common -- depwalk
@@ -1591,18 +1978,77 @@ sub rootSrcDir {
 
 ##### Env functions
 
-sub printEnv {
-    my($shell, $envvar, $fn) = @_;
+=pod
 
-    my $val = &$fn();
-    if ($shell eq 'sh') {
-        print qq{export $envvar="$val";\n};
-    } elsif ($shell eq 'csh') {
-        print qq{setenv $envvar "$val";\n};
-    } else {
-        die "?? $shell";
-    }
-}
+=head2 getenv I<what>
+
+The getenv command allows you to get the environment variables that
+are needed for deptool to work without prompting.  This command has
+two forms, one that gets a specific environment variable and prints it
+out, and one that prints out a string that can be evaluated to set all
+the environment variables in the shell.  Therefore what can have a
+number of values:
+
+=over
+
+=item for-sh
+
+Print out all of the environment variables formatted for sh-style
+shells.  This command does not prompt for input, so if values are not
+currently set in the environment, the defaults will be used.
+
+=item for-csh
+
+The same as for-sh, except for csh-based shells.
+
+=item projects
+
+The PROJECTS environment variable.  Specifies the root directory for
+sources of projects.
+
+=item buildRoot
+
+The BUILD_ROOT environment variable.  Specifies the parent directory
+for the optimize and debug build directories.  Unused if BUILD_OPT and
+BUILD_DEBUG are set.
+
+=item operatingSystem
+
+The OS environment variable.  Automatically inferred by looking at
+various files in /etc to determine the operating system type and
+version.
+
+=item unameM
+
+The UNAME_M environment variable.  The result of running uname -m as
+you have to build differently for different architecture types.
+
+=item buildDebug
+
+The BUILD_DEBUG environment variable.  Specifies the root directory
+for debugging builds.  Defaults to $BUILD_ROOT/dbg-$OS-$UNAME_M, or
+$BUILD_ROOT/debug if the latter exists.
+
+=item buildOpt
+
+The BUILD_OPT environment variable.  Specifies the root directory
+for optimized builds.  Defaults to $BUILD_ROOT/opt-$OS-$UNAME_M, or
+$BUILD_ROOT/optimize if the latter exists.
+
+=item makeParallelism
+
+The MAKE_PARALLELISM environment variable.  Defaults to ceil(1.5 *
+ncores), or 1 if the number of cores can't be determined.  Useful for
+C<make -j $MAKE_PARALLELISM>.
+
+=item mtnServer
+
+The MTN_SERVER environment variable.  Defaults to usi.hpl.hp.com.
+Needed to determine the central repository for public updates.
+
+=back
+
+=cut
 
 sub getEnv {
     my $result = GetOptions("y!" => \$auto_yes_to_prompts,
@@ -1633,6 +2079,19 @@ sub getEnv {
         die $@ if $@;
         
         print "$ret\n";
+    }
+}
+
+sub printEnv {
+    my($shell, $envvar, $fn) = @_;
+
+    my $val = &$fn();
+    if ($shell eq 'sh') {
+        print qq{export $envvar="$val";\n};
+    } elsif ($shell eq 'csh') {
+        print qq{setenv $envvar "$val";\n};
+    } else {
+        die "?? $shell";
     }
 }
 
@@ -1850,3 +2309,27 @@ sub readMtnOptions {
     return %ret;
 }
 
+=pod
+
+=head1 BUGS
+
+=over
+
+=item *
+
+cdopt/cddbg only work for sh-style shells.
+
+=item *
+
+code-review gets confused by file renames
+
+=item *
+
+pull should walk the current directory before dependent ones to deal
+with new dependencies.
+
+=back
+
+=head1 AUTHOR
+
+Eric Anderson <anderse@hpl.hp.com>

@@ -550,7 +550,7 @@ are installed in the two standard paths ~/.batch-parallel/modules and
 $BP_MODULES.
 
 =head2 Get usage information for a particular module
-  
+
   % batch-parallel <module> help
 
 This will provide whatever additional help a module has on it's particular
@@ -747,7 +747,7 @@ background.
 
 =head1 BUGS
 
-Remarkably poor documentation.
+Incomplete documentation
 
 =head1 AUTHOR
 
