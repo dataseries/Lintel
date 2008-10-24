@@ -898,7 +898,8 @@ sub depPullUpdate {
 
     my $cwd = aliasGetCwd();
     my $cur_rev = getCurRevision();
-    if (-f depPinFilename()) {
+    my $deppin_filename = depPinFilename();
+    if (-f $deppin_filename) {
         my @heads = getCurHeads();
         die "??" unless @heads == 1;
         
@@ -910,8 +911,10 @@ sub depPullUpdate {
 
 
 You would be pinned to $cur_rev, but the head
-has been updatd.  To reset the pin:
+has been updated.  To reset the pin:
 cd $cwd; deptool pin $cur_rev
+To clear the pin, edit $deppin_filename 
+and remove the $cur_rev line.
 END
             # skip prompting, will do so for the update.
         }
