@@ -31,6 +31,7 @@ LINTEL_SIMPLE_TEST(stats_sequence)
 LINTEL_SIMPLE_TEST(deque)
 LINTEL_SIMPLE_TEST(hashfns)
 LINTEL_SIMPLE_TEST(tuples)
+LINTEL_SIMPLE_TEST(hashtuplestats)
 
 ################################## SPECIAL TEST PROGRAMS
 

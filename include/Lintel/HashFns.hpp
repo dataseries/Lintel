@@ -41,8 +41,7 @@
 /// function call and all of the variable length overhead inherent in
 /// the general purpose hash.  c is what is nominally returned from
 /// mixing.
-#define lintel_BobJenkinsHashMix(a,b,c) \
-{ \
+#define lintel_BobJenkinsHashMix(a,b,c) { \
   a -= b; a -= c; a ^= (c>>13); \
   b -= c; b -= a; b ^= (a<<8); \
   c -= a; c -= b; c ^= (b>>13); \

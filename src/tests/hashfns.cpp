@@ -83,7 +83,7 @@ int main() {
     if (sizeof(long) == 4) {
 	check(l, 313515111);
     } else {
-	check(l, 3341577989);
+	check(l, 3341577989U);
     }
     check(m, 4217888175U);
     check(n, 2039183822U);

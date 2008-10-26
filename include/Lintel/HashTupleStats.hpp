@@ -9,7 +9,11 @@
 
 #include <bitset>
 
+#include <boost/bind.hpp>
+
 #include <Lintel/HashTable.hpp>
+#include <Lintel/HashUnique.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/Stats.hpp>
 #include <Lintel/Tuples.hpp>
 
@@ -51,12 +55,24 @@ namespace lintel {
 	struct TupleToHashUniqueTuple 
 	    : ConsToHashUniqueCons<typename T::head_type, typename T::tail_type> {
 	};
+
+	void hashUniqueTupleAdd(boost::tuples::null_type, boost::tuples::null_type) {
+	}
+
+	template<class HUT, class T>
+	void hashUniqueTupleAdd(HUT &hut, const T &v) {
+	    hut.get_head().add(v.get_head());
+	    hashUniqueTupleAdd(hut.get_tail(), v.get_tail());
+	}
     }
 
+    /// A hash table from tuples to "stats" Includes a bunch of
+    /// additional functions that help tie this together with the cube
+    /// operation; in particular the various walk functions.
     template<class Tuple, class StatsT = Stats> class HashTupleStats {
     public:
 	// base types
-	typedef HashMap<Tuple, StatsT *, TupleHash<Tuple> > HTSMap;
+	typedef HashMap<Tuple, StatsT *, lintel::tuples::TupleHash<Tuple> > HTSMap;
 	typedef typename HTSMap::iterator HTSiterator;
 	typedef typename HTSMap::const_iterator HTSconst_iterator;
 	typedef std::vector<typename HTSMap::value_type> HTSValueVector;
@@ -80,16 +96,23 @@ namespace lintel {
 	    clear();
 	}
 
+	/// add a value into the stats based on the selected key.
 	void add(const Tuple &key, double value) {
 	    getHashEntry(key).add(value);
 	}
 
+	/// apply walk_fn(const Tuple &, StatsT *) to each entry in the
+	/// hash table; entries are walked in a pseudo-random order.
 	void walk(const WalkFn &walk_fn) const {
 	    for(HTSconst_iterator i = data.begin(); i != data.end(); ++i) {
 		walk_fn(i->first, *i->second);
 	    }
 	}
 
+	/// apply walk_fn(const Tuple &, StatsT *) to each entry,
+	/// sorted in tuple order.  If you can avoid using this
+	/// function, do, it will use additional memory as a result of
+	/// having to sort the tuples.
 	void walkOrdered(const WalkFn &walk_fn) const {
 	    HTSValueVector sorted;
 
@@ -105,12 +128,13 @@ namespace lintel {
 	    }
 	}
 
-	void fillHashUniqueTuple(HashUniqueTuple &hut) {
-	    for(HTSiterator i = data.begin(); i != data.end(); ++i) {
-		zeroAxisAdd(hut, i->first);
-	    }
-	}
-
+	/// apply walk_fn(const Tuple &, StatsT *) to each entry,
+	/// including ones that would have been present if the full
+	/// cross product of all tuple values were present.  For
+	/// example, if there are two entries in the HTS ([0,1] -> v,
+	/// [1,0] -> v') then by creating an empty StatsT z, walk_fn
+	/// will be called four times, with ([0,0], z), ([0,1], v),
+	/// ([1,0], v'), ([1,1], z).
 	void walkZeros(const WalkFn &walk_fn) const {
 	    HashUniqueTuple hut;
 
@@ -119,6 +143,20 @@ namespace lintel {
 	    walkZeros(walk_fn, hut);
 	}
 
+	/// build a tuple of hash uniques out of the entries in the
+	/// table, useful for determining all of the values that are
+	/// used for any of the entries.
+	void fillHashUniqueTuple(HashUniqueTuple &hut) {
+	    for(HTSiterator i = data.begin(); i != data.end(); ++i) {
+		hashUniqueTupleAdd(hut, i->first);
+	    }
+	}
+
+	/// implementation of the zero walk function, separated out
+	/// from the above because separately calculating the unique
+	/// entries table would allow you to remove some entries out
+	/// of the hash unique tuple and therefore avoid walking over
+	/// some of the entries.
 	void walkZeros(const WalkFn &walk_fn, const HashUniqueTuple &hut) const {
 	    double expected_hut = zeroCubeBaseCount(hut);
 
@@ -137,6 +175,8 @@ namespace lintel {
 	    delete zero;
 	}
 
+	/// Get the hash entry for a particular key, create it if it
+	/// doesn't already exist.
 	StatsT &getHashEntry(const Tuple &key) {
 	    StatsT * &v = data[key];
 
@@ -147,14 +187,19 @@ namespace lintel {
 	    return *v;
 	}
 
+	/// operator version of getHashEntry()
 	StatsT &operator[](const Tuple &key) {
 	    return getHashEntry(key);
 	}
 
+	/// how big is the hash tuple stats
 	size_t size() const {
 	    return data.size();
 	}
 
+	/// remove a set of values from the hash tuple stats, removes
+	/// all of the entries from the table that return true when
+	/// prune is called with the tuple key.
 	void prune(PruneFn fn) {
 	    for(HTSiterator i = data.begin(); i != data.end(); ) {
 		if (fn(i->first)) {
@@ -167,6 +212,7 @@ namespace lintel {
 	    }
 	}
     
+	/// clear out all the values in the hash tuple stats.
 	void clear() {
 	    for(HTSiterator i = data.begin(); i != data.end(); ++i) {
 		delete i->second;
@@ -174,8 +220,10 @@ namespace lintel {
 	    data.clear();
 	}
 
+	/// how much memory is the hash tuple stats using; accurate
+	/// only if StatsT does not have internal allocated memory.
 	size_t memoryUsage() const {
-	    return data.memoryUsage() + sizeof(*this);
+	    return data.memoryUsage() + data.size() * sizeof(StatsT) + sizeof(*this);
 	}
     private:
 
