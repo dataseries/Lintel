@@ -32,6 +32,7 @@ LINTEL_SIMPLE_TEST(deque)
 LINTEL_SIMPLE_TEST(hashfns)
 LINTEL_SIMPLE_TEST(tuples)
 LINTEL_SIMPLE_TEST(hashtuplestats)
+LINTEL_SIMPLE_TEST(statscube)
 
 ################################## SPECIAL TEST PROGRAMS
 

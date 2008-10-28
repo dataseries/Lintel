@@ -23,29 +23,6 @@
 // the initialization.
 
 namespace lintel {
-    class StatsCubeFns {
-    public:
-	static Stats *createStats() {
-	    return new Stats();
-	}
-
-	static bool cubeAll() {
-	    return true;
-	}
-
-	static bool cubeHadFalse(bool had_false) {
-	    return had_false;
-	}
-
-	static void addFullStats(Stats &into, const Stats &val) {
-	    into.add(val);
-	}
-    
-	static void addMean(Stats &into, const Stats &val) {
-	    into.add(val.mean());
-	}
-    };
-
     namespace detail {
 	template<class T0, class T1> struct ConsToHashUniqueCons {
 	    typedef ConsToHashUniqueCons<typename T1::head_type, typename T1::tail_type> tail;
@@ -108,6 +85,9 @@ namespace lintel {
 	    }
 	}
 
+	template<class T> T *newT() {
+	    return new T();
+	}
     }
 
     /// A hash table from tuples to "stats" Includes a bunch of
@@ -131,8 +111,7 @@ namespace lintel {
 	typedef boost::function<void (const Tuple &key, StatsT &value)> WalkFn;
 	typedef boost::function<bool (const Tuple &key)> PruneFn;
 
-	explicit HashTupleStats(const StatsFactoryFn &fn1 
-				= boost::bind(&StatsCubeFns::createStats))
+	explicit HashTupleStats(const StatsFactoryFn &fn1 = boost::bind(&detail::newT<StatsT>))
 	    : stats_factory_fn(fn1)
 	{ }
 
