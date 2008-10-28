@@ -75,6 +75,20 @@ namespace lintel {
 		  % __PRETTY_FUNCTION__);  
 	return ret;
     }
+
+    /// Convert a pointer into a reference after verifying that the
+    /// pointer is not null.
+    template <typename T> T &safeRef(T *from) {
+	SINVARIANT(from != NULL);
+	return *from;
+    }
+
+    /// Convert a const pointer into a reference after verifying that
+    /// the pointer is not null.
+    template <typename T> const T &safeRef(const T *from) {
+	SINVARIANT(from != NULL);
+	return *from;
+    }
 }
 
 #endif

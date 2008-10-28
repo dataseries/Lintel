@@ -11,12 +11,18 @@
 
 #include <boost/tuple/tuple_comparison.hpp>
 
-#include <Lintel/HashMap.hpp>
+#include <Lintel/AssertBoost.hpp>
+#include <Lintel/HashFns.hpp>
 
 /** @file 
 
     Additional tuple bits to extend what is in the boost tuples.  We
-    add hashing of tuples and partial tuples
+    add in two new "types" of tuples, first AnyTuples, which is a
+    tuple made of of pairs of booleans representing "any" and the
+    actual value.  Second, BitsetAnyTuples, which are a more efficient
+    version of anytuples since they store the any information in a
+    single bitset.  We also add hashing for all of the various tuple
+    types that interacts well with HashMap and friends.
 */
 
 namespace lintel { namespace tuples {
@@ -28,14 +34,10 @@ namespace lintel { namespace tuples {
     using boost::tuples::cons;
 
     inline uint32_t hash(const null_type &) { return 0; }
-    template<typename T> inline uint32_t hash(const T &v) {
-	HashMap_hash<T> tmp;
-	return tmp(v);
-    }
 
     template<class Head>
     inline uint32_t hash(const cons<Head, null_type> &v) {
-	return hash(v.get_head());
+	return lintel::hash(v.get_head());
     }
 
     // See http://burtleburtle.net/bob/c/lookup3.c for a discussion
@@ -43,59 +45,62 @@ namespace lintel { namespace tuples {
     // Would want to upgrade to the newer hash function.
     template<class Head1, class Head2, class Tail>
     inline uint32_t hash(const cons<Head1, cons<Head2, Tail> > &v) {
-	uint32_t a = hash(v.get_head());
-	uint32_t b = hash(v.get_tail().get_head());
+	uint32_t a = lintel::hash(v.get_head());
+	uint32_t b = lintel::hash(v.get_tail().get_head());
 	uint32_t c = hash(v.get_tail().get_tail());
 	return BobJenkinsHashMix3(a,b,c);
     }
 
     template<class BitSet>
-    inline uint32_t partial_hash(const null_type &, const BitSet &, size_t) {
+    inline uint32_t bitset_any_hash(const null_type &, const BitSet &, size_t) {
 	return 0;
     }
 
+    // 0x8bc74d0b was sampled from /dev/random. It should be  better choice than
+    // 0, which is a more common value in variables.
     template<class Head, class BitSet>
-    inline uint32_t partial_hash(const cons<Head, null_type> &v,
-				 const BitSet &used, size_t cur_pos) {
-	return used[cur_pos] ? hash(v.get_head()) : 0;
+    inline uint32_t bitset_any_hash(const cons<Head, null_type> &v,
+				    const BitSet &any, size_t cur_pos) {
+	return any[cur_pos] ? 0x8bc74d0bU : lintel::hash(v.get_head());
     }
 
     template<class Head1, class Head2, class Tail, class BitSet>
-    inline uint32_t partial_hash(const cons<Head1, cons<Head2, Tail> > &v, 
-				 const BitSet &used, size_t cur_pos) {
-	uint32_t a = used[cur_pos] ? hash(v.get_head()) : 0;
-	uint32_t b = used[cur_pos+1] ? hash(v.get_tail().get_head()) : 0;
-	uint32_t c = partial_hash(v.get_tail().get_tail(), used, cur_pos + 2);
+    inline uint32_t bitset_any_hash(const cons<Head1, cons<Head2, Tail> > &v, 
+				    const BitSet &any, size_t cur_pos) {
+	uint32_t a = any[cur_pos] ? 0x8bc74d0bU : lintel::hash(v.get_head());
+	uint32_t b = any[cur_pos+1] ? 0x8bc74d0bU : lintel::hash(v.get_tail().get_head());
+	uint32_t c = bitset_any_hash(v.get_tail().get_tail(), any, cur_pos + 2);
 	return BobJenkinsHashMix3(a,b,c);
     }
 
     template<class BitSet>
-    inline bool partial_equal(const null_type &lhs, const null_type &rhs,
-			      const BitSet &used, size_t cur_pos) {
+    inline bool bitset_any_equal(const null_type &lhs, const null_type &rhs,
+				 const BitSet &any, size_t cur_pos) {
 	return true;
     }
 
     template<class Head, class Tail, class BitSet>
-    inline bool partial_equal(const cons<Head, Tail> &lhs, const cons<Head, Tail> &rhs,
-			      const BitSet &used, size_t cur_pos) {
-	if (used[cur_pos] && lhs.get_head() != rhs.get_head()) {
+    inline bool bitset_any_equal(const cons<Head, Tail> &lhs, const cons<Head, Tail> &rhs,
+				 const BitSet &any, size_t cur_pos) {
+	if (any[cur_pos] || lhs.get_head() == rhs.get_head()) {
+	    return bitset_any_equal(lhs.get_tail(), rhs.get_tail(), any, cur_pos + 1);
+	} else {
 	    return false;
 	}
-	return partial_equal(lhs.get_tail(), rhs.get_tail(), used, cur_pos + 1);
     }
 
     template<class BitSet>
-    inline bool partial_strict_less_than(const null_type &lhs, const null_type &rhs,
-					 const BitSet &used_lhs, const BitSet &used_rhs,
-					 size_t cur_pos) {
+    inline bool bitset_any_strict_less_than(const null_type &lhs, const null_type &rhs,
+					    const BitSet &any_lhs, const BitSet &any_rhs,
+					    size_t cur_pos) {
 	return false;
     }
 
-    template<class Head, class Tail, class BitSet>
-    inline bool partial_strict_less_than(const cons<Head, Tail> &lhs, const cons<Head, Tail> &rhs,
-					 const BitSet &used_lhs, const BitSet &used_rhs,
-					 size_t cur_pos) {
-	if (used_lhs[cur_pos] && used_rhs[cur_pos]) {
+    template<class Head, class Tail, class BitSet> inline bool
+    bitset_any_strict_less_than(const cons<Head, Tail> &lhs, const cons<Head, Tail> &rhs,
+				const BitSet &any_lhs, const BitSet &any_rhs,
+				size_t cur_pos) {
+	if (!any_lhs[cur_pos] && !any_rhs[cur_pos]) {
 	    if (lhs.get_head() < rhs.get_head()) {
 		return true;
 	    } else if (lhs.get_head() > rhs.get_head()) {
@@ -103,13 +108,13 @@ namespace lintel { namespace tuples {
 	    } else {
 		// don't know, fall through to recursion.
 	    }
-	} else if (used_lhs[cur_pos] && !used_rhs[cur_pos]) {
-	    return true; // used < *
-	} else if (!used_lhs[cur_pos] && used_rhs[cur_pos]) {
-	    return false; // * > used
+	} else if (!any_lhs[cur_pos] && any_rhs[cur_pos]) {
+	    return true; // used < any
+	} else if (any_lhs[cur_pos] && !any_rhs[cur_pos]) {
+	    return false; // any > used
 	} 
-	return partial_strict_less_than(lhs.get_tail(), rhs.get_tail(), 
-					used_lhs, used_rhs, cur_pos + 1);
+	return bitset_any_strict_less_than(lhs.get_tail(), rhs.get_tail(), 
+					   any_lhs, any_rhs, cur_pos + 1);
     }
 
     template<class Tuple> struct TupleHash {
@@ -164,42 +169,68 @@ namespace lintel { namespace tuples {
 	: ConsToAnyPairCons<typename T::head_type, typename T::tail_type> 
     { };
 
-    template<class T> inline uint32_t hash(const AnyPair<T> &v) {
+    template<class Tuple> struct BitsetAnyTuple {
+	BOOST_STATIC_CONSTANT(uint32_t, length = boost::tuples::length<Tuple>::value);
+	
+	Tuple data;
+	typedef std::bitset<boost::tuples::length<Tuple>::value> AnyT;
+	AnyT any;
+	
+	BitsetAnyTuple() { }
+	/// defaults to no any's
+	explicit BitsetAnyTuple(const Tuple &from) : data(from) { }
+	
+	bool operator==(const BitsetAnyTuple &rhs) const {
+	    if (any != rhs.any) { 
+		return false;
+	    }
+	    return lintel::tuples::bitset_any_equal(data, rhs.data, any, 0);
+	}
+	bool operator<(const BitsetAnyTuple &rhs) const {
+	    return lintel::tuples::bitset_any_strict_less_than(data, rhs.data, any, rhs.any, 0);
+							   
+	}
+    };
+
+    template<class Tuple> struct BitsetAnyTupleHash {
+	uint32_t operator()(const BitsetAnyTuple<Tuple> &v) const {
+	    return lintel::tuples::bitset_any_hash(v.data, v.used, 0);
+	}
+    };
+
+    /// Base version of assign
+    void assign(null_type, null_type) { }
+
+    /// Assign an anytuple from a normal tuple of the same type;
+    /// unfortunately, we can't make this also an operator = since
+    /// operator = can only be defined as part of the class.
+    template<typename Head, typename AnyTail, typename Tail> 
+    void assign(cons<AnyPair<Head>, AnyTail> &to, const cons<Head, Tail> &from) {
+	to.get_head().any = false;
+	to.get_head().val = from.get_head();
+	assign(to.get_tail(), from.get_tail());
+    }
+} }
+
+namespace lintel {
+    template <typename T, typename U> 
+    inline uint32_t hashType(const boost::tuples::cons<T, U> &v) {
+	return lintel::tuples::hash(v);
+    }
+
+    template<class T> inline uint32_t hashType(const tuples::AnyPair<T> &v) {
 	if (v.any) {
-	    return 0;
+	    return 0x8bc74d0bU; 
 	} else {
 	    return hash(v.val);
 	}
     }
 
-    template<class Tuple> struct PartialTuple {
-	BOOST_STATIC_CONSTANT(uint32_t, length = boost::tuples::length<Tuple>::value);
-	
-	Tuple data;
-	typedef std::bitset<boost::tuples::length<Tuple>::value> UsedT;
-	UsedT used;
-	
-	PartialTuple() { }
-	// defaults to all unused
-	explicit PartialTuple(const Tuple &from) : data(from) { }
-	
-	bool operator==(const PartialTuple &rhs) const {
-	    if (used != rhs.used) { 
-		return false;
-	    }
-	    return lintel::tuples::partial_equal(data, rhs.data, used, 0);
-	}
-	bool operator<(const PartialTuple &rhs) const {
-	    return lintel::tuples::partial_strict_less_than(data, rhs.data, used, rhs.used, 0);
-							   
-	}
-    };
+    template<class T> inline 
+    uint32_t hashType(const tuples::BitsetAnyTuple<T> &v) {
+	return tuples::bitset_any_hash(v.data, v.any, 0);
+    }
 
-    template<class Tuple> struct PartialTupleHash {
-	uint32_t operator()(const PartialTuple<Tuple> &v) const {
-	    return lintel::tuples::partial_hash(v.data, v.used, 0);
-	}
-    };
-} }
+}
 
 #endif
