@@ -15,6 +15,11 @@ MACRO(LINTEL_SIMPLE_TEST testname)
   ADD_TEST(${testname} ./${testname})
 ENDMACRO(LINTEL_SIMPLE_TEST)
 
+MACRO(LINTEL_SIMPLE_LONG_TEST testname)
+  LINTEL_SIMPLE_PROGRAM(${testname})
+  ADD_TEST(${testname}-long ./${testname})
+ENDMACRO(LINTEL_SIMPLE_LONG_TEST)
+
 ################################## TESTS
 
 LINTEL_SIMPLE_TEST(hashtable)
@@ -26,7 +31,6 @@ LINTEL_SIMPLE_TEST(rotating_hashmap)
 LINTEL_SIMPLE_TEST(simple_mutex)
 LINTEL_SIMPLE_TEST(stringutil)
 LINTEL_SIMPLE_TEST(stats)
-LINTEL_SIMPLE_TEST(stats_quantile)
 LINTEL_SIMPLE_TEST(stats_sequence)
 LINTEL_SIMPLE_TEST(deque)
 LINTEL_SIMPLE_TEST(hashfns)
@@ -45,15 +49,9 @@ ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
-ADD_TEST(flock ${CMAKE_CURRENT_SOURCE_DIR}/flock.sh ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/.. ${CMAKE_INSTALL_PREFIX})
-
 # just make sure it can compile.
 ADD_TEST(deptool ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
 ################################## CONDITIONAL BITS
-
-IF(ENABLE_CLOCK_TEST)
-    LINTEL_SIMPLE_TEST(clock)
-ENDIF(ENABLE_CLOCK_TEST)
 
 IF(TCL_ENABLED)
     INCLUDE_DIRECTORIES(${TCL_INCLUDE_PATH})
@@ -75,3 +73,13 @@ ENDIF(THREADS_ENABLED)
 IF(LATEX_ENABLED)
     ADD_TEST(lintel-latex-rebuild ${CMAKE_CURRENT_BINARY_DIR}/../lintel-latex-rebuild --selfcheck)
 ENDIF(LATEX_ENABLED)
+
+################################### LONGER TESTS
+
+IF(ENABLE_CLOCK_TEST)
+    LINTEL_SIMPLE_LONG_TEST(clock clock-long)
+ENDIF(ENABLE_CLOCK_TEST)
+
+ADD_TEST(flock-long ${CMAKE_CURRENT_SOURCE_DIR}/flock.sh ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/.. ${CMAKE_INSTALL_PREFIX})
+
+LINTEL_SIMPLE_LONG_TEST(stats_quantile stats_quantile-long)

@@ -589,14 +589,18 @@ will use latter."
         next if $did_regex{$branch_regex};
         $did_regex{$branch_regex} = 1;
 
-        my @possibles = grep(/$branch_regex/, @branches);
+	$branch_regex =~ s/;\w+//o;
+	$branch_regex = "/$branch_regex" unless $branch_regex =~ m!/!o;
+        my @possibles = grep(m/$branch_regex/, @branches);
         die "No branches found matching $branch_regex"
             unless @possibles > 0;
         @possibles = sort { length $a <=> length $b } @possibles;
         
         my $branch = shift @possibles;
         foreach $_ (@possibles) {
-            die "?? $branch $_" unless /^$branch/;
+            die "multiple non-prefixed matches for $branch_regex:
+$branch $_\nYou need to provide more specificity in the .version_control_deps file\n " 
+		unless /^$branch/;
         }
         
         my $db = $branch_to_db{$branch};
