@@ -45,12 +45,6 @@ ENDIF(NOT PERL_BINARY)
 
 ##### Optional bits
 
-# only needed for buildTcl
-FIND_PROGRAM(AWK_PATH awk)
-IF(NOT AWK_PATH)
-    MESSAGE("WARNING: Could NOT find awk, TCL support will be disabled")
-ENDIF(NOT AWK_PATH)
-
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
 # Package for detecting if we are in a virtual machine...
 #  Home page:        http://et.redhat.com/~rjones/virt-what/
@@ -71,20 +65,6 @@ ENDIF(BUILD_SHARED_LIBS)
 INCLUDE(LintelDocs)
 
 LINTEL_DOCS_CONFIG("Lintel")
-
-### TCL
-
-INCLUDE(FindTCL)
-OPTION(WITH_TCL "Use tcl if it is found?" On)
-IF(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL AND AWK_PATH)
-    SET(TCL_ENABLED ON)
-ELSE(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL AND AWK_PATH)
-    SET(TCL_ENABLED OFF)
-ENDIF(TCL_INCLUDE_PATH AND TCL_LIBRARY AND WITH_TCL AND AWK_PATH)
-
-IF(WITH_TCL AND NOT TCL_ENABLED)
-    MESSAGE("WITH_TCL on, but could not find tcl includes/libraries.\n  Lintel TCL libraries support will be skipped.")
-ENDIF(WITH_TCL AND NOT TCL_ENABLED)
 
 ### Threads
 

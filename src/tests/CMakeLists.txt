@@ -51,13 +51,8 @@ ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
 # just make sure it can compile.
 ADD_TEST(deptool ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
-################################## CONDITIONAL BITS
 
-IF(TCL_ENABLED)
-    INCLUDE_DIRECTORIES(${TCL_INCLUDE_PATH})
-    LINTEL_SIMPLE_PROGRAM(check-Random)
-    LINTEL_ENVTEST(lintel-random ${CMAKE_CURRENT_SOURCE_DIR}/run-check-Random.sh ${CMAKE_CURRENT_SOURCE_DIR})
-ENDIF(TCL_ENABLED)
+################################## CONDITIONAL BITS
 
 IF(LIBXML2_ENABLED)
     INCLUDE_DIRECTORIES(${LIBXML2_INCLUDE_DIR})

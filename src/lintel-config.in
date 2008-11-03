@@ -41,14 +41,14 @@ features=`echo "@LINTEL_FEATURES@" | sed 's/;/ /'`
 
 case "$1" in
     --cflags)
-    	echo "-I${includedir} -I@TCL_INCLUDE_PATH@"
+    	echo "-I${includedir}"
 	exit 0
     	;;
     --libs)
         if test $libdir = '/usr/lib'; then
-	    echo "-lLintel @TCL_LIBRARY@"
+	    echo "-lLintel"
         else
-	    echo "-L$libdir -lLintel @TCL_LIBRARY@"
+	    echo "-L$libdir -lLintel"
 	fi
 	exit 0
 	;;

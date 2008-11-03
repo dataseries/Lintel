@@ -60,7 +60,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %{_bindir}/batch-parallel
-%{_bindir}/buildTcl
 %{_bindir}/calcStats
 %{_bindir}/drawRandomLogNormal
 %{_bindir}/lintel-acinclude
