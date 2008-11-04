@@ -25,6 +25,7 @@ use File::Find;
 use File::stat;
 use FileHandle;
 use Getopt::Long;
+use File::Basename;
 use POSIX 'ceil';
 use Pod::Usage;
 
@@ -46,6 +47,7 @@ use Pod::Usage;
 
 sub usage {
     pod2usage(-exitval => 'NOEXIT', -verbose => 0);
+    print "  clear [-b] <project...>\n";
     confess @_ if @_ > 0;
     exit(0);
 }
@@ -127,10 +129,12 @@ then build in that directory.
 my $auto_yes_to_prompts = 0;
 my $quiet = 0;
 my $print_manpage = 0;
+my $noconfig = 0;
 
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
            "quiet!" => \$quiet, 
+	   "noconfig!" => \$noconfig,
            "projects=s" => \$Cache::projects,
            "build-root=s" => \$Cache::build_root,
            "operating-system=s" => \$Cache::operating_system,
@@ -202,12 +206,25 @@ Print out the complete manual page.
 Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
 
 help("all") if $print_manpage;
+# Read configuration file
+my $cfile = "$ENV{HOME}/.deptoolrc";
+if (! $noconfig && -f $cfile && -r $cfile ) {
+    open CONFIG, "<$cfile";
+    while (<CONFIG>) {
+        chomp;
+	my ($key, $value) = split /=/;
+	$ENV{$key}=$value;
+    }
+    close CONFIG;
+}
+
 usage("Missing argument") if @ARGV == 0;
 
 my %commands = ('checkout' => \&depCheckout,
 		'co' => \&depCheckout,
                 'pull' => \&depPull,
                 'build' => \&depBuild,
+		'clear' => \&depClear,
                 'commit' => \&depCommit,
                 'publish' => \&depPublish,
                 # below commands don't run in all dep dirs.
@@ -675,6 +692,37 @@ sub depBuild {
     $options{projects} = projects();
 
     depWalk(sub { depBuildOne(\%options, @_) }, 1);
+}
+
+sub depClear {
+    my %options = @_;
+
+    my $projects = projects();
+    $options{dirs} = [];
+    $options{binaries} = 0;
+    my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
+			 "quiet!" => \$quiet,
+			 "b|binaries!" => \$options{binaries});
+    usage("unknown option to clear") unless $ret;
+    my @projects = @ARGV;
+    if ($#projects < 0) {
+	usage("must supply at least one project to clear");
+    }
+    
+    foreach (@projects) {
+	aliasChdir( "$projects/$_");
+	depWalk(sub{ my $wd = aliasGetCwd(); push @{$options{dirs}}, $wd; });
+    }
+
+    if ($options{binaries}) {
+        push @{$options{dirs}}, buildDebug();
+        push @{$options{dirs}}, buildOpt();
+    }
+
+    foreach my $dir (@{$options{dirs}}) {
+	print "rm -rf $dir\n";
+	qx/rm -rf $dir/;
+    }
 }
 
 sub depBuildOne {
@@ -1316,6 +1364,17 @@ END
                 if $options{made_changes};
         }
     }
+
+    if ( defined $ENV{TESTHOST} ) {
+	my $src = rootSrcDir();
+	my $project = basename( $src);
+	my $user = $ENV{MAILADDR};
+	print( "ssh -t $ENV{TESTHOST} testbuild $project $user background\n");
+	system( "ssh -t $ENV{TESTHOST} testbuild $project $user background");
+	if ( $? > 0) {
+	    croak("Unable to ssh $ENV{TESTHOST} testbuild");
+	}
+    }
 }
 
 sub depSyncOne {
@@ -1938,6 +1997,7 @@ sub depWalkRecurse ($$$$$) {
         my $projects = projects();
         foreach my $dep (@vcdeps) {
             my $sub_build_type = '';
+            $dep =~ s%^.*/%%;
             if ($dep =~ /^(.+);(\w+)$/o) {
                 ($dep,$sub_build_type) = ($1,$2);
             }
