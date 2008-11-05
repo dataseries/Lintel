@@ -159,12 +159,21 @@ double Stats::variance() const
 }
 
 
-
+// TODO-future: Add in an optional invariant that checks statistical validity,
+// i.e., that number>30. Consider also adding a generic conf function that
+// takes a z-constant as input so that we can easily add more/different conf
+// intervals. Could also add an interface that checks if a specific value is
+// within some specified confidence interval.
+// Potential z constants of interest:
+// conf90 z= 1.645
+// conf95 z= 1.960
+// conf99 z= 2.576
 double Stats::conf95() const
 {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return DBL_MAX; // **** Should really be NaN if count==0
-    DEBUG_SINVARIANT(number > 0);
+    DEBUG_SINVARIANT(number > 0); // **** Could be number > 30 for statistical
+                                  // **** validity.
     return 1.96*stddev()/sqrt((double)number);
 }
 
