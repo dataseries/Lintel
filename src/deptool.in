@@ -1407,6 +1407,8 @@ B<Note-bug:> renames currently confuse the code review tool.
 sub codeReview {
     my @revisions = @ARGV;
 
+    my $root_src_dir = rootSrcDir();
+    aliasChdir($root_src_dir);
     die "No revisions specified." if @revisions == 0;
 
     eval 'use File::Copy::Recursive "rcopy";';
