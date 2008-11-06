@@ -1504,7 +1504,7 @@ sub makeDiffOrder {
     my @changed = getChanged($basedir, $original_dir, $final_dir);
 
     my %file_key;
-    map { die "?? $_" unless m!^(.+/)?([^/]+)(?:\.(\w+))?$!o;
+    map { die "?? $_" unless m!^(.+/)?([^/]+?)(?:\.(\w+))?$!o;
           my ($dir, $name, $suffix) = ($1, $2, $3);
 	  $suffix ||= 'no-suffix';
           my $test_key = $dir =~ m!/tests\b!o ? 0 : 1;
