@@ -31,7 +31,6 @@
 
 #include <boost/bind.hpp>
 #include <boost/static_assert.hpp>
-#include <boost/lexical_cast.hpp>
 #include <boost/integer_traits.hpp>
 #include <boost/format.hpp>
 
@@ -230,75 +229,6 @@ stringToDouble(const string &str)
     INVARIANT(*endptr == '\0',
 	      boost::format("didn't parse all of '%s' as a double") % str);
     return ret;
-}
-
-// TODO: is there any (dis)advantage to using lexical_cast ?
-template<typename T>
-T stringToInteger(const std::string &str, int base) {
-    BOOST_STATIC_ASSERT(boost::is_integral<T>::value);
-    T ret = 0;
-    if (base == 10) {
-	try {
-	    ret = boost::lexical_cast<T>(str);
-	}
-	catch (boost::bad_lexical_cast &) {
-	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
-	}
-    }
-    else {
-	std::istringstream iss(str);
-	switch(base) {
-	case 16:
-	    iss >> std::hex >> ret;
-	    break;
-	case 8:
-	    iss >> std::oct >> ret;
-	    break;
-	default:
-	    FATAL_ERROR(boost::format("base %d unsupported: 8, 10 or 16 only") % base);
-	    break;
-	}
-	if (iss.fail()) {
-	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
-	}
-    }
-    return ret;
-}
-
-long
-stringToLong(const string &str, int base)
-{
-    return stringToInteger<long>(str, base);
-}
-
-long long
-stringToLongLong(const string &str, int base)
-{
-    return stringToInteger<long long>(str, base);
-}
-
-int32_t
-stringToInt32(const string &str, int base)
-{
-    return stringToInteger<int32_t>(str, base);
-}
-
-uint32_t
-stringToUInt32(const string &str, int base)
-{
-    return stringToInteger<uint32_t>(str, base);
-}
-
-int64_t
-stringToInt64(const string &str, int base)
-{
-    return stringToInteger<int64_t>(str, base);
-}
-
-uint64_t
-stringToUInt64(const string &str, int base)
-{
-    return stringToInteger<uint64_t>(str, base);
 }
 
 #ifdef SYS_NT

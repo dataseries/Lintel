@@ -17,6 +17,10 @@
 #include <locale>
 #include <stdint.h>
 
+#include <boost/lexical_cast.hpp>
+
+#include <Lintel/AssertBoost.hpp>
+
 /** split instr into all of the separate strings separated by splitstr, and
     put the results into bits; alternately, and probably better, use
     boost::split from boost/algorithm/string.hpp */
@@ -73,27 +77,68 @@ double stringToDouble(const std::string &str);
 /** convert a string into the given integer type. Asserts out if given a
     bad string or value is too large to fit in given type */
 template<typename T>
-T stringToInteger(const std::string &str, int base = 10);
+T stringToInteger(const std::string &str, int base = 10) {
+    BOOST_STATIC_ASSERT(boost::is_integral<T>::value);
+    T ret = 0;
+    if (base == 10) {
+	try {
+	    ret = boost::lexical_cast<T>(str);
+	}
+	catch (boost::bad_lexical_cast &) {
+	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
+	}
+    }
+    else {
+	std::istringstream iss(str);
+	switch(base) {
+	case 16:
+	    iss >> std::hex >> ret;
+	    break;
+	case 8:
+	    iss >> std::oct >> ret;
+	    break;
+	default:
+	    FATAL_ERROR(boost::format("base %d unsupported: 8, 10 or 16 only") % base);
+	    break;
+	}
+	if (iss.fail()) {
+	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
+	}
+    }
+    return ret;
+}
 
 // TODO: deprecate *all*the stringToX functions in favor of stringToInteger
 // TODO: deprecate stringToLong, stringToLongLong in favor of [u]int{32,64}
 /** same as strtol, but bails out if the string isn't valid */
-long stringToLong(const std::string &str, int base = 10);
+inline long stringToLong(const std::string &str, int base = 10) {
+    return stringToInteger<long>(str, base);
+}
 
 /** same as strtoll, but bails out if the string isn't valid */
-long long stringToLongLong(const std::string &str, int base = 10);
+inline long long stringToLongLong(const std::string &str, int base = 10) {
+    return stringToInteger<long long>(str, base);
+}
 
 /// Converts a string to an int32, INVARIANT if not a valid string
-int32_t stringToInt32(const std::string &str, int base = 10);
+inline int32_t stringToInt32(const std::string &str, int base = 10) {
+    return stringToInteger<int32_t>(str, base);
+}
 
 /// Converts a string to an uint32, INVARIANT if not a valid string
-uint32_t stringToUInt32(const std::string &str, int base = 10);
+inline uint32_t stringToUInt32(const std::string &str, int base = 10) {
+    return stringToInteger<uint32_t>(str, base);
+}
 
 /// Converts a string to an int32, INVARIANT if not a valid string
-int64_t stringToInt64(const std::string &str, int base = 10);
+inline int64_t stringToInt64(const std::string &str, int base = 10) {
+    return stringToInteger<int64_t>(str, base);
+}
 
 /// Converts a string to an uint32, INVARIANT if not a valid string
-uint64_t stringToUInt64(const std::string &str, int base = 10);
+inline uint64_t stringToUInt64(const std::string &str, int base = 10) {
+    return stringToInteger<uint64_t>(str, base);
+}
 
 /** returns true if the string is all blanks according to isblank(3) */
 bool stringIsBlank(const std::string &);
