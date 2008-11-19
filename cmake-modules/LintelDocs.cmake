@@ -85,7 +85,7 @@ ENDMACRO(LINTEL_DOCS_BUILD)
 
 # Below causes an actual install of things when the install target of
 # LINTEL_DOCS_BUILD executes.
-IF(BUILDDOC AND TARGET AND PACKAGE)
+IF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
     # Script for doing the actual install work...
     IF(NOT IS_DIRECTORY "${BUILDDOC}/doxygen/html")
 	MESSAGE(FATAL_ERROR "Missing ${BUILDDOC}/doxygen/html")
@@ -109,5 +109,5 @@ IF(BUILDDOC AND TARGET AND PACKAGE)
 
     EXEC_PROGRAM(cp ARGS -rp "${BUILDDOC}/doxygen/man/man3/*" 
 	                 "$ENV{DESTDIR}${TARGET}/share/man/man3")
-ENDIF(BUILDDOC AND TARGET AND PACKAGE)
+ENDIF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
 
