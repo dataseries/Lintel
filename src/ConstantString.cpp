@@ -12,6 +12,9 @@
 // strings and binary data that includes nulls; previous version of
 // code collided strings that were identical up to the first null.
 
+// TODO: switch this whole thing to having a ConstantStringPool
+// argument also.
+
 #include <iostream>
 #include <cstring>
 #include <cstdlib>
@@ -25,8 +28,8 @@ int ConstantString::nstrings = 0;
 int ConstantString::string_bytes = 0;
 ConstantString::bufvect *ConstantString::buffers;
 ConstantString::CS_hashtable *ConstantString::hashtable;
+ConstantStringValue *ConstantString::empty_string_myptr;
 
-static const ConstantStringValue *empty_string_myptr;
 static char *init_buffer;
 static uint32_t init_buffer_len;
 static const bool enable_constant_folding = true;
@@ -59,7 +62,7 @@ ConstantString::init(const void *s, uint32_t slen)
 	init_buffer[4+slen] = '\0';
 	
 	ConstantStringValue *tmp = reinterpret_cast<ConstantStringValue *>(init_buffer + 4);
-	const ConstantStringValue *const *ptr = hashtable->lookup(tmp);
+	ConstantStringValue **ptr = hashtable->lookup(tmp);
 	if (ptr != NULL) {
 	    myptr = *ptr;
 	    return;

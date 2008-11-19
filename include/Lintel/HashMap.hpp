@@ -204,6 +204,15 @@ public:
 	return hashtable.available();
     }
 
+    std::vector<K> keys() const {
+	std::vector<K> ret;
+	ret.reserve(size());
+	for(const_iterator i = begin(); i != end(); ++i) {
+	    ret.push_back(i->first);
+	}
+	return ret;
+    }
+
     size_t memoryUsage() const {
 	return hashtable.memoryUsage();
     }

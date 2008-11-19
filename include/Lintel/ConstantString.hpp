@@ -44,6 +44,10 @@ public:
     ConstantString(const ConstantString &from) {
 	myptr = from.myptr;
     }
+    ConstantString &operator =(const ConstantString &from) {
+	myptr = from.myptr;
+	return *this;
+    }
     ConstantString(const std::string &str) { 
 	init(str.data(), str.size());
     }
@@ -53,13 +57,20 @@ public:
     ConstantString(const void *s, uint32_t slen) {
 	init(static_cast<const char *>(s), slen);
     }
-    ConstantString() { init("", 0); }
+    ConstantString() { 
+	if (empty_string_myptr != NULL) {
+	    myptr = empty_string_myptr;
+	} else {
+	    init("", 0); 
+	}
+    }
     void init(const void *s, uint32_t slen);
 
     const char *c_str() const { return ConstantString_c_str(myptr); }
     const char *data() const { return ConstantString_c_str(myptr); }
-    const uint32_t size() const { return ConstantString_length(myptr); }
-    const uint32_t length() const { return ConstantString_length(myptr); }
+    uint32_t size() const { return ConstantString_length(myptr); }
+    uint32_t length() const { return ConstantString_length(myptr); }
+    bool empty() const { return size() == 0; }
     std::string str() const { return std::string(c_str(), size()); }
 
     const uint32_t hash() const {
@@ -87,6 +98,11 @@ public:
 	int cmplen = size() < rhs.size() ? size() : rhs.size();
 	cmplen += 1; // include null byte of shorter string
 	return memcmp(c_str(),rhs.c_str(),cmplen);
+    }
+
+    char operator[](size_t pos) const {
+	DEBUG_SINVARIANT(pos < size());
+	return data()[pos];
     }
 
     struct buffer {
@@ -124,15 +140,16 @@ public:
 	return myptr == to.myptr ? true : false;
     }
 private:
-    const ConstantStringValue *myptr;
+    ConstantStringValue *myptr;
 
     static int nstrings;
     static int string_bytes;
     static const int buffer_size = 512*1024;
     static bufvect *buffers;
-    typedef HashTable<const ConstantStringValue *, hteHash, hteEqual> CS_hashtable;
+    typedef HashTable<ConstantStringValue *, hteHash, hteEqual> CS_hashtable;
 
     static CS_hashtable *hashtable;
+    static ConstantStringValue *empty_string_myptr;
 };
 
 inline bool

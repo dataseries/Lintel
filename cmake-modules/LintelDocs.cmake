@@ -83,6 +83,8 @@ ENDMACRO(LINTEL_DOCS_BUILD)
 # For windows documentation install, see:
 # http://www.cmake.org/pipermail/cmake/2006-August/010786.html
 
+# Below causes an actual install of things when the install target of
+# LINTEL_DOCS_BUILD executes.
 IF(BUILDDOC AND TARGET AND PACKAGE)
     # Script for doing the actual install work...
     IF(NOT IS_DIRECTORY "${BUILDDOC}/doxygen/html")
