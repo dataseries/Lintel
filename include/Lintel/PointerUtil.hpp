@@ -35,6 +35,16 @@ namespace lintel {
 	return ret;
     }
 
+    /// Const version of safeDownCast
+    template <class Target, class Source>
+    inline const Target *safeDownCast(const Source *x)
+    {
+	const Target *ret = dynamic_cast<const Target *>(x);
+	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
+		  % __PRETTY_FUNCTION__);  
+	return ret;
+    }
+
     /// Function for performing a safe crosscast of a basic pointer to
     /// a related pointer.  Guarantees that the cast was successful.
     template <class Target, class Source>

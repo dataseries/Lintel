@@ -102,22 +102,16 @@ public:
 	}
     };
 
-    // FUTURE: Make this function const. May have to const the returned V*. This
-    // may affect much code, so Jay held off on doing this change for now (July
-    // 28, 2008). --Jay
     V *lookup(const K &k) {
-	value_type fullval; fullval.first = k;
-	value_type *v = hashtable.lookup(fullval);
-	if (v == NULL) {
-	    return NULL;
-	} else {
-	    return &v->second;
-	}
+	return internalLookup<V, value_type>(this, k);
+    }
+
+    const V *lookup(const K &k) const {
+	return internalLookup<const V, const value_type>(this, k);
     }
 
     /// Returns the value associated with the key, if it exists. Otherwise,
     /// creates an entry initialized with the default value.
-    
     V &operator[] (const K &k) {
 	value_type fullval; fullval.first = k;
 	value_type *v = hashtable.lookup(fullval);
@@ -128,7 +122,20 @@ public:
 	}
     }
 
-    bool exists(const K &k) {
+    /// Const get; will error out if you attempt to get a value that
+    /// isn't present in the hash table because creating the entry is
+    /// a non-const operation.
+    const V &cGet(const K &k) const {
+	value_type fullval; fullval.first = k;
+	const value_type *v = hashtable.lookup(fullval);
+	if (v == NULL) {
+	    FATAL_ERROR(boost::format("Unable to get missing entry %1% from hash table") % k);
+	} else {
+	    return v->second;
+	}
+    }
+
+    bool exists(const K &k) const {
 	return lookup(k) != NULL;
     }
 
@@ -230,6 +237,16 @@ public:
 	return hashtable;
     }
 private:
+    template<class R, class VT, class C> static inline R *internalLookup(C *me, const K &k) {
+	value_type fullval; fullval.first = k;
+	VT *v = me->hashtable.lookup(fullval);
+	if (v == NULL) {
+	    return NULL;
+	} else {
+	    return &v->second;
+	}
+    }
+    
     HashTableT hashtable;
 };
 
