@@ -269,6 +269,12 @@ void test_constA(const HashMap<int, int> &test_map,
     SINVARIANT(i == test_map2.end());
     i = test_map2.find(6);
     SINVARIANT(i != test_map2.end() && i->second == 6);
+
+    SINVARIANT(test_map.cGet(5) == 5);
+    SINVARIANT(test_map2.cGet(6) == 6);
+
+    SINVARIANT(test_map.lookup(5) != NULL && *test_map.lookup(5) == 5);
+    SINVARIANT(test_map.lookup(6) == NULL);
 }
 
 void test_const() {
@@ -282,6 +288,21 @@ void test_const() {
 	       test_map.size() == 1 && test_map2.size() == 1);
 }
 
+void test_keys() {
+    HashMap<int, int> test_map;
+
+    for(int i = 0; i < 10; ++i) {
+	test_map[i] = i;
+    }
+    vector<int> keys = test_map.keys();
+    sort(keys.begin(), keys.end());
+    SINVARIANT(keys.size() == 10);
+    for(int i = 0; i < 10; ++i) {
+	SINVARIANT(keys[i] == i);
+    }
+}
+
+
 int main() {
     test_types();
     test_foreach();
@@ -289,4 +310,5 @@ int main() {
     test_iterator();
     test_pointermap();
     test_const();
+    test_keys();
 }

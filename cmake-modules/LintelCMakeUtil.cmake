@@ -178,3 +178,25 @@ MACRO(LINTEL_TRY_RUN variable source_file)
           AND "${variable}_COMPILE" STREQUAL "TRUE")
 ENDMACRO(LINTEL_TRY_RUN)
 
+### Set up the rpath stuff the way we seem to always do it.
+
+MACRO(LINTEL_RPATH_CONFIG)
+    OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
+    
+    IF(WITH_INSTALLED_RPATH)
+        # use, i.e. don't skip the full RPATH for the build tree
+        SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
+      
+        # when building, don't use the install RPATH already
+        # (but later on when installing)
+        SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
+      
+        # the RPATH to be used when installing
+        SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
+      
+        # add the automatically determined parts of the RPATH
+        # which point to directories outside the build tree to the install RPATH
+        SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+    ENDIF(WITH_INSTALLED_RPATH)
+ENDMACRO(LINTEL_RPATH_CONFIG)
+

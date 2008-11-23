@@ -5,6 +5,10 @@
 #
 # All of the options and dependencies for the various cmake sub-bits
 
+INCLUDE(LintelCMakeUtil)
+
+LINTEL_RPATH_CONFIG()
+
 #### Default build type
 
 IF(NOT CMAKE_BUILD_TYPE)
@@ -85,7 +89,6 @@ IF(WITH_THREADS AND THREADS_ENABLED)
     IF(HAS_PTHREAD_ISLOCKED)
         SET(PTHREAD_ISLOCKED_QUIET ON)
     ELSE(HAS_PTHREAD_ISLOCKED)
-        INCLUDE(LintelCMakeUtil)
         MESSAGE("Determining expression for PThreadMutex::isLocked()")
         EXECUTE_PROCESS(COMMAND uname OUTPUT_VARIABLE HOST_TYPE
                         OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -149,26 +152,6 @@ IF(WITH_LIBXML2 AND NOT LIBXML2_ENABLED)
     MESSAGE("WITH_LIBXML2 on, but could not find libxml2 includes/libraries.")
     MESSAGE("  XMLUtil and LintelLogXML will be skipped.")
 ENDIF(WITH_LIBXML2 AND NOT LIBXML2_ENABLED)
-
-### RPath
-
-OPTION(WITH_INSTALLED_RPATH "Install with the rpath set so you will not need to set \$LD_LIBRARY_PATH" ON)
-
-IF(WITH_INSTALLED_RPATH)
-    # use, i.e. don't skip the full RPATH for the build tree
-    SET(CMAKE_SKIP_BUILD_RPATH  FALSE)
-  
-    # when building, don't use the install RPATH already
-    # (but later on when installing)
-    SET(CMAKE_BUILD_WITH_INSTALL_RPATH FALSE) 
-  
-    # the RPATH to be used when installing
-    SET(CMAKE_INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/lib")
-  
-    # add the automatically determined parts of the RPATH
-    # which point to directories outside the build tree to the install RPATH
-    SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
-ENDIF(WITH_INSTALLED_RPATH)
 
 ### Latex
 

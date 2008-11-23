@@ -91,6 +91,15 @@ int main()
     TEST_INVARIANTMSG(SINVARIANT(safeCrossCast<unrelated>(d1_b1) == 0),
 		      "dynamic crosscast failed in Target* lintel::safeCrossCast(Source*) [with Target = unrelated, Source = base1]");
 
+    // Some checks with constness
+
+    const derived1 *c_d1 = d1;
+    const base1 *c_d1_b1 = static_cast<const base1 *>(d1);
+    const base2 *c_d1_b2 = d1;
+
+    SINVARIANT(safeDownCast<derived1>(c_d1_b1) == c_d1);
+    SINVARIANT(safeDownCast<derived1>(c_d1_b2) == c_d1);
+
     // Once again with shared pointers ...
 
     derived1::Ptr p_d1(d1);

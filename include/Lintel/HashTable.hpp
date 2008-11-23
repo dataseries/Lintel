@@ -159,6 +159,17 @@ public:
 	}
     }
 
+    /// const version of lookup, hence returns constant data.
+    const D *lookup(const D &data) const {
+	uint32_t hashof_ = hashof(data);
+	const hte *chain = internal_lookup(data, hashof_);
+	if (chain != NULL) {
+	    return &(chain->data);
+	} else {
+	    return NULL;
+	}
+    }
+
     // Not perfectly random, if there are biases in the hash(key)
     // data, then some chains will be much longer than others and so
     // will be less likely to be chosen.  Unfortunately, a true random
@@ -529,18 +540,27 @@ private:
 	}
     }
 
-    hte *internal_lookup(const D &key, uint32_t hashof_)
-    {
-	if (entry_points.size() == 0) {
+    template<class V, class C> static inline V *
+    static_internal_lookup(C *me, const D &key, uint32_t hashof) {
+	if (me->entry_points.size() == 0) {
 	    return NULL;
 	}
-	uint32_t hash = hashof_ % entry_points.size();
-	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
-	    if (equal(key,chains[i].data)) {
-		return &(chains[i]);
+	uint32_t hash = hashof % me->entry_points.size();
+	for(int32_t i=me->entry_points[hash]; i != -1; 
+	    i = me->chains[i].next) {
+	    if (me->equal(key,me->chains[i].data)) {
+		return &(me->chains[i]);
 	    }
 	}
 	return NULL;
+    }
+
+    hte *internal_lookup(const D &key, uint32_t hashof) {
+	return static_internal_lookup<hte>(this, key, hashof);
+    }
+
+    const hte *internal_lookup(const D &key, uint32_t hashof) const {
+	return static_internal_lookup<const hte>(this, key, hashof);
     }
 
     void init(double _tcl) {
