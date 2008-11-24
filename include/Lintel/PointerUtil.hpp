@@ -27,8 +27,7 @@ namespace lintel {
     /// subclass or superclass of the Source class.  For up-casts,
     /// static_cast or simple assignment will be faster.
     template <class Target, class Source>
-    inline Target *safeDownCast(Source *x)
-    {
+    inline Target *safeDownCast(Source *x) {
 	Target *ret = dynamic_cast<Target *>(x);
 	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
 		  % __PRETTY_FUNCTION__);  
@@ -37,8 +36,7 @@ namespace lintel {
 
     /// Const version of safeDownCast
     template <class Target, class Source>
-    inline const Target *safeDownCast(const Source *x)
-    {
+    inline const Target *safeDownCast(const Source *x) {
 	const Target *ret = dynamic_cast<const Target *>(x);
 	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
 		  % __PRETTY_FUNCTION__);  
@@ -48,8 +46,7 @@ namespace lintel {
     /// Function for performing a safe crosscast of a basic pointer to
     /// a related pointer.  Guarantees that the cast was successful.
     template <class Target, class Source>
-    inline Target *safeCrossCast(Source *x)
-    {
+    inline Target *safeCrossCast(Source *x) {
 	Target *ret = dynamic_cast<Target *>(x);
 	INVARIANT(ret != 0, boost::format("dynamic crosscast failed in %s")
 		  % __PRETTY_FUNCTION__);  
@@ -63,8 +60,7 @@ namespace lintel {
     /// boost::static_pointer_cast or simple assignment will be faster.
     template <class Target, class Source>
     inline boost::shared_ptr<Target> 
-    safeDownCast(boost::shared_ptr<Source> x)
-    {
+    safeDownCast(boost::shared_ptr<Source> x) {
 	boost::shared_ptr<Target> ret = boost::dynamic_pointer_cast<Target>(x);
 
 	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
@@ -77,8 +73,7 @@ namespace lintel {
     /// successful.
     template <class Target, class Source>
     inline boost::shared_ptr<Target> 
-    safeCrossCast(boost::shared_ptr<Source> x)
-    {
+    safeCrossCast(boost::shared_ptr<Source> x) {
 	boost::shared_ptr<Target> ret = boost::dynamic_pointer_cast<Target>(x);
 
 	INVARIANT(ret != 0, boost::format("dynamic crosscast failed in %s")
