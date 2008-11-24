@@ -19,13 +19,15 @@
 #   should look, and ${variable}_EXTRA_INCLUDES to specify extra directories 
 #   to put in the ${variable}_INCLUDES variable.
 
-# LINTEL_FIND_LIBRARY(variable header libname) sets ${variable}_LIBRARY,
-#   ${variable}_LIBRARIES, and ${variable}_ENABLED after calling 
+# LINTEL_FIND_LIBRARY(variable header libname) sets
+#   ${variable}_LIBRARIES, and ${variable}_ENABLED after calling
 #   LINTEL_FIND_HEADER to find the header.
 #
-#   The library must exist if ${variable}_FIND_REQUIRED is set.  You can set
-#   ${variable}_EXTRA_LIBRARIES to specify extra librareis to put in the
-#   ${variable}_LIBRARIES variable.
+#   The library must exist if ${variable}_FIND_REQUIRED is set.  You
+#   can set ${variable}_EXTRA_LIBRARIES to specify extra libraries to
+#   put in the ${variable}_LIBRARIES variable.  ${variable}_LIBRARY
+#   will be set to the file containing the library without any of its
+#   dependencies.
 
 # LINTEL_FIND_PROGRAM(variable program) sets ${variable}_PATH  The program
 #   must exist if ${variable}_FIND_REQUIRED is set.
