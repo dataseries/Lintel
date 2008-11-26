@@ -40,7 +40,7 @@ public:
     }
 
     bool exists(const K &k) {
-	K *v = hashtable.lookup(k);
+	const K *v = hashtable.lookup(k);
 	return v != NULL;
     }
     
