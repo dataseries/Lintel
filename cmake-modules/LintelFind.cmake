@@ -45,6 +45,9 @@
 
 ### headers
 
+# TODO: for this macro and the library one, recheck that the file
+# still exists, and redo the search if it vanished.
+
 MACRO(LINTEL_FIND_HEADER variable header)
     IF(${variable}_INCLUDE_DIR)
         # Already in cache, be silent

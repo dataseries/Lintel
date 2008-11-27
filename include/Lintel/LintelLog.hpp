@@ -225,7 +225,7 @@ public:
     static void consoleAppender(const std::string &msg, const LogType logtype);
 
     /// This function is the same as the consoleAppender, but for non
-    /// Report type messages, it will add in @seconds.microseconds
+    /// Report type messages, it will add in \@seconds.microseconds
     /// after the level.
     static void consoleTimeAppender(const std::string &msg,
 				    const LogType logtype);

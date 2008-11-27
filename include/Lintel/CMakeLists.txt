@@ -32,6 +32,7 @@ SET(INCLUDE_FILES
 	RotatingHashMap.hpp
 	SimpleMutex.hpp
 	Stats.hpp
+	StatsCube.hpp
 	StatsEMA.hpp
 	StatsHistogram.hpp
 	StatsMaker.hpp

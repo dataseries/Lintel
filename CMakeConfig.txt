@@ -178,3 +178,4 @@ IF(WITH_LATEX)
     ENDIF(NOT LATEX_ENABLED) 
 ENDIF(WITH_LATEX)
 
+# TODO: add dependencies on gnuplot, pstopnm, netpbm for mercury.

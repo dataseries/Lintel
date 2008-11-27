@@ -13,7 +13,6 @@
 
 #include <Lintel/HashTable.hpp>
 #include <Lintel/HashUnique.hpp>
-#include <Lintel/LintelLog.hpp>
 #include <Lintel/Stats.hpp>
 #include <Lintel/Tuples.hpp>
 
@@ -157,13 +156,17 @@ namespace lintel {
 	/// example, if there are two entries in the HTS ([0,1] -> v,
 	/// [1,0] -> v') then by creating an empty StatsT z, walk_fn
 	/// will be called four times, with ([0,0], z), ([0,1], v),
-	/// ([1,0], v'), ([1,1], z).
-	void walkZeros(const WalkFn &walk_fn) const {
+	/// ([1,0], v'), ([1,1], z).  If count_zeroes is specified,
+	/// then the "zero" statistic will have had 0 added to it,
+	/// otherwise, it will be a default created statistic.  The
+	/// question is whether when we are adding together statistics
+	/// if the implied zero rows count or not.
+	void walkZeros(const WalkFn &walk_fn, bool count_zeroes = false) const {
 	    HashUniqueTuple hut;
 
 	    fillHashUniqueTuple(hut);
 
-	    walkZeros(walk_fn, hut);
+	    walkZeros(walk_fn, hut, count_zeroes);
 	}
 
 	/// build a tuple of hash uniques out of the entries in the
@@ -180,17 +183,12 @@ namespace lintel {
 	/// entries table would allow you to remove some entries out
 	/// of the hash unique tuple and therefore avoid walking over
 	/// some of the entries.
-	void walkZeros(const WalkFn &walk_fn, const HashUniqueTuple &hut) const {
-	    double expected_hut = zeroCubeBaseCount(hut);
-
-	    uint32_t tuple_len = boost::tuples::length<Tuple>::value;
-
-	    LintelLogDebug("HostInfo",
-			   boost::format("Expecting to cube %.6g * 2^%d = %.0f")
-			   % expected_hut % tuple_len 
-			   % (expected_hut * pow(2.0, tuple_len)));
-
+	void walkZeros(const WalkFn &walk_fn, const HashUniqueTuple &hut, bool count_zeros) const {
 	    StatsT *zero = stats_factory_fn();
+
+	    if (count_zeros) {
+		zero->add(0);
+	    }
 
 	    Tuple tmp_key;
 	    detail::zeroWalk(hut, tmp_key, tmp_key, data, *zero, walk_fn);
