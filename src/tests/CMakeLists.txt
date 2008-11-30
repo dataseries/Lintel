@@ -69,6 +69,11 @@ IF(LATEX_ENABLED)
     ADD_TEST(lintel-latex-rebuild ${CMAKE_CURRENT_BINARY_DIR}/../lintel-latex-rebuild --selfcheck)
 ENDIF(LATEX_ENABLED)
 
+IF(BOOST_PROGRAM_OPTIONS_ENABLED)
+    LINTEL_SIMPLE_PROGRAM(program_options)
+    ADD_TEST(program_options ${CMAKE_CURRENT_SOURCE_DIR}/run-check-program-options.sh ${CMAKE_CURRENT_SOURCE_DIR})
+ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
+
 ################################### LONGER TESTS
 
 IF(ENABLE_CLOCK_TEST)
