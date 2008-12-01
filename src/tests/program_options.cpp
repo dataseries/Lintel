@@ -39,6 +39,7 @@ void second(int argc, char *argv[]) {
 void third(int argc, char *argv[]) {
     // --help
 
+    lintel::programOptionsHelp("test-extra-help-bit");
     lintel::ProgramOption<char> arg1("arg1", "argument 1 description");
     lintel::ProgramOption<bool> arg2("arg2", "argument 2 description");
     lintel::parseCommandLine(argc, argv);

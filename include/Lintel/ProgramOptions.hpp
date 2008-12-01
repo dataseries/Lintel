@@ -73,6 +73,13 @@ namespace lintel {
 	std::vector<ProgramOptionPair> &programOptionsActions();
     }
 
+    /// add string to help message, should be called before a call to
+    /// parseCommandLine.  Will be printed after the 'Usage: argv[0]' bit.
+    void programOptionsHelp(const std::string &to_add);
+
+    /// print out the usage information
+    void programOptionsUsage(const char *argv0);
+
     /// parse command line options as a standard arc, argv pair;
     ///
     /// @return any un-parsed arguments if allow_unrecognized is true

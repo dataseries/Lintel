@@ -1,3 +1,4 @@
+Usage: ./program_options [options] test-extra-help-bit
 Allowed options:
   -h [ --help ]         get help on this program
   --arg1 arg            argument 1 description

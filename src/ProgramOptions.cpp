@@ -12,6 +12,7 @@ namespace po = boost::program_options;
 static lintel::ProgramOption<bool> po_help("help,h", "get help on this program");
 
 namespace {
+    std::string extra_help;
     using namespace lintel::detail;
 
     // separated out for the future when we may have multiple parsing
@@ -67,7 +68,15 @@ namespace lintel {
 	}
     }
 
+    void programOptionsHelp(const string &to_add) {
+	extra_help.append(to_add);
+    }
 
+    void programOptionsUsage(const char *argv0) {
+	cout << boost::format("Usage: %s [options] %s\n") % argv0 % extra_help
+	     << programOptionsDesc() << "\n";
+    }
+	
     vector<string> parseCommandLine(int argc, char *argv[], bool allow_unrecognized) {
 	po::variables_map var_map;
 	vector<string> unrecognized;
@@ -79,9 +88,10 @@ namespace lintel {
 		  % unrecognized[0] % argv[0]);
 	processOptions(programOptionsActions(), var_map);
 	if (po_help.get()) {
-	    cout << programOptionsDesc() << "\n";
+	    programOptionsUsage(argv[0]);
 	    exit(0);
 	}
 	return unrecognized;
     }
+
 }
