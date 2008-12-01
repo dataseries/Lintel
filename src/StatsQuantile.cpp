@@ -44,8 +44,7 @@ StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _pri
 	      boost::format("whoa, quantile_error %.3g >= 0.2??") 
 	      % quantile_error);
     double Nbound = _Nbound; // easy for calculations
-    INVARIANT(Nbound >= 10000, boost::format("whoa, nbound of %.0f?") % Nbound);
-    if (Nbound < 10000) { Nbound = 10000; } // smallest N with entries in table in the paper
+    INVARIANT(Nbound >= 100, boost::format("whoa, nbound of %.0f?") % Nbound);
     // The hunt for b = nbuffers, and k = buffer_size is on, following 
     // section 4.5 in the paper
 

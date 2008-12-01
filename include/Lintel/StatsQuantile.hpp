@@ -34,12 +34,12 @@ public:
     /// In practice, the actual error appears to be 2-3x better on the
     /// absolute worst number, and about 10x better on average 
     ///
-    /// quantile_error means that if with quantile(\phi) = the element
-    /// at position \ceil(\phi * N) in the sorted list indexed from
+    /// quantile_error means that if with quantile(phi) = the element
+    /// at position ceil(phi * N) in the sorted list indexed from
     /// 1..n, then the position of the returned element is between
-    /// \ceil((\phi - quantile_error) * N) and \ceil((\phi +
-    /// quantile_error) * N) in the sorted list.  if \phi = 0.5, then
-    /// the value is a median.  If \phi == 0, then the quantile the
+    /// ceil((phi - quantile_error) * N) and ceil((phi +
+    /// quantile_error) * N) in the sorted list.  if phi = 0.5, then
+    /// the value is a median.  If phi == 0, then the quantile the
     /// element at position 1.  Note that this indexing is different
     /// than the standard C++ indexing of arrays from 0. Nbound has to
     /// be larger than N (# elements actually added) for the quantile

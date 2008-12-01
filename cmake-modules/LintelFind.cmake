@@ -42,10 +42,24 @@
 #   error message if it is not found.  If ${variable}_MISSING_EXTRA is
 #   set, that string is also printed.
 
+# LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(variable header libname) is
+# the macro for putting in one of the FindX files; it properly chooses
+# between LINTEL_FIND_LIBRARY and LINTEL_WITH_LIBRARY depending on
+# whether ${variable}_FIND_REQUIRED is set. Boilerplate for the header
+# of the FindX file can be found below next to the macro.
+
+# LINTEL_BOOST_EXTRA(variable header libname) assumes you have already
+# included FindBoost; it searches for header and libname and checks
+# that the directories are compatible.  If ${variable}_FIND_REQUIRED
+# is set, it uses LINTEL_FIND_LIBRARY, otherwise LINTEL_WITH_LIBRARY.
+
 # TODO: there is a bunch of duplicate code in the below macros,
 # eliminate it.
 
 ### headers
+
+# TODO: for this macro and the library one, recheck that the file
+# still exists, and redo the search if it vanished.
 
 MACRO(LINTEL_FIND_HEADER variable header)
     IF(${variable}_INCLUDE_DIR)
@@ -276,3 +290,18 @@ MACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE variable header libname)
     ENDIF(${variable}_FIND_REQUIRED)
 ENDMACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE)
  
+### LINTEL_BOOST_EXTRA
+
+MACRO(LINTEL_BOOST_EXTRA variable header libname)
+    SET(${variable}_EXTRA_INCLUDE_PATHS ${Boost_INCLUDE_DIRS})
+    SET(${variable}_EXTRA_LIBRARY_PATHS ${Boost_LIBRARY_DIRS})
+    IF(${variable}_FIND_REQUIRED)
+	LINTEL_FIND_LIBRARY(${variable} ${header} ${libname})
+    ELSE(${variable}_FIND_REQUIRED)
+	LINTEL_WITH_LIBRARY(${variable} ${header} ${libname})
+    ENDIF(${variable}_FIND_REQUIRED)
+    
+    IF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+        MESSAGE(FATAL_ERROR "Huh? different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
+    ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+ENDMACRO(LINTEL_BOOST_EXTRA variable header libname)

@@ -32,6 +32,7 @@ SET(INCLUDE_FILES
 	RotatingHashMap.hpp
 	SimpleMutex.hpp
 	Stats.hpp
+	StatsCube.hpp
 	StatsEMA.hpp
 	StatsHistogram.hpp
 	StatsMaker.hpp
@@ -91,6 +92,9 @@ IF(LIBXML2_ENABLED)
     LIST(APPEND INCLUDE_FILES LintelLogXML.hpp XMLUtil.hpp)
 ENDIF(LIBXML2_ENABLED)
 
+IF(BOOST_PROGRAM_OPTIONS_ENABLED)
+    LIST(APPEND INCLUDE_FILES ProgramOptions.hpp)
+ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
 
 ################################## INSTALL
 

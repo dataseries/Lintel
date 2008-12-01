@@ -8,6 +8,7 @@
 #define LINTEL_TUPLES_HPP
 
 #include <bitset>
+#include <ostream>
 
 #include <boost/tuple/tuple_comparison.hpp>
 
@@ -73,6 +74,12 @@ namespace lintel { namespace tuples {
 	return BobJenkinsHashMix3(a,b,c);
     }
 
+    template<class Tuple> struct TupleHash {
+	uint32_t operator()(const Tuple &a) const {
+	    return lintel::tuples::hash(a);
+	}
+    };
+
     template<class BitSet>
     inline bool bitset_any_equal(const null_type &lhs, const null_type &rhs,
 				 const BitSet &any, size_t cur_pos) {
@@ -117,11 +124,25 @@ namespace lintel { namespace tuples {
 					   any_lhs, any_rhs, cur_pos + 1);
     }
 
-    template<class Tuple> struct TupleHash {
-	uint32_t operator()(const Tuple &a) const {
-	    return lintel::tuples::hash(a);
+    template<class BitSet>
+    inline void bitset_any_print(std::ostream &to, const null_type &, const BitSet &, size_t) 
+    { }
+
+    // 0x8bc74d0b was sampled from /dev/random. It should be  better choice than
+    // 0, which is a more common value in variables.
+    template<class Head, class Tail, class BitSet>
+    inline void bitset_any_print(std::ostream &to, const cons<Head, Tail> &v,
+				 const BitSet &any, size_t cur_pos) {
+	if (cur_pos > 0) {
+	    to << " ";
 	}
-    };
+	if (any[cur_pos]) {
+	    to << "*";
+	} else {
+	    to << v.get_head();
+	}
+	bitset_any_print(to, v.get_tail(), any, cur_pos + 1);
+    }
 
     // Not a pair so we can have operators that behave differently, and
     // to improve clarity.
@@ -197,6 +218,14 @@ namespace lintel { namespace tuples {
 	    return lintel::tuples::bitset_any_hash(v.data, v.used, 0);
 	}
     };
+
+    template<class T> 
+    inline std::ostream &operator <<(std::ostream &to, const BitsetAnyTuple<T> &val) {
+	to << "(";
+	lintel::tuples::bitset_any_print(to, val.data, val.any, 0);
+	to << ")";
+	return to;
+    }
 
     /// Base version of assign
     void assign(null_type, null_type) { }
