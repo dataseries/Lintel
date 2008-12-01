@@ -12,6 +12,34 @@ namespace po = boost::program_options;
 static lintel::ProgramOption<bool> po_help("help,h", "get help on this program");
 
 namespace {
+    using namespace boost::program_options;
+    // TODO: check if we have an old version of boost and only use this
+    // if we do; 1.34 fixes the bug in 1.33 that causes an exception for
+    // unrecognized options.1
+    vector< basic_option<char> > 
+    collectRecognized(const vector< basic_option<char> > &from) {
+	vector< basic_option<char> > ret;
+	for(unsigned i = 0; i < from.size(); ++i) {
+	    if (!from[i].unregistered) {
+		ret.push_back(from[i]);
+	    }
+	}
+	return ret;
+    }
+
+    void po_vm_store(po::parsed_options &parsed, po::variables_map &var_map) {
+	vector< basic_option<char> > recognized 
+	    = collectRecognized(parsed.options);
+
+	parsed_options tmp(parsed.description);
+	tmp.options = recognized;
+	po::store(tmp, var_map);
+    }
+}
+
+namespace {
+
+
     std::string extra_help;
     using namespace lintel::detail;
 
@@ -23,10 +51,10 @@ namespace {
 			       vector<string> &further) {
 	po::parsed_options parsed = 
 	    parser.options(desc).allow_unregistered().run();
-	po::store(parsed, var_map);
-	po::notify(var_map);
 	further = po::collect_unrecognized(parsed.options, 
 					   po::include_positional);
+	po_vm_store(parsed, var_map);
+	po::notify(var_map);
     }
 
     void dumpVariables(po::variables_map &var_map) {

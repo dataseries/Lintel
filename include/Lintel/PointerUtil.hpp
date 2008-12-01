@@ -25,19 +25,12 @@ namespace lintel {
     /// a derived class' pointer.  Guarantees that the cast was
     /// successful.  Will not compile unless the Target class is a
     /// subclass or superclass of the Source class.  For up-casts,
-    /// static_cast or simple assignment will be faster.
+    /// static_cast or simple assignment will be faster.  To cast a
+    /// const pointer, you need to use safeDownCast<const T>; g++-3.4
+    /// considered having a const variant of safeDownCast ambiguous.
     template <class Target, class Source>
     inline Target *safeDownCast(Source *x) {
 	Target *ret = dynamic_cast<Target *>(x);
-	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
-		  % __PRETTY_FUNCTION__);  
-	return ret;
-    }
-
-    /// Const version of safeDownCast
-    template <class Target, class Source>
-    inline const Target *safeDownCast(const Source *x) {
-	const Target *ret = dynamic_cast<const Target *>(x);
 	INVARIANT(ret == x, boost::format("dynamic downcast failed in %s")
 		  % __PRETTY_FUNCTION__);  
 	return ret;

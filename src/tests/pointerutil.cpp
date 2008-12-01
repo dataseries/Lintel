@@ -97,8 +97,8 @@ int main()
     const base1 *c_d1_b1 = static_cast<const base1 *>(d1);
     const base2 *c_d1_b2 = d1;
 
-    SINVARIANT(safeDownCast<derived1>(c_d1_b1) == c_d1);
-    SINVARIANT(safeDownCast<derived1>(c_d1_b2) == c_d1);
+    SINVARIANT(safeDownCast<const derived1>(c_d1_b1) == c_d1);
+    SINVARIANT(safeDownCast<const derived1>(c_d1_b2) == c_d1);
 
     // Once again with shared pointers ...
 
