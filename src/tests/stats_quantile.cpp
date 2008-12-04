@@ -17,6 +17,7 @@
 #include <ostream>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/Clock.hpp>
 #include <Lintel/Double.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/StatsQuantile.hpp>
@@ -295,10 +296,37 @@ void checkSmall() {
     checkQuantiles(tmp, vals, exact_error, 0.001);
 }
 
-int
-main(int argc, char *argv[])
-{
+void addPerformanceTest() {
+    // Largest ipbwrolling test from FAST2009 nfs-analysis paper had
+    // 89,310,242,511 entries in it.
+    StatsQuantile test(0.001, (int64_t)(1.0e13));
+
+    MersenneTwisterRandom mt;
+    mt.randInt();
+    int64_t start = Clock::todTfrac();
+    int64_t target_end = start + Clock::secondsToTfrac(5);
+    int64_t added = 0;
+    while(Clock::todTfrac() < target_end) {
+	do {
+	    test.add(mt.randInt());
+	    ++added;
+	} while ((added & 0xFFFFF) != 0);
+    }
+    
+    int64_t end = Clock::todTfrac();
+    double elapsed = Clock::TfracToDouble(end - start);
+    
+    cout << boost::format("added %d entries in %.2fs, %.2fMadds/s")
+	% added % elapsed % (added/(1.0e6*elapsed));
+}
+
+int main(int argc, char *argv[]) {
     Double::selfCheck(); // quantile was failing because of problems checked now in here
+    if (argc == 2 && strcmp(argv[1],"add-performance") == 0) {
+	addPerformanceTest();
+	exit(0);
+    }
+
     if (argc == 2 && strcmp(argv[1],"long") == 0) {
 	printf("Running long (10b entry) test (count to 100)...\n");
 	fflush(stdout);

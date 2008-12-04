@@ -131,8 +131,13 @@ private:
     void addQuantile(const double value);
 
     typedef double *one_buffer;
+    int collapseFindFirstBuffer();
+    // returns total weight across these buffers, also initializes collapse_pos
+    int64_t collapseSortBuffers(int first_buffer);
+    int64_t collapseNextQuantileOffset(int64_t total_weight);
+
     void collapse();
-    
+
     const double quantile_error;
 
     int buffer_size, nbuffers;

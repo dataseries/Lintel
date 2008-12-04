@@ -20,19 +20,27 @@
 
 using namespace std;
 
-static double fact(double a) 
-{
-    double ret = 1.0;
-    for(double i = 2;i<=a;i++) {
-	ret *= i;
+namespace {
+    double fact(double a) {
+	double ret = 1.0;
+	for(double i = 2;i<=a;i++) {
+	    ret *= i;
+	}
+	return ret;
     }
-    return ret;
-}
 
-static double choose(int b, int a) // b choose a
-{
-    double ret = fact(b) / (fact(b-a) * fact(a));
-    return ret;
+    double choose(int b, int a) { // b choose a 
+	double ret = fact(b) / (fact(b-a) * fact(a));
+	return ret;
+    }
+
+    class doubleOrder {
+    public:
+	inline bool operator() (double a, double b) const {
+	    return a < b;
+	}
+    };
+    
 }
 
 StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _print_nrange)
@@ -86,9 +94,7 @@ StatsQuantile::StatsQuantile(const string &type_disambiguate,
     init(_nbuffers, _buffer_size);
 }
 
-void 
-StatsQuantile::init(int _nbuffers, int _buffer_size)
-{
+void StatsQuantile::init(int _nbuffers, int _buffer_size) {
     nbuffers = _nbuffers;
     buffer_size = _buffer_size;
     INVARIANT(nbuffers > 1,
@@ -107,9 +113,7 @@ StatsQuantile::init(int _nbuffers, int _buffer_size)
     init_buffers();
 }
 
-void 
-StatsQuantile::init_buffers()
-{
+void StatsQuantile::init_buffers() {
     for(int i=0;i<nbuffers;i++) {
 	if (all_buffers[i] == NULL) {
 	    all_buffers[i] = new double[buffer_size];
@@ -131,8 +135,7 @@ StatsQuantile::init_buffers()
     collapse_even_low = true;
 }
 
-StatsQuantile::~StatsQuantile()
-{
+StatsQuantile::~StatsQuantile() {
     for(int i=0;i<nbuffers;i++) {
 	delete[] all_buffers[i];
     }
@@ -144,23 +147,12 @@ StatsQuantile::~StatsQuantile()
     delete[] collapse_pos;
 }
 
-void
-StatsQuantile::reset()
-{
+void StatsQuantile::reset() {
     Stats::reset();
     init_buffers();
 }
 
-class doubleOrder {
-public:
-    inline bool operator() (double a, double b) {
-	return a < b;
-    }
-};
-
-void
-StatsQuantile::addQuantile(const double value)
-{
+void StatsQuantile::addQuantile(const double value) {
     if (cur_buffer_pos >= buffer_size) {
 	cur_buffer += 1;
 	cur_buffer_pos = 0;
@@ -186,19 +178,14 @@ StatsQuantile::addQuantile(const double value)
     cur_buffer_pos += 1;
 }
 
-void
-StatsQuantile::add(const double value)
-{
+void StatsQuantile::add(const double value) {
     Stats::add(value);
     addQuantile(value);
 }
 
-void
-StatsQuantile::add(const Stats &_stat)
-{
+void StatsQuantile::add(const Stats &_stat) {
     const StatsQuantile *stat = dynamic_cast<const StatsQuantile *>(&_stat);
-    INVARIANT(stat != NULL, 
-	      "need another StatsQuantile for add(Stats) to work");
+    INVARIANT(stat != NULL, "need another StatsQuantile for add(Stats) to work");
 
     Stats::add(_stat); 
 
@@ -270,9 +257,7 @@ StatsQuantile::add(const Stats &_stat)
 #endif
 
 // const because the only operation on class variables is a sort of buffers
-double
-StatsQuantile::getQuantile(double quantile) const
-{
+double StatsQuantile::getQuantile(double quantile) const {
     if (countll() == 0) {
 	return Double::NaN;
     }
@@ -402,16 +387,7 @@ StatsQuantile::getQuantile(double quantile) const
     return Double::NaN;
 }
 
-void
-StatsQuantile::collapse()
-{
-    // could do a more "in-place" collapse by first doing the walk, and
-    // for every entry which is not going to go into the final collation,
-    // replace it with a NaN; then move all the entries in the output 
-    // bucket which are not NaN's to the end, then collate again in order
-    // filling into the output location; this does in-place, but requires
-    // two walks over the larger data, and so may very well be slower
-    // it's also a lot more complex
+int StatsQuantile::collapseFindFirstBuffer() {
     double nentries = countll();
     INVARIANT(nentries < 1e+14, "getQuantile will fail now.");
 		 
@@ -425,28 +401,31 @@ StatsQuantile::collapse()
 	      "Whoa, collapse should always operate on at least two buffers");
     INVARIANT(buffer_level[first_buffer] >= 0,
 	      "Whoa, buffer level should be positive");
-    // first, sort each of the unsorted input buffers 
+    return first_buffer;
+}
+
+int64_t StatsQuantile::collapseSortBuffers(int first_buffer) {
     int64_t total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
 	total_weight += buffer_weight[i];
-	INVARIANT(buffer_weight[i] > 0,
-		  "Whoa, buffer_weight should be at least 1");
+	INVARIANT(buffer_weight[i] > 0, "Whoa, buffer_weight should be at least 1");
 	collapse_pos[i] = 0;
 	if (buffer_sorted[i]) {
-	    // could check for sortedness here, but we'll probably catch it
-	    // later
+	    // could re-verify sortedness here, but we'll probably catch it later
 	} else {
 	    INVARIANT(i == (nbuffers - 1) || buffer_weight[i] == 1,
 		      boost::format("Huh %d != %d // %d") % i 
 		      % (nbuffers - 1) % buffer_weight[i]);
 	    // sort the buffer
-	    sort(all_buffers[i],all_buffers[i] + buffer_size,
-		      doubleOrder());
+	    sort(all_buffers[i], all_buffers[i] + buffer_size, doubleOrder());
 	    buffer_sorted[i] = true;
 	} 
     }
-    
-    long long next_quantile_offset = 0;
+    return total_weight;
+}
+
+int64_t StatsQuantile::collapseNextQuantileOffset(int64_t total_weight) {
+    int64_t next_quantile_offset = 0;
     if ((total_weight % 2) == 0) {
 	if (collapse_even_low) {
 	    next_quantile_offset = total_weight / 2;
@@ -460,6 +439,24 @@ StatsQuantile::collapse()
     } else {
 	FATAL_ERROR("Huh?");
     }
+    return next_quantile_offset;
+}
+
+void StatsQuantile::collapse() {
+    // could do a more "in-place" collapse by first doing the walk, and
+    // for every entry which is not going to go into the final collation,
+    // replace it with a NaN; then move all the entries in the output 
+    // bucket which are not NaN's to the end, then collate again in order
+    // filling into the output location; this does in-place, but requires
+    // two walks over the larger data, and so may very well be slower
+    // it's also a lot more complex
+
+    int first_buffer = collapseFindFirstBuffer();
+
+    // first, sort each of the unsorted input buffers 
+    int64_t total_weight = collapseSortBuffers(first_buffer);
+    
+    int64_t next_quantile_offset = collapseNextQuantileOffset(total_weight);
 
     // Since we start counting at offset 0 (the paper starts at 1), we 
     // subtract one from the starting offset
@@ -474,6 +471,7 @@ StatsQuantile::collapse()
 	double min_val = Double::Inf;
 	int min_buffer = -1;
 	// find the buffer with the next smallest entry remaining
+	// TODO: re-do with priorityqueue
 	for(int i=first_buffer;i<nbuffers;i++) {
 	    if (collapse_pos[i] < buffer_size &&
 		all_buffers[i][collapse_pos[i]] < min_val) {
@@ -517,9 +515,7 @@ StatsQuantile::collapse()
     cur_buffer = first_buffer + 1;
 }
 
-void
-StatsQuantile::dumpState()
-{
+void StatsQuantile::dumpState() {
     printf("%d buffers, each containing %d entries\n",
 	   nbuffers,buffer_size);
     printf("cur buffer is %d, cur buffer pos is %d\n",
@@ -539,9 +535,7 @@ StatsQuantile::dumpState()
     }
 }
 
-void 
-StatsQuantile::printRome(int depth, ostream &out) const
-{
+void StatsQuantile::printRome(int depth, ostream &out) const {
     Stats::printRome(depth,out);
     string spaces;
     for(int i = 0; i < depth; i++) {
@@ -569,9 +563,7 @@ StatsQuantile::printRome(int depth, ostream &out) const
     }
 }
 
-void
-StatsQuantile::printFile(FILE *out, int nranges)
-{
+void StatsQuantile::printFile(FILE *out, int nranges) {
     ostringstream tmp;
     printTextRanges(tmp, nranges);
     fwrite(tmp.str().data(), tmp.str().size(), 1, out);
@@ -600,9 +592,7 @@ void StatsQuantile::printTextRanges(ostream &out, int nranges, double multiplier
     out << "\n";
 }
 
-void
-StatsQuantile::printTail(FILE *out)
-{
+void StatsQuantile::printTail(FILE *out) {
     ostringstream tmp;
     printTextTail(tmp);
     fwrite(tmp.str().data(), tmp.str().size(), 1, out);
@@ -629,9 +619,7 @@ void StatsQuantile::printTextTail(ostream &out, double multiplier) const {
     out << "\n";
 }
 
-void
-StatsQuantile::printText(ostream &out) const
-{
+void StatsQuantile::printText(ostream &out) const {
     printTextRanges(out);
     printTextTail(out);
 }

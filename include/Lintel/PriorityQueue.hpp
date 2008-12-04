@@ -36,7 +36,7 @@
 // };
 // 
 // struct priorityDataGeq {
-// bool operator()(const priorityData &a, const priorityData &b) {
+// bool operator()(const priorityData &a, const priorityData &b) const {
 //     return a.key >= b.key;
 // };
 //
