@@ -1,5 +1,5 @@
 /* -*-C++-*-
-   (c) Copyright 2005, Hewlett-Packard Development Company, LP
+   (c) Copyright 2005-2008, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -16,6 +16,7 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
+#include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
@@ -327,6 +328,12 @@ double StatsQuantile::getQuantile(double quantile) const {
 		 accum_gq_nelem += 1;)
 	double min_val = Double::Inf;
 	int min_buffer = -1;
+	// TODO: re-do this using the replaceTop stuff as done in
+	// collapse, it works much faster since it's halved the
+	// constants on the selection relative to the time when the
+	// previous comment went in.
+
+
 	// find the buffer with the next smallest entry remaining
 	// tried using the Buttress2 priority queue to do this, but it
 	// turned out to take about the same time as just doing the
@@ -442,6 +449,14 @@ int64_t StatsQuantile::collapseNextQuantileOffset(int64_t total_weight) {
     return next_quantile_offset;
 }
 
+namespace {
+    struct pairCmp {
+	bool operator()(const pair<double, int> &a, const pair<double, int> &b) const {
+	    return a.first >= b.first;
+	}
+    };
+}
+
 void StatsQuantile::collapse() {
     // could do a more "in-place" collapse by first doing the walk, and
     // for every entry which is not going to go into the final collation,
@@ -467,20 +482,19 @@ void StatsQuantile::collapse() {
     int64_t next_output_pos = 0;
     double prev_val = -Double::Inf;
 
+    // Because a double and int are small, it's faster to store the
+    // pair rather than do the double dereference each time to
+    // translate a buffer number into its value.
+    PriorityQueue<pair<double, int>, pairCmp> pq(nbuffers);
+    for(int i=first_buffer; i < nbuffers; ++i) {
+	pq.push(make_pair(collapseVal(i), i));
+    }
+
     while(next_output_pos < buffer_size) {
-	double min_val = Double::Inf;
-	int min_buffer = -1;
-	// find the buffer with the next smallest entry remaining
-	// TODO: re-do with priorityqueue
-	for(int i=first_buffer;i<nbuffers;i++) {
-	    if (collapse_pos[i] < buffer_size &&
-		all_buffers[i][collapse_pos[i]] < min_val) {
-		min_val = all_buffers[i][collapse_pos[i]];
-		min_buffer = i;
-	    }
-	}
-	INVARIANT(min_buffer >= 0, "Whoa, no minimal buffer?!");
-	INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");
+	int min_buffer = pq.top().second;
+	double min_val = pq.top().first;
+
+	DEBUG_INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");
 	prev_val = min_val;
 	collapse_pos[min_buffer] += 1;
 	// same logic as for output(), this entry is in positions
@@ -493,6 +507,13 @@ void StatsQuantile::collapse() {
 	    tmp_buffer[next_output_pos] = min_val;
 	    next_output_pos += 1;
 	    next_quantile_offset += total_weight;
+	}
+
+	if (collapse_pos[min_buffer] < buffer_size) {
+	    pq.replaceTop(make_pair(collapseVal(min_buffer), min_buffer));
+	} else {
+	    pq.pop();
+	    DEBUG_SINVARIANT(next_output_pos == buffer_size || !pq.empty());
 	}
     }
     INVARIANT(next_quantile_offset / total_weight == buffer_size,

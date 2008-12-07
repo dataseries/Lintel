@@ -45,7 +45,7 @@
 // The net effect of the above will be to return the data from smallest
 // key value to largest key value from the priority queue.
 
-template<class T,class LessImportant>
+template<class T, class LessImportant = std::less<T> >
 class PriorityQueue {
 public:
     PriorityQueue(int initial_size = 1024/sizeof(T)) 
@@ -53,6 +53,12 @@ public:
 	pq = new T[initial_size];
     }
 
+    PriorityQueue(const LessImportant &li, int initial_size = 1024/sizeof(T)) 
+	: lessimportant(li), size_available(initial_size), pq_size(0), resizeable(true) {
+	pq = new T[initial_size];
+    }
+
+    
     ~PriorityQueue() {
 	if (resizeable) {
 	    delete [] pq;
@@ -77,7 +83,7 @@ public:
     const T &top() const { DEBUG_SINVARIANT(!empty()); return pq[0]; }
     
     void pop() {
-	SINVARIANT(pq_size > 0);
+	DEBUG_SINVARIANT(pq_size > 0);
 	--pq_size;
 	if (pq_size > 0) {
 	    uint32_t cur_pos = 0;
@@ -120,6 +126,32 @@ public:
 	++pq_size;
     }
 
+    /// equivalent to this->pop(), this->push(val), but roughly 2x as
+    /// efficient
+    void replaceTop(const T &val) {
+	uint32_t cur_pos = 0;
+	while(1) {
+	    uint32_t down_left = 2*cur_pos + 1;
+	    if (down_left >= pq_size)
+		break;
+	    uint32_t down_right = down_left + 1;
+
+	    // First decide which side we would swap with
+	    uint32_t more_important_down = down_left;
+	    if (down_right < pq_size && lessimportant(pq[down_left], pq[down_right])) {
+		more_important_down = down_right;
+	    }
+	    if (lessimportant(val, pq[more_important_down])) {
+		pq[cur_pos] = pq[more_important_down];
+		cur_pos = more_important_down;
+	    } else {
+		break; // at final position
+	    }
+	}
+	DEBUG_SINVARIANT(cur_pos < pq_size);
+	pq[cur_pos] = val;
+    }
+	
     uint32_t size() const {
 	return pq_size;
     }

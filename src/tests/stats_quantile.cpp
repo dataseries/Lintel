@@ -304,7 +304,7 @@ void addPerformanceTest() {
     MersenneTwisterRandom mt;
     mt.randInt();
     int64_t start = Clock::todTfrac();
-    int64_t target_end = start + Clock::secondsToTfrac(5);
+    uint64_t target_end = start + Clock::secondsToTfrac(5);
     int64_t added = 0;
     while(Clock::todTfrac() < target_end) {
 	do {

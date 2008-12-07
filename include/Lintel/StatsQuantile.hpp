@@ -167,6 +167,10 @@ private:
     int *collapse_pos;
     bool collapse_even_low;
     int print_nrange;
+
+    double collapseVal(int buffer) const {
+	return all_buffers[buffer][collapse_pos[buffer]];
+    }
 };
 
 #endif
