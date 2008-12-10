@@ -74,16 +74,11 @@ public:
     ///        0.01      1e12     0.111 MiB
     ///        0.01      1e13     0.130 MiB
     /// \endverbatim
-    StatsQuantile(double quantile_error = 0.01, 
-		  long long Nbound = (long long)1000 * 1000 * 1000, 
-		  int print_nrange=10);
 
-    // this function is only here for some of the regression testing,
-    // the previous one should probably always be used.  The
-    // type_disambiguate string is only there because otherwise a call
-    // to the constructor that specifies (double, int) is ambiguous
-    StatsQuantile(const std::string &type_disambiguate, 
-		  int nbuffers, int buffer_size, int print_nrange = 10);
+    // TODO: keep around Nbound and verify when getQuantile is called.
+    StatsQuantile(double quantile_error = 0.01, 
+		  int64_t Nbound = 1000 * 1000 * 1000, 
+		  int print_nrange = 10);
 
     virtual ~StatsQuantile();
     virtual void reset();
@@ -126,6 +121,14 @@ public:
 
     /// How much memory will this StatsQuantile use? 
     size_t memoryUsage() const;
+
+    /// this function is only here for some of the regression testing,
+    /// the previous one should probably always be used.  The
+    /// type_disambiguate string is only there because otherwise a call
+    /// to the constructor that specifies (double, int) is ambiguous
+    StatsQuantile(const std::string &type_disambiguate, 
+		  int nbuffers, int buffer_size, int print_nrange = 10);
+
 private:
     // add for only the quantile portion
     void addQuantile(const double value);

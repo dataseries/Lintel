@@ -21,6 +21,7 @@
 #include <Lintel/Double.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/StatsQuantile.hpp>
+#include <Lintel/StringUtil.hpp>
 
 using namespace std;
 using boost::format;
@@ -58,8 +59,7 @@ static void checkPhi(StatsQuantile &stats, vector<double> &sorted_list,
 	accum_error += clock_1 - clock_0;
 #endif
 	INVARIANT(match_error <= position_error, 
-		  format("checkQuantiles error; %d > %d") % match_error
-		  % position_error);
+		  format("checkQuantiles error; %d > %d") % match_error % position_error);
 	exact_error.add(match_error);
 }
 
@@ -151,7 +151,7 @@ test_merge(MersenneTwisterRandom &mt,
     sort(sorted_list.begin(), sorted_list.end());
 
     for(uint32_t rep = 1; rep <= nreps; ++rep) {
-	cout << boost::format("  test round %d: loading... ") % rep;
+	cout << format("  test round %d: loading... ") % rep;
 	
 	StatsQuantile test1(epsilon, nelems), test2(epsilon, nelems);
 	for(int i=0; i < nelems; ++i) {
@@ -316,17 +316,29 @@ void addPerformanceTest() {
     int64_t end = Clock::todTfrac();
     double elapsed = Clock::TfracToDouble(end - start);
     
-    cout << boost::format("added %d entries in %.2fs, %.2fMadds/s")
+    cout << format("added %d entries in %.2fs, %.2fMadds/s")
 	% added % elapsed % (added/(1.0e6*elapsed));
+    exit(0);
+}
+
+void memoryUsage(double quantile_error, int64_t Nbound) {
+    StatsQuantile tmp(quantile_error, Nbound);
+
+    cout << format("%.6g quantile error, %.3g entries ==> %.3f MiB\n")
+	% quantile_error % static_cast<double>(Nbound) 
+	% (tmp.memoryUsage() / (1024.0*1024.0));
+    exit(0);
 }
 
 int main(int argc, char *argv[]) {
     Double::selfCheck(); // quantile was failing because of problems checked now in here
     if (argc == 2 && strcmp(argv[1],"add-performance") == 0) {
 	addPerformanceTest();
-	exit(0);
     }
 
+    if (argc == 4 && strcmp(argv[1], "memory-usage") == 0) {
+	memoryUsage(stringToDouble(argv[2]), stringToInteger<int64_t>(argv[3]));
+    }
     if (argc == 2 && strcmp(argv[1],"long") == 0) {
 	printf("Running long (10b entry) test (count to 100)...\n");
 	fflush(stdout);
@@ -383,11 +395,9 @@ int main(int argc, char *argv[]) {
 	StatsQuantile test("",3,10);
 	INVARIANT(test.count() == 0, "Count != 0");
 	INVARIANT(test.total() == 0, "Total != 0");
-	INVARIANT(isnan(test.getQuantile(0.0)),
-		  boost::format("Failed to get quantile, got %.2f")
+	INVARIANT(isnan(test.getQuantile(0.0)), format("Failed to get quantile, got %.2f")
 		  % test.getQuantile(0.0));
-	INVARIANT(isnan(test.getQuantile(0.99)), 
-		  boost::format("Failed to get quantile, got %.2f")
+	INVARIANT(isnan(test.getQuantile(0.99)), format("Failed to get quantile, got %.2f")
 		  % test.getQuantile(0.99));
 
 	// How about one sample??
@@ -411,14 +421,12 @@ int main(int argc, char *argv[]) {
 		continue;
 	    }
 	    INVARIANT(foo.getNBuffers() == eNbk_table[i][2],
-		      boost::format("mismatch on nbuffers for"
-				    " %.4g %.4g, %.4g != %.4g")
+		      format("mismatch on nbuffers for %.4g %.4g, %.4g != %.4g")
 		      % eNbk_table[i][0] % eNbk_table[i][1]
 		      % static_cast<double>(foo.getNBuffers())
 		      % eNbk_table[i][2]);
 	    INVARIANT(foo.getBufferSize() == eNbk_table[i][3],
-		      boost::format("mismatch on buffer size"
-				    " for %.4g %.4g, %.4g != %.4g")
+		      format("mismatch on buffer size for %.4g %.4g, %.4g != %.4g")
 		      % eNbk_table[i][0] % eNbk_table[i][1]
 		      % static_cast<double>(foo.getBufferSize())
 		      % eNbk_table[i][3]);
@@ -433,8 +441,7 @@ int main(int argc, char *argv[]) {
 	}
 	for(int i=0; i<1000; i++) {
 	    double v = test1.getQuantile(static_cast<double>(i+1)/1000.0);
-	    INVARIANT(v == i + 1000, boost::format("mismatch %.4g %f.4g")
-		      % v % (i+1000.0));
+	    INVARIANT(v == i + 1000, format("mismatch %.4g %f.4g") % v % (i+1000.0));
 	}
 	printf("Simple-1 (add sequential) quantile checking passed.\n");
 	
@@ -443,8 +450,7 @@ int main(int argc, char *argv[]) {
 	}
 	for(int i=0; i<2000; i++) {
 	    double v = test1.getQuantile(static_cast<double>(i+1)/2000.0);
-	    INVARIANT(v == i + 1000,
-		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
+	    INVARIANT(v == i + 1000, format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
 	printf("Simple-2 (more sequential) quantile checking passed.\n");
 	for(int i=4999;i>=3000;i--) {
@@ -452,8 +458,7 @@ int main(int argc, char *argv[]) {
 	}
 	for(int i=0;i<4000;i++) {
 	    double v = test1.getQuantile(static_cast<double>(i+1)/4000.0);
-	    INVARIANT(v == i + 1000,
-		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
+	    INVARIANT(v == i + 1000, format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
 	printf("Simple-3 (reverse sequential) quantile checking passed.\n");
 	for(int i=5000;i<8000;i+=2) {
@@ -464,8 +469,7 @@ int main(int argc, char *argv[]) {
 	}
 	for(int i=0;i<7000;i++) {
 	    double v = test1.getQuantile(static_cast<double>(i+1)/7000.0);
-	    INVARIANT(v == i + 1000,
-		      boost::format("mismatch %.4g %.4g") % v % (i+1000.0));
+	    INVARIANT(v == i + 1000, format("mismatch %.4g %.4g") % v % (i+1000.0));
 	}
 	printf("Simple-4 (skip sequential) quantile checking passed.\n");
     }
@@ -476,7 +480,7 @@ int main(int argc, char *argv[]) {
 	}
 	for(int i=0;i<30;i++) {
 	    double v = test2.getQuantile(static_cast<double>(i+1)/30.0);
-	    INVARIANT(v == i, boost::format("mismatch %.4g %d") % v % i);
+	    INVARIANT(v == i, format("mismatch %.4g %d") % v % i);
 	}
 	// this add will cause a collapse to occur on the first three
 	// buckets, the first buffer should now contain 
@@ -486,8 +490,7 @@ int main(int argc, char *argv[]) {
 	    double v = test2.getQuantile(static_cast<double>(i+1)/31.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i == 30) expect_v = 30;
-	    INVARIANT(v == expect_v, 
-		      boost::format("mismatch %.4g %.4g") % v % expect_v);
+	    INVARIANT(v == expect_v, format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	for(int i=31;i<50;i++) {
 	    test2.add(i);
@@ -498,8 +501,7 @@ int main(int argc, char *argv[]) {
 	    double v = test2.getQuantile(static_cast<double>(i+1)/50.0);
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = i;
-	    INVARIANT(v == expect_v,
-		      boost::format("mismatch %.4g %.4g") % v % expect_v);
+	    INVARIANT(v == expect_v, format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	// now collapse the second two buckets
 	test2.add(50);
@@ -511,8 +513,7 @@ int main(int argc, char *argv[]) {
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = 2 * (i / 2);
 	    if (i >= 50) expect_v = i;
-	    INVARIANT(v == expect_v,
-		      boost::format("mismatch %.4g %.4g") % v % expect_v);
+	    INVARIANT(v == expect_v, format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	for(int i=51;i<60;i++) {
 	    test2.add(i);
@@ -523,8 +524,7 @@ int main(int argc, char *argv[]) {
 	    double expect_v = 3 * (i / 3) + 1;
 	    if (i >= 30) expect_v = 2 * (i / 2);
 	    if (i >= 50) expect_v = i;
-	    INVARIANT(v == expect_v,
-		      boost::format("mismatch %.4g %.4g") % v % expect_v);
+	    INVARIANT(v == expect_v, format("mismatch %.4g %.4g") % v % expect_v);
 	}
 	// now collapse all three buckets
 	test2.add(60);
@@ -538,9 +538,7 @@ int main(int argc, char *argv[]) {
 	    if (i >= 30) expect_v = 6 * (i / 6) + 2;
 	    if (i >= 48) expect_v = 6 * (i / 6) + 3;
 	    if (i >= 60) expect_v = i;
-	    INVARIANT(v == expect_v,
-		      boost::format("mismatch #%d %.4g %.4g")
-		      % i % v % expect_v);
+	    INVARIANT(v == expect_v, format("mismatch #%d %.4g %.4g") % i % v % expect_v);
 	}
 	printf("Collapse-1 exact checking passed.\n");
     }
