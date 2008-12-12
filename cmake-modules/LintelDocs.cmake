@@ -9,10 +9,17 @@
 # your CMakeConfig.txt or wherever you have all the optional bits of
 # compilation.
 
-# Put LINTEL_DOCS_BUILD() in your doc/CMakeLists.txt file.  You can
-# set DOXYGEN_DEP_EXTRAS to list extra dependencies for the doxygen
-# run.  By default it will list files in project-root/include and
-# build-root/include, although the latter is likely to be flakey.
+# Put LINTEL_DOCS_BUILD() in your doc/CMakeLists.txt file.  
+# Configuration variables: 
+#   - DOXYGEN_DEP_EXTRAS: list extra dependencies for the doxygen
+#     run.  By default it will list files in project-root/include and
+#     build-root/include, although the latter is likely to be flakey.
+#   - DOXYGEN_EXAMPLE_PATH: where should examples be found?  Defaults
+#     to project-root/src/example
+#   - DOXYGEN_EXTRA_INPUTS: where should additional inputs be found?
+#     Default list is project-root/include and build-root/include
+#   - DOXYGEN_EXTRA_DOTFILE_DIRS: additional .dot file directories
+#     Default is project-root/doc/doxygen-figures
 
 # If you need to customize the doxygen config, copy
 # .../share/Lintel/doxygen.config.in to docs/doxygen.config.in, and
@@ -44,6 +51,10 @@ ENDMACRO(LINTEL_DOCS_CONFIG)
 
 MACRO(LINTEL_DOCS_BUILD)
     IF(DOCUMENTATION_ENABLED)
+	IF(NOT DEFINED DOXYGEN_EXAMPLE_PATH)
+	    SET(DOXYGEN_EXAMPLE_PATH ${${PACKAGE_NAME}_SOURCE_DIR}/src/example)
+	ENDIF(NOT DEFINED DOXYGEN_EXAMPLE_PATH)
+
         FIND_FILE(DOXYGEN_CONFIG_IN
 	    	  doxygen.config.in
 		  PATHS ${CMAKE_HOME_DIRECTORY}/doc
