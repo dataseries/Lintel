@@ -1,4 +1,4 @@
-#!@PERL_BINARY@ -w
+#!@PERL_PATH@ -w
 # -*- Perl -*-
 #
 #  (c) Copyright 2004-2006, Hewlett-Packard Development Company, LP
@@ -755,7 +755,7 @@ sub start_gnuplot {
 	  unless -e $fifoname;
     my $pid = fork;
     if ($pid == 0) {
-	  eval {exec "gnuplot < $fifoname";};
+	  eval {exec "@GNUPLOT_PATH@ < $fifoname";};
 	  exit(1);
     }
     select(undef,undef,undef,0.25); # wait a little for it to start.
@@ -836,7 +836,7 @@ sub pngplot {
     print "pstopnm... ";
     my $dblw = $width * 2;
     my $dblh = $height * 2;
-    my $cmd = "pstopnm -xsize $dblw -ysize $dblh -xborder .025 -yborder .025 psplot-$$..ps >err.$$ 2>&1";
+    my $cmd = "@PSTOPNM_PATH@ -xsize $dblw -ysize $dblh -xborder .025 -yborder .025 psplot-$$..ps >err.$$ 2>&1";
     my $ret = system($cmd);
     if ($ret != 0) {
 	print "Error running '$cmd'\n";
@@ -857,7 +857,7 @@ sub pngplot {
     }
     unlink ("err.$$");
     print "pnmscale... ";
-    $cmd = "pnmscale 0.5 psplot-$$.001.ppm >psplot-$$.001s.ppm";
+    $cmd = "@PNMSCALE_PATH@ 0.5 psplot-$$.001.ppm >psplot-$$.001s.ppm";
     $ret = system($cmd);
     if ($ret != 0) {
 	print "Error running '$cmd'\n";
@@ -869,7 +869,7 @@ sub pngplot {
     }
     
     print "pnmtopng... ";
-    $cmd = "pnmtopng -compression 9 psplot-$$.001s.ppm >$png_filename";
+    $cmd = "@PNMTOPNG_PATH@ -compression 9 psplot-$$.001s.ppm >$png_filename";
     $ret = system($cmd);
     if ($ret != 0) {
 	print "Error running '$cmd'\n";

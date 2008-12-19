@@ -11,6 +11,8 @@
 # LINTEL_FIND_HEADER(variable header) sets ${variable}_INCLUDE_DIR,
 #   ${variable}_INCLUDES, and ${variable}_ENABLED.
 #
+#   Normally you would use LINTEL_WITH_HEADER or LINTEL_REQUIRED_HEADER
+#
 #   The header must exist if ${variable}_FIND_REQUIRED is set.
 #   It also sets up an option WITH_${variable} unless
 #   ${variable}_FIND_REQUIRED is on.  It sets ${variable}_ENABLED based
@@ -23,14 +25,18 @@
 #   ${variable}_LIBRARIES, and ${variable}_ENABLED after calling
 #   LINTEL_FIND_HEADER to find the header.
 #
+#   Normally you would use LINTEL_WITH_LIBRARY or LINTEL_REQUIRED_LIBRARY
+#
 #   The library must exist if ${variable}_FIND_REQUIRED is set.  You
 #   can set ${variable}_EXTRA_LIBRARIES to specify extra libraries to
 #   put in the ${variable}_LIBRARIES variable.  ${variable}_LIBRARY
 #   will be set to the file containing the library without any of its
 #   dependencies.
 
-# LINTEL_FIND_PROGRAM(variable program) sets ${variable}_PATH  The program
-#   must exist if ${variable}_FIND_REQUIRED is set.
+# LINTEL_FIND_PROGRAM(variable program) sets ${variable}_PATH The
+#   program must exist if ${variable}_FIND_REQUIRED is set.  
+#
+#   Normally you would use LINTEL_WITH_PROGRAM or LINTEL_REQUIRED_PROGRAM
 
 # LINTEL_WITH_*(...) adds an option WITH_${variable}, and sets
 #   ${variable}_ENABLED if the thing was found and we should use it.  If
@@ -234,7 +240,6 @@ MACRO(LINTEL_FIND_PROGRAM variable program)
     ENDIF(${variable}_FIND_REQUIRED)
 
     IF(${variable}_PATH)
-        SET(${variable}_FOUND ON)
         IF(NOT ${variable}_FIND_QUIETLY)
             MESSAGE(STATUS "Found program ${program} as ${${variable}_PATH}")
         ENDIF(NOT ${variable}_FIND_QUIETLY)
@@ -245,11 +250,11 @@ MACRO(LINTEL_WITH_PROGRAM variable program)
     LINTEL_FIND_PROGRAM(${variable} ${program})
 
     SET(WITH_${variable} ON CACHE BOOL "Enable compilation using program ${program}")
-    IF(WITH_${variable} AND ${variable}_FOUND)
+    IF(WITH_${variable} AND ${variable}_PATH)
 	SET(${variable}_ENABLED ON)
-    ELSE(WITH_${variable} AND ${variable}_FOUND)
+    ELSE(WITH_${variable} AND ${variable}_PATH)
         SET(${variable}_ENABLED OFF)
-    ENDIF(WITH_${variable} AND ${variable}_FOUND)
+    ENDIF(WITH_${variable} AND ${variable}_PATH)
 
     IF(WITH_${variable} AND NOT ${variable}_ENABLED)
         MESSAGE(STATUS "WITH_${variable} on, but could not find program ${program}")

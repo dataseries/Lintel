@@ -10,7 +10,22 @@
 */
 
 /** @file
-    compiler markup operations (gcc and visual c++), with header to 
+    compiler markup operations (gcc and visual c++)
+
+    Function attribute usage: To specify an attribute on a function,
+    either noreturn or deprecated, you have to put something at the
+    beginning and the end of the function.  For example:
+    FUNC_DEPRECATED_PREFIX int foo() FUNC_DEPRECATED;
+
+    Conditional direction compiler hint:
+    \verbatim
+    
+    if (LIKELY(expr)) { 
+        // usually true branch 
+    } else if (UNLIKELY(expr2)) {
+        // usually false branch
+    }
+    \endverbatim
 */
 
 #ifndef LINTEL_COMPILER_MARKUP_HPP
@@ -21,47 +36,31 @@
 // some of the linux include files define these names.
 
 #if __GNUC__ > 3 || (__GNUC__ == 3 && __GNUC_MINOR__ >= 1)
-// # define inline         inline __attribute__ ((always_inline))
-// # define __pure         __attribute__ ((pure))
-// # define __const        __attribute__ ((const))
-#define FUNC_ATTR_NORETURN     __attribute__ ((noreturn))
-#define FUNC_DEPRECATED __attribute__ ((deprecated))
+// # define ALWAYS_INLINE        inline __attribute__ ((always_inline))
+// # define FUNC_PURE         __attribute__ ((pure))
+// # define FUNC_CONST        __attribute__ ((const))
+#    define FUNC_ATTR_NORETURN_PREFIX
+#    define FUNC_ATTR_NORETURN     __attribute__ ((noreturn))
+#    define FUNC_DEPRECATED_PREFIX
+#    define FUNC_DEPRECATED __attribute__ ((deprecated))
+#    define LIKELY(x)      __builtin_expect ((x), 1)
+#    define UNLIKELY(x)    __builtin_expect ((x), 0)
 // # define __malloc       __attribute__ ((malloc))
 // # define __must_check   __attribute__ ((warn_unused_result))
-# define LIKELY(x)      __builtin_expect ((x), 1)
-# define UNLIKELY(x)    __builtin_expect ((x), 0)
+#elif defined(_MSC_VER)
+#    define FUNC_ATTR_NORETURN_PREFIX __declspec(noreturn)
+#    define FUNC_ATTR_NORETURN
+#    define FUNC_DEPRECATED_PREFIX __declspec(deprecated)
+#    define FUNC_DEPRECATED
+#    define LIKELY(x) (x)
+#    define UNLIKELY(x) (x)
 #else
-
-/* this is a start at a visual c++ version. Unfortunately, it
-   will not work as written, as the specs have to go in a different
-   spot than gcc. e.g.:
-
-   int f(int) __attribute__((deprecated));   	[spec last for gcc]
-   __declspec(deprecated) int f(int);		[spec first for MSC]
-
-   I'm sure there is some macro/metaprogramming magic that can be done
-   to make this portable, but I don't know what it is :-(
-
-#ifdef _MSC_VER
-#define FUNC_ATTR_NORETURN __declspec(noreturn)
-#define FUNC_DEPRECATED __declspec(deprecated)
-#define LIKELY(x) (x)
-#define UNLIKELY(x) (x)
-#else
-
-*/
-
-
-// # define inline         /* no inline attribute support */
-// # define __pure         /* no pure attribute support */
-// # define __const        /* no const attribute support */
-#define FUNC_ATTR_NORETURN     /* no noreturn attribute support */
-#define FUNC_DEPRECATED
-// # define __malloc       /* no malloc attribute support */
-// # define __must_check   /* no warn_unused_result attribute support */
-// # define __deprecated   /* no deprecated attribute support */
-# define LIKELY(x)      (x)
-# define UNLIKELY(x)    (x)
+#    define FUNC_ATTR_NORETURN_PREFIX
+#    define FUNC_ATTR_NORETURN     /* no noreturn attribute support */
+#    define FUNC_DEPRECATED_PREFIX
+#    define FUNC_DEPRECATED
+#    define LIKELY(x)      (x)
+#    define UNLIKELY(x)    (x)
 #endif
 
 #endif
