@@ -99,10 +99,10 @@ namespace lintel {
 	/// @param name option name, will match with --name; should be a static string
 	/// @param desc option description, will be printed when --help/-h is used; 
 	///             should be a static string
-	/// @param default_val default value for the option
+	/// @param in_default_val default value for the option
 	ProgramOption(const std::string &name, const std::string &desc, 
-		      const T &_default_val = T())
-	    : default_val(_default_val)
+		      const T &in_default_val = T())
+	    : default_val(in_default_val)
 	{
 	    init(name, desc, boost::bind(&ProgramOption<T>::save, this, _1));
 	}

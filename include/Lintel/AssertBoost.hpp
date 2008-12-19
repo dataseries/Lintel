@@ -57,11 +57,12 @@ FUNC_ATTR_NORETURN_PREFIX void AssertBoostFail(const char *expression, const cha
 FUNC_ATTR_NORETURN_PREFIX void AssertBoostFail(const char *expression, const char *file, int line,
 					       const std::string &format) FUNC_ATTR_NORETURN;
 
-// TODO: Need to wrap try blocks in these expressions because
-// the boost format library can throw the exception during initial parsing
-// which is before we call into AssertBoostFail, and so the exception
-// checks that are in there don't apply.
+// Need to wrap try blocks in these expressions because the boost
+// format library can throw the exception during initial parsing which
+// is before we call into AssertBoostFail, and so the exception checks
+// that are in there don't apply.
 
+/// Unconditional fatal errors 
 #define FATAL_ERROR(MessagE)   	       	       	       	       	       	          \
     do {								          \
         try {								          \
@@ -78,6 +79,7 @@ FUNC_ATTR_NORETURN_PREFIX void AssertBoostFail(const char *expression, const cha
 // Use LIKELY to optimize for expected direction of tests; would like
 // to put the try block around the expression, but unless try blocks
 // are "free" then we greatly increase the cost of an invariant.
+/// Possible errors with a message.
 #define INVARIANT(ExpressioN, MessagE)                                                \
     do {                                                                              \
         if (LIKELY(ExpressioN)) {                                                     \

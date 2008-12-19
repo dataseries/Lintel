@@ -24,6 +24,7 @@
 #include <boost/config.hpp>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/Stats.hpp>
 
 #if __HP_aCC
@@ -51,7 +52,7 @@ extern "C" {
 #define HAVE_RDTSCLL 1
 #endif
 
-//TODO: how to determine processor architecture?
+//TODO: how to determine processor architecture on windows?
 #if defined(BOOST_MSVC)
 namespace {
 uint64_t rdtsc(void) {
@@ -77,11 +78,13 @@ void rdtscll(uint64_t &val) {
 /// representations.  3) functions for configuring how it operates. 4)
 /// utility functions either for external or internal use.
 ///
-/// TODO: deprecate Tdbl; it's just not safe, there is just barely enough
-/// precision to represent us with doubles, and when you subtract them, you
-/// get things like .934us for the minimum separation.  Probably switch
-/// entirely to the use of Tfrac, change it to an int64 so substraction works
-/// sanely, and rename it T.
+/// TODO: deprecate Tdbl; it's just not safe, there is just barely
+/// enough precision to represent us with doubles, and when you
+/// subtract them, you get things like .934us for the minimum
+/// separation.  Probably switch entirely to the use of Tfrac, change
+/// it to an int64 so substraction works sanely, and rename it T.
+/// Stage 1 deprecation begun, see functions marked as deprecated.
+/// Functions to be removed 2009-06-01 or later.
 
 class Clock {
 public:
@@ -141,8 +144,15 @@ public:
     // Might want to switch to using clock_gettime() instead of
     // gettimeofday() for more accuracy; measurements indicate there
     // is no more precision the clock_gettime at least on linux
-    static Tdbl tod() {
+    /// Will be deprecated, but used in header, so deprecating in stages
+    static Tdbl tod() { 
 	return tod_epoch_internal(0);
+    }	
+
+    static Tfrac todTfrac() {
+	struct timeval t;
+	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
+	return secMicroToTfrac(t.tv_sec,t.tv_usec);
     }	
 
     Tdbl tod_epoch() {
@@ -168,29 +178,31 @@ public:
     inline Tdbl todcc_incremental() {
 	uint64_t cur_cc = getCycleCounter();
 	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
-	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
+	if (UNLIKELY(cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles)) {
 	    return todcc_recalibrate();
 	} else {
-	    double delta_us = (uint32_t)delta_cc * inverse_clock_rate;
+	    double delta_us = (int32_t)delta_cc * inverse_clock_rate;
 	    return last_calibrate_tod + delta_us;
 	}
     }
 
-    // TODO: add check for last_cc not going backwards which also indicates
-    // a core switch
+    // Unfortunately, at least on 32bit core2 duo (T2600), this is
+    // 1.25x slower than todcc_incremental, but that's life, doubles
+    // don't have enough precision, and doing the epoch thing make it
+    // hard to get the code right.
     inline Tfrac todccTfrac_incremental() {
 	uint64_t cur_cc = getCycleCounter();
 	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
 	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
 	    return secondsToTfrac(todcc_recalibrate()*1e-6);
 	} else {
-	    double delta_us = static_cast<uint32_t>(delta_cc) 
-		* inverse_clock_rate_tfrac;
-	    return last_calibrate_tod_tfrac + static_cast<Tfrac>(delta_us);
+	    last_cc = cur_cc;
+	    double delta_tfrac = static_cast<uint32_t>(delta_cc) * inverse_clock_rate_tfrac;
+	    return last_calibrate_tod_tfrac + static_cast<uint32_t>(delta_tfrac);
 	}
     }
     
-    inline Tdbl todcc() {
+    FUNC_DEPRECATED_PREFIX inline Tdbl todcc() FUNC_DEPRECATED {
 	// PIII based machines (all I have to test) are faster in 
 	// incremental mode.  Tested an opteron 2.8GhZ, also faster
 	// in incremental mode
@@ -207,7 +219,7 @@ public:
     
     inline Tfrac todccTfrac() {
 #if LINTEL_CLOCK_CYCLECOUNTER == 0
-	return secondsToTfrac(todcc_recalibrate()*1e-6);
+	return todTfrac();
 #elif defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
 	return todccTfrac_incremental();
 #else
@@ -218,7 +230,10 @@ public:
     /// How many micro seconds should elapse between recalibrations;
     /// default is 500us.  TODO: measure and figure out a smarter way
     /// to set this.
-    void setRecalibrateInterval(Tdbl interval_us);
+    FUNC_DEPRECATED_PREFIX void setRecalibrateInterval(Tdbl interval_us) FUNC_DEPRECATED;
+
+    /// How many seconds should elapse between recalibrations?  Default is 1ms
+    void setRecalibrateIntervalSeconds(double seconds = 1e-3); 
 
     /// What epoch (in seconds since 1970) should be used for the
     /// return value from todcc{,_direct,_incremental}(); this is
@@ -227,20 +242,14 @@ public:
     /// available in a Tdbl.
     void setTodccEpoch(unsigned seconds);
 
-    void setTodccEpoch() {
+    FUNC_DEPRECATED_PREFIX void setTodccEpoch() FUNC_DEPRECATED {
 	// An hour ago
 	setTodccEpoch(static_cast<unsigned>(Clock::tod() * 1e-6) - 3600);
     }
 
-    Tdbl getTodccEpochTdbl() { 
+    FUNC_DEPRECATED_PREFIX Tdbl getTodccEpochTdbl() FUNC_DEPRECATED { 
 	return static_cast<Tdbl>(epoch_offset) * 1.0e6;
     }
-
-    static Tfrac todTfrac() {
-	struct timeval t;
-	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
-	return secMicroToTfrac(t.tv_sec,t.tv_usec);
-    }	
 
     //////////////////////////////////////////
     /// Tfrac conversion routines...
