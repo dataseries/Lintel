@@ -167,7 +167,7 @@ template <> struct HashMap_hash<const foo> {
 	// from hashbytes, which will make up a start hash if one
 	// isn't provided.
 	uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
-	return HashTable_hashbytes(a.str.data(), a.str.size(), partial_hash);
+	return lintel::hashBytes(a.str.data(), a.str.size(), partial_hash);
     }
 };
 

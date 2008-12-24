@@ -121,7 +121,7 @@ public:
     class hteHash {
     public:
 	unsigned int operator()(const ConstantStringValue *k) const {
-	    return HashTable_hashbytes(ConstantString_c_str(k),ConstantString_length(k));
+	    return lintel::hashBytes(ConstantString_c_str(k),ConstantString_length(k));
 	}
     };
     class hteEqual {

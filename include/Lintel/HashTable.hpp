@@ -17,15 +17,23 @@
 #include <vector>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/HashFns.hpp>
 #include <Lintel/Stats.hpp>
 
 // these used to be in the global namespace; preserve that for now.
-// TODO: stop with them in the global namespace.
+// TODO-2009-06-01: remove deprecated functions
+FUNC_DEPRECATED_PREFIX inline uint32_t 
+BobJenkinsHash(const uint32_t prev_hash, const void *bytes, const size_t size) FUNC_DEPRECATED;
+
 inline uint32_t BobJenkinsHash(const uint32_t prev_hash,
 			       const void *bytes, const size_t size) {
     return lintel::bobJenkinsHash(prev_hash, bytes, size);
 }
+FUNC_DEPRECATED_PREFIX inline uint32_t 
+HashTable_hashbytes(const void *bytes, const size_t size, 
+		    const uint32_t prev_hash) FUNC_DEPRECATED;
+
 inline uint32_t HashTable_hashbytes(const void *bytes, const size_t size,
 				    const uint32_t prev_hash = 1972) { 
     return lintel::hashBytes(bytes, size, prev_hash);
