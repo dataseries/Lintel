@@ -137,29 +137,29 @@ public:
     /// value even if there is an existing value v that is Equal(data,
     /// v).
     D *add(const D &data) {
-	uint32_t hashof_ = hashof(data);
-	return internal_add(data, hashof_);
+	uint32_t hashof = doHash(data);
+	return internalAdd(data, hashof);
     }
 
     /// Add in a new entry to the hash table if the key does not
     /// exist.  If the key does exist, replace the existing data.
     D *addOrReplace(const D &data, bool &replaced) {
-	uint32_t hashof_ = hashof(data);
-	hte *chain = internal_lookup(data, hashof_);
+	uint32_t hashof = doHash(data);
+	hte *chain = internal_lookup(data, hashof);
 	if (chain != NULL) {
 	    replaced = true;
 	    return &(chain->data);
 	} else {
 	    replaced = false;
-	    return internal_add(data, hashof_);
+	    return internalAdd(data, hashof);
 	}
     }
 
     // changing the key in the returned key/value data will of course
     // totally screw up the hash table.
     D *lookup(const D &data) {
-	uint32_t hashof_ = hashof(data);
-	hte *chain = internal_lookup(data, hashof_);
+	uint32_t hashof = doHash(data);
+	hte *chain = internal_lookup(data, hashof);
 	if (chain != NULL) {
 	    return &(chain->data);
 	} else {
@@ -169,8 +169,8 @@ public:
 
     /// const version of lookup, hence returns constant data.
     const D *lookup(const D &data) const {
-	uint32_t hashof_ = hashof(data);
-	const hte *chain = internal_lookup(data, hashof_);
+	uint32_t hashof = doHash(data);
+	const hte *chain = internal_lookup(data, hashof);
 	if (chain != NULL) {
 	    return &(chain->data);
 	} else {
@@ -226,7 +226,7 @@ public:
 		      "remove failed, hash table is empty");
 	    return false;
 	}
-	uint32_t hash = hashof(key) % entry_points.size();
+	uint32_t hash = doHash(key) % entry_points.size();
 	int32_t loc = entry_points[hash];
 	if (loc == -1) {
 	    INVARIANT(must_exist == false,
@@ -235,6 +235,7 @@ public:
 	}
 
 	bool ret = true;
+	++free_list_size;
 	if (equal(key,chains[loc].data)) {
 	    chains[loc].data = D();
 	    entry_points[hash] = chains[loc].next;
@@ -265,6 +266,7 @@ public:
 
      void clear() {
 	 free_list = -1;
+	 free_list_size = 0;
 	 chains.clear();
 	 for(uint32_t i=0;i<entry_points.size();i++) {
 	     entry_points[i] = -1;
@@ -405,7 +407,7 @@ public:
 	if (entry_points.size() == 0) {
 	    return end();
 	}
-	uint32_t hash = hashof(key) % entry_points.size();
+	uint32_t hash = doHash(key) % entry_points.size();
 	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
 	    if (equal(key,chains[i].data)) {
 		return iterator(*this, hash, i);
@@ -442,7 +444,7 @@ public:
 	if (entry_points.size() == 0) {
 	    return end();
 	}
-	uint32_t hash = hashof(key) % entry_points.size();
+	uint32_t hash = doHash(key) % entry_points.size();
 	for(int32_t i=entry_points[hash];i != -1; i=chains[i].next) {
 	    if (equal(key, chains[i].data)) {
 		return const_iterator(*this, hash, i);
@@ -451,14 +453,10 @@ public:
 	return end();
     }
 
-    // TODO: count the size of the free list so this function is constant
-    // time rather than linear in the number of currently free entries.
     uint32_t size() const {
-	uint32_t size = chains.size();
-	for(int32_t i = free_list; i != -1; i = chains[i].next) {
-	    size--;
-	}
-	return size;
+	DEBUG_SINVARIANT(verifyFreeListSize());
+	DEBUG_SINVARIANT(chains.size() >= free_list_size);
+	return chains.size() - free_list_size;
     }
 
     bool empty() const {
@@ -517,12 +515,24 @@ public:
 	return chains;
     }
 
+    /// Paranoid internal check, run in debug mode on calls to size()
+    bool verifyFreeListSize() const {
+	uint32_t fls = 0;
+	for(int32_t i = free_list; i != -1; i = chains[i].next) {
+	    ++fls;
+	}
+	INVARIANT(fls == free_list_size, boost::format("bad free list size %d != %d")
+		  % fls % free_list_size);
+	return true;
+	
+    }
+
 private:
-    uint32_t hashof(const D &data) const {
+    uint32_t doHash(const D &data) const {
 	return static_cast<uint32_t>(hashfn(data));
     }
 
-    D *internal_add(const D &data, uint32_t hashof_) {
+    D *internalAdd(const D &data, uint32_t hashof) {
 	if (free_list == -1 && 
 	    chains.size() >= target_chain_length * entry_points.size()) {
 	    resizeHashTable();
@@ -530,8 +540,9 @@ private:
 
 	INVARIANT(entry_points.size() > 0, 
 		  "did not call init() already? probably a static hash table, which is not safe, see Lintel/src/tests/init-order-test.C");
-	uint32_t hash = hashof_ % entry_points.size();
+	uint32_t hash = hashof % entry_points.size();
 	if (free_list == -1) {
+	    DEBUG_SINVARIANT(free_list_size == 0);
 	    hte v(data, entry_points[hash]);
 	    DEBUG_SINVARIANT(hash < entry_points.size());
 	    entry_points[hash] = static_cast<int>(chains.size());
@@ -541,6 +552,8 @@ private:
 	    int32_t loc = free_list;
 	    
 	    free_list = chains[free_list].next;
+	    DEBUG_SINVARIANT(free_list_size > 0);
+	    --free_list_size;
 	    chains[loc].data = data;
 	    chains[loc].next = entry_points[hash];
 	    entry_points[hash] = loc;
@@ -549,7 +562,7 @@ private:
     }
 
     template<class V, class C> static inline V *
-    static_internal_lookup(C *me, const D &key, uint32_t hashof) {
+    staticInternalLookup(C *me, const D &key, uint32_t hashof) {
 	if (me->entry_points.size() == 0) {
 	    return NULL;
 	}
@@ -564,11 +577,11 @@ private:
     }
 
     hte *internal_lookup(const D &key, uint32_t hashof) {
-	return static_internal_lookup<hte>(this, key, hashof);
+	return staticInternalLookup<hte>(this, key, hashof);
     }
 
     const hte *internal_lookup(const D &key, uint32_t hashof) const {
-	return static_internal_lookup<const hte>(this, key, hashof);
+	return staticInternalLookup<const hte>(this, key, hashof);
     }
 
     void init(double _tcl) {
@@ -578,6 +591,7 @@ private:
 	if (entry_points.capacity() == 0) {
 	    // only do this if we haven't already done the init in add()
 	    free_list = -1;
+	    free_list_size = 0;
 	    // make the "have we initted" call in add() only have
 	    // to test a single possibility
 	    entry_points.reserve(1); 
@@ -587,6 +601,7 @@ private:
 
     HashTable &assign(const HashTable &__in) {
 	free_list = __in.free_list;
+	free_list_size = __in.free_list_size;
 	chains = __in.chains;
 	entry_points = __in.entry_points;
 	target_chain_length = __in.target_chain_length;
@@ -602,7 +617,7 @@ private:
     // are fine.
 
     void resizeHashTable() {
-	SINVARIANT(free_list == -1);
+	SINVARIANT(free_list == -1 && free_list_size == 0);
 	uint32_t old_size = entry_points.size();
 	uint32_t new_size;
 	uint32_t i;
@@ -622,13 +637,14 @@ private:
 	}
 
 	for(i=0;i<chains.size();i++) {
-	    uint32_t hash = hashof(chains[i].data) % new_size;
+	    uint32_t hash = doHash(chains[i].data) % new_size;
 	    chains[i].next = entry_points[hash];
 	    entry_points[hash] = i;
 	}
     }
     
-    int32_t free_list; // for chains
+    int32_t free_list; // pointer into chains
+    uint32_t free_list_size; 
     hte_vectorT chains;
     hash_tableT entry_points;
     double target_chain_length;

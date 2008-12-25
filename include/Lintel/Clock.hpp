@@ -52,7 +52,7 @@ extern "C" {
 #define HAVE_RDTSCLL 1
 #endif
 
-//TODO: how to determine processor architecture on windows?
+// TODO-windows: how to determine processor architecture on windows?
 #if defined(BOOST_MSVC)
 namespace {
 uint64_t rdtsc(void) {

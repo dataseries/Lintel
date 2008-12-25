@@ -142,9 +142,11 @@ int main()
     }
     SINVARIANT(collisiontable.size() == 100);
 
-    // remove the keys
+    // remove, add, remove the keys
     for(int i=0;i<100;i++) {
 	collisiontable.remove(i, true);
+	collisiontable.add(i);
+	collisiontable.remove(i);
     }
     SINVARIANT(collisiontable.size() == 0);
     
@@ -170,9 +172,12 @@ int main()
 	SINVARIANT(*i >= 0 && *i < maxi);
 	SINVARIANT(table.find(*i) == i);
     }
+    table.add(777777);
+    table.remove(777777); // have something removed when copying
     printf("test copying...\n");
     inttable table2;
     table2 = table;
+    SINVARIANT(table2.size() == table.size());
     for(int i=0;i<maxi;i++) {
 	SINVARIANT(table2.lookup(i) != NULL);
 	SINVARIANT(*table2.lookup(i) == i);
