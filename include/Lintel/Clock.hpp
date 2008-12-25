@@ -78,7 +78,7 @@ void rdtscll(uint64_t &val) {
 /// representations.  3) functions for configuring how it operates. 4)
 /// utility functions either for external or internal use.
 ///
-/// TODO: deprecate Tdbl; it's just not safe, there is just barely
+/// TODO-2009-06-01: deprecate Tdbl; it's just not safe, there is just barely
 /// enough precision to represent us with doubles, and when you
 /// subtract them, you get things like .934us for the minimum
 /// separation.  Probably switch entirely to the use of Tfrac, change

@@ -36,7 +36,7 @@ void test_isLocked() {
 }
 
 void test_orderingGroup() {
-    PThreadLockOrderingGroup ordering_group;
+    LockOrderingGroup ordering_group;
 
     PThreadMutex level1, level2, level3;
 
