@@ -150,12 +150,12 @@ void Clock::calibrateClock(bool print_calibration_information,
 		select(0,NULL,NULL,NULL,&timeout);
 
 		clock_s = Clock::tod();
-		tick_s = now();
+		tick_s = cycleCounter();
 		for(volatile int d=0;d<ndelay*10000;d++) {
 		    /* empty */
 		}
 		clock_e = Clock::tod();
-		tick_e = now();
+		tick_e = cycleCounter();
 
 		Tll tick_d = tick_e - tick_s;
 		Tdbl us_d = clock_e - clock_s;
@@ -197,9 +197,9 @@ void Clock::calibrateClock(bool print_calibration_information,
 		    std::vector<Tll> elapsed;
 		    const int nelapsed = 100;
 		    for(int i=0;i<nelapsed;i++) {
-			Tll start_cycle = now();
+			Tll start_cycle = cycleCounter();
 			tod();
-			Tll end_cycle = now();
+			Tll end_cycle = cycleCounter();
 			Tll delta = end_cycle - start_cycle;
 			elapsed.push_back(delta);
 		    }
@@ -302,9 +302,9 @@ Clock::Tdbl Clock::todcc_recalibrate() {
     // above some low water mark for how long the gettod takes, for
     // example, above the 10% rate from calibrateClock()
 
-    uint64_t start_cycle = now();
+    uint64_t start_cycle = cycleCounter();
     Clock::Tdbl cur_us = tod_epoch();
-    uint64_t end_cycle = now();
+    uint64_t end_cycle = cycleCounter();
     INVARIANT(cur_us >= last_calibrate_tod,
 	      format("Whoa, tod_epoch() went backwards %.2f < %.2f")
 	      % cur_us % last_calibrate_tod);
@@ -458,17 +458,17 @@ void Clock::timingTest() {
 	nreps = 0;
 	double last_now;
 	last_now = start = myclock.todcc_recalibrate();
-	Clock::Tll last_cc = Clock::now();
+	Clock::Tll last_cc = Clock::cycleCounter();
 	INVARIANT((recalibrate_interval / inverse_clock_rate) < (double)(1 << 30),
 		  "bad recalibrate");
 	unsigned int recalibrate_cycles = (int)(recalibrate_interval / inverse_clock_rate);
 	while(1) {
 	    nreps += 1;
 	    Tdbl now;
-	    Clock::Tll delta_cc = Clock::now() - last_cc;
+	    Clock::Tll delta_cc = Clock::cycleCounter() - last_cc;
 	    if (delta_cc < 0 || delta_cc > recalibrate_cycles) {
 		last_now = now = myclock.todcc_recalibrate();
-		last_cc = Clock::now();
+		last_cc = Clock::cycleCounter();
 	    } else {
 		double delta_us = (int)delta_cc * inverse_clock_rate;
 		now = last_now + delta_us;
@@ -511,7 +511,7 @@ void Clock::timingTest() {
 	double offset;
 	{
 	    double cur_us = Clock::tod();
-	    double est_us = Clock::now()/clock_rate;
+	    double est_us = Clock::cycleCounter()/clock_rate;
 	    offset = cur_us - est_us;
 	}
 
@@ -519,13 +519,13 @@ void Clock::timingTest() {
 	start = myclock.todcc_recalibrate();
 	while(1) {
 	    nreps += 1;
-	    Clock::Tdbl cur_us = Clock::now()/clock_rate + offset;
+	    Clock::Tdbl cur_us = Clock::cycleCounter()/clock_rate + offset;
 	    if (cur_us < myclock.last_calibrate_tod ||
 		(cur_us - myclock.last_calibrate_tod) > recalibrate_interval) {
 		//		printf("recalibrate %.2f // %.2f",cur_us, cur_us - myclock.last_calibrate_tod);
 		cur_us = myclock.todcc_recalibrate();
 		//		printf(" to %.0f\n",cur_us);
-		offset = cur_us - Clock::now()/clock_rate;
+		offset = cur_us - Clock::cycleCounter()/clock_rate;
 		myclock.last_calibrate_tod = cur_us;
 	    }
 	    if ((cur_us - start) > measurement_time) {
@@ -547,7 +547,7 @@ void Clock::timingTest() {
 	double start_double = start;
 	while(1) {
 	    nreps += 1;
-	    double cur_us = (double)Clock::now() * inverse_clock_rate + myclock.cycle_count_offset;
+	    double cur_us = (double)Clock::cycleCounter() * inverse_clock_rate + myclock.cycle_count_offset;
 	    if (cur_us < myclock.last_calibrate_tod ||
 		(cur_us - myclock.last_calibrate_tod) > recalibrate_interval) {
 		cur_us = myclock.todcc_recalibrate();
@@ -574,15 +574,15 @@ void Clock::timingTest() {
 	Clock::Tll last_now;
 	Clock::Tll startll = Clock::todll();
 	last_now = startll;
-	Clock::Tll last_cc = Clock::now();
+	Clock::Tll last_cc = Clock::cycleCounter();
 	while(1) {
 	    Clock::Tll now;
 	    nreps += 1;
-	    Clock::Tll cur_cc = Clock::now();
+	    Clock::Tll cur_cc = Clock::cycleCounter();
 	    Clock::Tll delta_cc = cur_cc - last_cc;
 	    if (delta_cc < 0 || delta_cc > recalibrate_cycles) {
 		last_now = now = myclock.todll();
-		last_cc = Clock::now();
+		last_cc = Clock::cycleCounter();
 	    } else {
 		int delta_us = (int)((int)delta_cc * inverse_clock_rate);
 		now = last_now + delta_us;
@@ -623,10 +623,10 @@ void Clock::timingTest() {
 	nreps = 0;
 	Clock::Tll elapsed_cycles = (Clock::Tll)(measurement_time / inverse_clock_rate);
 	start = myclock.tod();
-	Clock::Tll start_cc = Clock::now();
+	Clock::Tll start_cc = Clock::cycleCounter();
 	while(1) {
 	    nreps += 1;
-	    Clock::Tll now_cc = Clock::now();
+	    Clock::Tll now_cc = Clock::cycleCounter();
 	    if ((now_cc - start_cc) > elapsed_cycles) {
 		break;
 	    }
@@ -758,15 +758,15 @@ void Clock::timingTest() {
 	}
 
 	nzeros = 0;
-	Clock::Tll last_now = Clock::now();
+	Clock::Tll last_now = Clock::cycleCounter();
 	for(unsigned i = 0; i < nreps; ++i) {
-	    Clock::Tll cur_now = Clock::now();
+	    Clock::Tll cur_now = Clock::cycleCounter();
 	    if (cur_now == last_now) {
 		++nzeros;
 	    }
 	    last_now = cur_now;
 	}
-	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps with Clock::now(); %.2f%%\n",
+	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps with Clock::cycleCounter(); %.2f%%\n",
 	       nzeros, nreps-nzeros, nreps, 100.0*nzeros/nreps);
     }
 #endif    

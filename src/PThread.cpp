@@ -49,7 +49,7 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
     if (nprocs == 0) {
 	// automatically set on windows, and hence cygwin.
         if (const char* result = getenv("NUMBER_OF_PROCESSORS")) {
-            nprocs = stringToUInt32(result);
+            nprocs = stringToInteger<uint32_t>(result);
 	    INVARIANT(nprocs > 0, "NUMBER_OF_PROCESSORS must be > 0");
 #ifdef __linux__
 	} else if (1) {

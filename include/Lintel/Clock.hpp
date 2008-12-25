@@ -112,7 +112,7 @@ public:
 
     Clock(bool allow_calibration = false);
 
-    static uint64_t getCycleCounter() {
+    static uint64_t cycleCounter() {
 	uint64_t ret = 0;
 #if defined(__HP_aCC)
 	readControlRegister16(&ret);
@@ -127,9 +127,14 @@ public:
 #endif
 	return ret;
     }
-    static uint64_t now() {
-	// TODO: deprecate this
-	return getCycleCounter();
+
+    // TODO-2009-06-01: remove now, getCycleCounter()
+    FUNC_DEPRECATED_PREFIX static uint64_t now() FUNC_DEPRECATED {
+	return cycleCounter();
+    }
+
+    FUNC_DEPRECATED_PREFIX static uint64_t getCycleCounter() FUNC_DEPRECATED {
+	return cycleCounter();
     }
   
     /////////////////////////////////////////
@@ -165,7 +170,7 @@ public:
     // Clock object for each of them, for example via Clock::perThread()
 
     inline Tdbl todcc_direct() {
-	uint64_t cur_cc = getCycleCounter();
+	uint64_t cur_cc = cycleCounter();
 	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
 	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
 	    return todcc_recalibrate();
@@ -176,7 +181,7 @@ public:
     }
 
     inline Tdbl todcc_incremental() {
-	uint64_t cur_cc = getCycleCounter();
+	uint64_t cur_cc = cycleCounter();
 	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
 	if (UNLIKELY(cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles)) {
 	    return todcc_recalibrate();
@@ -191,7 +196,7 @@ public:
     // don't have enough precision, and doing the epoch thing make it
     // hard to get the code right.
     inline Tfrac todccTfrac_incremental() {
-	uint64_t cur_cc = getCycleCounter();
+	uint64_t cur_cc = cycleCounter();
 	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
 	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
 	    return secondsToTfrac(todcc_recalibrate()*1e-6);

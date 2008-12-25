@@ -36,29 +36,24 @@ class LintelStlNotes {
 
     \section Data Structures
 
-    \list Double-ended queue: Deque
-
-    \list Priority queue: PriorityQueue
+      - Double-ended queue: Deque
+      - Priority queue: PriorityQueue
     
     \section Stats
 
-    \list Basic statistics: Stats
-
-    \list Quantile statistics: StatsQuantile
+      - Basic statistics: Stats
+      - Quantile statistics: StatsQuantile
 
     \section Programs
 
-    \list Graphing: \b mercury-plot
-
-    \list Software checkout, building, committing, reviewing: \b deptool
-
-    \list Parallel command execute: \b batch-parallel
-
-    \list File locking: \b flock
+      - Graphing: \b mercury-plot
+      - Software checkout, building, committing, reviewing: \b deptool
+      - Parallel command execute: \b batch-parallel
+      - File locking: \b flock
 
     \section Misc
 
-    \list Notes on using the stl: LintelStlNotes
+      - Notes on using the stl: LintelStlNotes
 
     \bug Missing references to lots of the other bits.
 */
