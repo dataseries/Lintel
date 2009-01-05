@@ -1,4 +1,4 @@
-#!@PERL_BINARY@ -w
+#!@PERL_PATH@ -w
 # -*- Perl -*-
 #
 #  (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
@@ -88,12 +88,6 @@ pod2usage(-verbose => 2) if $print_manpage;
 usage("missing command line arguments") 
     unless @ARGV >= 1;
 
-if (-d "$ENV{HOME}/.bp_modules") {
-    # TODO: remove this 2008-06-01 or later
-    warn "You have the obsolete ~/.bp_modules directory. It should be moved to
-~/.batch-parallel/modules\n";
-    unshift(@INC,"$ENV{HOME}/.bp_modules");
-}
 unshift(@INC, "$ENV{HOME}/.batch-parallel/modules");
 
 die "can't specify both groupsize and maxgroups"

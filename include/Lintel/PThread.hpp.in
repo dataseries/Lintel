@@ -20,9 +20,6 @@
 #include <Lintel/Clock.hpp>
 #include <Lintel/LockOrderingGroup.hpp>
 
-// TODO: remove this.
-typedef LockOrderingGroup PThreadLockOrderingGroup;
-
 #if __linux__
 extern "C" {
   int pthread_mutexattr_setkind_np(pthread_mutexattr_t *attr, int kind);
@@ -183,7 +180,7 @@ public:
     /// Define this lock as part of an ordered group; it is ok to take
     /// a lock at a higher level, but not one at a lower level.
     PThreadScopedLock(PThreadScopedOnlyMutex &_mutex, 
-		      PThreadLockOrderingGroup &group, double _mutex_level) 
+		      LockOrderingGroup &group, double _mutex_level) 
 	: mutex(_mutex), ordering_group(NULL), mutex_level(_mutex_level)
     {
 	old_level = group.scopeDown(mutex_level);
@@ -209,7 +206,7 @@ public:
 private:
     friend class PThreadScopedUnlock;
     PThreadScopedOnlyMutex &mutex;
-    PThreadLockOrderingGroup *ordering_group;
+    LockOrderingGroup *ordering_group;
     double old_level, mutex_level;
 };
 

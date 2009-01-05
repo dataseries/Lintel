@@ -75,7 +75,6 @@ public:
     ///        0.01      1e13     0.130 MiB
     /// \endverbatim
 
-    // TODO: keep around Nbound and verify when getQuantile is called.
     StatsQuantile(double quantile_error = 0.01, 
 		  int64_t Nbound = 1000 * 1000 * 1000, 
 		  int print_nrange = 10);
@@ -88,7 +87,7 @@ public:
     // and may double the error bounds.
     virtual void add(const Stats &stat); 
 
-    double getQuantile(double quantile) const;
+    double getQuantile(double quantile, bool allow_invalid_nbound = false) const;
 
     int getBufferSize() { return buffer_size; }
     int getNBuffers() { return nbuffers; }
@@ -142,6 +141,7 @@ private:
     void collapse();
 
     const double quantile_error;
+    const int64_t Nbound;
 
     int buffer_size, nbuffers;
 

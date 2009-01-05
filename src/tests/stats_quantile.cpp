@@ -22,6 +22,7 @@
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/StatsQuantile.hpp>
 #include <Lintel/StringUtil.hpp>
+#include <Lintel/TestUtil.hpp>
 
 using namespace std;
 using boost::format;
@@ -104,7 +105,7 @@ static void checkQuantiles(StatsQuantile &stats, vector<double> &sorted_list,
 	double phi = (double)(i+1) / (double)stats.count();
 	checkPhi(stats, sorted_list, exact_error, epsilon, phi);
     }
-
+    printf("\n");
     // Check 1000 equally spaced intervals.
     for(double phi = 0; phi < 1; phi += 0.001) {
 	checkPhi(stats, sorted_list, exact_error, epsilon, phi);
@@ -330,6 +331,18 @@ void memoryUsage(double quantile_error, int64_t Nbound) {
     exit(0);
 }
 
+void checkNboundTests() {
+    StatsQuantile test(0.01, 10000);
+
+    for(int i=0; i < 20000; ++i) {
+	test.add(i);
+    }
+
+    TEST_INVARIANTMSG(test.getQuantile(0.5), "Error: 20000 (# entries in quantile) > 10000 (Nbound on quantile)");
+    test.getQuantile(0.5, true);
+    cout << "check nbound tests passed.\n";
+}
+
 int main(int argc, char *argv[]) {
     Double::selfCheck(); // quantile was failing because of problems checked now in here
     if (argc == 2 && strcmp(argv[1],"add-performance") == 0) {
@@ -406,6 +419,10 @@ int main(int argc, char *argv[]) {
 	INVARIANT(test.total() == 99.9, "Total != 0");
 	INVARIANT(test.getQuantile(0.0) == 99.9, "Failed to get quantile");
 	INVARIANT(test.getQuantile(0.99) == 99.9, "Failed to get quantile");
+    }
+
+    if (true) {
+	checkNboundTests();
     }
 
     if (true) {

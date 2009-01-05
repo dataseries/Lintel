@@ -34,19 +34,14 @@ void test_splitjoin() {
 
 // TODO: change this to test stringToInteger instead
 void test_stringtoint32() {
-    SINVARIANT(stringToInt32("77737373") == 77737373);
-    SINVARIANT(stringToInt32("-2133324") == -2133324);
-    SINVARIANT(stringToInt32("0x1234abcd", 16) == 305441741);
-    SINVARIANT(stringToInt64("0x1234abcdef5678", 16) == 5124462079858296LL);
+    SINVARIANT(stringToInteger<int32_t>("77737373") == 77737373);
+    SINVARIANT(stringToInteger<int32_t>("-2133324") == -2133324);
+    SINVARIANT(stringToInteger<int32_t>("0x1234abcd", 16) == 305441741);
+    SINVARIANT(stringToInteger<int64_t>("0x1234abcdef5678", 16) == 5124462079858296LL);
 
-#ifdef __CYGWIN__
-    TEST_INVARIANTMSG(SINVARIANT(stringToInt32("abcdef") == 5),
+    TEST_INVARIANTMSG(SINVARIANT(stringToInteger<int32_t>("abcdef") == 5),
 		      "error converting 'abcdef' to integer");
-#else
-    TEST_INVARIANTMSG(SINVARIANT(stringToInt32("abcdef") == 5),
-		      "error converting 'abcdef' to integer");
-#endif
-    TEST_INVARIANTMSG(SINVARIANT(stringToInt32("0xghi", 16) == 0),
+    TEST_INVARIANTMSG(SINVARIANT(stringToInteger<int32_t>("0xghi", 16) == 0),
 		      "error converting '0xghi' to integer");
 }
 

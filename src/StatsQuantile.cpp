@@ -16,12 +16,39 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
+#include <Lintel/HashMap.hpp>
 #include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
 
 namespace {
+    struct ErrorNbound {
+	double quantile_error;
+	int64_t nbound;
+	ErrorNbound() : quantile_error(0), nbound(0) { }
+	ErrorNbound(double a, int64_t b) : quantile_error(a), nbound(b) { }
+	
+	uint32_t hash() const {
+	    uint32_t a = static_cast<uint32_t>(quantile_error * 1e9);
+	    uint32_t b = nbound >> 32;
+	    uint32_t c = nbound & 0xFFFFFFFFU;
+	    return lintel::BobJenkinsHashMix3(a, b, c);
+	}
+
+	bool operator == (const ErrorNbound &rhs) const {
+	    return quantile_error == rhs.quantile_error && nbound == rhs.nbound;
+	}
+    };
+
+    struct BK {
+	uint16_t b, k;
+	BK() : b(0), k(0) { }
+	BK(uint16_t in_b, uint16_t in_k) : b(in_b), k(in_k) { }
+    };
+
+    HashMap<ErrorNbound, BK> bk_cache;
+
     double fact(double a) {
 	double ret = 1.0;
 	for(double i = 2;i<=a;i++) {
@@ -44,43 +71,56 @@ namespace {
     
 }
 
-StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _print_nrange)
-    : quantile_error(_quantile_error), 
-    print_nrange(_print_nrange)
+StatsQuantile::StatsQuantile(double _quantile_error, long long in_nbound, int _print_nrange)
+    : quantile_error(_quantile_error), Nbound(in_nbound < 100 ? 100 : in_nbound), 
+      print_nrange(_print_nrange)
 {
     // sanity check that we haven't been called in a weird/wrong way.
-    INVARIANT(quantile_error < 0.2, 
-	      boost::format("whoa, quantile_error %.3g >= 0.2??") 
+    INVARIANT(quantile_error < 0.2, boost::format("whoa, quantile_error %.3g >= 0.2??") 
 	      % quantile_error);
-    double Nbound = _Nbound; // easy for calculations
-    INVARIANT(Nbound >= 100, boost::format("whoa, nbound of %.0f?") % Nbound);
-    // The hunt for b = nbuffers, and k = buffer_size is on, following 
-    // section 4.5 in the paper
-
+    double tmp_nbound = Nbound; // easy for calculations
+    INVARIANT(in_nbound > 1, boost::format("whoa, nbound of %.0f?") % tmp_nbound);
     int best_b = -1, best_k = -1;
-    const int max_b = 30;
-    const int max_h = 40;
-    for(int b=2;b<max_b;b++) {
-	int h = 3;
-	for(;h < max_h;h++) {
-	    double v = (h-2) * choose(b+h-2,h-1) - choose(b+h-3,h-3) + choose(b+h-3,h-2);
-	    if (v > 2 * quantile_error * Nbound) {
-		--h; // this one is too high
-		break;
+
+    // If we are making lots of smallish StatsQuantiles, we can spend
+    // too much of our time doing this, so cache the sizes.
+    BK *cache = bk_cache.lookup(ErrorNbound(quantile_error, Nbound));
+
+    if (cache != NULL) {
+	best_b = cache->b;
+	best_k = cache->k;
+    } else {
+	// The hunt for b = nbuffers, and k = buffer_size is on, following 
+	// section 4.5 in the paper
+
+	const int max_b = 30;
+	const int max_h = 40;
+	for(int b=2;b<max_b;b++) {
+	    int h = 3;
+	    for(;h < max_h;h++) {
+		double v = (h-2) * choose(b+h-2,h-1) - choose(b+h-3,h-3) + choose(b+h-3,h-2);
+		if (v > 2 * quantile_error * tmp_nbound) {
+		    --h; // this one is too high
+		    break;
+		}
+	    }
+	    double k = ceil(tmp_nbound / choose(b+h-2,h-1));
+	    if (b * k < 1.0e9) {
+		if (best_b == -1 || b * k < best_b * best_k) {
+		    best_b = b;
+		    best_k = (int)k;
+		} 
 	    }
 	}
-	double k = ceil(Nbound / choose(b+h-2,h-1));
-	if (b * k < 1.0e9) {
-	    if (best_b == -1 || b * k < best_b * best_k) {
-		best_b = b;
-		best_k = (int)k;
-	    } 
+	if (bk_cache.size() > 1000) { // keep the cache small
+	    bk_cache.clear();
 	}
-    }
-    
+	bk_cache[ErrorNbound(quantile_error, Nbound)] = BK(best_b, best_k);
+    }    
     INVARIANT(best_b > 0 && best_k > 0,
 	      boost::format("unable to find b/k for %.8g %.8g")
-	      % quantile_error % Nbound);
+	      % quantile_error % tmp_nbound);
+
     // lower bound sanity value
     if (best_k < 10) best_k = 10;
     // First requirement makes the logic setting the buffer_level faster
@@ -88,9 +128,10 @@ StatsQuantile::StatsQuantile(double _quantile_error, long long _Nbound, int _pri
     init(best_b, best_k);
 }
 
+// fake Nbound, big enough for tests
 StatsQuantile::StatsQuantile(const string &type_disambiguate,
 			     int _nbuffers, int _buffer_size, int _print_nrange)
-    : quantile_error(Double::NaN), print_nrange(_print_nrange)
+    : quantile_error(Double::NaN), Nbound(5000000), print_nrange(_print_nrange)
 {
     init(_nbuffers, _buffer_size);
 }
@@ -258,10 +299,14 @@ void StatsQuantile::add(const Stats &_stat) {
 #endif
 
 // const because the only operation on class variables is a sort of buffers
-double StatsQuantile::getQuantile(double quantile) const {
-    if (countll() == 0) {
+double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) const {
+    int64_t count = countll();
+    if (count == 0) {
 	return Double::NaN;
     }
+    INVARIANT(count <= Nbound || allow_invalid_nbound,
+	      boost::format("Error: %d (# entries in quantile) > %d (Nbound on quantile)")
+	      % count % Nbound);
     SQTIMING(Clock::T gq_time_0 = Clock::now();)
     INVARIANT(quantile >= 0.0 && quantile <= 1.0, "quantile out of bounds");
     // this is slightly different than the algorithm in the paper; the 

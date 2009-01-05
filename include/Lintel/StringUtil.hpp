@@ -108,8 +108,15 @@ T stringToInteger(const std::string &str, int base = 10) {
     return ret;
 }
 
-// TODO: deprecate *all*the stringToX functions in favor of stringToInteger
-// TODO: deprecate stringToLong, stringToLongLong in favor of [u]int{32,64}
+// TODO-2009-06-01: deprecate *all*the stringToX functions in favor of stringToInteger
+FUNC_DEPRECATED_PREFIX inline long stringToLong(const std::string &str, int base) FUNC_DEPRECATED;
+FUNC_DEPRECATED_PREFIX inline long long stringToLongLong(const std::string &str, int base) FUNC_DEPRECATED;
+FUNC_DEPRECATED_PREFIX inline int32_t stringToInt32(const std::string &str, int base) FUNC_DEPRECATED;
+FUNC_DEPRECATED_PREFIX inline uint32_t stringToUInt32(const std::string &str, int base) FUNC_DEPRECATED;
+FUNC_DEPRECATED_PREFIX inline int64_t stringToInt64(const std::string &str, int base) FUNC_DEPRECATED;
+FUNC_DEPRECATED_PREFIX inline uint64_t stringToUInt64(const std::string &str, int base) FUNC_DEPRECATED;
+
+
 /** same as strtol, but bails out if the string isn't valid */
 inline long stringToLong(const std::string &str, int base = 10) {
     return stringToInteger<long>(str, base);

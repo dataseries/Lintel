@@ -40,13 +40,23 @@ IF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}")
     MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs '${BOOST_THREAD_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
 ENDIF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
 
-# TODO: make this optional and optionalize all of the things that need it.
-FIND_PROGRAM(PERL_BINARY perl)
-IF (NOT PERL_BINARY)
-    MESSAGE(FATAL_ERROR "ERROR: Could NOT find perl; would not be able to build batch-parallel, deptool, lintel-flock, mercury-plot")
-ENDIF(NOT PERL_BINARY)
-
 ##### Optional bits
+
+LINTEL_WITH_PROGRAM(PERL perl)
+LINTEL_WITH_PROGRAM(GNUPLOT gnuplot)
+LINTEL_WITH_PROGRAM(PSTOPNM pstopnm)
+LINTEL_WITH_PROGRAM(PNMSCALE pnmscale)
+LINTEL_WITH_PROGRAM(PNMTOPNG pnmtopng)
+
+IF(PERL_ENABLED AND GNUPLOT_ENABLED AND PSTOPNM_ENABLED AND PNMSCALE_ENABLED AND PNMTOPNG_ENABLED)
+    SET(MERCURY_PLOT_ENABLED ON)
+ELSE(PERL_ENABLED AND GNUPLOT_ENABLED AND PSTOPNM_ENABLED AND PNMSCALE_ENABLED 
+     AND PNMTOPNG_ENABLED)
+     MESSAGE("Could not find all of perl, gnuplot, pstopnm, pnmscale, pnmtopng; mercury-plot will not be built")
+    SET(MERCURY_PLOT_ENABLED OFF)
+ENDIF(PERL_ENABLED AND GNUPLOT_ENABLED AND PSTOPNM_ENABLED AND PNMSCALE_ENABLED 
+      AND PNMTOPNG_ENABLED)
+
 
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
 # Package for detecting if we are in a virtual machine...
@@ -181,4 +191,3 @@ ENDIF(WITH_LATEX)
 
 LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp boost_program_options)
 
-# TODO: add dependencies on gnuplot, pstopnm, netpbm for mercury.

@@ -166,7 +166,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 }
 
 void AssertBoostFail(const char *expression, const char *file, int line,
-		     boost::format &format) {
+		     const boost::format &format) {
     string msg;
     try {
 	msg = format.str();

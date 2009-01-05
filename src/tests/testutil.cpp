@@ -12,8 +12,12 @@
 #include <Lintel/TestUtil.hpp>
 
 int main(int argc, char *argv[]) {
+    INVARIANT(true, "...");
     TEST_INVARIANTMSG(FATAL_ERROR("die now"), "die now");
-
+    TEST_INVARIANTMSG(INVARIANT(false, boost::format("foo %s") % "bar"), "foo bar");
+    TEST_INVARIANTMSG(SINVARIANT(false), "No additional details provided");
+    TEST_INVARIANTMSG(FATAL_ERROR(boost::format("%1% %d")), 
+		      "Exception evaluating boost::format(\"%1% %d\")");
     TEST_INVARIANTMSG(INVARIANT(1 == 0, "expected to fail"), "wrong test msg");
     
     FATAL_ERROR("should not get here");

@@ -38,38 +38,37 @@ double Clock::inverse_clock_rate_tfrac = -Double::Inf;
 Clock::Tll Clock::max_recalibrate_measure_time = 10000000000LL;
 Stats Clock::calibrate;
 
-static Clock::AllowUnsafeFreqScalingOpt allow_unsafe_frequency_scaling 
-    = Clock::AUFSO_No;
+static Clock::AllowUnsafeFreqScalingOpt allow_unsafe_frequency_scaling = Clock::AUFSO_No;
 static bool may_have_frequency_scaling = true; 
-class Clock_Tll_Order {
-public:
-    inline bool operator() (Clock::Tll a, Clock::Tll b) {
-	return a < b;
+
+namespace {
+    class Clock_Tll_Order {
+    public:
+	inline bool operator() (Clock::Tll a, Clock::Tll b) const {
+	    return a < b;
+	}
+    };
+
+    string readFileLine(const string &filename) {
+	// After much searching on the web, I can't establish that I can
+	// get errno after opening an ifstream.  Most examples just assume
+	// opens succeed, a few check file.good() and just say they can't
+	// open the file.
+
+	FILE *f = fopen(filename.c_str(), "r");
+	if (f == NULL) {
+	    return "";
+	}
+	static const unsigned bufsize = 80; // long enough for how we are using it.
+	char buf[bufsize]; 
+	fgets(buf, bufsize, f);
+	unsigned len = strlen(buf);
+	SINVARIANT(len > 0 && buf[len-1] == '\n');
+	buf[len-1] = '\0';
+	return string(buf);
     }
-};
 
-static string readFileLine(const string &filename)
-{
-    // After much searching on the web, I can't establish that I can
-    // get errno after opening an ifstream.  Most examples just assume
-    // opens succeed, a few check file.good() and just say they can't
-    // open the file.
-
-    FILE *f = fopen(filename.c_str(), "r");
-    if (f == NULL) {
-	return "";
-    }
-    static const unsigned bufsize = 80; // long enough for how we are using it.
-    char buf[bufsize]; 
-    fgets(buf, bufsize, f);
-    unsigned len = strlen(buf);
-    SINVARIANT(len > 0 && buf[len-1] == '\n');
-    buf[len-1] = '\0';
-    return string(buf);
-}
-
-static void checkForPossibleFrequencyScaling()
-{
+    void checkForPossibleFrequencyScaling() {
 #ifdef __linux__
 	const string cpu_dir("/sys/devices/system/cpu");
 	DIR *dir = opendir(cpu_dir.c_str());
@@ -104,32 +103,30 @@ static void checkForPossibleFrequencyScaling()
 	may_have_frequency_scaling = true;
 #endif
 
-    if (!may_have_frequency_scaling) {
-	// great.
-    } else if (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast ||
-	       allow_unsafe_frequency_scaling == Clock::AUFSO_WarnSlow) {
-	cerr << "Warning, frequency scaling may be enabled on at least one cpu.\n"
-	     << "This program is using Clock::todcc*, and may therefore get\n";
-	if (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast) {
-	    cerr << "incorrect times back." << endl;
-	} else {
-	    cerr << "slower than expected time operations." << endl;
+	if (!may_have_frequency_scaling) {
+	    // great.
+	} else if (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast ||
+		   allow_unsafe_frequency_scaling == Clock::AUFSO_WarnSlow) {
+	    cerr << "Warning, frequency scaling may be enabled on at least one cpu.\n"
+		 << "This program is using Clock::todcc*, and may therefore get\n";
+	    if (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast) {
+		cerr << "incorrect times back." << endl;
+	    } else {
+		cerr << "slower than expected time operations." << endl;
+	    }
+	} else if (allow_unsafe_frequency_scaling == Clock::AUFSO_No) {
+	    FATAL_ERROR("frequency scaling enabled on at least one cpu; configuration disallows use of Clock::todcc()");
 	}
-    } else if (allow_unsafe_frequency_scaling == Clock::AUFSO_No) {
-	FATAL_ERROR("frequency scaling enabled on at least one cpu; configuration disallows use of Clock::todcc()");
     }
 }
 
-void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow)
-{
+void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
     allow_unsafe_frequency_scaling = allow;
 }
 
-void
-Clock::calibrateClock(bool print_calibration_information, 
-		      double max_conf95_rel,
-		      int print_calibration_warnings_after_tries)
-{
+void Clock::calibrateClock(bool print_calibration_information, 
+			   double max_conf95_rel,
+			   int print_calibration_warnings_after_tries) {
     Tdbl clock_s, clock_e;
     Tll tick_s, tick_e;
 
@@ -153,12 +150,12 @@ Clock::calibrateClock(bool print_calibration_information,
 		select(0,NULL,NULL,NULL,&timeout);
 
 		clock_s = Clock::tod();
-		tick_s = now();
+		tick_s = cycleCounter();
 		for(volatile int d=0;d<ndelay*10000;d++) {
 		    /* empty */
 		}
 		clock_e = Clock::tod();
-		tick_e = now();
+		tick_e = cycleCounter();
 
 		Tll tick_d = tick_e - tick_s;
 		Tdbl us_d = clock_e - clock_s;
@@ -200,9 +197,9 @@ Clock::calibrateClock(bool print_calibration_information,
 		    std::vector<Tll> elapsed;
 		    const int nelapsed = 100;
 		    for(int i=0;i<nelapsed;i++) {
-			Tll start_cycle = now();
+			Tll start_cycle = cycleCounter();
 			tod();
-			Tll end_cycle = now();
+			Tll end_cycle = cycleCounter();
 			Tll delta = end_cycle - start_cycle;
 			elapsed.push_back(delta);
 		    }
@@ -253,12 +250,10 @@ Clock::Clock(bool allow_calibration)
 	calibrateClock();
 	SINVARIANT(clock_rate > 0);
     }
-    setRecalibrateInterval(500);
+    setRecalibrateIntervalSeconds();
 }
 
-void
-Clock::bindToProcessor(unsigned proc)
-{
+void Clock::bindToProcessor(unsigned proc) {
 #ifdef HPUX_ACC
     IVNARIANT(proc < pthread_num_processors_np(), "Invalid processor #");
     pthread_spu_t answer;
@@ -274,9 +269,7 @@ Clock::bindToProcessor(unsigned proc)
 #endif
 }
 
-void
-Clock::unbindFromProcessor()
-{
+void Clock::unbindFromProcessor() {
 #ifdef HPUX_ACC
     pthread_spu_t answer;
     int ret = pthread_processor_bind_np(PTHREAD_BIND_ADVISORY_NP, &answer,
@@ -285,9 +278,7 @@ Clock::unbindFromProcessor()
 #endif
 }
 
-Clock::Tdbl
-Clock::todcc_recalibrate()
-{
+Clock::Tdbl Clock::todcc_recalibrate() {
     if (may_have_frequency_scaling) {
 	if (allow_unsafe_frequency_scaling == AUFSO_WarnSlow ||
 	    allow_unsafe_frequency_scaling == AUFSO_Slow) {
@@ -311,9 +302,9 @@ Clock::todcc_recalibrate()
     // above some low water mark for how long the gettod takes, for
     // example, above the 10% rate from calibrateClock()
 
-    uint64_t start_cycle = now();
+    uint64_t start_cycle = cycleCounter();
     Clock::Tdbl cur_us = tod_epoch();
-    uint64_t end_cycle = now();
+    uint64_t end_cycle = cycleCounter();
     INVARIANT(cur_us >= last_calibrate_tod,
 	      format("Whoa, tod_epoch() went backwards %.2f < %.2f")
 	      % cur_us % last_calibrate_tod);
@@ -336,30 +327,36 @@ Clock::todcc_recalibrate()
 	cycle_count_offset = cur_us - est_us;
 	last_calibrate_tod = cur_us;
 	last_calibrate_tod_tfrac = secondsToTfrac(last_calibrate_tod*1e-6);
-	last_recalibrate_cc = end_cycle;
+	last_recalibrate_cc = last_cc = end_cycle;
 	++nrecalibrate;
     }
     
     return cur_us;
 }
 
-void
-Clock::setRecalibrateInterval(Tdbl interval_us)
-{
-    last_cc = 0;
-    recalibrate_interval = interval_us;
-    // This check is needed so that the (int) cast in
-    // todcc_incremental is correct; and the (int) cast
-    // results in a reasonable speedup 1<< 30 is conservative.
-    INVARIANT(recalibrate_interval * clock_rate < (double)(1 << 30),
-	      format("using too large a recalibration interval on too fast a machine %.2f, %.2f")
-	      % recalibrate_interval % clock_rate);
-    recalibrate_interval_cycles = (Tll)(recalibrate_interval  * clock_rate);
+void Clock::setRecalibrateInterval(Tdbl interval_us) {
+    setRecalibrateIntervalSeconds(interval_us * 1e-6);
 }
 
-void 
-Clock::setTodccEpoch(unsigned seconds)
-{
+void Clock::setRecalibrateIntervalSeconds(double interval) {
+    last_recalibrate_cc = 0;
+    recalibrate_interval = interval * 1.0e6;
+    double tmp_recalibrate_cycles = interval * 1.0e6 * clock_rate;
+    double extra_multiplier = inverse_clock_rate_tfrac < 1 ? 1 : inverse_clock_rate_tfrac;
+    // Make sure both the # cycles in a recalibrate interval fits in a
+    // uint32, and that the # of Tfracs in a recalibrate interval fits
+    // in a uint32.  This check makes sure that the cast to int32_t
+    // in todcc_incremental, and the two casts to uint32_t in
+    // todccTfrac_incremental are both safe (no wrapping).
+    // worth a 10% speedup on 32 bit, 1<<30 is conservative
+    INVARIANT(tmp_recalibrate_cycles * extra_multiplier < (1 << 30),
+	      format("using too large a recalibration interval on too fast a machine:\n"
+		     "  %.2f * 10^6 * %.2f * %.2f= %.2f > %d")
+	      % interval % clock_rate % tmp_recalibrate_cycles % extra_multiplier % (1 << 30));
+    recalibrate_interval_cycles = static_cast<uint64_t>(interval * 1.0e6 * clock_rate);
+}
+
+void Clock::setTodccEpoch(unsigned seconds) {
     epoch_offset = seconds;
     
     INVARIANT(Clock::tod() > static_cast<Tdbl>(epoch_offset) * 1.0e6,
@@ -369,13 +366,20 @@ Clock::setTodccEpoch(unsigned seconds)
     todcc_recalibrate();
 }
 
-void
-Clock::timingTest()
-{
+void Clock::timingTest() {
+    // TODO: add some invariants in to this so that we can verify it's
+    // doing the right thing.  With CMake hiding the output, there's
+    // no point in doing this in the regression test size it doesn't
+    // verify anything.  Fix the #if 0 down below at the same time;
+    // it's using todcc() and it's not worth fixing until we have real
+    // regression stuff on this.
+    return;
+
     Clock::Tdbl measurement_time = 1000000;
+    Clock::Tfrac measurement_time_tfrac = Clock::secNanoToTfrac(5,0);
     Clock::calibrateClock(true,0.001);
     Clock myclock;
-    myclock.setRecalibrateInterval(100);
+    myclock.setRecalibrateIntervalSeconds();
 
     printf("timing method           reps    elapsed us    ns/fn     cycles/fn  ratio to tod\n");
     Clock::Tdbl start = Clock::tod();
@@ -393,7 +397,7 @@ Clock::timingTest()
 	   clock_reps, end - start, ns_per_tod, ns_per_tod / (1000.0*inverse_clock_rate),1.0);
 
     // Test Clock::todll()
-    {
+    if (true) {
 	Clock::Tll measurement_time_ll = (Clock::Tll)measurement_time;
 	nreps = 0;
 	Clock::Tll startll = Clock::todll();
@@ -412,8 +416,7 @@ Clock::timingTest()
     }
 
     // Test Clock::todcc_direct()
-    int todcc_reps;
-    {
+    if (false) {
 	nreps = 0;
 	start = myclock.todcc_recalibrate();
 	while(1) {
@@ -424,7 +427,6 @@ Clock::timingTest()
 	}
 	end = myclock.todcc_recalibrate();
 	SINVARIANT(end - start >= measurement_time);
-	todcc_reps = nreps;
 	double ns_per_todcc = 1000.0*(double)(end - start)/(double)nreps;
 	printf("todcc_direct()        %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
 	       nreps, end - start, ns_per_todcc, ns_per_todcc / (1000.0*inverse_clock_rate),
@@ -432,7 +434,7 @@ Clock::timingTest()
     }
 
     // Test Clock::todcc_incremental()
-    {
+    if (true) {
 	nreps = 0;
 	start = myclock.todcc_recalibrate();
 	while(1) {
@@ -449,9 +451,43 @@ Clock::timingTest()
 	       ns_per_tod/ns_per_todcc);
     }
 
+    Clock::Tdbl recalibrate_interval 
+	= myclock.recalibrate_interval_cycles * myclock.inverse_clock_rate;
+    // Test calculating times by using differencing result in double -- should be identical to todcc_incremental()
+    if (false) {
+	nreps = 0;
+	double last_now;
+	last_now = start = myclock.todcc_recalibrate();
+	Clock::Tll last_cc = Clock::cycleCounter();
+	INVARIANT((recalibrate_interval / inverse_clock_rate) < (double)(1 << 30),
+		  "bad recalibrate");
+	unsigned int recalibrate_cycles = (int)(recalibrate_interval / inverse_clock_rate);
+	while(1) {
+	    nreps += 1;
+	    Tdbl now;
+	    Clock::Tll delta_cc = Clock::cycleCounter() - last_cc;
+	    if (delta_cc < 0 || delta_cc > recalibrate_cycles) {
+		last_now = now = myclock.todcc_recalibrate();
+		last_cc = Clock::cycleCounter();
+	    } else {
+		double delta_us = (int)delta_cc * inverse_clock_rate;
+		now = last_now + delta_us;
+	    }
+	    if ((now - start) > measurement_time) {
+		break;
+	    }
+	}
+	end = myclock.todcc_recalibrate();
+	SINVARIANT(end - start >= measurement_time);
+	double ns_per_incremental = 1000.0*(double)(end - start)/(double)nreps;
+       	printf("incr_double()         %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
+	       nreps, end - start, ns_per_incremental, ns_per_incremental / (1000.0*inverse_clock_rate),
+	       ns_per_tod/ns_per_incremental);
+    }
+
     // Test Clock::todcc_direct() with long long cast
     // this was how the original todcc(), which was just todcc_direct() worked.
-    {
+    if (false) {
 	nreps = 0;
 	Clock::Tll measurement_time_ll = (Clock::Tll)measurement_time;
        	Clock::Tll startll = (Clock::Tll)myclock.todll();
@@ -469,14 +505,13 @@ Clock::timingTest()
 	       ns_per_tod/ns_per_todcc);
     }
 
-    Clock::Tdbl recalibrate_interval = myclock.recalibrate_interval_cycles * myclock.inverse_clock_rate;
     // Test calculating times by using division
-    {
+    if (false) {
 	double clock_rate = 1.0/myclock.inverse_clock_rate;
 	double offset;
 	{
 	    double cur_us = Clock::tod();
-	    double est_us = Clock::now()/clock_rate;
+	    double est_us = Clock::cycleCounter()/clock_rate;
 	    offset = cur_us - est_us;
 	}
 
@@ -484,13 +519,13 @@ Clock::timingTest()
 	start = myclock.todcc_recalibrate();
 	while(1) {
 	    nreps += 1;
-	    Clock::Tdbl cur_us = Clock::now()/clock_rate + offset;
+	    Clock::Tdbl cur_us = Clock::cycleCounter()/clock_rate + offset;
 	    if (cur_us < myclock.last_calibrate_tod ||
 		(cur_us - myclock.last_calibrate_tod) > recalibrate_interval) {
 		//		printf("recalibrate %.2f // %.2f",cur_us, cur_us - myclock.last_calibrate_tod);
 		cur_us = myclock.todcc_recalibrate();
 		//		printf(" to %.0f\n",cur_us);
-		offset = cur_us - Clock::now()/clock_rate;
+		offset = cur_us - Clock::cycleCounter()/clock_rate;
 		myclock.last_calibrate_tod = cur_us;
 	    }
 	    if ((cur_us - start) > measurement_time) {
@@ -506,13 +541,13 @@ Clock::timingTest()
     }
 
     // Test calculating times using doubles -- should be identical to todcc_direct()
-    {
+    if (false) {
 	nreps = 0;
 	start = myclock.todcc_recalibrate();
 	double start_double = start;
 	while(1) {
 	    nreps += 1;
-	    double cur_us = (double)Clock::now() * inverse_clock_rate + myclock.cycle_count_offset;
+	    double cur_us = (double)Clock::cycleCounter() * inverse_clock_rate + myclock.cycle_count_offset;
 	    if (cur_us < myclock.last_calibrate_tod ||
 		(cur_us - myclock.last_calibrate_tod) > recalibrate_interval) {
 		cur_us = myclock.todcc_recalibrate();
@@ -530,7 +565,7 @@ Clock::timingTest()
     }
 
     // Test calculating times by using differencing
-    {
+    if (false) {
 	INVARIANT((recalibrate_interval / inverse_clock_rate) < (double)(1 << 30),
 		  "bad recalibrate");
 	unsigned int recalibrate_cycles = (int)(recalibrate_interval / inverse_clock_rate);
@@ -539,15 +574,15 @@ Clock::timingTest()
 	Clock::Tll last_now;
 	Clock::Tll startll = Clock::todll();
 	last_now = startll;
-	Clock::Tll last_cc = Clock::now();
+	Clock::Tll last_cc = Clock::cycleCounter();
 	while(1) {
 	    Clock::Tll now;
 	    nreps += 1;
-	    Clock::Tll cur_cc = Clock::now();
+	    Clock::Tll cur_cc = Clock::cycleCounter();
 	    Clock::Tll delta_cc = cur_cc - last_cc;
 	    if (delta_cc < 0 || delta_cc > recalibrate_cycles) {
 		last_now = now = myclock.todll();
-		last_cc = Clock::now();
+		last_cc = Clock::cycleCounter();
 	    } else {
 		int delta_us = (int)((int)delta_cc * inverse_clock_rate);
 		now = last_now + delta_us;
@@ -559,70 +594,39 @@ Clock::timingTest()
 	Clock::Tll endll = myclock.todll();
 	SINVARIANT(endll - startll >= measurement_time_ll);
 	double ns_per_incremental = 1000.0*(double)(endll - startll)/(double)nreps;
-       	printf("cc_incremental()      %9d   %8lld   %7.4g   %7.4g     %5.3g\n",
+       	printf("cc_incremental_ll()   %9d   %8lld   %7.4g   %7.4g     %5.3g\n",
 	       nreps, endll - startll, ns_per_incremental, ns_per_incremental / (1000.0*inverse_clock_rate),
 	       ns_per_tod/ns_per_incremental);
     }
 
-    // Test calculating times by using differencing result in double -- should be identical to todcc_incremental()
-    {
-	nreps = 0;
-	double last_now;
-	last_now = start = myclock.todcc_recalibrate();
-	Clock::Tll last_cc = Clock::now();
-	INVARIANT((recalibrate_interval / inverse_clock_rate) < (double)(1 << 30),
-		  "bad recalibrate");
-	unsigned int recalibrate_cycles = (int)(recalibrate_interval / inverse_clock_rate);
-	while(1) {
-	    nreps += 1;
-	    Tdbl now;
-	    Clock::Tll delta_cc = Clock::now() - last_cc;
-	    if (delta_cc < 0 || delta_cc > recalibrate_cycles) {
-		last_now = now = myclock.todcc_recalibrate();
-		last_cc = Clock::now();
-	    } else {
-		double delta_us = (int)delta_cc * inverse_clock_rate;
-		now = last_now + delta_us;
-	    }
-	    if ((now - start) > measurement_time) {
-		break;
-	    }
-	}
-	end = myclock.todcc_recalibrate();
-	SINVARIANT(end - start >= measurement_time);
-	double ns_per_incremental = 1000.0*(double)(end - start)/(double)nreps;
-       	printf("incr_double()         %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, ns_per_incremental, ns_per_incremental / (1000.0*inverse_clock_rate),
-	       ns_per_tod/ns_per_incremental);
-    }
-
+    int todcc_reps = 1000000;
     // Test Clock::todcc()
     {
 	nreps = 0;
-	start = myclock.todcc_recalibrate();
-	while(1) {
+	Clock::Tfrac start = myclock.todTfrac();
+	Clock::Tfrac end_target = start + measurement_time_tfrac;
+	do {
 	    nreps += 1;
-	    if ((myclock.todcc() - start) > measurement_time) {
-		break;
-	    }
-	}
-	end = myclock.todcc_recalibrate();
-	SINVARIANT(end - start >= measurement_time);
-	double ns_per_todcc = 1000.0*(double)(end - start)/(double)nreps;
-	printf("fastest-of-above?     %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
-	       nreps, end - start, ns_per_todcc, ns_per_todcc / (1000.0*inverse_clock_rate),
-	       ns_per_tod/ns_per_todcc);
+	} while (myclock.todccTfrac() < end_target);
+	Clock::Tfrac end = myclock.todTfrac();
+	SINVARIANT(end > start && end - start >= measurement_time_tfrac);
+	double elapsed_ns = Clock::TfracToDouble(end - start) * 1.0e9;
+	double ns_per_todcc = elapsed_ns / static_cast<double>(nreps);
+	todcc_reps = nreps;
+	cout << format("todccTfrac            %9d   %8.0f   %7.4g   %7.4g     %5.3g\n")
+	    % nreps % (elapsed_ns * 1e-3) % ns_per_todcc
+	    % (ns_per_todcc / (1000.0*inverse_clock_rate)) % (ns_per_tod/ns_per_todcc);
     }
 
-    // Test if we could just magically use the cycle counter
+    // Test as if we could just magically use the cycle counter
     {
 	nreps = 0;
 	Clock::Tll elapsed_cycles = (Clock::Tll)(measurement_time / inverse_clock_rate);
 	start = myclock.tod();
-	Clock::Tll start_cc = Clock::now();
+	Clock::Tll start_cc = Clock::cycleCounter();
 	while(1) {
 	    nreps += 1;
-	    Clock::Tll now_cc = Clock::now();
+	    Clock::Tll now_cc = Clock::cycleCounter();
 	    if ((now_cc - start_cc) > elapsed_cycles) {
 		break;
 	    }
@@ -656,6 +660,7 @@ Clock::timingTest()
 	       clock_reps, 100*(double)count_under_10_us / clock_reps);
     }
 
+#if 0
     calibrate_error.reset();
     unsigned count_under_1_us = 0;
     for(int i=0;i<todcc_reps;i++) {
@@ -753,23 +758,21 @@ Clock::timingTest()
 	}
 
 	nzeros = 0;
-	Clock::Tll last_now = Clock::now();
+	Clock::Tll last_now = Clock::cycleCounter();
 	for(unsigned i = 0; i < nreps; ++i) {
-	    Clock::Tll cur_now = Clock::now();
+	    Clock::Tll cur_now = Clock::cycleCounter();
 	    if (cur_now == last_now) {
 		++nzeros;
 	    }
 	    last_now = cur_now;
 	}
-	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps with Clock::now(); %.2f%%\n",
+	printf("%u/%u/%u zero_advance/nonzero_advance/total_reps with Clock::cycleCounter(); %.2f%%\n",
 	       nzeros, nreps-nzeros, nreps, 100.0*nzeros/nreps);
     }
-    
+#endif    
 }
 
-void
-Clock::selfCheck()
-{
+void Clock::selfCheck() {
     cout << "Checking conversion from s.us <-> Tfrac" << endl;
     
     MersenneTwisterRandom rand;

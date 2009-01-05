@@ -1,4 +1,4 @@
-#!@PERL_BINARY@ -w
+#!@PERL_PATH@ -w
 # -*- Perl -*-
 #
 #  (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
@@ -1192,13 +1192,17 @@ configuration can take into effect the sub-type.
 
 sub runCMake {
     my $clean = 0;
+    Getopt::Long::Configure('pass_through');
     my $result = GetOptions("clean!" => \$clean);
     usage("Unknown argument to runCMake") unless $result;
 
-    if ($clean || (defined $ARGV[0] && $ARGV[0] eq 'clean')) {
+    if ($clean) {
+	usage("unexpected extra arguments") unless @ARGV == 0;
+    } elsif (defined $ARGV[0] && $ARGV[0] eq 'clean') {
+	usage("unexpected extra arguments") unless @ARGV == 1;
         runCMakeClean();
     } else {
-        runCMakeConfig();
+        runCMakeConfig(@ARGV);
     }
 }
 
@@ -1226,6 +1230,8 @@ sub runCMakeClean {
 }
 
 sub runCMakeConfig {
+    my @extra_args = @_;
+
     my $cwd = aliasGetCwd();
     my ($src, $build_subdir) = srcDir();
     my $debug = buildDebug();
@@ -1248,7 +1254,7 @@ sub runCMakeConfig {
     if (defined $build_subdir) {
         push(@cmakecmd, "-D", "BUILD_SUBDIR=$build_subdir");
     }
-    push(@cmakecmd, @ARGV, $src);
+    push(@cmakecmd, @extra_args, $src);
     runCommand(@cmakecmd);
 }
 

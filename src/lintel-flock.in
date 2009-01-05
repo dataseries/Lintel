@@ -1,4 +1,4 @@
-#!@PERL_BINARY@ -w
+#!@PERL_PATH@ -w
 # -*- Perl -*-
 #
 #  (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
