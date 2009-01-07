@@ -9,12 +9,59 @@
     test for deque
 */
 
+// TODO: add performance comparison to this test
 #include <iostream>
 
 #include <Lintel/Deque.hpp>
 using namespace std;
 using boost::format;
 
+class NoDefaultConstructor {
+public:
+    NoDefaultConstructor(int i) : v(i) { ++ndc_count; }
+    NoDefaultConstructor(const NoDefaultConstructor &i) : v(i.v) { ++ndc_count; }
+    ~NoDefaultConstructor() { --ndc_count; }
+
+    static int ndc_count;
+    int v;
+
+private:
+    NoDefaultConstructor operator = (const NoDefaultConstructor &);
+};
+
+int NoDefaultConstructor::ndc_count;
+
+void testNoDefaultConstructor() {
+    Deque<NoDefaultConstructor> deque;
+
+    deque.reserve(8);
+
+    for(int i = 0; i < 5; ++i) {
+	deque.push_back(NoDefaultConstructor(i));
+	SINVARIANT(deque.back().v == i);
+	SINVARIANT(deque.size() == static_cast<size_t>(i + 1));
+	INVARIANT(NoDefaultConstructor::ndc_count == i + 1, format("%d != %d + 1")
+		  % NoDefaultConstructor::ndc_count % i);
+    }
+
+    for(int i = 0; i < 5; ++i) {
+	SINVARIANT(deque.front().v == i);
+	deque.pop_front();
+	deque.push_back(NoDefaultConstructor(i));
+	SINVARIANT(deque.back().v == i);
+	SINVARIANT(deque.size() == 5);
+	SINVARIANT(NoDefaultConstructor::ndc_count == 5);
+    }
+
+    for(int i = 0; i < 5; ++i) {
+	SINVARIANT(deque.front().v == i);
+	deque.pop_front();
+	SINVARIANT(deque.size() == static_cast<size_t>(4 - i));
+	SINVARIANT(NoDefaultConstructor::ndc_count == 4 - i);
+    }
+    SINVARIANT(NoDefaultConstructor::ndc_count == 0);
+}
+    
 void testPushBack() {
     Deque<int> deque;
 
@@ -60,6 +107,7 @@ void testPushBack() {
 
 int main(int argc, char *argv[]) {
     testPushBack();
+    testNoDefaultConstructor();
     cout << "deque tests passed.\n";
 }
 
