@@ -69,6 +69,11 @@ namespace {
 	}
     };
     
+    struct pairCmp {
+	bool operator()(const pair<double, int> &a, const pair<double, int> &b) const {
+	    return a.first >= b.first;
+	}
+    };
 }
 
 StatsQuantile::StatsQuantile(double _quantile_error, long long in_nbound, int _print_nrange)
@@ -344,7 +349,6 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
     SQTIMING(Clock::T gq_time_1 = Clock::now(); 
 	     // accum_gq_init += gq_time_1 - gq_time_0;
 	     )
-    double prev_val = -Double::Inf;
     // the 1e-15 accounts for a minor rounding error that seems to occur
     // when doing division, e.g. ceil(150000.0 * (131058.0 / 150000.0)) on
     // linux = 131059.0; I'd imagine we'll never see 1e+15 values
@@ -363,8 +367,30 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
     if (target_index == nentries) {
 	target_index = (long long)(nentries - 1);
     }
+    return getQuantileByIndex(target_index);
+}
+
+int StatsQuantile::collapseFindFirstBuffer() {
+    double nentries = countll();
+    INVARIANT(nentries < 1e+14, "getQuantile will fail now.");
+		 
+    int first_buffer;
+    for(first_buffer = nbuffers - 1;first_buffer > 0; --first_buffer) {
+	if (buffer_level[first_buffer - 1] != buffer_level[first_buffer]) {
+	    break;
+	}
+    }
+    INVARIANT(first_buffer < nbuffers - 1,
+	      "Whoa, collapse should always operate on at least two buffers");
+    INVARIANT(buffer_level[first_buffer] >= 0,
+	      "Whoa, buffer level should be positive");
+    return first_buffer;
+}
+
+double StatsQuantile::getQuantileByIndex(int64_t target_index) const {
     int64_t cur_index = 0;
 
+    double prev_val = -Double::Inf;
     double second_min_val = Double::Inf;
     int second_min_buffer = -1;
     SQTIMING(Clock::T gq_time_searchstart = Clock::now();)
@@ -439,23 +465,6 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
     return Double::NaN;
 }
 
-int StatsQuantile::collapseFindFirstBuffer() {
-    double nentries = countll();
-    INVARIANT(nentries < 1e+14, "getQuantile will fail now.");
-		 
-    int first_buffer;
-    for(first_buffer = nbuffers - 1;first_buffer > 0; --first_buffer) {
-	if (buffer_level[first_buffer - 1] != buffer_level[first_buffer]) {
-	    break;
-	}
-    }
-    INVARIANT(first_buffer < nbuffers - 1,
-	      "Whoa, collapse should always operate on at least two buffers");
-    INVARIANT(buffer_level[first_buffer] >= 0,
-	      "Whoa, buffer level should be positive");
-    return first_buffer;
-}
-
 int64_t StatsQuantile::collapseSortBuffers(int first_buffer) {
     int64_t total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
@@ -492,14 +501,6 @@ int64_t StatsQuantile::collapseNextQuantileOffset(int64_t total_weight) {
 	FATAL_ERROR("Huh?");
     }
     return next_quantile_offset;
-}
-
-namespace {
-    struct pairCmp {
-	bool operator()(const pair<double, int> &a, const pair<double, int> &b) const {
-	    return a.first >= b.first;
-	}
-    };
 }
 
 void StatsQuantile::collapse() {

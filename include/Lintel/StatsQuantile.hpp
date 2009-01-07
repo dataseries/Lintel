@@ -140,6 +140,7 @@ private:
 
     void collapse();
 
+    double getQuantileByIndex(int64_t target_index) const;
     const double quantile_error;
     const int64_t Nbound;
 
