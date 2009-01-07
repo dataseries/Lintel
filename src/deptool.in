@@ -2336,7 +2336,7 @@ sub readConfigFile {
     if (! $noconfig && -f $cfile && -r $cfile) {
 	my $config = new FileHandle($cfile)
 	    or die "Can't open $cfile for read: $!";
-	while (<CONFIG>) {
+	while (<$config>) {
 	    chomp;
 	    if (/^([A-Z_]+)=(.+)$/o) {
 		$ENV{$1} = $2;
