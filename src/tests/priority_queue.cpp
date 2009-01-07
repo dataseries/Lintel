@@ -112,10 +112,18 @@ void test_replaceTop() {
     check(lintel_queue, replace_top_queue);
 }
 
+void test_clear() {
+    PriorityQueue<int> test;
+    test.push(5);
+    test.clear();
+    SINVARIANT(test.empty());
+}
+
 int main() {
     test_basic();
     test_random();
     test_replaceTop();
+    test_clear();
     std::cout << "Test passed\n";
     return 0;
 }

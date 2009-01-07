@@ -47,7 +47,6 @@ use Pod::Usage;
 
 sub usage {
     pod2usage(-exitval => 'NOEXIT', -verbose => 0);
-    print "  clear [-b] <project...>\n";
     confess @_ if @_ > 0;
     exit(0);
 }
@@ -206,25 +205,16 @@ Print out the complete manual page.
 Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
 
 help("all") if $print_manpage;
-# Read configuration file
-my $cfile = "$ENV{HOME}/.deptoolrc";
-if (! $noconfig && -f $cfile && -r $cfile ) {
-    open CONFIG, "<$cfile";
-    while (<CONFIG>) {
-        chomp;
-	my ($key, $value) = split /=/;
-	$ENV{$key}=$value;
-    }
-    close CONFIG;
-}
 
 usage("Missing argument") if @ARGV == 0;
+
+readConfigFile();
 
 my %commands = ('checkout' => \&depCheckout,
 		'co' => \&depCheckout,
                 'pull' => \&depPull,
                 'build' => \&depBuild,
-		'clear' => \&depClear,
+#		'clear' => \&depClear,
                 'commit' => \&depCommit,
                 'publish' => \&depPublish,
                 # below commands don't run in all dep dirs.
@@ -694,37 +684,6 @@ sub depBuild {
     depWalk(sub { depBuildOne(\%options, @_) }, 1);
 }
 
-sub depClear {
-    my %options = @_;
-
-    my $projects = projects();
-    $options{dirs} = [];
-    $options{binaries} = 0;
-    my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
-			 "quiet!" => \$quiet,
-			 "b|binaries!" => \$options{binaries});
-    usage("unknown option to clear") unless $ret;
-    my @projects = @ARGV;
-    if ($#projects < 0) {
-	usage("must supply at least one project to clear");
-    }
-    
-    foreach (@projects) {
-	aliasChdir( "$projects/$_");
-	depWalk(sub{ my $wd = aliasGetCwd(); push @{$options{dirs}}, $wd; });
-    }
-
-    if ($options{binaries}) {
-        push @{$options{dirs}}, buildDebug();
-        push @{$options{dirs}}, buildOpt();
-    }
-
-    foreach my $dir (@{$options{dirs}}) {
-	print "rm -rf $dir\n";
-	qx/rm -rf $dir/;
-    }
-}
-
 sub depBuildOne {
     my ($options, $build_type) = @_;
 
@@ -855,6 +814,59 @@ sub depBuildInstall {
         $options->{did_install} = 1;
     }
 }
+
+## ##### Dependency clear
+## 
+## =pod
+## 
+## =head2 clear [I<-b|--build>] [I<-d|--debug>] I<project>...
+## 
+## This command will delete the B<source> directories for project and its
+## dependencies.  If -b is specified, the build (optimized) directory
+## will also be deleted.  If -d is specified, the debug directory will be
+## deleted.
+## 
+## =cut
+## 
+## sub depClear {
+##     my %options = @_;
+## 
+##     my $projects = projects();
+##     my @dirs;
+##     $options{build} = 0;
+##     $options{debug} = 0;
+##     my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
+## 			 "quiet!" => \$quiet,
+## 			 "b|build!" => \$options{build},
+## 			 "d|debug!" => \$options{debug});
+## 
+##     usage("unknown option to clear") unless $ret;
+##     my @projects = @ARGV;
+## 
+##     my $build_debug = buildDebug();
+##     my $build_opt = buildOpt();
+##     foreach (@projects) {
+## 	aliasChdir("$projects/$_");
+## 	depWalk(sub{ my $wd = aliasGetCwd(); 
+## 		     # be paranoid, we're going to delete these directories
+## 		     die "internal" unless $wd =~ m!^$projects/!o;
+## 		     push (@dirs, $wd); });
+##     }
+## 
+##     push(@dirs, buildDebug())
+## 	if $options{debug};
+##     push(@dirs, buildOpt()) 
+## 	if $options{build};
+## 
+##     foreach my $dir (@{$options{dirs}}) {
+## 	if (-d $dir) {
+## 	    userPrompt("delete $dir");
+## 	    rmtree($dir, 0, 1);
+## 	    die "Unable to remove directory $dir"
+## 		if -d $dir;
+## 	}
+##     }
+## }
 
 ##### Set pin
 
@@ -1371,16 +1383,17 @@ END
         }
     }
 
-    if ( defined $ENV{TESTHOST} ) {
-	my $src = rootSrcDir();
-	my $project = basename( $src);
-	my $user = $ENV{MAILADDR};
-	print( "ssh -t $ENV{TESTHOST} testbuild $project $user background\n");
-	system( "ssh -t $ENV{TESTHOST} testbuild $project $user background");
-	if ( $? > 0) {
-	    croak("Unable to ssh $ENV{TESTHOST} testbuild");
-	}
-    }
+##    if (defined $ENV{TESTHOST}) {
+##	my $src = rootSrcDir();
+##	my $project = basename($src);
+##	die "MAILADDR is not defined, and is needed with TESTHOST"
+##	    unless defined $ENV{MAILADDR};
+##	my $user = $ENV{MAILADDR};
+##	print "ssh -t $ENV{TESTHOST} testbuild $project $user background\n";
+##	system("ssh -t $ENV{TESTHOST} testbuild $project $user background");
+##	croak "Unable to ssh $ENV{TESTHOST} testbuild ($?)"
+##	    unless $? == 0;
+##    }
 }
 
 sub depSyncOne {
@@ -2005,7 +2018,7 @@ sub depWalkRecurse ($$$$$) {
         my $projects = projects();
         foreach my $dep (@vcdeps) {
             my $sub_build_type = '';
-            $dep =~ s%^.*/%%;
+            $dep =~ s!^[^/]*/!!;
             if ($dep =~ /^(.+);(\w+)$/o) {
                 ($dep,$sub_build_type) = ($1,$2);
             }
@@ -2317,6 +2330,25 @@ sub mtnServer {
 }
 
 ##### Common functions
+
+sub readConfigFile {
+    my $cfile = "$ENV{HOME}/.deptoolrc";
+    if (! $noconfig && -f $cfile && -r $cfile) {
+	my $config = new FileHandle($cfile)
+	    or die "Can't open $cfile for read: $!";
+	while (<CONFIG>) {
+	    chomp;
+	    if (/^([A-Z_]+)=(.+)$/o) {
+		$ENV{$1} = $2;
+	    } elsif (/^([A-Z_]+)=$/o) {
+		delete $ENV{$1};
+	    } else {
+		warn "Ignoring invalid line '$_' in $cfile";
+	    }
+	}
+	close($config);
+    }
+}
 
 sub readVCDeps {
     my ($filename) = @_;

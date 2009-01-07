@@ -64,7 +64,7 @@ void LintelLog::parseDebugString(const string &debug_options)
 	if (subparts.size() == 1) {
 	    setDebugLevel(*i, 1);
 	} else {
-	    setDebugLevel(subparts[0], stringToUInt32(subparts[1]));
+	    setDebugLevel(subparts[0], stringToInteger<uint32_t>(subparts[1]));
 	}
     }
 }

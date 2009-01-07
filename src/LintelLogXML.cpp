@@ -19,7 +19,7 @@ void LintelLogXML::parseXML(xmlNodePtr n)
     
     uint8_t level = 1;
     if (!level_str.empty()) {
-	uint32_t tmp = stringToUInt32(level_str);
+	uint32_t tmp = stringToInteger<uint32_t>(level_str);
 	SINVARIANT(tmp < 255);
 	level = static_cast<uint8_t>(tmp);
     }

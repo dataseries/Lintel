@@ -117,7 +117,6 @@ extern std::string global_assertboost_no_details;
 #ifdef LINTEL_ASSERT_BOOST_DEBUG
 #    define DEBUG_INVARIANT(ExpressioN, MessagE) INVARIANT(ExpressioN, MessagE)
 #    define DEBUG_SINVARIANT(ExpressioN) INVARIANT(ExpressioN, global_assertboost_no_details);
-#    undef LINTEL_ASSERT_BOOST_DEBUG
 #else
 #    define DEBUG_INVARIANT(ExpressioN, MessagE) do { } while(0)
 #    define DEBUG_SINVARIANT(ExpressioN) do { } while(0)

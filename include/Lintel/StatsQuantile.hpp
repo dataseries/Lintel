@@ -18,11 +18,9 @@
 #define LINTEL_STATSQUANTILE_HPP
 
 #include <stdio.h>
+
 #include <Lintel/Stats.hpp>
-#define STATSQUANTILE_TIMING 0
-#if STATSQUANTILE_TIMING
-#include <Lintel/Clock.hpp>
-#endif
+#include <Lintel/PriorityQueue.hpp>
 
 #include <boost/utility.hpp>
 
@@ -175,6 +173,12 @@ private:
     double collapseVal(int buffer) const {
 	return all_buffers[buffer][collapse_pos[buffer]];
     }
+    struct pairCmp {
+	inline bool operator()(const std::pair<double, int> &a, 
+			       const std::pair<double, int> &b) const {
+	    return a.first >= b.first;
+	}
+    };
 };
 
 #endif

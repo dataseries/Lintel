@@ -146,6 +146,10 @@ public:
 	return pq_size == 0;
     }
     
+    void clear() {
+	pq_size = 0;
+    }
+
     void reserve(uint32_t amt) {
 	INVARIANT(empty(), "Lame implementation only able to reserve empty priority queue");
 		  

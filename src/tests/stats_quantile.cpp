@@ -349,6 +349,15 @@ int main(int argc, char *argv[]) {
 	addPerformanceTest();
     }
 
+    if (argc == 2 && strcmp(argv[1], "get-performance") == 0) {
+	MersenneTwisterRandom mt(1776); // seed exact for precice check
+	Stats exact_error;
+//	test_fromrandom(mt,0.01,250000,exact_error);
+//	test_fromrandom(mt,0.05,150000,exact_error);
+	test_fromrandom(mt,0.001,50000,exact_error);
+	exit(0);
+    }
+
     if (argc == 4 && strcmp(argv[1], "memory-usage") == 0) {
 	memoryUsage(stringToDouble(argv[2]), stringToInteger<int64_t>(argv[3]));
     }

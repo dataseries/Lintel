@@ -17,7 +17,6 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
 #include <Lintel/HashMap.hpp>
-#include <Lintel/PriorityQueue.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
@@ -69,11 +68,6 @@ namespace {
 	}
     };
     
-    struct pairCmp {
-	bool operator()(const pair<double, int> &a, const pair<double, int> &b) const {
-	    return a.first >= b.first;
-	}
-    };
 }
 
 StatsQuantile::StatsQuantile(double _quantile_error, long long in_nbound, int _print_nrange)
@@ -297,12 +291,6 @@ void StatsQuantile::add(const Stats &_stat) {
 // ratcheting through them one by one as in the paper, and the current
 // implementation
 
-#if STATSQUANTILE_TIMING
-#define SQTIMING(x) x
-#else
-#define SQTIMING(x) 
-#endif
-
 // const because the only operation on class variables is a sort of buffers
 double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) const {
     int64_t count = countll();
@@ -312,7 +300,6 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
     INVARIANT(count <= Nbound || allow_invalid_nbound,
 	      boost::format("Error: %d (# entries in quantile) > %d (Nbound on quantile)")
 	      % count % Nbound);
-    SQTIMING(Clock::T gq_time_0 = Clock::now();)
     INVARIANT(quantile >= 0.0 && quantile <= 1.0, "quantile out of bounds");
     // this is slightly different than the algorithm in the paper; the 
     // goal is to allow people to calculate quantiles while the algorithm
@@ -346,9 +333,6 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
 	    buffer_sorted[i] = true;
 	}
     }
-    SQTIMING(Clock::T gq_time_1 = Clock::now(); 
-	     // accum_gq_init += gq_time_1 - gq_time_0;
-	     )
     // the 1e-15 accounts for a minor rounding error that seems to occur
     // when doing division, e.g. ceil(150000.0 * (131058.0 / 150000.0)) on
     // linux = 131059.0; I'd imagine we'll never see 1e+15 values
@@ -390,77 +374,46 @@ int StatsQuantile::collapseFindFirstBuffer() {
 double StatsQuantile::getQuantileByIndex(int64_t target_index) const {
     int64_t cur_index = 0;
 
+    PriorityQueue<std::pair<double, int>, pairCmp> tmp_pq(nbuffers);
+    for(int i=0; i < cur_buffer; ++i) {
+	collapse_pos[i] = 0;
+	tmp_pq.push(make_pair(collapseVal(i), i));
+    }
+    if (cur_buffer_pos > 0) {
+	collapse_pos[cur_buffer] = 0;
+	tmp_pq.push(make_pair(collapseVal(cur_buffer), cur_buffer));
+    }
+
+#if LINTEL_ASSERT_BOOST_DEBUG
     double prev_val = -Double::Inf;
-    double second_min_val = Double::Inf;
-    int second_min_buffer = -1;
-    SQTIMING(Clock::T gq_time_searchstart = Clock::now();)
-    while(1) {
-	SQTIMING(Clock::T gq_time_2 = Clock::now();
-		 accum_gq_nelem += 1;)
-	double min_val = Double::Inf;
-	int min_buffer = -1;
-	// TODO: re-do this using the replaceTop stuff as done in
-	// collapse, it works much faster since it's halved the
-	// constants on the selection relative to the time when the
-	// previous comment went in.
+#endif
+    while(!tmp_pq.empty()) {
+	double min_val = tmp_pq.top().first;
+	int min_buffer = tmp_pq.top().second;
 
-
-	// find the buffer with the next smallest entry remaining
-	// tried using the Buttress2 priority queue to do this, but it
-	// turned out to take about the same time as just doing the
-	// scan on a 12x229 set, adding the second min buffer trick
-	// got about 25% performance improvement, but adding in the
-	// third min val tracking would be obnoxiously complicated, so
-	// we're not going to do that.
-	if (second_min_buffer >= 0) {
-	    min_val = second_min_val;
-	    min_buffer = second_min_buffer;
-	    second_min_buffer = -1;
-	} else {
-	    second_min_val = Double::Inf;
-	    second_min_buffer = -1;
-	    for(int i=0;i<=cur_buffer;i++) {
-		if (collapse_pos[i] < buffer_size) {
-		    double v = all_buffers[i][collapse_pos[i]];
-		    if (v < min_val) {
-			second_min_val = min_val;
-			second_min_buffer = min_buffer;
-			min_val = v;
-			min_buffer = i;
-		    } else if (v < second_min_val) {
-			second_min_val = v;
-			second_min_buffer = i;
-		    }
-		}
-	    }
-	    int x = collapse_pos[min_buffer] + 1;
-	    if (x < buffer_size &&
-		all_buffers[min_buffer][x] < second_min_val) {
-		second_min_val = all_buffers[min_buffer][x];
-		second_min_buffer = min_buffer;
-	    }
-	    //	    second_min_buffer = -1;
-	}
-	INVARIANT(min_buffer >= 0 && min_buffer < buffer_size,
-		  boost::format("Whoa, no minimal buffer?!;"
-				" searching for posn %lldd, cur %lldd")
-		  % target_index % cur_index);
-	collapse_pos[min_buffer] += 1;
+#if LINTEL_ASSERT_BOOST_DEBUG
+	SINVARIANT(collapse_pos[min_buffer] < buffer_size && 
+		   (min_buffer < cur_buffer || collapse_pos[min_buffer] < cur_buffer_pos));
 	INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");
-	SQTIMING(Clock::T gq_time_3 = Clock::now(); 
-		 accum_gq_inner += gq_time_3 - gq_time_2;)
+	prev_val = min_val;
+#endif
+
+	collapse_pos[min_buffer] += 1;
+
 	// this entry occupies sorted order positions
 	// [cur_index .. cur_index + buffer_weight[min_buffer] - 1]
 	// so the check is for cur_index > target_index
 	// need to think about the logic for this in collapse()
 	cur_index += buffer_weight[min_buffer];
 	if (cur_index > target_index) {
-	    SQTIMING(Clock::T gq_time_4 = Clock::now();
-		     accum_gq_search += gq_time_4 - gq_time_searchstart;
-		     accum_gq_all += gq_time_4 - gq_time_0;)
 	    return min_val;
 	}
-	SQTIMING(accum_gq_init += Clock::now() - gq_time_3;)
+	int max_pos = min_buffer < cur_buffer ? buffer_size : cur_buffer_pos;
+	if (collapse_pos[min_buffer] < max_pos) {
+	    tmp_pq.replaceTop(make_pair(collapseVal(min_buffer), min_buffer));
+	} else {
+	    tmp_pq.pop();
+	}
     }
     return Double::NaN;
 }
