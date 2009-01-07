@@ -14,8 +14,9 @@
 
 #include <stdint.h>
 
+#include <boost/utility.hpp>
+
 #include <Lintel/AssertBoost.hpp>
-#include <new>
 
 // The priority_queue in the HPUX STL is ~4x slower than this one on
 // small numbers of things in the queue, and ~1.2x slower with lots in
@@ -46,39 +47,24 @@
 // key value to largest key value from the priority queue.
 
 template<class T, class LessImportant = std::less<T> >
-class PriorityQueue {
+class PriorityQueue : boost::noncopyable {
 public:
     PriorityQueue(int initial_size = 1024/sizeof(T)) 
-	: size_available(initial_size), pq_size(0), resizeable(true) {
+	: size_available(initial_size), pq_size(0) {
 	pq = new T[initial_size];
     }
 
     PriorityQueue(const LessImportant &li, int initial_size = 1024/sizeof(T)) 
-	: lessimportant(li), size_available(initial_size), pq_size(0), resizeable(true) {
+	: lessimportant(li), size_available(initial_size), pq_size(0) {
 	pq = new T[initial_size];
     }
 
-    
     ~PriorityQueue() {
-	if (resizeable) {
-	    delete [] pq;
-	}
+	delete [] pq;
 	pq = NULL;
     }
     typedef PriorityQueue<T, LessImportant> mytype;
 
-#if ENABLE_SHMEM
-    // Allocating it in this way means you should not! delete the
-    // returned value, and it is not resizeable.
-    static mytype *newSHM(SHMAlloc &shmem, int final_size) {
-	void *_ret = shmem.alloc(sizeof(mytype));
-	
-	mytype *ret = new(_ret) PriorityQueue(shmem, final_size);
-	INVARIANT(ret == _ret && ret->resizeable == false,
-		  "placement new didn't work correctly??");
-	return ret;
-    }
-#endif
     T &top() { DEBUG_SINVARIANT(!empty()); return pq[0]; }
     const T &top() const { DEBUG_SINVARIANT(!empty()); return pq[0]; }
     
@@ -163,7 +149,6 @@ public:
     void reserve(uint32_t amt) {
 	INVARIANT(empty(), "Lame implementation only able to reserve empty priority queue");
 		  
-	INVARIANT(resizeable, "PQ isn't resizeable?");
 	if (amt > pq_size) {
 	    delete [] pq;
 	    pq = new T[amt];
@@ -175,17 +160,8 @@ public:
     T *PQ_Begin() { return pq; };
     T *PQ_End() { return pq + pq_size; }
 private:
-#if ENABLE_SHMEM
-    PriorityQueue(SHMAlloc &shmem, int final_size) 
-    : size_available(final_size), pq_size(0), resizeable(false) {
-	pq = (T *)shmem.alloc(sizeof(T) * final_size);
-    }
-#endif
-
     LessImportant lessimportant;
     void double_size() {
-	INVARIANT(resizeable, boost::format("this PQ isn't resizeable, and only holds %d elements.") % size_available);
-		  
 	T *pq_new = new T[size_available * 2];
 	for(unsigned i=0;i<size_available;i++) {
 	    pq_new[i] = pq[i];
@@ -197,7 +173,6 @@ private:
     uint32_t size_available;
     uint32_t pq_size;
     T *pq;
-    bool resizeable;
     // 0 -> 1,2
     // 1 -> 3,4
     // 2 -> 5,6
