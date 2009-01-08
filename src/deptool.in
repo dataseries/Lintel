@@ -2338,6 +2338,7 @@ sub readConfigFile {
 	    or die "Can't open $cfile for read: $!";
 	while (<$config>) {
 	    chomp;
+	    next if /^\s*(#.*)?$/;   # Ignore comments and empty lines
 	    if (/^([A-Z_]+)=(.+)$/o) {
 		$ENV{$1} = $2;
 	    } elsif (/^([A-Z_]+)=$/o) {
