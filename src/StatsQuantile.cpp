@@ -70,7 +70,7 @@ namespace {
     
 }
 
-StatsQuantile::StatsQuantile(double _quantile_error, long long in_nbound, int _print_nrange)
+StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _print_nrange)
     : quantile_error(_quantile_error), Nbound(in_nbound < 100 ? 100 : in_nbound), 
       print_nrange(_print_nrange)
 {
