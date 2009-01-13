@@ -57,6 +57,10 @@ public:
 	DEBUG_INVARIANT(!empty(), "back() on empty dequeue");
 	return deque[(q_back + q_size - 1) % q_size];
     }
+    T &at(size_t pos) {
+	DEBUG_INVARIANT(pos < size(), "invalid position for at()");
+	return deque[(q_front + pos) % q_size];
+    }
     void pop_front() {
 	DEBUG_INVARIANT(!empty(), "pop_front() on empty dequeue");
 	allocator.destroy(deque + q_front);

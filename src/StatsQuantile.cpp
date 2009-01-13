@@ -78,7 +78,8 @@ StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _pri
     INVARIANT(quantile_error < 0.2, boost::format("whoa, quantile_error %.3g >= 0.2??") 
 	      % quantile_error);
     double tmp_nbound = Nbound; // easy for calculations
-    INVARIANT(in_nbound > 1, boost::format("whoa, nbound of %.0f?") % tmp_nbound);
+    INVARIANT(in_nbound > 1, 
+	      boost::format("Usage error? StatsQuantile nbound set to %d?") % in_nbound);
     int best_b = -1, best_k = -1;
 
     // If we are making lots of smallish StatsQuantiles, we can spend

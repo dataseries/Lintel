@@ -75,11 +75,19 @@ void testPushBack() {
     }
 
     for(int i = 0; i < 5; ++i) {
+	SINVARIANT(deque.at(i) == i);
+    }
+
+    for(int i = 0; i < 5; ++i) {
 	SINVARIANT(deque.front() == i);
 	deque.pop_front();
 	deque.push_back(i);
 	SINVARIANT(deque.back() == i);
 	SINVARIANT(deque.size() == 5);
+    }
+
+    for(int i = 0; i < 5; ++i) {
+	SINVARIANT(deque.at(i) == i);
     }
 
     {
