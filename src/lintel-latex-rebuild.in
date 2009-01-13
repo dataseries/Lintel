@@ -96,9 +96,15 @@ if [ $latex_err = 0 -a $bibtex_err = 0 ]; then
     # Why not run dvipdf?  The current version of dvipdf defaults to A4 paper
     # and doesn't pass options to dvips (the underlying engine for dvipdf).
     # so we call dvips and ps2pdf14 directly.
-    @DVIPS_CONVERTER@ -Ppdf -G0 -t letter -o $TEXFILE.pdftemp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
+    @DVIPS_CONVERTER@ -Ppdf -Pcmz -Pamz -t letter -D 600 -Z -G0 -o $TEXFILE.pdftemp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
     dvipstemp_err=$?
-    @PS2PDF14_CONVERTER@ $TEXFILE.pdftemp $TEXFILE.pdf14tmp >>$TEXFILE.rebuild.out 2>&1
+    # Note both options are needed to force all the fonts to be
+    # embedded; file size effect seems to be small in one test case;
+    # if that's wrong, then it should be made an option.
+    EMBEDFONTS="-dPDFSETTINGS=/prepress -dEmbedAllFonts=true"
+    # Doesn't seem to be any downside to using these options.
+    OPTIMIZE="-dOptimize=true -dUseFlateCompression=true"
+    @PS2PDF14_CONVERTER@ $EMBEDFONTS $OPTIMIZE $TEXFILE.pdftemp $TEXFILE.pdf14tmp >>$TEXFILE.rebuild.out 2>&1
     ps2pdf14_err=$?
     # make .pdf file creation atomic.
     if [ $ps2pdf14_err = 0 ]; then
