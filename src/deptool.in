@@ -1645,6 +1645,11 @@ sub kdiffDirs {
             my $final = "$basedir/$final_dir/$next";
             unless (-f $original) {
                 print "Assuming $final is new file, creating empty temporary\n";
+		my ($dir, $file) = $original =~ m!^(.+)/([^/]+)$!o;
+		unless (-d $dir) {
+		    mkpath([$dir], 0, 0777);
+		    die "?" unless -d $dir;
+		}
                 my $fh = new FileHandle ">$original"
                     or die "bad: $!";
                 close($fh);
