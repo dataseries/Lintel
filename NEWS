@@ -1,4 +1,65 @@
-2008-06-23: 
+2008-11-30:
+   * Add support for generic program options to Lintel as
+     ProgramOptions.hpp, allows you to just specify the options in
+     .cpp files and have them handled by each sub-part of a program as
+     appropriate.
+
+2008-11-27:
+   * Add a generic, templated cube operation as StatsCube.hpp,
+     currently used in DataSeries for one of the analysis.
+
+2008-10-27: 
+   * Add in HashTupleStats.hpp, a hash table over a tuple that
+     supports a number of different methods for walking the values.
+   * Add in extensions to the boost tuple support as Tuples.hpp;
+     adds hash functions, partial tuples.
+
+2008-09-25:
+   * Rewrite our hash function support to be more general; it now 
+     allows you to either define a uint32_t hash() function on the 
+     class, or define a hashType(T) function.
+
+2008-09-07:
+   * Add support for #define in batch-parallel jobsfile to simplify
+     listing of mostly similar commands.
+
+2008-08-19:
+   * Apply the great const virus.  If you get compile errors after this
+     version on hashmaps, go an look for your operator() in the HashMap_hash
+     type structures and make the function const, i.e. put const after the
+     trailing ')' in the function definition.
+
+2008-08-05:
+   * Add support for scoped-only mutexes, i.e ones that have the
+     lock() and unlock() methods private.
+
+2008-08-03:
+   * Add support for LockOrderingGroup that lets us guarantee that all
+     locks are acquired in the appropriate order.
+
+2008-07-24:
+   * Add templated stringToInteger<type> functions.
+
+2008-07-17:
+   * Add in deptool, a tool for building a related set of programs,
+     including checking them out of version control, building and
+     installing the source packages, checking changes in, publishing
+     those changes, and reviewing checkins.
+
+2008-07-15:
+   * Add in lintel-latex-rebuild, a tool for rebuilding latex files
+     from source.  It has all the magic options to generate pdf
+     properly, and supports builds in a build directory in addition
+     to the source directory.  It subsets the output to make errors
+     more clear.
+
+2008-07-07:
+   * Add in flock, a tool for taking out file locks and releasing
+     them when a process exits.  flock can automatically run a 
+     subprocess.  Useful for making sure only a single copy of
+     something is running at a time.
+
+2008-06-23:
   * Lintel should work on Cygwin.  The environment variable to
     control the number of processors in PThread was changed to
     NUMBER_OF_PROCESSORS from LINTEL_NCPUS to match with what windows sets.
