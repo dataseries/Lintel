@@ -170,7 +170,7 @@ namespace lintel {
 		// I'd like to check boost::is_integral<hash(v)>, but
 		// that just fails.  Using typeid doesn't work any
 		// better.
-		BOOST_STATIC_ASSERT(sizeof(hash(v)) == 4);
+		BOOST_STATIC_ASSERT(sizeof(hashType(v)) == 4);
 		return hashType(v);
 	    }
 	};

@@ -1584,6 +1584,7 @@ sub makeDiffOrder {
     my %file_key;
     map { die "?? $_" unless m!^(.+/)?([^/]+?)(?:\.(\w+))?$!o;
           my ($dir, $name, $suffix) = ($1, $2, $3);
+	  $dir ||= '';
 	  $suffix ||= 'no-suffix';
           my $test_key = $dir =~ m!/tests\b!o ? 0 : 1;
           my $header_key = $suffix eq 'hpp' ? 0 : 1;

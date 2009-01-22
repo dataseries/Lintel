@@ -8,16 +8,18 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/HashFns.hpp>
 
-using lintel::hash;
+#include <Lintel/HashUnique.hpp>
+
 using lintel::Hash;
 using boost::format;
 using namespace std;
 
 template<typename T> void check(const T &v, uint32_t hv) {
-    INVARIANT(hash(v) == hv, format("bad hash(%s): %d != %d") % v % hash(v) % hv);
+    INVARIANT(lintel::hash(v) == hv, 
+	      format("bad hash(%s): %d != %d") % v % lintel::hash(v) % hv);
 
     Hash<T> tmp;
-    INVARIANT(tmp(v) == hv, format("bad Hash(%s): %d != %d") % v % hash(v) % hv);
+    INVARIANT(tmp(v) == hv, format("bad Hash(%s): %d != %d") % v % lintel::hash(v) % hv);
 }
 
 namespace foo {
