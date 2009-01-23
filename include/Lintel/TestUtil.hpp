@@ -20,7 +20,7 @@
     AssertBoostFnBefore(AssertBoostThrowExceptionFn); \
     try { \
         code; \
-        FATAL_ERROR("?"); \
+        FATAL_ERROR("no invariant happened"); \
     } catch (AssertBoostException &e) { \
         AssertBoostClearFns(); \
         INVARIANT(e.msg == message, \
