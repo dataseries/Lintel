@@ -90,7 +90,6 @@ namespace lintel {
 	lintel_BobJenkinsHashMix(a,b,c);
 	return c;
     }
-
     namespace detail {
 	// Overview of magic in here:
 	//
