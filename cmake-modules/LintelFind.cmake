@@ -34,7 +34,9 @@
 #   dependencies.
 
 # LINTEL_FIND_PROGRAM(variable program) sets ${variable}_PATH The
-#   program must exist if ${variable}_FIND_REQUIRED is set.  
+#   program must exist if ${variable}_FIND_REQUIRED is set.  The search
+#   will look in ${CMAKE_CURRENT_BINARY_DIR}, ${variable}_EXTRA_PATHS, 
+#   ${CMAKE_INSTALL_PREFIX}/bin, and the default system paths.
 #
 #   Normally you would use LINTEL_WITH_PROGRAM or LINTEL_REQUIRED_PROGRAM
 
@@ -222,7 +224,9 @@ MACRO(LINTEL_FIND_PROGRAM variable program)
     ENDIF(${variable}_PATH)
 
     FIND_PROGRAM(${variable}_PATH ${program}
-  		 PATHS ${CMAKE_INSTALL_PREFIX}/bin
+  		 PATHS ${CMAKE_CURRENT_BINARY_DIR} 
+	               ${${variable}_EXTRA_PATHS} 
+	               ${CMAKE_INSTALL_PREFIX}/bin
 		 NO_DEFAULT_PATH)
 
     FIND_PROGRAM(${variable}_PATH ${program})
@@ -231,7 +235,7 @@ MACRO(LINTEL_FIND_PROGRAM variable program)
 
     IF(${variable}_FIND_REQUIRED)
         IF(NOT ${variable}_PATH)
-            MESSAGE(STATUS "Looked for program ${program} in ${CMAKE_INSTALL_PREFIX}/bin and system paths")
+            MESSAGE(STATUS "Looked for program ${program} in ${CMAKE_CURRENT_BINARY_DIR} ${${variable}_EXTRA_PATHS} ${CMAKE_INSTALL_PREFIX}/bin and system paths")
 	    IF(DEFINED ${variable}_MISSING_EXTRA)
 	        MESSAGE(STATUS "${${variable}_MISSING_EXTRA")
 	    ENDIF(DEFINED ${variable}_MISSING_EXTRA)
