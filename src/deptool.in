@@ -2037,8 +2037,8 @@ sub depWalkRecurse ($$$$$) {
             }
 
             my $depsrc = "$projects/$dep";
-            die "Unable to find dependency $dep as $projects/$dep"
-                unless -d $depsrc;
+	    depWalkTryCheckout($dep)
+		unless -d $depsrc;
             depWalkRecurse($fn, $depsrc, $visited, $use_build_type, 
                            $sub_build_type);
         }
@@ -2048,6 +2048,60 @@ sub depWalkRecurse ($$$$$) {
         unless $quiet;
     &$fn($build_type);
     print "\n";
+}
+
+sub depWalkTryCheckout {
+    my ($dep) = @_;
+    my $projects = projects();
+
+    print "depWalk: Trying to checkout missing dependency $dep\n";
+    eval {
+	local @ARGV = ($dep);
+	depCheckout($dep);
+    };
+
+    if ($@ && $@ =~ /No branches found matching/o) {
+	depWalkTryInit($dep);
+	eval {
+	    local @ARGV = ($dep);
+	    depCheckout($dep);
+	};
+    }
+	
+    die "Unable to find dependency $dep as $projects/$dep; depCheckout failed: $@"
+	if $@;
+
+    die "depCheckout succeeded, but missing directory??"
+	unless -d "$projects/$dep";
+}
+
+sub depWalkTryInit {
+    my ($dep) = @_;
+    my $fh = new FileHandle "mtn list branches |"
+	or die "Can't start mtn list branches: $!";
+    my $uniqueifier = "unknown.example.com";
+    while(<$fh>) {
+	if (m!^(\w+\.[^/]+)/!o) {
+	    $uniqueifier = $1;
+	    last;
+	}
+    }
+    close($fh);
+
+    print "Unable to find dependency $dep in current monotone databases.\n";
+    my $to_init = "$uniqueifier/$dep";
+    print "Branch to init [$to_init]: ";
+    $_ = <STDIN>;
+    if (!/^\s*$/o) {
+	chomp;
+	$to_init = $_;
+    }
+    eval {
+	local @ARGV = ($to_init);
+	depInit();
+    };
+    die "depInit($to_init) failed: $@"
+	if $@;
 }
 
 # TODO: combine this somehow with divideDir
