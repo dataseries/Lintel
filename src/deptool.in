@@ -1493,6 +1493,7 @@ sub codeReview {
     die "aptitude install libfile-copy-recursive-perl?\n$@" if $@;
     my %parents;
     my %dates;
+    my $branch;
     foreach my $revision (@revisions) {
         my @output = getCmdOutput("mtn log -r $revision --last=1");
 
@@ -1501,10 +1502,16 @@ sub codeReview {
                                  qr/^Revision: (\S+)$/o => 'revision',
                                  qr/^Ancestor: (\S+)$/o => 'ancestor',
                                  qr/^Author:/o => undef,
-                                 qr/^Date: (\S+)$/o => 'date' ]);
+                                 qr/^Date: (\S+)$/o => 'date',
+				 qr/^Branch: (\S+)$/o => 'branch' ]);
         
         $parents{$info{revision}} = $info{ancestor};
         $dates{$info{revision}} = $info{date};
+	$branch = $info{branch} unless defined $branch;
+	unless($branch eq $info{branch}) {
+	    userPrompt("continue through mismatch on branches for specified revisions?\n ($branch != $info{branch})");
+	    $branch = $info{branch};
+	}
     }
 
     @revisions = sort { $dates{$a} cmp $dates{$b} } keys %parents;
