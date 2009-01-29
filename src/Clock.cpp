@@ -121,6 +121,8 @@ namespace {
 }
 
 void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
+    INVARIANT(clock_rate == -Double::Inf || allow == allow_unsafe_frequency_scaling, 
+	      "Already calibrated the clock, so can't change the Clock::allowUnsafeFrequencyScaling mode");
     allow_unsafe_frequency_scaling = allow;
 }
 
