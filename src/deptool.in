@@ -119,8 +119,8 @@ If you need to add a dependency, then you need to edit the file
 simply contains one line that lists branch substrings that should be
 built and installed before the current source directory is built.  If
 you want special builds, then you can list them as
-'I<dependency>;I<build-type>' (without the '').  This input has the
-same effect as creating a dependency where you run b I<build-type> and
+'I<dependency>;I<sub-build-type>' (without the '').  This input has the
+same effect as creating a dependency where you run b I<sub-build-type> and
 then build in that directory.
 
 =cut
@@ -129,6 +129,7 @@ my $auto_yes_to_prompts = 0;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
+my $monotone_dir = "$ENV{HOME}/.monotone";
 
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
@@ -347,16 +348,17 @@ Same as cdopt, except for the debug build directory.
 
 =cut
 
-my $command = shift @ARGV;
-my $monotone_dir = "$ENV{HOME}/.monotone";
-my $fn = $commands{$command};
+{
+    my $command = shift @ARGV;
+    my $fn = $commands{$command};
 
-usage("Unrecognized command '$command'") unless defined $fn;
-$|=1;
-
-# handle case where start dir is a symlink
-aliasChdir($ENV{PWD}) if defined $ENV{PWD};
-&$fn;
+    usage("Unrecognized command '$command'") unless defined $fn;
+    $|=1;
+    
+    # handle case where start dir is a symlink
+    aliasChdir($ENV{PWD}) if defined $ENV{PWD};
+    &$fn;
+}
 
 sub help {
     my ($what) = @_;
@@ -377,6 +379,10 @@ sub help {
 
     exit(0);
 }
+
+##### Pre-declarations
+
+sub depWalk ($$$);
 
 ##### Dependency Init
 
@@ -681,7 +687,7 @@ sub depBuild {
     $options{builddir} = $options{mode} eq 'debug' ? buildDebug() : buildOpt();
     $options{projects} = projects();
 
-    depWalk(sub { depBuildOne(\%options, @_) }, 1);
+    depWalk(sub { }, sub { depBuildOne(\%options, @_) }, 1);
 }
 
 sub depBuildOne {
@@ -931,7 +937,7 @@ accidentally destroy your current changes.
 
 sub depPull {
     my %options;
-    depWalk(sub { depPullOne(\%options); });
+    depWalk(\&depPullCheckClean, sub { depPullOne(\%options); }, 0);
 }
 
 ### sets $options->{made_changes} if we made changes.
@@ -1053,6 +1059,18 @@ sub depPinFilename {
     return "$ENV{HOME}/.monotone/deptool-version-pins";
 }
 
+sub depPullCheckClean {
+    my $cwd = aliasGetCwd();
+    if (depCommitHaveUnknown()) {
+	die "You have unknown files in $cwd
+Requiring you to commit first. Aborting.\n";
+    }
+    if (depCommitHaveChanges()) {
+	die "You have uncommitted changes in $cwd
+Requiring you to commit first. Aborting.\n";
+    }
+}
+
 ##### Dependency commit
 
 =pod
@@ -1073,7 +1091,8 @@ of the tests to verify that the changes are internally consistent.
 sub depCommit {
     my %options;
 
-    depWalk(\&depCommitOne);
+    depBuild('tests' => 1);
+    depWalk(sub { }, \&depCommitOne, 0);
 }
 
 sub depCommitOne {
@@ -1368,7 +1387,7 @@ sub depPublish {
         print "deppublish: verifying current version passes regression tests\n";
         depBuild('tests' => 1);
         print "deppublish: pulling in any remote changes\n";
-        depWalk(sub { depPullOne(\%options); });
+        depWalk(sub { }, sub { depPullOne(\%options); }, 0);
 
         unless ($options{made_changes}) {
             print "\n" x 5;
@@ -1377,7 +1396,7 @@ sub depPublish {
 *** need to get them tested and synchronized quickly because they made it ***
 *** out so other people can see them. ***
 END
-            depWalk(sub { depSyncOne(\%options); });
+            depWalk(sub { }, sub { depSyncOne(\%options); }, 0);
             print "****** WARNING, got changes; re-running deppublish...\n"
                 if $options{made_changes};
         }
@@ -2006,18 +2025,21 @@ sub divideDir {
 
 ##### Common -- depwalk
 
-sub depWalkRecurse ($$$$$);
+sub depWalkRecurse ($$$$$$);
 
-sub depWalk {
-    my($fn, $use_build_type) = @_;
+# pre_fn gets called before we recurse into the version control dependencies
+# post_fn gets called after we recursed into the version control dependencies
+
+sub depWalk ($$$) {
+    my($pre_fn, $post_fn, $use_sub_build_type) = @_;
 
     my $src = rootSrcDir();
-    depWalkRecurse($fn, $src, {}, $use_build_type, '');
+    depWalkRecurse($pre_fn, $post_fn, $src, {}, $use_sub_build_type, '');
 }
 
-sub depWalkRecurse ($$$$$) {
-    my($fn, $src, $visited, $use_build_type, $build_type) = @_;
-    if ($use_build_type) {
+sub depWalkRecurse ($$$$$$) {
+    my($pre_fn, $post_fn, $src, $visited, $use_sub_build_type, $build_type) = @_;
+    if ($use_sub_build_type) {
         return if $visited->{"$src $build_type"};
         $visited->{"$src $build_type"} = 1;
     } else {
@@ -2026,6 +2048,7 @@ sub depWalkRecurse ($$$$$) {
     }
 
     aliasChdir($src);
+    &$pre_fn($build_type);
     my @vcdeps = readVCDeps(".version_control_deps");
     if (@vcdeps > 0) {
         my $projects = projects();
@@ -2039,14 +2062,14 @@ sub depWalkRecurse ($$$$$) {
             my $depsrc = "$projects/$dep";
 	    depWalkTryCheckout($dep)
 		unless -d $depsrc;
-            depWalkRecurse($fn, $depsrc, $visited, $use_build_type, 
+            depWalkRecurse($pre_fn, $post_fn, $depsrc, $visited, $use_sub_build_type, 
                            $sub_build_type);
         }
     }
     aliasChdir($src);
     print "depwalk: running walk function in $src ($build_type)\n\n"
         unless $quiet;
-    &$fn($build_type);
+    &$post_fn($build_type);
     print "\n";
 }
 
