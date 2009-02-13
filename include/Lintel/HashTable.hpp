@@ -235,11 +235,11 @@ public:
 	}
 
 	bool ret = true;
-	++free_list_size;
 	if (equal(key,chains[loc].data)) {
 	    chains[loc].data = D();
 	    entry_points[hash] = chains[loc].next;
 	    chains[loc].next = free_list;
+	    ++free_list_size;
 	    free_list = loc;
 	} else {
 	    int32_t prev = loc;
@@ -256,6 +256,7 @@ public:
 		    chains[loc].data = D();
 		    chains[prev].next = chains[loc].next;
 		    chains[loc].next = free_list;
+		    ++free_list_size;
 		    free_list = loc;
 		    break;
 		}
