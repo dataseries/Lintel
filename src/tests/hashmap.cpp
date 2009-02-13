@@ -88,6 +88,7 @@ template<typename INT> uint32_t test_int_type(const string &type) {
 	    ret ^= k ^ v;
 	    SINVARIANT(hm[k] == v);
 	    hm.remove(k);
+	    hm.remove(k + max_ents, false);
 	    stdmap.erase(i);
 	    SINVARIANT(hm.size() == stdmap.size());
 	}

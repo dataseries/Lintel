@@ -39,9 +39,7 @@ public:
     }
 };
 
-void
-stringHTTests()
-{
+void stringHTTests() {
     HashMap<string, unsigned> test;
 
     for(unsigned i = 0; i < 1000; ++i) {
@@ -65,12 +63,23 @@ typedef HashTable<int,intHash,intEqual> inttable;
 void nonconstHTTest(inttable &table, int maxi) {
     vector<bool> found;
     found.resize(maxi);
-    for(inttable::iterator i = table.begin();
-	i != table.end(); ++i) {
+    inttable::iterator i = table.begin();
+    SINVARIANT(i.atStartOfChain());
+    uint32_t start_chain_count = 0, end_chain_count = 0;
+    for(;i != table.end(); ++i) {
+	if (i.atStartOfChain()) {
+	    ++start_chain_count;
+	}
+	if (i.atEndOfChain()) {
+	    ++end_chain_count;
+	}
+	
 	SINVARIANT(*i < maxi);
 	SINVARIANT(found[*i] == false);
 	found[*i] = true;
     }
+    SINVARIANT(i.atStartOfChain() && i.atEndOfChain());
+    SINVARIANT(start_chain_count > 0 && start_chain_count == end_chain_count);
 
     for(int i=0; i<maxi; ++i) {
 	SINVARIANT(found[i]);
@@ -95,8 +104,8 @@ void constHTTest(const inttable &table, int maxi) {
     }
 }
 
-int main()
-{
+int main(int argc, char *argv[]) {
+    SINVARIANT(argc == 1);
     printf("test collision add/remove\n");
     
     HashTable<int,collisionHash,intEqual> collisiontable;

@@ -324,13 +324,31 @@ private:
 	/// restart the scan operation partway through after doing some
 	/// number of updates safely.
 	void partialReset() {
-	    if (cur_chain < static_cast<int>(mytable->entry_points.size())) {
+	    if (cur_chain < static_cast<int32_t>(mytable->entry_points.size())) {
 		chain_loc = mytable->entry_points[cur_chain];
 		findNonemptyChain();
 	    } else {
-		SINVARIANT(cur_chain == static_cast<int>(mytable->entry_points.size()));
+		SINVARIANT(cur_chain == static_cast<int32_t>(mytable->entry_points.size()));
 	    }
 	}
+	/// if you want to do incremental iteration, this will tell
+	/// you if the iterator is currently pointing to the beginning
+	/// of a chain.  If you always do partial iteration until you
+	/// get the the beginning of a new chain, then you are
+	/// guaranteed to make progress.  (If you don't, and you have
+	/// a long chain, you could get stuck in the long chain).
+	bool atStartOfChain() {
+	    return this->cur_chain == static_cast<int32_t>(this->mytable->entry_points.size())
+  	        || this->mytable->entry_points[this->cur_chain] == this->chain_loc;
+	}
+
+	/// Tells you that you are at the end of a hash-table chain.
+	/// Similar use to atStartOfChain.
+	bool atEndOfChain() {
+	    return this->cur_chain == static_cast<int32_t>(this->mytable->entry_points.size())
+	        || this->mytable->chains[this->chain_loc].next == -1;
+	}
+
 	void reset() {
 	    cur_chain = 0;
 	    findNonemptyChain();
@@ -366,6 +384,7 @@ private:
 		findNonemptyChain();
 	    }
 	}
+        // TODO: make this a reference.
 	t_hashtable_type *mytable;
 	int32_t cur_chain;
 	int32_t chain_loc;
