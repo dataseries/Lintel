@@ -1497,7 +1497,21 @@ Usually users will just hit return to bring up the kdiff3 window for
 comparing the two files until they get to the end.  They can
 alternately use the auto command to skip having to hit return.
 
-B<Note-bug:> renames currently confuse the code review tool.
+=head3 BUGS
+
+=over
+
+=item *
+
+renames currently confuse the code review tool.
+
+=item *
+
+should check *.patch.err file to see if we have any skipped patches,
+this can occur as a result of renames and as a result of added files in
+skipped revisions
+
+=back
 
 =cut
 
