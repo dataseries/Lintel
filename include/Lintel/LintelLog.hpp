@@ -85,6 +85,7 @@ do { \
 /// no support for turning those levels on or off.
 class LintelLog {
 public:
+    // TODO-future: Please document the various levels.
     /// Similar to the logging levels from http://www.slf4j.org/ we
     /// skip the trace level of debugging (you'd want to log directly
     /// to DataSeries if you're going to write that much out), and add
