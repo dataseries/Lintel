@@ -90,6 +90,7 @@ namespace lintel {
     ///
     /// @return any un-parsed arguments if allow_unrecognized is true
     std::vector<std::string> parseCommandLine(const std::vector<std::string> &args,
+					      const std::string &argv0 = "unknown-program-name",
 					      bool allow_unrecognized = false);
 
     /// Generic template program option, you can use ProgramOption<
@@ -98,7 +99,7 @@ namespace lintel {
     template<typename T> class ProgramOption {
     public:
 	/// Program option without an action function; expected to be
-	/// used via the used() and get() functions.  If you specify
+	/// accessed via the used() and get() functions.  If you specify
 	/// a default value, or the default initialization of T is a
 	/// sane default, you can skip used().  
 	/// 
@@ -133,6 +134,10 @@ namespace lintel {
 		return default_val;
 	    }
 	}
+
+	void set(const T &val) {
+	    FATAL_ERROR("TODO-jay: implement me, and for the bool variant");
+	}
     private:
 	void init(const std::string &name, const std::string &desc, 
 		  detail::ProgramOptionFnT f) {
@@ -142,7 +147,9 @@ namespace lintel {
 	}
 
 	void save(const boost::program_options::variable_value &opt) {
-	    saved = opt;
+	    if (!opt.empty()) {
+		saved = opt;
+	    }
 	}
 	
 	boost::program_options::variable_value saved;

@@ -8,6 +8,8 @@
 #include <Lintel/TestUtil.hpp>
 using namespace std;
 
+// TODO-jay: more testcases, ala counternode from SimReal.
+
 void first(int argc, char *argv[]) {
     // --mode=first --test --multi=1 --multi=2
 

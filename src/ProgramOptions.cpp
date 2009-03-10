@@ -96,6 +96,7 @@ namespace lintel {
 	}
     }
 
+    // TODO-jay: consider argv0 setting in here or a separate function.
     void programOptionsHelp(const string &to_add) {
 	extra_help.append(to_add);
     }
@@ -108,11 +109,14 @@ namespace lintel {
     // TODO-jay-review: Make module scope parseCommandLine public? More elegant
     // handling of var_map? More elegant handling of argv0? Let programs set
     // argv0 as part of PO initialization?
+    // TODO-jay: This has to go back to being function scope; if it's global scope
+    // we incorrectly remember things.
 
+    // TODO-jay: namespace { } for next function.
     // Allow parseCommandLine to be called multiple times
     po::variables_map var_map;
     vector<string> parseCommandLine(po::command_line_parser &parser,
-                                    bool allow_unrecognized, string argv0="") {
+                                    bool allow_unrecognized, const string &argv0) {
 	vector<string> unrecognized;
 
 	basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
@@ -121,20 +125,21 @@ namespace lintel {
 		  % unrecognized[0] % argv0); 
 	processOptions(programOptionsActions(), var_map);
 	if (po_help.get()) {
+	    // TODO-jay: no .c_str()
 	    programOptionsUsage(argv0.c_str()); 
 	    exit(0);
 	}
 	return unrecognized;
     }
 
-    vector<string> parseCommandLine(const vector<string> &args, bool allow_unrecognized) {
+    vector<string> parseCommandLine(const vector<string> &args, const string &argv0, 
+				    bool allow_unrecognized) {
         po::command_line_parser parser(args);
-        return parseCommandLine(parser, allow_unrecognized);
+        return parseCommandLine(parser, allow_unrecognized, argv0);
     }
     
     vector<string> parseCommandLine(int argc, char *argv[], bool allow_unrecognized) {
         po::command_line_parser parser(argc, argv);
         return parseCommandLine(parser, allow_unrecognized, argv[0]);
     }
-
 }
