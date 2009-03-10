@@ -80,10 +80,16 @@ namespace lintel {
     /// print out the usage information
     void programOptionsUsage(const char *argv0);
 
-    /// parse command line options as a standard arc, argv pair;
+    /// parse command line options as a standard argc, argv pair;
     ///
     /// @return any un-parsed arguments if allow_unrecognized is true
     std::vector<std::string> parseCommandLine(int argc, char *argv[], 
+					      bool allow_unrecognized = false);
+
+    /// parse command line options as vector of strings
+    ///
+    /// @return any un-parsed arguments if allow_unrecognized is true
+    std::vector<std::string> parseCommandLine(const std::vector<std::string> &args,
 					      bool allow_unrecognized = false);
 
     /// Generic template program option, you can use ProgramOption<
@@ -92,7 +98,7 @@ namespace lintel {
     template<typename T> class ProgramOption {
     public:
 	/// Program option without an action function; expected to be
-	/// used via that used() and get() functions.  If you specify
+	/// used via the used() and get() functions.  If you specify
 	/// a default value, or the default initialization of T is a
 	/// sane default, you can skip used().  
 	/// 

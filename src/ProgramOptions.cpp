@@ -104,22 +104,37 @@ namespace lintel {
 	cout << boost::format("Usage: %s [options] %s\n") % argv0 % extra_help
 	     << programOptionsDesc() << "\n";
     }
-	
-    vector<string> parseCommandLine(int argc, char *argv[], bool allow_unrecognized) {
-	po::variables_map var_map;
+
+    // TODO-jay-review: Make module scope parseCommandLine public? More elegant
+    // handling of var_map? More elegant handling of argv0? Let programs set
+    // argv0 as part of PO initialization?
+
+    // Allow parseCommandLine to be called multiple times
+    po::variables_map var_map;
+    vector<string> parseCommandLine(po::command_line_parser &parser,
+                                    bool allow_unrecognized, string argv0="") {
 	vector<string> unrecognized;
 
-	po::command_line_parser parser(argc, argv);
 	basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
 	INVARIANT(allow_unrecognized || unrecognized.empty(), boost::format
-		  ("Unexpected option '%s'; try %s -h for help") 
-		  % unrecognized[0] % argv[0]);
+		  ("Unexpected option '%s'; try %s -h for help")
+		  % unrecognized[0] % argv0); 
 	processOptions(programOptionsActions(), var_map);
 	if (po_help.get()) {
-	    programOptionsUsage(argv[0]);
+	    programOptionsUsage(argv0.c_str()); 
 	    exit(0);
 	}
 	return unrecognized;
+    }
+
+    vector<string> parseCommandLine(const vector<string> &args, bool allow_unrecognized) {
+        po::command_line_parser parser(args);
+        return parseCommandLine(parser, allow_unrecognized);
+    }
+    
+    vector<string> parseCommandLine(int argc, char *argv[], bool allow_unrecognized) {
+        po::command_line_parser parser(argc, argv);
+        return parseCommandLine(parser, allow_unrecognized, argv[0]);
     }
 
 }
