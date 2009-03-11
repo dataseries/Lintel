@@ -66,8 +66,13 @@ void fifth(int argc, char *argv[]) {
     vector<string> more_args;
     more_args.push_back("--inline1");
     more_args.push_back("--inline2=5");
+
+    // TODO-jay: figure out which parseCommandLine is calling, how is
+    // "internal-parse" being cast?
     lintel::parseCommandLine(more_args, "internal-parse");
 
+    // TODO-jay: clear documentation. Also test default value.
+    
     // Make sure all progam options still set correctly.
     SINVARIANT(cmdline1.get() && cmdline2.used());
     SINVARIANT(inline1.get() && inline2.used());

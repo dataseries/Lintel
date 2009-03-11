@@ -153,6 +153,7 @@ namespace lintel {
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
+	// TODO-jay: add a comment why the if
 	void save(const boost::program_options::variable_value &opt) {
 	    if (!opt.empty()) {
 		saved = opt;
