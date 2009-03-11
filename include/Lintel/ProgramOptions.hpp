@@ -77,8 +77,12 @@ namespace lintel {
     /// parseCommandLine.  Will be printed after the 'Usage: argv[0]' bit.
     void programOptionsHelp(const std::string &to_add);
 
-    /// print out the usage information
+    /// print out the usage information. Uses value set by setArgvZero or by
+    /// parseCommandLine(argc,argv) for program name.
     void programOptionsUsage();
+
+    /// print out the usage information. Uses argv0 passed in as program name.
+    void programOptionsUsage(const std::string &argv0);
 
     /// sets program name for progamOptionsUsage
     void setArgvZero(const std::string &argv0);

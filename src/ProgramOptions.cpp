@@ -100,10 +100,14 @@ namespace lintel {
     }
 
     void programOptionsUsage() {
-	cout << boost::format("Usage: %s [options] %s\n") % argv0 % extra_help
-	     << programOptionsDesc() << "\n";
+        programOptionsUsage(argv0);
     }
 
+    void programOptionsUsage(const std::string &_argv0) {
+	cout << boost::format("Usage: %s [options] %s\n") % _argv0 % extra_help
+	     << programOptionsDesc() << "\n";
+    }
+    
     void setArgvZero(const string &_argv0) {
         argv0 = _argv0;
     }
