@@ -38,8 +38,7 @@ namespace {
 }
 
 namespace {
-
-
+    string argv0 = "unknown-program-name"; // For usage message. 
     std::string extra_help;
     using namespace lintel::detail;
 
@@ -96,50 +95,45 @@ namespace lintel {
 	}
     }
 
-    // TODO-jay: consider argv0 setting in here or a separate function.
     void programOptionsHelp(const string &to_add) {
 	extra_help.append(to_add);
     }
 
-    void programOptionsUsage(const char *argv0) {
+    void programOptionsUsage() {
 	cout << boost::format("Usage: %s [options] %s\n") % argv0 % extra_help
 	     << programOptionsDesc() << "\n";
     }
 
-    // TODO-jay-review: Make module scope parseCommandLine public? More elegant
-    // handling of var_map? More elegant handling of argv0? Let programs set
-    // argv0 as part of PO initialization?
-    // TODO-jay: This has to go back to being function scope; if it's global scope
-    // we incorrectly remember things.
+    void setArgvZero(const string &_argv0) {
+        argv0 = _argv0;
+    }
+    
+    namespace {
+        vector<string> parseCommandLine(po::command_line_parser &parser, bool allow_unrecognized) {
+            po::variables_map var_map;
+            vector<string> unrecognized;
 
-    // TODO-jay: namespace { } for next function.
-    // Allow parseCommandLine to be called multiple times
-    po::variables_map var_map;
-    vector<string> parseCommandLine(po::command_line_parser &parser,
-                                    bool allow_unrecognized, const string &argv0) {
-	vector<string> unrecognized;
-
-	basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
-	INVARIANT(allow_unrecognized || unrecognized.empty(), boost::format
-		  ("Unexpected option '%s'; try %s -h for help")
-		  % unrecognized[0] % argv0); 
-	processOptions(programOptionsActions(), var_map);
-	if (po_help.get()) {
-	    // TODO-jay: no .c_str()
-	    programOptionsUsage(argv0.c_str()); 
-	    exit(0);
-	}
-	return unrecognized;
+            basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
+            INVARIANT(allow_unrecognized || unrecognized.empty(), boost::format
+                      ("Unexpected option '%s'; try %s -h for help")
+                      % unrecognized[0] % argv0); 
+            processOptions(programOptionsActions(), var_map);
+            if (po_help.get()) {
+                programOptionsUsage(); 
+                exit(0);
+            }
+            return unrecognized;
+        }
     }
 
-    vector<string> parseCommandLine(const vector<string> &args, const string &argv0, 
-				    bool allow_unrecognized) {
+    vector<string> parseCommandLine(const vector<string> &args, bool allow_unrecognized) {
         po::command_line_parser parser(args);
-        return parseCommandLine(parser, allow_unrecognized, argv0);
+        return parseCommandLine(parser, allow_unrecognized);
     }
     
     vector<string> parseCommandLine(int argc, char *argv[], bool allow_unrecognized) {
+        setArgvZero(argv[0]);
         po::command_line_parser parser(argc, argv);
-        return parseCommandLine(parser, allow_unrecognized, argv[0]);
+        return parseCommandLine(parser, allow_unrecognized);
     }
 }

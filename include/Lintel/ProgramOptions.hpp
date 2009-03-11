@@ -78,9 +78,13 @@ namespace lintel {
     void programOptionsHelp(const std::string &to_add);
 
     /// print out the usage information
-    void programOptionsUsage(const char *argv0);
+    void programOptionsUsage();
 
-    /// parse command line options as a standard argc, argv pair;
+    /// sets program name for progamOptionsUsage
+    void setArgvZero(const std::string &argv0);
+
+    /// parse command line options as a standard argc, argv pair; sets the
+    /// program name (argv[0]) for ProgramOptionsUsage via setArgvZero.
     ///
     /// @return any un-parsed arguments if allow_unrecognized is true
     std::vector<std::string> parseCommandLine(int argc, char *argv[], 
@@ -90,7 +94,6 @@ namespace lintel {
     ///
     /// @return any un-parsed arguments if allow_unrecognized is true
     std::vector<std::string> parseCommandLine(const std::vector<std::string> &args,
-					      const std::string &argv0 = "unknown-program-name",
 					      bool allow_unrecognized = false);
 
     /// Generic template program option, you can use ProgramOption<
@@ -136,7 +139,7 @@ namespace lintel {
 	}
 
 	void set(const T &val) {
-	    FATAL_ERROR("TODO-jay: implement me, and for the bool variant");
+            saved = boost::program_options::variable_value(val, false);
 	}
     private:
 	void init(const std::string &name, const std::string &desc, 
@@ -162,26 +165,29 @@ namespace lintel {
     template<> class ProgramOption<bool> {
     public:
 	ProgramOption(const std::string &name, const std::string &desc) 
-	    : set(false)
+	    : val(false)
 	{
 	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1));
 	}
 
 	ProgramOption(const std::string &name, const std::string &desc, detail::ProgramOptionFnT f) 
-	    : set(false)
+	    : val(false)
 	{
 	    INVARIANT(!!f, boost::format("option %s needs a function") % name);
 	    init(name, desc, f);
 	}
 	    
 	bool used() {
-	    return set;
+	    return val;
 	}
 	
 	bool get() {
-	    return set;
+	    return val;
 	}
 	
+	void set(const bool &_val) {
+            val = _val;
+	}
     private:
 	void init(const std::string &name, const std::string &desc, detail::ProgramOptionFnT f) {
 	    detail::programOptionsDesc().add_options() (name.c_str(), desc.c_str());
@@ -190,11 +196,11 @@ namespace lintel {
 
 	void save(const boost::program_options::variable_value &opt) {
 	    if (!opt.empty()) {
-		set = true;
+		val = true;
 	    }
 	}
 	
-	bool set;
+	bool val;
     };
 }
 
