@@ -10,7 +10,6 @@ using namespace std;
 
 void first(int argc, char *argv[]) {
     // --mode=first --test --multi=1 --multi=2
-
     lintel::ProgramOption<string> mode("mode", "...");
     lintel::ProgramOption<bool> test("test", "...");
     lintel::ProgramOption< vector<int> > multi("multi", "...");
@@ -47,16 +46,21 @@ void third(int argc, char *argv[]) {
 }
 
 void fifth(int argc, char *argv[]) {
-    //  --cmdline1 --cmdline2=3 
+    //  --cmdline1 --cmdline2=3 --cmdline3=8 --cmdline3=8 --cmdline3=8 --cmdline3=8
     lintel::ProgramOption<bool> cmdline1("cmdline1", "test");
     lintel::ProgramOption<bool> inline1("inline1", "test");
     lintel::ProgramOption<int> cmdline2("cmdline2", "test");
-    lintel::ProgramOption<int> inline2("inline2", "test");
+    lintel::ProgramOption<int> inline2("inline2", "test", 4);
+    lintel::ProgramOption< vector<int> > cmdline3("cmdline3", "test");
+    lintel::ProgramOption< vector<int> > inline3("inline3", "test", vector<int>(3,7));
 
     lintel::parseCommandLine(argc, argv);
-    SINVARIANT(cmdline1.get() && cmdline2.used());
+    SINVARIANT(cmdline1.get() && cmdline2.used() && cmdline3.used());
     SINVARIANT(cmdline2.get() == 3);
-    SINVARIANT(!inline1.get() && !inline2.used());
+    SINVARIANT(cmdline3.get() == vector<int>(4,8));
+    SINVARIANT(!inline1.get() && !inline2.used() && !inline3.used());
+    SINVARIANT(inline2.get() == 4); // Test default value.
+    SINVARIANT(inline3.get() == vector<int>(3,7)); // Test default value.
 
     // Set program option programmatically (note it was set to 3 on command line)
     cmdline2.set(77);
@@ -66,18 +70,18 @@ void fifth(int argc, char *argv[]) {
     vector<string> more_args;
     more_args.push_back("--inline1");
     more_args.push_back("--inline2=5");
+    more_args.push_back("--inline3=9");
+    more_args.push_back("--inline3=9");
+    lintel::parseCommandLine(more_args);
 
-    // TODO-jay: figure out which parseCommandLine is calling, how is
-    // "internal-parse" being cast?
-    lintel::parseCommandLine(more_args, "internal-parse");
-
-    // TODO-jay: clear documentation. Also test default value.
-    
-    // Make sure all progam options still set correctly.
+    // Make sure the "more_args" program options are set correctly, and confirm
+    // previously set program options are still the same.
     SINVARIANT(cmdline1.get() && cmdline2.used());
     SINVARIANT(inline1.get() && inline2.used());
     SINVARIANT(cmdline2.get() == 77);
+    SINVARIANT(cmdline3.get() == vector<int>(4,8));
     SINVARIANT(inline2.get() == 5);
+    SINVARIANT(inline3.get() == vector<int>(2,9)); 
     exit(0);
 }
 

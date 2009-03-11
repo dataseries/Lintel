@@ -6,7 +6,7 @@ LINTEL_PO_TEST=second ./program_options --sample=a --unknown foo || exit 1
 LINTEL_PO_TEST=third ./program_options --help >check-help || exit 1
 cmp check-help $SRCDIR/program_options.help.ref || exit 1
 LINTEL_PO_TEST=fourth ./program_options -x || exit 1
-LINTEL_PO_TEST=fifth ./program_options  --cmdline1 --cmdline2=3 || exit 1
+LINTEL_PO_TEST=fifth ./program_options  --cmdline1 --cmdline2=3 --cmdline3=8 --cmdline3=8 --cmdline3=8 --cmdline3=8 || exit 1
 
 
 

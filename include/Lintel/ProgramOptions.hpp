@@ -71,6 +71,31 @@ namespace lintel {
 
 	boost::program_options::options_description &programOptionsDesc();
 	std::vector<ProgramOptionPair> &programOptionsActions();
+
+        template<typename T> std::string defaultValueString(const T &def_val) {
+            std::string def_val_str = str(boost::format("%1%") % def_val);
+            // TODO-jay-review: Is there a more elegant way of accomplishing
+            // the below string clean up? If I didn't do this stuff, then some
+            // default args messages would be "(Default value " with no closing
+            // ".)"
+                if (def_val_str[0] == 0) {
+                // Some default constructed objects (e.g., strings) end up being
+                // eqivalent to a zero terminated string of length 0. This is ugly
+                // to print. This test replaces such hard to print strings with
+                // an empty string that prints better. 
+                def_val_str = "";
+            }
+            return "[" + def_val_str + "]";
+        }
+
+        template<typename T> std::string defaultValueString(const std::vector<T> &def_vector) {
+            std::string vdesc = "[";
+            for(uint32_t i = 0; i < def_vector.size(); ++i) {
+                vdesc += defaultValueString(def_vector[i]);
+            }
+            vdesc += "]";
+            return vdesc;
+        }
     }
 
     /// add string to help message, should be called before a call to
@@ -148,14 +173,15 @@ namespace lintel {
     private:
 	void init(const std::string &name, const std::string &desc, 
 		  detail::ProgramOptionFnT f) {
+            std::string def_desc = str(boost::format("%s (Default value %s.)")
+                % desc % detail::defaultValueString(default_val));
 	    detail::programOptionsDesc().add_options()
-		(name.c_str(), boost::program_options::value<T>(), desc.c_str());
+		(name.c_str(), boost::program_options::value<T>(), def_desc.c_str());
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
-	// TODO-jay: add a comment why the if
 	void save(const boost::program_options::variable_value &opt) {
-	    if (!opt.empty()) {
+	    if (!opt.empty()) { // Do not overwrite saved opts with empty values.
 		saved = opt;
 	    }
 	}
