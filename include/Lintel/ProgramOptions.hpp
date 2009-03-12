@@ -72,22 +72,17 @@ namespace lintel {
 	boost::program_options::options_description &programOptionsDesc();
 	std::vector<ProgramOptionPair> &programOptionsActions();
 
+        // Helper to "pretty" print the default value in description message.
         template<typename T> std::string defaultValueString(const T &def_val) {
-            std::string def_val_str = str(boost::format("%1%") % def_val);
-            // TODO-jay-review: Is there a more elegant way of accomplishing
-            // the below string clean up? If I didn't do this stuff, then some
-            // default args messages would be "(Default value " with no closing
-            // ".)"
-                if (def_val_str[0] == 0) {
-                // Some default constructed objects (e.g., strings) end up being
-                // eqivalent to a zero terminated string of length 0. This is ugly
-                // to print. This test replaces such hard to print strings with
-                // an empty string that prints better. 
-                def_val_str = "";
-            }
-            return "[" + def_val_str + "]";
+            return str(boost::format("[%1%]") % def_val);
         }
-
+        // overload general helper for char's since they default to value 0
+        // but cast to string. This leads to ugly line breaks/missing text in
+        // default value message.
+        template<> std::string defaultValueString<char>(const char &def_val) {
+            return str(boost::format("[\'\\%03d\']") % static_cast<int>(def_val));
+        }
+        // Helper to pretty print default values of vector program options
         template<typename T> std::string defaultValueString(const std::vector<T> &def_vector) {
             std::string vdesc = "[";
             for(uint32_t i = 0; i < def_vector.size(); ++i) {
