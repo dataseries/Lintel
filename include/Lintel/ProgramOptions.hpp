@@ -79,7 +79,7 @@ namespace lintel {
         // overload general helper for char's since they default to value 0
         // but cast to string. This leads to ugly line breaks/missing text in
         // default value message.
-        template<> std::string defaultValueString<char>(const char &def_val) {
+        template<> inline std::string defaultValueString<char>(const char &def_val) {
             return str(boost::format("[\'\\%03d\']") % static_cast<int>(def_val));
         }
         // Helper to pretty print default values of vector program options
