@@ -230,10 +230,10 @@ namespace lintel {
 		// branch should never be executed.
 		return static_cast<uint32_t>
 		    (reinterpret_cast<size_t>(a.get()));
-	    } else if (sizeof(a) == 8) {
+	    } else if (sizeof(a.get()) == 8) {
 		return BobJenkinsHashMixULL
 		    (reinterpret_cast<uint64_t>(a.get()));
-	    }
+	    } 
 	}
     };
     
