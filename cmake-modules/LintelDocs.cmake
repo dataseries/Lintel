@@ -67,7 +67,12 @@ MACRO(LINTEL_DOCS_BUILD)
         FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES1 ${CMAKE_HOME_DIRECTORY}/include/*.hpp)
         FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES2 ${CMAKE_CACHEFILE_DIR}/include/*.hpp)
      
+	# Create a clean directory for the output or if files are deleted the
+	# obsolete man/html pages will still be installed.
         ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html
+		      COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/doxygen.bak
+		      COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/doxygen
+	                         ${CMAKE_CURRENT_BINARY_DIR}/doxygen.bak
      	              COMMAND ${DOXYGEN_EXECUTABLE} 
      		   	      ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
       		      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config

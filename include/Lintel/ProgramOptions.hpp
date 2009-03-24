@@ -22,7 +22,7 @@
     @verbatim
 
     using namespace std;
-    // time() ^ getpid() is the default seed.
+    // specify default seed as time() ^ getpid()
     lintel::ProgramOption<int> seed("seed", "specify the random seed", time() ^ getpid());
     lintel::ProgramOption<bool> help("help", "get help");
     lintel::ProgramOption< vector<string> > params("param", "specify string parameters");
