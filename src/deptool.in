@@ -1528,7 +1528,7 @@ sub codeReview {
     my %dates;
     my $branch;
     foreach my $revision (@revisions) {
-        my @output = getCmdOutput("mtn log -r $revision --last=1");
+        my @output = vcLogRevision($revision);
 
         my %info = simpleParse(\@output, 
                                [ qr/^-+$/o => undef,
@@ -1653,7 +1653,7 @@ sub kdiffDirs {
     # message for the file we are reviewing.
 
     foreach my $rev (@$revisions) {
-        quietRunCommand("mtn log -r $rev --last=1");
+        print vcLogRevision($rev); 
     }
     my $cur = '*start*';
     my $auto = undef;
@@ -1823,7 +1823,7 @@ sub getCmdOutput {
     my $fh = new FileHandle "$cmd 2>/dev/null |" 
         or die "Unable to run $cmd: $!";
     my @ret = <$fh>;
-    close($fh) or die "close failed: $!\ncommand is $cmd";
+    close($fh) or confess "close failed: $!\ncommand is $cmd";
     die "$cmd failed" unless $? == 0;
     return @ret;
 }
@@ -2537,6 +2537,36 @@ sub readMtnOptions {
 
     return %ret;
 }
+
+sub vcVersion {
+    unless (defined $Cache::vc_version) {
+	my @output = getCmdOutput("mtn --version");
+
+	die "bad return from mtn --version" unless @output == 1;
+    
+	local $_ = $output[0];
+	die "can't parse '$output[0]'" unless /^monotone (\d+\.\d+\S*) /o;
+	$Cache::vc_version = { 'type' => 'monotone', 'version' => $1 };
+    }
+    
+    die "Internal" unless defined $Cache::vc_version;
+    return $Cache::vc_version;
+}
+
+sub vcLogRevision {
+    my ($revision) = @_;
+
+    $_ = vcVersion();
+    my $vcver = "$_->{type}-$_->{version}";
+    if ($vcver =~ /^monotone-0.28\b/o) {
+	return getCmdOutput("mtn log -r $revision --last 1");
+    } elsif ($vcver =~ /^monotone-0.4\d\b/o) {
+	return getCmdOutput("mtn log --from $revision --last 1 --no-graph");
+    } else {
+	die "Don't know how to get revision log on $vcver";
+    }
+}
+
 
 =pod
 
