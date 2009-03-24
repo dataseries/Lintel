@@ -85,6 +85,7 @@ IF(PERL_ENABLED)
     	Text/ExpandInt.pm
     	Lintel/Net/SSH/KnownHostsFile.pm
     	Lintel/File/Lock.pm
+	Lintel/DBI.pm
     )
 ENDIF(PERL_ENABLED)
 
