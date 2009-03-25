@@ -4,6 +4,7 @@ use DBI;
 use vars '$AUTOLOAD';
 use Carp;
 use FileHandle;
+use Data::Dumper;
 use strict;
 
 my %invalid_sth_names = map { $_ => 1 }
@@ -18,6 +19,8 @@ Lintel::DBI - Front end to DBI that makes common cases easier
 =head1 SYNOPSIS
 
     use Lintel::DBI;
+
+    my $dbh = new Lintel::DBI();
 
     my $dbh = Lintel::DBI->connect();
     my $dbh = Lintel::DBI->connect('DBI:mysql:test:localhost',$user,$passwd);
@@ -48,14 +51,40 @@ Lintel::DBI - Front end to DBI that makes common cases easier
 
 =head2 Methods defined for the DBI class:
 
+=head3 new Lintel::DBI( %arglist);
+
+    my $dbh = new Lintel::DBI();
+    my $dbh = new Lintel::DBI(dsn => 'DBI:mysql:test:localhost',
+			      username => 'fred',
+			      password => 'random',
+			      application => 'myapplication');
+
+The DSN is a database connection string as used in DBI. It defaults
+to 'DBI:mysql:test:localhost'.
+
+The username and password fields default to the values found in 
+$HOME/.my.cnf, or to the username of the current user and no password
+if that file is missing.
+
+The application name defaults to the filename of the caller if none
+is supplied.  
+
 =cut
-   
+
+sub new {
+    my($class, %arglist) = @_;
+
+    my $dbh = Lintel::DBI->connect($arglist{dsn}, $arglist{username}, 
+		                   $arglist{password}, $arglist{application});
+    return $dbh;
+}
+
 =pod
 
-=head3 Lintel::DBI->connect( $dsn, $db_username, $db_password);
+=head3 Lintel::DBI->connect( $dsn, $db_username, $db_password, $application);
 
-    my $dbh = Lintel::DBI->connect( $dsn, $db_username, $db_password);
-    my $dbh = Lintel::DBI->connect( $dsn, $db_username, $db_password);
+    my $dbh = Lintel::DBI->connect();
+    my $dbh = Lintel::DBI->connect( $dsn, $db_username, $db_password, $application);
 
 The DSN is a database connection string as used in DBI. It defaults
 to 'DBI:mysql:test:localhost'.
@@ -67,10 +96,11 @@ if that file is missing.
 =cut
 
 sub connect {
-    my($class, $dsn, $db_username, $db_password) = @_;
+    my($class, $dsn, $db_username, $db_password, $application) = @_;
 
     $dsn = 'DBI:mysql:test:localhost' unless defined $dsn;
     $db_username = getpwuid($UID) unless defined $db_username;
+    $application ||= (caller)[1];
 
     if (!defined $db_password && $dsn =~ /^DBI:mysql/o) {
 	my ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,
@@ -91,7 +121,9 @@ sub connect {
     my $dbh = DBI->connect($dsn, $db_username, $db_password, 
 			   { RaiseError => 1});
     my $sth = bless { }, 'Lintel::DBI::sth';
-    return bless { 'dbh' => $dbh, 'sth' => $sth }, $class;
+    return bless { 'dbh' => $dbh, 
+		   'sth' => $sth, 
+		   'application' => $application }, $class;
 }
 
 =pod
@@ -265,7 +297,7 @@ sub transaction {
     if ($@) {
         $self->rollbackTxn();
 	if ($@ =~ /\n$/) {
-	    die( $@);
+	    croak( $@);
 	} else {
 	    print STDERR "Error: $@\n";
             confess("transaction aborted");
@@ -297,7 +329,7 @@ sub runSQL {
     my @lines = split( /\n/, $sql);
     my $statement = "";
     foreach (@lines) {
-        $statement .= $_;
+        $statement .= "$_\n";
 	if (/;/) {
 	    $self->{dbh}->do( $statement);
 	    $statement = "";
@@ -347,7 +379,7 @@ sub getConfig {
     $self->{getconfig}->execute( $name);
     my $rv = $self->{getconfig}->fetchall_arrayref();
     if (@$rv != 1) {
-	die("Ambiguous primary key");
+	croak("Ambiguous primary key");
     }
     return (defined($rv->[0]) && $rv->[0]->[0]) or undef;
 }
@@ -379,15 +411,16 @@ sub loadSchema {
     my ($self, $schemaVersion, $schema, $option) = @_;
 
     if ($option eq "--init") {
-	runSQL <<END;
+	$self->runSQL( <<END);
 create table if not exists dbi_config (
 	name varchar(32) primary key,
 	value varchar(1024)
 );
 END
-	runSQL( $schema);
-
-	$self->setConfig( (caller(1))[1], $schemaVersion);
+	$self->transaction( sub {
+		$self->runSQL( $schema);
+		$self->setConfig( $self->{application}, $schemaVersion);
+	    });
     }
 }
 
@@ -415,53 +448,37 @@ For example:
 
 sub migrateSchema {
     my ($self, $schemaVersion, $migration) = @_;
-    my $dbVersion = $self->getActualVersion( (caller(1))[1]);
+    my $dbVersion = $self->getActualVersion();
 
     while ($dbVersion < $schemaVersion) {
         if (defined $migration->{$dbVersion}) {
-            $self->runSQL($migration->{$dbVersion}->{sql});
-            $self->{sth}->set_dbi_config( 
-		    'schema_version', 
-		    $migration->{$dbVersion}->{to_version}
-		);
+	    $self->transaction( sub {
+		    $self->runSQL($migration->{$dbVersion}->{sql});
+		    $self->setConfig( 
+			    $self->{application},
+			    $migration->{$dbVersion}->{to_version}
+			);
+		});
+	    $dbVersion = $migration->{$dbVersion}->{to_version}
 	} else {
-	    die "There is no defined upgrade path from version $dbVersion";
+	    croak "There is no defined upgrade path from version $dbVersion";
 	}
     }
 
     print "Database migrated\n";
-    $self->checkWhoseVersion( (caller(1))[1], $schemaVersion);
+    $self->checkVersion( $schemaVersion);
 }
 
 
 sub getActualVersion { 
-    my ($self, $forwhom) = @_;
+    my ($self) = @_;
     my $version;
 
     eval {
-	$version = $self->getConfig($forwhom);
+	$version = $self->getConfig($self->{application});
     };
 
     return $version;
-}
-
-#
-# Check schema version
-#
-sub checkWhoseVersion {
-    my ($self, $forwhom, $schemaVersion) = @_;
-
-    my $version = $self->getActualVersion($forwhom);
-
-    if (!defined $version) {
-	die("The schema version is missing.");
-    }
-
-    if ($version < $schemaVersion) {
-	die("The schema version $version is out of date.");
-    } elsif ($version > $schemaVersion) {
-	die("This program doesn't work with schema version $version.");
-    }
 }
 
 =pod
@@ -477,8 +494,18 @@ error message if the application doesn't match the database.
 
 sub checkVersion {
     my ($self, $schemaVersion) = @_;
-    
-    $self->checkWhoseVersion( (caller(1))[1], $schemaVersion);
+
+    my $version = $self->getActualVersion();
+
+    if (!defined $version) {
+	croak("The schema version is missing.  Has the schema been installed?");
+    }
+
+    if ($version < $schemaVersion) {
+	croak("The schema version $version is out of date");
+    } elsif ($version > $schemaVersion) {
+	croak("This program is too old to work with schema version $version");
+    }
 }
 
 package Lintel::DBI::sth;
