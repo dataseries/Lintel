@@ -7,6 +7,11 @@ use FileHandle;
 use Data::Dumper;
 use strict;
 
+# TODO: think about how we can safely write tests for this.  Perhaps
+# use one of the DBI against CSV or sqllite backends.
+
+# TODO-ks1: add the use Lintel::DBI test.
+
 my %invalid_sth_names = map { $_ => 1 }
     qw/AUTOLOAD DESTROY fetchArray fetchHash oneRow atMostOneRow/;
 
@@ -20,10 +25,10 @@ Lintel::DBI - Front end to DBI that makes common cases easier
 
     use Lintel::DBI;
 
-    my $dbh = new Lintel::DBI();
+    my $dbh = new Lintel::DBI('dsn' => 'DBI:mysql', ...);
 
     my $dbh = Lintel::DBI->connect();
-    my $dbh = Lintel::DBI->connect('DBI:mysql:test:localhost',$user,$passwd);
+    my $dbh = Lintel::DBI->connect('DBI:mysql:test:localhost', $user, $passwd);
 
     $dbh->load_sths('example1' => 'select sum(val) as sum_val from example where akey = ?',
 		    'example2' => 'select distinct state from states where country = ?',
@@ -32,7 +37,9 @@ Lintel::DBI - Front end to DBI that makes common cases easier
 
     my $sum = $dbh->{sth}->example1('test')->oneRow()->{sum_val};
     my $sum = $dbh->{sth}->oneRow('example1','test')->{sum_val};
+# TODO-ks1: make the next two line work.
     my $sum = $dbh->{sth}->selectScalar('example1','test');
+    my $sum = $dbh->{sth}->example1('test')->selectScalar();
 
     my $sth = $dbh->{sth}->example2('U.S.');
     while(my ($state) = $sth->fetchArray()) {
@@ -49,15 +56,18 @@ Lintel::DBI - Front end to DBI that makes common cases easier
     my @info = $dbh->{sth}->example4('South Dakota')->oneRowArray();
     print join(", ", @info), "\n";
 
-=head2 Methods defined for the DBI class:
+=head1 Lintel::DBI METHODS
 
-=head3 new Lintel::DBI( %arglist);
+=head2 new Lintel::DBI(%arglist);
 
     my $dbh = new Lintel::DBI();
     my $dbh = new Lintel::DBI(dsn => 'DBI:mysql:test:localhost',
 			      username => 'fred',
 			      password => 'random',
 			      application => 'myapplication');
+
+# TODO-ks1: figure out how to eliminate documentation duplication -- perhaps just refer to
+# the other function.
 
 The DSN is a database connection string as used in DBI. It defaults
 to 'DBI:mysql:test:localhost'.
@@ -66,8 +76,10 @@ The username and password fields default to the values found in
 $HOME/.my.cnf, or to the username of the current user and no password
 if that file is missing.
 
-The application name defaults to the filename of the caller if none
-is supplied.  
+The application name defaults to the name of the file containing the
+calling function if none is supplied.  It is currently used for the
+schema versioning code. It may be used for error messages in the
+future.
 
 =cut
 
@@ -81,10 +93,10 @@ sub new {
 
 =pod
 
-=head3 Lintel::DBI->connect( $dsn, $db_username, $db_password, $application);
+=head2 Lintel::DBI->connect($dsn, $db_username, $db_password, $application);
 
     my $dbh = Lintel::DBI->connect();
-    my $dbh = Lintel::DBI->connect( $dsn, $db_username, $db_password, $application);
+    my $dbh = Lintel::DBI->connect($dsn, $db_username, $db_password, $application);
 
 The DSN is a database connection string as used in DBI. It defaults
 to 'DBI:mysql:test:localhost'.
@@ -98,9 +110,11 @@ if that file is missing.
 sub connect {
     my($class, $dsn, $db_username, $db_password, $application) = @_;
 
+    die "Don't call connect as an object, it won't do what you expect."
+	if ref $class;
     $dsn = 'DBI:mysql:test:localhost' unless defined $dsn;
     $db_username = getpwuid($UID) unless defined $db_username;
-    $application ||= (caller)[1];
+    $application ||= (caller)[1]; 
 
     if (!defined $db_password && $dsn =~ /^DBI:mysql/o) {
 	my ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,
@@ -128,9 +142,9 @@ sub connect {
 
 =pod
 
-=head3 $dbh->I<dbi_function>( $p1, ...)
+=head2 $dbh->I<dbi_function>(...)
 
-   $dbh->I<dbi_function>( $p1, ...)
+   $dbh->I<dbi_function>(...)
 
 Lintel::DBI passes any functions it doesn't recognize on to the underlying
 DBI connection.  See perldoc DBI for details.  Ensures that the DBI 
@@ -146,21 +160,21 @@ sub AUTOLOAD {
     my $this = shift @_;
 
     return if $sthname eq 'DESTROY';
-    confess "internal" unless defined $this->{dbh};
+    confess "database handle is not defined" unless defined $this->{dbh};
     my $ref = $this->{dbh};
     return $ref->$sthname(@_);
 }
 
 =pod 
 
-=head3 $dbh->load_sths( %sql_queries);
+=head2 $dbh->load_sths(%sql_queries);
 
    $dbh->load_sths(
    	I<query_name> => "I<SQL statement>",
 	...);
 
 Prepares statements for later use.  This method can be called more than
-once if needed.
+once if needed.  Later duplicate query names will replace earlier ones.
 
 =cut
    
@@ -180,9 +194,12 @@ sub load_sths {
 
 =pod
 
-=head3 $dbh->selectScalar( $query_name, $p1, ...);
+# TODO-ks1: rename this to value, probably leave in forwarding selectScalar that
+# warns it's obsolete. or just remove it.
 
-    my $value = $dbh->selectScalar( "I<query_name>", $p1, ...);
+=head2 $dbh->selectScalar($query_name, $p1, ...);
+
+    my $value = $dbh->selectScalar("I<query_name>", $p1, ...);
 
 Performs the specified query with the bound paramters $p1,..., and returns
 a single scalar value, or undef.  If the result-set contains more than one
@@ -191,10 +208,11 @@ value selectScalar will die().
 =cut
 
 sub selectScalar {
+# TODO-ks1: implement using oneRowArray.
     my ($this, $k, @args) = @_;
     my $sth = $this->{sth}->{$k};
 
-    $sth->execute( @args);
+    $sth->execute(@args);
     my $result = $sth->fetchall_arrayref(undef, 2);
     $sth->finish;
 
@@ -202,12 +220,12 @@ sub selectScalar {
 	if (@$result == 0) {
 	    return undef;
 	}
- 	die( "selectScalar($k) returns ${@$result} rows (should be 1)");
+ 	die("selectScalar($k) returns ${@$result} rows (should be 1)");
     }
 
     my $row = $result->[0];
     if (@$row != 1) {
-        die( "selectScalar($k) returns ${@$row} columns (should be 1)");
+        die("selectScalar($k) returns ${@$row} columns (should be 1)");
     }
 
     return $row->[0];
@@ -215,7 +233,7 @@ sub selectScalar {
 
 =pod
 
-=head3 $dbh->beginTxn();
+=head2 $dbh->beginTxn();
 
     $dbh->beginTxn();
 
@@ -232,7 +250,7 @@ sub beginTxn {
 
 =pod
 
-=head3 $dbh->commitTxn()
+=head2 $dbh->commitTxn()
 
     $dbh->commitTxn();
 
@@ -248,7 +266,7 @@ sub commitTxn {
 
 =pod
 
-=head3 $dbh->rollbackTxn()
+=head2 $dbh->rollbackTxn()
 
     $dbh->rollbackTxn();
 
@@ -264,9 +282,9 @@ sub rollbackTxn {
 
 =pod
 
-=head3 $dbh->transaction( $self, \&lambda);
+=head2 $dbh->transaction($self, \&lambda);
 
-    $dbh->transaction( $self, \&lambda);
+    $dbh->transaction($self, \&lambda);
 
 Executes the function $lambda surrounded by a transaction. If the lambda
 function dies then transaction will rollback the transaction and reraise
@@ -277,12 +295,15 @@ If the function completes then the transaction is committed.
 Example:
 
     my ($user, $charge);
-    $dbh->transaction( sub {
+    $dbh->transaction(sub {
 	    my $avail = $dbh->{sth}->get_money($user)->value();
 	    if ($avail > $charge) {
 		$dbh->{sth}->set_money($user, $avail-$charge);
 		$dbh->{sth}->process_payment($user, $charge);
-	    }
+	    } else {
+		die "not enough available money";
+            }
+	    $dbh->{sth}->log_transaction($user, $avail, $charge);
 	});
 
 =cut
@@ -296,29 +317,31 @@ sub transaction {
     };
     if ($@) {
         $self->rollbackTxn();
-	if ($@ =~ /\n$/) {
-	    croak( $@);
+	if ($@ =~ /\n$/o) {
+	    croak($@);
 	} else {
-	    print STDERR "Error: $@\n";
-            confess("transaction aborted");
+            confess("Transaction aborted.  Error: $@");
 	}
     }
 }
 
 =pod
 
-=head3 $dbh->runSQL()
+=head2 $dbh->runSQL()
 
-   $dbh->runSQL( $sql);
+   $dbh->runSQL($sql);
 
 Runs a series of SQL commands such as from a HERE document separated by 
-semicolons.  Statements can be broken over as many lines as needed. i
+semicolons.  Statements can be broken over as many lines as needed. 
+Limitation: SQL statements must finish with a ; at the end of a line, and
+embedded ;'s in a line will generate a warning as multiple statements per
+line will not work correctly.
 
 For example:
 
    $dbh->runSQL <<END;
-create table users ( id integer primary key, name char(20));
-create table email ( user_id integer, address char(128));
+create table users (id integer primary key, name char(20));
+create table email (user_id integer, address char(128));
 create index email_idx1 on email (user_id);
 END
 
@@ -326,22 +349,27 @@ END
 
 sub runSQL {
     my ($self, $sql) = @_;
-    my @lines = split( /\n/, $sql);
+    my @lines = split(/\n/, $sql);
     my $statement = "";
     foreach (@lines) {
         $statement .= "$_\n";
-	if (/;/) {
-	    $self->{dbh}->do( $statement);
+	warn "Found embedded ; in statement '$statement'"
+	    if /;.*\S/o;
+	if (/;\s*$/o) {
+	    $self->{dbh}->do($statement);
 	    $statement = "";
-	}
+	} 
     }
 }
 
 =pod
 
-=head3 $dbh->setConfig( $key, $value)
+=head2 $dbh->setConfig($key, $value)
    
-    $dbh->setConfig( $key, $value);
+    $dbh->setConfig($key, $value);
+
+# TODO-ks1: table should be lintel_schema_config, or lintel_dbi_schema_config
+# Make keys have a prefix lintel-dbi-  reserve that prefix; lintel-dbi-schema-filename
 
 Writes a key and value (both strings) to the dbi_config table. The dbi_config
 table is created automatically when using the loadSchema() method, and is
@@ -352,20 +380,21 @@ setting keys that match the application source filename.
 
 =cut
 
+# TODO-ks1: redo in terms of {sth}->lintelDbiSetConfig(), and use value
 sub setConfig {
     my ($self, $name, $value) = @_;
-    if (! defined($self->{setconfig})) {
-	$self->{setconfig} = $self->{dbh}->prepare("replace into dbi_config values ( ?, ?)");
+    if (! defined($self->{setConfig})) {
+	$self->{setConfig} = $self->{dbh}->prepare("replace into dbi_config values (?, ?)");
     }
-    $self->{setconfig}->execute( $name, $value);
+    $self->{setConfig}->execute($name, $value);
 }
 
 
 =pod
 
-=head3 $dbh->getConfig( $key)
+=head2 $dbh->getConfig($key)
 
-    my $value = $dbh->getConfig( $key);
+    my $value = $dbh->getConfig($key);
    
 Returns the value of the config key specified, or undef if none is defined.
 
@@ -373,11 +402,11 @@ Returns the value of the config key specified, or undef if none is defined.
 
 sub getConfig {
     my ($self, $name) = @_;
-    if (!defined($self->{getconfig})) {
-	$self->{getconfig} = $self->{dbh}->prepare("select value from dbi_config where name = ?");
+    if (!defined($self->{getConfig})) {
+	$self->{getConfig} = $self->{dbh}->prepare("select value from dbi_config where name = ?");
     }
-    $self->{getconfig}->execute( $name);
-    my $rv = $self->{getconfig}->fetchall_arrayref();
+    $self->{getConfig}->execute($name);
+    my $rv = $self->{getConfig}->fetchall_arrayref();
     if (@$rv != 1) {
 	croak("Ambiguous primary key");
     }
@@ -386,22 +415,23 @@ sub getConfig {
 
 =pod
 
-=head3 $dbh->loadSchema( $version, $schemaSQL, $option)
+=head2 $dbh->loadSchema($version, $schemaSQL, $option)
 
-    $dbh->loadSchema( $version, $schemaSQL, $option);
+    $dbh->loadSchema($version, $schemaSQL, $option);
 
 Loads a schema with the specified schema version by applying the specified
 SQL statements.  
 
+# TODO-ks1: eliminate --init
 To actually load the schema the value for $option must be set to "--init".
 This is a safety feature to ensure that the loadSchema method is only 
 invoked when required.
 
 For example:
 
-    $dbh->loadSchema( 1, <<END, "--init");
-create table users ( id integer primary key, name char(20));
-create table email ( user_id integer, address char(128));
+    $dbh->loadSchema(1, <<END, "--init");
+create table users (id integer primary key, name char(20));
+create table email (user_id integer, address char(128));
 create index email_idx1 on email (user_id);
 END
    
@@ -411,24 +441,29 @@ sub loadSchema {
     my ($self, $schemaVersion, $schema, $option) = @_;
 
     if ($option eq "--init") {
-	$self->runSQL( <<END);
+	$self->runSQL(<<END);
 create table if not exists dbi_config (
 	name varchar(32) primary key,
 	value varchar(1024)
 );
 END
-	$self->transaction( sub {
-		$self->runSQL( $schema);
-		$self->setConfig( $self->{application}, $schemaVersion);
+	$self->transaction(sub {
+		$self->runSQL($schema);
+		$self->setConfig($self->{application}, $schemaVersion);
 	    });
     }
 }
 
 =pod
 
-=head3 $dbh->migrateSchema( $targetVersion, \%migration);
+# TODO-ks1: naming, variables with _'s.
 
-   $dbh->migrateSchema( $targetVersion, \%migration);
+# TODO-ks1: add setupSchema($target_version, $can_change, [init], {migrate})
+# remove documentation on sub-functions, they are now internal.
+
+=head2 $dbh->migrateSchema($targetVersion, \%migration);
+
+   $dbh->migrateSchema($targetVersion, \%migration);
 
 Migrate Schema from whatever is current to the version specified in 
 $targetVersion.  The $migration parameter is a hash reference to a
@@ -437,7 +472,9 @@ have to) include multiple lines.
 
 For example:
 
-   $dbh->migrateSchema( 3, { 
+   $dbh->migrateSchema(3, { 
+        0 =>  { to_version => 3,
+	       sql => '...' },
     	1 => { to_version => 2,
     	       sql => 'alter table foo add column name char(256);' },
     	2 => { to_version => 3, 
@@ -452,9 +489,9 @@ sub migrateSchema {
 
     while ($dbVersion < $schemaVersion) {
         if (defined $migration->{$dbVersion}) {
-	    $self->transaction( sub {
+	    $self->transaction(sub {
 		    $self->runSQL($migration->{$dbVersion}->{sql});
-		    $self->setConfig( 
+		    $self->setConfig(
 			    $self->{application},
 			    $migration->{$dbVersion}->{to_version}
 			);
@@ -466,9 +503,8 @@ sub migrateSchema {
     }
 
     print "Database migrated\n";
-    $self->checkVersion( $schemaVersion);
+    $self->checkVersion($schemaVersion);
 }
-
 
 sub getActualVersion { 
     my ($self) = @_;
@@ -483,9 +519,9 @@ sub getActualVersion {
 
 =pod
 
-=head3 $dbh->checkVersion( $schemaVersion);
+=head2 $dbh->checkVersion($schemaVersion);
 
-   $dbh->checkVersion( $schemaVersion);
+   $dbh->checkVersion($schemaVersion);
 
 Verifies that the specified schema version is loaded, and prints an 
 error message if the application doesn't match the database.
@@ -512,7 +548,7 @@ package Lintel::DBI::sth;
 
 =pod
 
-=head2 Functions on Lintel::DBI::sth
+=head1 Lintel::DBI::sth METHODS
 
 Functions defined on the Lintel::DBI::sth class as returned by 
 accessing the database handle's {sth} member variable.  Typical
@@ -523,16 +559,15 @@ usage is shown below.
 # if you add functions to this package, add them to the list of
 # invalid sth names at the top of the file.
 
-use AutoLoader;
 use vars '$AUTOLOAD';
 use Carp;
 use strict;
 
 =pod
 
-=head3 $dbh->{sth}->I<query_name>( $p1, ...);
+=head2 $dbh->{sth}->I<query_name>($p1, ...);
 
-    my $sth = $dbh->{sth}->I<query_name>( $p1, ...);
+    my $sth = $dbh->{sth}->I<query_name>($p1, ...);
 
 The sth member maps to a SQL query that is preloaded using the 
 $dbh->load_sths() method.  The parameters $p1 and so on are bound
@@ -614,21 +649,19 @@ sub atMostOneRow {
 
 package DBI::st;
 
-# TODO: PURGE all of this (assuming we can) after the fixup of
-# manage-network-config, remote-device-operations, etc. which may be
-# using this.  The exec_sth style is a better choice.
+=pod
+
+=head2 DBI::st EXTENSIONS
+
+Utility functions on statements; you should be using the
+$dbh->{sth}->... interface; only use is for a gradual transition from
+just DBI over to Lintel::DBI.  Documentation is in
+Lintel::DBI::exec_sth.
+
+=cut
 
 use Carp;
 use strict;
-
-sub execOneRow {
-    my($sth, @args) = @_;
-
-    $sth->execute(@args)
-	or die "Execute of $sth failed";
-
-    return $sth->oneRow();
-}
 
 sub oneRow {
     my($sth) = @_;
@@ -649,15 +682,6 @@ sub oneRowArray {
     my $tmp = $sth->fetchrow_array();
     confess "?? $tmp" if defined $tmp;
     return @$ret;
-}
-
-sub execAtMostOneRow {
-    my($sth, @args) = @_;
-
-    $sth->execute(@args)
-	or die "Execute of $sth failed";
-
-    return $sth->atMostOneRow();
 }
 
 sub atMostOneRow {
@@ -681,22 +705,21 @@ sub atMostOneRowArray {
 }
 
 package Lintel::DBI::exec_sth;
-=pod
-
-=head2 Functions on Lintel::DBI::exec_sth
-
-Operations on the Lintel::DBI::exec_sth class as returned from executing
-a query on the database handle.  See also Lintel::DBI::sth above.
-
-=cut
 
 use strict;
 
 =pod
 
-=head3 $xs->result();
+=head2 Lintel::DBI::exec_sth METHODS
 
-    my $xs = $dbh->{sth}->myquery( $p1, ...);
+Operations on the Lintel::DBI::exec_sth class as returned from executing
+a query on the database handle.  
+
+# TODO-ks1: pick value or result name; add requiredValue
+
+=head2 $xs->result();
+
+    my $xs = $dbh->{sth}->myquery($p1, ...);
     my $result = $xs->result();
 
 Returns the single output from a query.  Returns undef if the query
@@ -719,9 +742,9 @@ sub result {
 
 =pod
 
-=head3 $xs->fetchrow_array();
+=head2 $xs->fetchrow_array();
 
-    my $xs = $dbh->{sth}->myquery( $p1, ...);
+    my $xs = $dbh->{sth}->myquery($p1, ...);
     my $hashref = $xs->oneRow();
 
 Returns the next row of query result as hash reference.  Results are filled
@@ -731,11 +754,12 @@ and will die() if that is not the case.
 
 For example:
 
-    $dbh->load_sths( total_price => "select sum(price) as total from order where order_number = ?");
-    my $result = $dbh->{sth}->total_price( $order_number)->oneRow();
+    $dbh->load_sths(total_price => "select sum(price) as total from order where order_number = ?");
+    my $result = $dbh->{sth}->total_price($order_number)->oneRow();
     printf "Total is: %d\n", $result->{price};
 
 =cut
+
 sub oneRow {
     my($this) = @_;
 
@@ -746,9 +770,9 @@ sub oneRow {
 
 =pod
 
-=head3 $xs->oneRowArray();
+=head2 $xs->oneRowArray();
 
-    my $xs = $dbh->{sth}->myquery( $p1, ...);
+    my $xs = $dbh->{sth}->myquery($p1, ...);
     my @result = $xs->oneRowArray();
 
 Returns the next row of query result as an array of values.  Results are 
@@ -757,6 +781,7 @@ select statement.  The oneRowArray() function ensures that exactly one
 row is returned by the query and will die() if that is not the case.
 
 =cut
+
 sub oneRowArray {
     my($this) = @_;
 
@@ -767,9 +792,9 @@ sub oneRowArray {
 
 =pod
 
-=head3 $xs->atMostOneRow();
+=head2 $xs->atMostOneRow();
 
-    my $xs = $dbh->{sth}->myquery( $p1, ...);
+    my $xs = $dbh->{sth}->myquery($p1, ...);
     my $result = $xs->atMostOneRow();
 
 Returns the next row of query result as a hash reference.  If there
@@ -779,12 +804,13 @@ returned by the query and will die() if that is not the case.
 
 For example:
 
-    $dbh->load_sths( margin => "select margin from inventory where sku = ?");
+    $dbh->load_sths(margin => "select margin from inventory where sku = ?");
     if (my $result = $dbh->{sth}->margin($sku)->atMostOneRow()) {
 	printf "Margin for %s is: %d\n", $sku, $result->{max_price};
     }
 
 =cut
+
 sub atMostOneRow {
     my($this) = @_;
 
@@ -795,9 +821,9 @@ sub atMostOneRow {
 
 =pod
 
-=head3 $xs->atMostOneRowArray();
+=head2 $xs->atMostOneRowArray();
 
-    my $xs = $dbh->{sth}->myquery( $p1, ...);
+    my $xs = $dbh->{sth}->myquery($p1, ...);
     my @result = $xs->atMostOneRowArray();
 
 Returns the next row of query result as an array.  If there
@@ -806,6 +832,7 @@ The oneRowArray() function ensures that either 1 or 0 rows are
 returned by the query and will die() if that is not the case.
 
 =cut
+
 sub atMostOneRowArray {
     my($this) = @_;
 
@@ -816,9 +843,9 @@ sub atMostOneRowArray {
 
 =pod
 
-=head3 $xs->fetchHash()
+=head2 $xs->fetchHash()
 
-   my $xs = $dbh->{sth}->myquery( $p1,...);
+   my $xs = $dbh->{sth}->myquery($p1,...);
    my $row = $xs->fetchHash();
 
 Returns the next row of the query result as a hash.  If there are no more
@@ -826,13 +853,14 @@ rows return undef.
 
 For example:
 
-   my $dbh->load_sths( inventory => "select sku, count, desc from inventory");
+   my $dbh->load_sths(inventory => "select sku, count, desc from inventory");
    my $xs = $dbh->{sth}->inventory();
    while (my $row = $xs->fetchHash()) {
       print "%s, %d, %s\n", $row->{sku}, $row->{count}, $row->{desc};
    }
 
 =cut
+
 sub fetchHash {
     my($this) = @_;
 
@@ -843,9 +871,9 @@ sub fetchHash {
 
 =pod
 
-=head3 $xs->fetchArray();
+=head2 $xs->fetchArray();
 
-    my $xs = $dbh->{sth}->myquery( $p1,...);
+    my $xs = $dbh->{sth}->myquery($p1,...);
     my @row = $xs->fetchArray();
 
 Returns the next row of the result set as an array.  If there is no next
@@ -862,7 +890,3 @@ sub fetchArray {
 }
    
 1;
-
-package Lintel::DBI; # get an error from AutoSplit.pm otherwise
-__END__
-
