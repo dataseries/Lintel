@@ -41,8 +41,6 @@ LINTEL_SIMPLE_TEST(priority_queue)
 
 ################################## SPECIAL TEST PROGRAMS
 
-INCLUDE(FindPerl)
-
 LINTEL_SIMPLE_PROGRAM(check-LintelAssert)
 ADD_TEST(lintel-assert ${CMAKE_CURRENT_SOURCE_DIR}/run-check-LintelAssert.sh ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -52,9 +50,10 @@ ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
-# just make sure it can compile.
-ADD_TEST(deptool ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
-ADD_TEST(lintel_dbi ${PERL_EXECUTABLE} -I${CMAKE_INSTALL_PREFIX}/share/perl5 -e "use Lintel::DBI")
+IF(PERL_ENABLED)
+    ADD_TEST(deptool ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
+    ADD_TEST(lintel_dbi ${PERL_PATH} -I${CMAKE_CURRENT_SOURCE_DIR}/.. -e "use Lintel::DBI")
+ENDIF(PERL_ENABLED)
 
 ################################## CONDITIONAL BITS
 

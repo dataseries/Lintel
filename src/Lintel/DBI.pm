@@ -319,7 +319,7 @@ sub runSQL {
 
 sub schema {
     my ($self) = @_;
-    return $prefix."schema-".$self->{application};
+    return "${prefix}schema-$self->{application}";
 }
 
 =pod
@@ -340,8 +340,8 @@ will die if the client tries to set a key with the prefix 'lintel-dbi-'.
 
 sub setConfig {
     my ($self, $name, $value) = @_;
-    die("lintel-dbi- is a reserved namespace") if ($name =~ /^lintel-dbi-/);
-    $self->dbiSetConfig( $name, $value);
+    cluck("lintel-dbi- is a reserved namespace") if ($name =~ /^lintel-dbi-/o);
+    $self->dbiSetConfig($name, $value);
 }
 
 sub dbiSetConfig {
@@ -424,7 +424,7 @@ sub getActualVersion {
 
 =pod
 
-=head2 $dbh->setupSchema( $target_version, $can_change, \%migration);
+=head2 $dbh->setupSchema($target_version, $can_change, \%migration);
 
    $dbh->setupSchema($target_version, $can_change, {
 	    init    => { to_version => I<version>
@@ -452,20 +452,21 @@ For example:
 		   sql => 'drop index email_idx1;
 			   create index email_idx1 on email (user_id);' }
 	    init => { to_version => 3,
-		      sql => <<END }
-    	});
+		      sql => "
 create table users (id integer primary key, 
                     name char(20));
 create table email (user_id integer, address char(128));
-create index email_idx1 on email (user_id);
-END
+create index email_idx1 on email (user_id);" } 
+	});
 
 Note: The schema SQL strings can contain as many statements as needed, but
 no more than one statement per line, and each statement must end with 
-a semicolon at the end of the line.
+a semicolon at the end of the line.  See runSQL for the exact constraints.
 
 =cut
 
+# TODO-ks1: go back to having getSchemaVersion, and remove can_change from setupSchema
+# make error messages better then in setupSchema.
 sub setupSchema {
     my ($self, $target_version, $can_change, $migrate) = @_;
     my $db_version = $self->getActualVersion();
@@ -475,7 +476,7 @@ sub setupSchema {
 	    $self->loadSchema($migrate->{init}->{to_version}, 
 			      $migrate->{init}->{sql});
 	} else {
-	    die "? schema missing $self->{application}";
+	    die "schema missing for $self->{application}, and we can't change it";
 	}
     }
 
@@ -483,15 +484,13 @@ sub setupSchema {
         if ($can_change) {
 	    $self->migrateSchema( $target_version, $migrate);
 	} else {
-	    die "? schema old $db_version";
+	    die "schema old at V$db_version for $self->{application} $db_version";
 	}
     }
 
     if ($db_version != $target_version) {
 	die "? schema mismatch got $db_version, need $target_version";
     }
-
-    return 0;
 }
 
 package Lintel::DBI::sth;
@@ -679,11 +678,11 @@ column die().
 sub value {
     my($this) = @_;
 
-    die "Can't call result() unless result of execution was successful"
+    die "Can't call value() unless result of execution was successful"
 	unless $this->{exec_ret};
     my @result =  $this->{sth}->atMostOneRowArray();
     if (@result > 1) {
-	die "Can't use multi-column results with result()";
+	die "Can't use multi-column results with value()";
     }
     return $result[0];
 }
