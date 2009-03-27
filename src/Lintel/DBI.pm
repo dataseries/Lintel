@@ -10,8 +10,6 @@ use strict;
 # TODO: think about how we can safely write tests for this.  Perhaps
 # use one of the DBI against CSV or sqllite backends.
 
-# TODO-ks1: add the use Lintel::DBI test.
-
 my %invalid_sth_names = map { $_ => 1 }
     qw/AUTOLOAD DESTROY fetchArray fetchHash oneRow atMostOneRow/;
 
@@ -288,9 +286,6 @@ sub transaction {
 
 Runs a series of SQL commands such as from a HERE document separated by 
 semicolons.  Statements can be broken over as many lines as needed. 
-Limitation: SQL statements must finish with a ; at the end of a line, and
-embedded ;'s in a line will generate a warning as multiple statements per
-line will not work correctly.
 
 For example:
 
@@ -304,17 +299,56 @@ END
 
 sub runSQL {
     my ($self, $sql) = @_;
-    my @lines = split(/\n/, $sql);
-    my $statement = "";
-    foreach (@lines) {
-        $statement .= "$_\n";
-	warn "Found embedded ; in statement '$statement'"
-	    if /;.*\S/o;
-	if (/;\s*$/o) {
+    my $cursor = 0;
+    my $statement;
+    while ($cursor < length($sql)) {
+	($statement, $cursor) = nextStatement( $sql, $cursor);
+	if (defined $statement) {
 	    $self->{dbh}->do($statement);
-	    $statement = "";
-	} 
+	} else {
+	    last;
+	}
     }
+}
+
+sub nextStatement {
+    my ($sql, $cursor) = @_;
+    my $state = 'ready';
+    my $statement = '';
+    my $endquot;
+    while ($cursor < length($sql)) {
+	my $continue = substr($sql, $cursor);
+	my ($brk) = ($continue =~ /^.*?("|'|;|--|\n)/);
+	my $tok = $&;
+	$statement .= $tok;
+	$cursor += length($tok);
+	if ($state eq 'ready') {
+	    if ($brk eq ';') {
+		return ($statement, $cursor);
+	    }
+	    if ($brk eq '--') {
+		$state = 'comment';
+	    }
+	    if ($brk eq '') {
+		return (undef, $cursor);
+	    }
+	    if ($brk eq '"' || $brk eq "'") {
+	        $endquot = $brk;
+		$state = 'quot';
+	    }
+	}
+	if ($state eq 'quot') {
+	    if ($brk eq $endquot) {
+		$state = 'ready';
+	    }
+	}
+	if ($state eq 'comment') {
+	    if ($brk eq "\n") {
+		$state = 'ready';
+	    }
+	}
+    }
+    return (undef, $cursor);
 }
 
 sub schema {
@@ -389,7 +423,7 @@ END
 
 sub migrateSchema {
     my ($self, $schema_version, $migration) = @_;
-    my $db_version = $self->getActualVersion();
+    my $db_version = $self->getInstalledSchemaVersion();
 
     while ($db_version < $schema_version) {
         if (defined $migration->{$db_version}) {
@@ -402,16 +436,25 @@ sub migrateSchema {
                });
            $db_version = $migration->{$db_version}->{to_version}
        } else {
-           croak "There is no defined upgrade path from version $db_version";
+           croak "There is no defined upgrade path from version $db_version to $schema_version";
        }
     }
 
     print "Database migrated\n";
-    $self->checkVersion($schema_version);
 }
 
+=pod
 
-sub getActualVersion { 
+=head2 $dbh->getInstalledSchemaVersion()
+
+   $dbh->getInstalledSchemaVersion()
+
+Returns the version of the application schema currently installed in 
+the database, or undef if no version is installed.
+
+=cut
+
+sub getInstalledSchemaVersion { 
     my ($self) = @_;
     my $version;
 
@@ -422,11 +465,12 @@ sub getActualVersion {
     return $version;
 }
 
+
 =pod
 
-=head2 $dbh->setupSchema($target_version, $can_change, \%migration);
+=head2 $dbh->setupSchema($target_version, \%migration);
 
-   $dbh->setupSchema($target_version, $can_change, {
+   $dbh->setupSchema($target_version, {
 	    init    => { to_version => I<version>
 			 sql => "I<schema SQL>" },
 	    I<version> => { to_version => I<version>
@@ -435,11 +479,9 @@ sub getActualVersion {
 	});
 
 Setup schema checks the current version of the schema installed, and
-dies if the schema doesn't match the I<target_version>.
-
-If the flag I<can_change> is true then setupSchema will either install
-or upgrade the schema to match the target version using settings from
-the migration hash if possible.
+installs or migrates the schema to match the target_version.  If 
+the schema installation or migration fails for any reason setupSchema
+will die.
 
 For example:
 
@@ -459,37 +501,27 @@ create table email (user_id integer, address char(128));
 create index email_idx1 on email (user_id);" } 
 	});
 
-Note: The schema SQL strings can contain as many statements as needed, but
-no more than one statement per line, and each statement must end with 
-a semicolon at the end of the line.  See runSQL for the exact constraints.
-
 =cut
 
-# TODO-ks1: go back to having getSchemaVersion, and remove can_change from setupSchema
-# make error messages better then in setupSchema.
 sub setupSchema {
-    my ($self, $target_version, $can_change, $migrate) = @_;
-    my $db_version = $self->getActualVersion();
+    my ($self, $target_version, $migrate) = @_;
+    my $db_version = $self->getInstalledSchemaVersion();
 
     if (!defined $db_version) {
-	if ($migrate->{init} && $can_change) {
+	if ($migrate->{init}) {
 	    $self->loadSchema($migrate->{init}->{to_version}, 
 			      $migrate->{init}->{sql});
 	} else {
-	    die "schema missing for $self->{application}, and we can't change it";
+	    die "There is no schema installed for $self->{application}";
 	}
     }
 
     if ($db_version < $target_version) {
-        if ($can_change) {
-	    $self->migrateSchema( $target_version, $migrate);
-	} else {
-	    die "schema old at V$db_version for $self->{application} $db_version";
-	}
+	$self->migrateSchema( $target_version, $migrate);
     }
 
     if ($db_version != $target_version) {
-	die "? schema mismatch got $db_version, need $target_version";
+	die "This version of $self->{application} uses schema version $target_version,\nbut the database has version $db_version";
     }
 }
 
