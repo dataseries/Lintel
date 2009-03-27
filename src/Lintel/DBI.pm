@@ -15,6 +15,8 @@ use strict;
 my %invalid_sth_names = map { $_ => 1 }
     qw/AUTOLOAD DESTROY fetchArray fetchHash oneRow atMostOneRow/;
 
+my $prefix = "lintel-dbi-";
+
 =pod
 
 =head1 NAME
@@ -37,9 +39,8 @@ Lintel::DBI - Front end to DBI that makes common cases easier
 
     my $sum = $dbh->{sth}->example1('test')->oneRow()->{sum_val};
     my $sum = $dbh->{sth}->oneRow('example1','test')->{sum_val};
-# TODO-ks1: make the next two line work.
-    my $sum = $dbh->{sth}->selectScalar('example1','test');
-    my $sum = $dbh->{sth}->example1('test')->selectScalar();
+    my $sum = $dbh->{sth}->example1('test')->value(); # one value or undef
+    my $sum = $dbh->{sth}->example1('test')->requiredValue(); # one value
 
     my $sth = $dbh->{sth}->example2('U.S.');
     while(my ($state) = $sth->fetchArray()) {
@@ -65,9 +66,6 @@ Lintel::DBI - Front end to DBI that makes common cases easier
 			      username => 'fred',
 			      password => 'random',
 			      application => 'myapplication');
-
-# TODO-ks1: figure out how to eliminate documentation duplication -- perhaps just refer to
-# the other function.
 
 The DSN is a database connection string as used in DBI. It defaults
 to 'DBI:mysql:test:localhost'.
@@ -98,12 +96,8 @@ sub new {
     my $dbh = Lintel::DBI->connect();
     my $dbh = Lintel::DBI->connect($dsn, $db_username, $db_password, $application);
 
-The DSN is a database connection string as used in DBI. It defaults
-to 'DBI:mysql:test:localhost'.
-
-The db_username and db_password default to the values specified in 
-$HOME/.my.cnf, or to the username of the current user and no password
-if that file is missing.
+The parameters have the same meaning and default values as the new() 
+constructor, but here they are positional rather than tagged.
 
 =cut
 
@@ -190,45 +184,6 @@ sub load_sths {
 	$this->{sth}->{$k} = $this->{dbh}->prepare($v);
 	$this->{sth}->{__definitions}->{$k} = $v;
     }
-}
-
-=pod
-
-# TODO-ks1: rename this to value, probably leave in forwarding selectScalar that
-# warns it's obsolete. or just remove it.
-
-=head2 $dbh->selectScalar($query_name, $p1, ...);
-
-    my $value = $dbh->selectScalar("I<query_name>", $p1, ...);
-
-Performs the specified query with the bound paramters $p1,..., and returns
-a single scalar value, or undef.  If the result-set contains more than one
-value selectScalar will die().
-
-=cut
-
-sub selectScalar {
-# TODO-ks1: implement using oneRowArray.
-    my ($this, $k, @args) = @_;
-    my $sth = $this->{sth}->{$k};
-
-    $sth->execute(@args);
-    my $result = $sth->fetchall_arrayref(undef, 2);
-    $sth->finish;
-
-    if (@$result != 1) {
-	if (@$result == 0) {
-	    return undef;
-	}
- 	die("selectScalar($k) returns ${@$result} rows (should be 1)");
-    }
-
-    my $row = $result->[0];
-    if (@$row != 1) {
-        die("selectScalar($k) returns ${@$row} columns (should be 1)");
-    }
-
-    return $row->[0];
 }
 
 =pod
@@ -362,33 +317,41 @@ sub runSQL {
     }
 }
 
+sub schema {
+    my ($self) = @_;
+    return $prefix."schema-".$self->{application};
+}
+
 =pod
 
 =head2 $dbh->setConfig($key, $value)
    
     $dbh->setConfig($key, $value);
 
-# TODO-ks1: table should be lintel_schema_config, or lintel_dbi_schema_config
-# Make keys have a prefix lintel-dbi-  reserve that prefix; lintel-dbi-schema-filename
+Writes a key and value (both strings) to the lintel_dbi_config table. 
+The lintel_dbi_config table is created automatically when using the 
+loadSchema() method, and is used here to store the schema version 
+number for version checking and migration.
 
-Writes a key and value (both strings) to the dbi_config table. The dbi_config
-table is created automatically when using the loadSchema() method, and is
-used here to store the schema version number for version checking and migration.
-
-Client applications are also welcome to use this table but should avoid 
-setting keys that match the application source filename.
+Client applications are also welcome to use this table but setConfig
+will die if the client tries to set a key with the prefix 'lintel-dbi-'.
 
 =cut
 
-# TODO-ks1: redo in terms of {sth}->lintelDbiSetConfig(), and use value
 sub setConfig {
     my ($self, $name, $value) = @_;
-    if (! defined($self->{setConfig})) {
-	$self->{setConfig} = $self->{dbh}->prepare("replace into dbi_config values (?, ?)");
-    }
-    $self->{setConfig}->execute($name, $value);
+    die("lintel-dbi- is a reserved namespace") if ($name =~ /^lintel-dbi-/);
+    $self->dbiSetConfig( $name, $value);
 }
 
+sub dbiSetConfig {
+    my ($self, $name, $value) = @_;
+    if (! defined($self->{sth}->{__definitions}->{lintelDbiSetConfig})) {
+        $self->load_sths(lintelDbiSetConfig => 
+                         "replace into lintel_dbi_config values (?, ?)");
+    }
+    $self->{sth}->lintelDbiSetConfig($name, $value);
+}
 
 =pod
 
@@ -402,116 +365,58 @@ Returns the value of the config key specified, or undef if none is defined.
 
 sub getConfig {
     my ($self, $name) = @_;
-    if (!defined($self->{getConfig})) {
-	$self->{getConfig} = $self->{dbh}->prepare("select value from dbi_config where name = ?");
+    if (! defined($self->{sth}->{__definitions}->{lintelDbiGetConfig})) {
+        $self->load_sths(lintelDbiGetConfig => 
+			 "select value from lintel_dbi_config where name = ?");
     }
-    $self->{getConfig}->execute($name);
-    my $rv = $self->{getConfig}->fetchall_arrayref();
-    if (@$rv != 1) {
-	croak("Ambiguous primary key");
-    }
-    return (defined($rv->[0]) && $rv->[0]->[0]) or undef;
+    return $self->{sth}->lintelDbiGetConfig($name)->value();
 }
 
-=pod
-
-=head2 $dbh->loadSchema($version, $schemaSQL, $option)
-
-    $dbh->loadSchema($version, $schemaSQL, $option);
-
-Loads a schema with the specified schema version by applying the specified
-SQL statements.  
-
-# TODO-ks1: eliminate --init
-To actually load the schema the value for $option must be set to "--init".
-This is a safety feature to ensure that the loadSchema method is only 
-invoked when required.
-
-For example:
-
-    $dbh->loadSchema(1, <<END, "--init");
-create table users (id integer primary key, name char(20));
-create table email (user_id integer, address char(128));
-create index email_idx1 on email (user_id);
-END
-   
-=cut
-
 sub loadSchema {
-    my ($self, $schemaVersion, $schema, $option) = @_;
+    my ($self, $schema_version, $schema, $option) = @_;
 
-    if ($option eq "--init") {
-	$self->runSQL(<<END);
-create table if not exists dbi_config (
+    $self->runSQL(<<END);
+create table if not exists lintel_dbi_config (
 	name varchar(32) primary key,
 	value varchar(1024)
 );
 END
-	$self->transaction(sub {
-		$self->runSQL($schema);
-		$self->setConfig($self->{application}, $schemaVersion);
-	    });
-    }
+    $self->transaction(sub {
+	    $self->runSQL($schema);
+	    $self->dbiSetConfig($self->schema(), $schema_version);
+	});
 }
 
-=pod
-
-# TODO-ks1: naming, variables with _'s.
-
-# TODO-ks1: add setupSchema($target_version, $can_change, [init], {migrate})
-# remove documentation on sub-functions, they are now internal.
-
-=head2 $dbh->migrateSchema($targetVersion, \%migration);
-
-   $dbh->migrateSchema($targetVersion, \%migration);
-
-Migrate Schema from whatever is current to the version specified in 
-$targetVersion.  The $migration parameter is a hash reference to a
-set of schema update statements.  Upgrade statements can (but do not 
-have to) include multiple lines.
-
-For example:
-
-   $dbh->migrateSchema(3, { 
-        0 =>  { to_version => 3,
-	       sql => '...' },
-    	1 => { to_version => 2,
-    	       sql => 'alter table foo add column name char(256);' },
-    	2 => { to_version => 3, 
-    	       sql => 'drop table bar;' }
-    	}); 
-
-=cut
-
 sub migrateSchema {
-    my ($self, $schemaVersion, $migration) = @_;
-    my $dbVersion = $self->getActualVersion();
+    my ($self, $schema_version, $migration) = @_;
+    my $db_version = $self->getActualVersion();
 
-    while ($dbVersion < $schemaVersion) {
-        if (defined $migration->{$dbVersion}) {
-	    $self->transaction(sub {
-		    $self->runSQL($migration->{$dbVersion}->{sql});
-		    $self->setConfig(
-			    $self->{application},
-			    $migration->{$dbVersion}->{to_version}
-			);
-		});
-	    $dbVersion = $migration->{$dbVersion}->{to_version}
-	} else {
-	    croak "There is no defined upgrade path from version $dbVersion";
-	}
+    while ($db_version < $schema_version) {
+        if (defined $migration->{$db_version}) {
+           $self->transaction(sub {
+                   $self->runSQL($migration->{$db_version}->{sql});
+                   $self->setConfig(
+                           $self->{application},
+                           $migration->{$db_version}->{to_version}
+                       );
+               });
+           $db_version = $migration->{$db_version}->{to_version}
+       } else {
+           croak "There is no defined upgrade path from version $db_version";
+       }
     }
 
     print "Database migrated\n";
-    $self->checkVersion($schemaVersion);
+    $self->checkVersion($schema_version);
 }
+
 
 sub getActualVersion { 
     my ($self) = @_;
     my $version;
 
     eval {
-	$version = $self->getConfig($self->{application});
+	$version = $self->getConfig($self->schema());
     };
 
     return $version;
@@ -519,29 +424,74 @@ sub getActualVersion {
 
 =pod
 
-=head2 $dbh->checkVersion($schemaVersion);
+=head2 $dbh->setupSchema( $target_version, $can_change, \%migration);
 
-   $dbh->checkVersion($schemaVersion);
+   $dbh->setupSchema($target_version, $can_change, {
+	    init    => { to_version => I<version>
+			 sql => "I<schema SQL>" },
+	    I<version> => { to_version => I<version>
+	                    sql => "I<schema SQL>" },
+	    ...
+	});
 
-Verifies that the specified schema version is loaded, and prints an 
-error message if the application doesn't match the database.
+Setup schema checks the current version of the schema installed, and
+dies if the schema doesn't match the I<target_version>.
+
+If the flag I<can_change> is true then setupSchema will either install
+or upgrade the schema to match the target version using settings from
+the migration hash if possible.
+
+For example:
+
+   $dbh->setupSchema( 3, $dochange, 
+	{
+	    1 => { to_version => 2,
+		   sql => 'alter table email change column fullname 
+			   name char(20);' },
+	    2 => { to_version => 3, 
+		   sql => 'drop index email_idx1;
+			   create index email_idx1 on email (user_id);' }
+	    init => { to_version => 3,
+		      sql => <<END }
+    	});
+create table users (id integer primary key, 
+                    name char(20));
+create table email (user_id integer, address char(128));
+create index email_idx1 on email (user_id);
+END
+
+Note: The schema SQL strings can contain as many statements as needed, but
+no more than one statement per line, and each statement must end with 
+a semicolon at the end of the line.
 
 =cut
 
-sub checkVersion {
-    my ($self, $schemaVersion) = @_;
+sub setupSchema {
+    my ($self, $target_version, $can_change, $migrate) = @_;
+    my $db_version = $self->getActualVersion();
 
-    my $version = $self->getActualVersion();
-
-    if (!defined $version) {
-	croak("The schema version is missing.  Has the schema been installed?");
+    if (!defined $db_version) {
+	if ($migrate->{init} && $can_change) {
+	    $self->loadSchema($migrate->{init}->{to_version}, 
+			      $migrate->{init}->{sql});
+	} else {
+	    die "? schema missing $self->{application}";
+	}
     }
 
-    if ($version < $schemaVersion) {
-	croak("The schema version $version is out of date");
-    } elsif ($version > $schemaVersion) {
-	croak("This program is too old to work with schema version $version");
+    if ($db_version < $target_version) {
+        if ($can_change) {
+	    $self->migrateSchema( $target_version, $migrate);
+	} else {
+	    die "? schema old $db_version";
+	}
     }
+
+    if ($db_version != $target_version) {
+	die "? schema mismatch got $db_version, need $target_version";
+    }
+
+    return 0;
 }
 
 package Lintel::DBI::sth;
@@ -715,12 +665,10 @@ use strict;
 Operations on the Lintel::DBI::exec_sth class as returned from executing
 a query on the database handle.  
 
-# TODO-ks1: pick value or result name; add requiredValue
-
-=head2 $xs->result();
+=head2 $xs->value();
 
     my $xs = $dbh->{sth}->myquery($p1, ...);
-    my $result = $xs->result();
+    my $result = $xs->value();
 
 Returns the single output from a query.  Returns undef if the query
 returned nothing.  If the result set contains more than one row or 
@@ -728,7 +676,7 @@ column die().
 
 =cut
 
-sub result {
+sub value {
     my($this) = @_;
 
     die "Can't call result() unless result of execution was successful"
@@ -736,6 +684,30 @@ sub result {
     my @result =  $this->{sth}->atMostOneRowArray();
     if (@result > 1) {
 	die "Can't use multi-column results with result()";
+    }
+    return $result[0];
+}
+
+=pod
+
+=head2 $xs->requiredValue();
+
+    my $xs = $dbh->{sth}->myquery($p1, ...);
+    my $result = $xs->requiredValue();
+
+Returns the single output from a query.  If the result is missing,
+or there is more than one value then requiredValue will die.
+
+=cut
+
+sub requiredValue {
+    my($this) = @_;
+
+    die "Can't call requiredValue() unless result of execution was successful"
+	unless $this->{exec_ret};
+    my @result =  $this->{sth}->oneRowArray();
+    if (@result != 1) {
+	die "Can't use multi-column results with requiredValue()";
     }
     return $result[0];
 }
