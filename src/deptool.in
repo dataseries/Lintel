@@ -129,7 +129,8 @@ my $auto_yes_to_prompts = 0;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
-my $monotone_dir = "$ENV{HOME}/.monotone";
+my $monotone_dir = $ENV{MONTONE_DIR};
+$monotone_dir ||= "$ENV{HOME}/.monotone";
 
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
@@ -141,7 +142,8 @@ GetOptions("y!" => \$auto_yes_to_prompts,
            "uname-m=s" => \$Cache::uname_m,
            "build-debug=s" => \$Cache::build_debug,
            "build-opt=s" => \$Cache::build_optimize,
-	   "man!" => \$print_manpage);
+	   "man!" => \$print_manpage,
+	   "monotone-dir=s" => \$monotone_dir);
 
 =pod
 
@@ -194,6 +196,13 @@ Specify the optimize build directory.  Normally this would be
 specified by the BUILD_OPT environment variable, which defaults to
 $BUILD_ROOT/opt-$OS-$UNAME_M, or $BUILD_ROOT/optimize if that
 directory exists.
+
+=item --monotone-dir=<path>
+
+Specify the directory to search for monotone databases that include
+the current project.  This can be also be specified using the 
+MONOTONE_DIR environment variable, or failing that, the directory
+defaults to $HOME/.monotone.
 
 =item --man
 
