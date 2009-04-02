@@ -311,39 +311,73 @@ sub runSQL {
     }
 }
 
+# TODO: Weigh the possible alternatives to the code below:
+#
+# - Consider using mysql_multi_statement for mysql.
+# - Consider fully parsing the statements with DBI::SQL::Nano
+# - Consider using SQL::Tokenizer to tokenize instead of this
+# - Consider passing in an array of statements instead of 
+# a document
+# - Consider using SQL::Statement to parse instead
+# - Consider using a simpler Lexer, and using Parse::Yapp to 
+# build statements
+# - See also:
+#    http://www.nntp.perl.org/group/perl.dbi.users/2007/08/msg31906.html
+#    http://search.cpan.org/~capttofu/DBD-mysql-4.010/lib/DBD/mysql.pm
+
+# nextStatement() -- search $sql starting from $cursor, and look for 
+# the first ';' that isn't inside quotes, or in a comment.  Returns
+# an array containing the string between $cursor and the ';', and 
+# the new location for $cursor to begin the next statement.
+
 sub nextStatement {
     my ($sql, $cursor) = @_;
+    my $start = $cursor;
     my $state = 'ready';
     my $statement = '';
     my $endquot;
     while ($cursor < length($sql)) {
 	my $continue = substr($sql, $cursor);
-	my ($brk) = ($continue =~ /^.*?("|'|;|--|\n)/);
-	my $tok = $&;
-	$statement .= $tok;
-	$cursor += length($tok);
+	# search for the first break character.  If this is a ';' then
+	# a statement has been found.  Otherwise we found something that
+	# may hide a ';'.  State transitions below keep track of comments
+	# and string delimiters that could hide a ';'.
+	my ($brk) = ($continue =~ /("|'|;|--|\n)/);
+	$cursor += index($continue, $brk)+length($brk);
+#	print "'$brk' at $cursor\n";
 	if ($state eq 'ready') {
+	    # if not inside a comment or string
 	    if ($brk eq ';') {
-		return ($statement, $cursor);
+		return (substr( $sql, $start, $cursor-$start), $cursor);
 	    }
 	    if ($brk eq '--') {
+		# if inside a comment then ';' doesn't count.  Change
+		# state until a newline is found
 		$state = 'comment';
 	    }
 	    if ($brk eq '') {
+		# EOF, return nothing
 		return (undef, $cursor);
 	    }
 	    if ($brk eq '"' || $brk eq "'") {
+		# if inside a quoted string then ';' doesn't count. 
+		# Change state until a matching quote is found. SQL
+		# escapes quotes within strings by using '' which 
+		# is fine.
 	        $endquot = $brk;
 		$state = 'quot';
 	    }
-	}
-	if ($state eq 'quot') {
+	} elsif ($state eq 'quot') {
+	    # if inside a string
 	    if ($brk eq $endquot) {
+		# if the end quote matches the start then look for ';'
+		# again
 		$state = 'ready';
 	    }
-	}
-	if ($state eq 'comment') {
+	} elsif ($state eq 'comment') {
+	    # if inside a comment
 	    if ($brk eq "\n") {
+		# if found a newline then start looking for ';' again
 		$state = 'ready';
 	    }
 	}
