@@ -71,7 +71,8 @@ MACRO(LINTEL_DOCS_BUILD)
 	# obsolete man/html pages will still be installed.
         ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html
 		      COMMAND rm -rf ${CMAKE_CURRENT_BINARY_DIR}/doxygen.bak
-		      COMMAND mv ${CMAKE_CURRENT_BINARY_DIR}/doxygen
+		      COMMAND [ ! -d ${CMAKE_CURRENT_BINARY_DIR}/doxygen ] 
+		              || mv ${CMAKE_CURRENT_BINARY_DIR}/doxygen
 	                         ${CMAKE_CURRENT_BINARY_DIR}/doxygen.bak
      	              COMMAND ${DOXYGEN_EXECUTABLE} 
      		   	      ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
