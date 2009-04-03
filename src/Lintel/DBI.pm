@@ -280,35 +280,74 @@ sub transaction {
 
 =pod
 
-=head2 $dbh->runSQL()
+=head2 $dbh->runSQL(@statements)
 
-   $dbh->runSQL($sql);
+   $dbh->runSQL($statement, ...);
 
-Runs a series of SQL commands such as from a HERE document separated by 
-semicolons.  Statements can be broken over as many lines as needed. 
+Runs a series of SQL commands in sequence from the supplied array.
+Each statement is prepared and executed.
+
+=cut
+
+sub runSQL {
+    my ($self, @statements) = @_;
+    foreach my $statement (@statements) {
+	$self->{dbh}->do($statement);
+    }
+}
+
+=pod
+
+=head2 Lintel::DBI::splitSQL()
+
+   my @statements = Lintel::DBI::splitSQL($sql);
+
+Returns an array of statements extracted from an overall SQL document $sql.
+The statement array is built by splitting the string on unembedded
+semi-colons (';'), according to the following grammar:
+
+   sql_document ::= statement*
+   statement ::= (simple_text|quoted_text|comment_text)+ ';'
+   simple_text ::= [^'"(--)]+
+   quoted_text ::= '[^']*'|"[^"]*"
+   comment_text ::= --[^\n]*\n
 
 For example:
 
-   $dbh->runSQL <<END;
+   $dbh->runSQL( Lintel::DBI::splitSQL( <<END));
 create table users (id integer primary key, name char(20));
 create table email (user_id integer, address char(128));
 create index email_idx1 on email (user_id);
 END
 
+Limitations: The splitSQL() function does not fully parse the input document,
+any errors in the SQL will be passed on to the database.  SplitSQL does
+not currently recognize any types not described above, so for example, 
+Oracle PL/SQL blocks will be split into little pieces.  
+
+Known unsupported syntax includes using backslash (\) escaped string 
+delimiters, PL/SQL blocks, and multi-line comments.  Backslash escaped
+string delimiters in particular will confuse splitSQL().  If in doubt, 
+split your SQL documents into separate statements and use runSQL()
+instead.
+
 =cut
 
-sub runSQL {
-    my ($self, $sql) = @_;
+sub splitSQL {
+    my ($sql) = @_;
+    my @statements = ();
     my $cursor = 0;
     my $statement;
     while ($cursor < length($sql)) {
 	($statement, $cursor) = nextStatement( $sql, $cursor);
 	if (defined $statement) {
-	    $self->{dbh}->do($statement);
+	    push @statements, $statement;
 	} else {
+	    # any text following the last ';' is dropped
 	    last;
 	}
     }
+    return @statements;
 }
 
 # TODO: Weigh the possible alternatives to the code below:
@@ -443,14 +482,16 @@ sub getConfig {
 sub loadSchema {
     my ($self, $schema_version, $schema, $option) = @_;
 
-    $self->runSQL(<<END);
+    my $lintel_dbi_config = <<END;
 create table if not exists lintel_dbi_config (
 	name varchar(32) primary key,
 	value varchar(1024)
 );
 END
+
+    $self->runSQL( splitSQL( $lintel_dbi_config));
     $self->transaction(sub {
-	    $self->runSQL($schema);
+	    $self->runSQL( splitSQL($schema));
 	    $self->dbiSetConfig($self->schema(), $schema_version);
 	});
 }

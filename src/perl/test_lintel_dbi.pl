@@ -31,21 +31,6 @@ $err ||= test2();
 $err ||= test3();
 exit($err);
 
-sub countStatements {
-    my ($sql) = @_;
-    my $cur = 0;
-    my $st;
-    my $count = 0;
-    while ($cur < length($sql)) {
-	($st,$cur)=Lintel::DBI::nextStatement( $sql, $cur);
-	if (defined $st) {
-	    $count ++;
-#	    print $count, ":", $st, "\n";
-	}
-    }
-    return $count; 
-}
-
 sub test2 {
     my $sql = <<END;
 -- create table statements schema version 10
@@ -101,7 +86,8 @@ insert into config values
 
 END
 
-    if (countStatements($sql) != 7) {
+    my @statements = Lintel::DBI::splitSQL($sql);
+    if (@statements != 7) {
 	print "not ok 2\n";
 	return 1;
     } 
@@ -130,7 +116,8 @@ select name || ';' || number
 
 END
 
-    if (countStatements($sql) != 4) {
+    my @statements = Lintel::DBI::splitSQL($sql);
+    if (@statements != 4) {
 	print "not ok 3\n";
 	return 1;
     } 
