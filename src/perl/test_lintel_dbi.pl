@@ -1,11 +1,15 @@
 #
-#  (c) Copyright 2000-2005, Hewlett-Packard Development Company, LP
+#  (c) Copyright 2009, Hewlett-Packard Development Company, LP
 #
 #  See the file named COPYING for license details
 #
 
-# Before `make install' is performed this script should be runnable with
-# `make test'. After `make install' it should work as `perl test.pl'
+# Before 'make install' is performed this script should be runnable with
+# 'make test'. After 'make install' it should work as 'perl test.pl'
+
+# TODO: rewrite this using Test::More; when doing so, make tests store
+# values as an array, join it together, run it through splitSql and
+# verify the same thing comes back.
 
 ######################### We start with some black magic to print on failure.
 
@@ -86,8 +90,8 @@ insert into config values
 
 END
 
-    my @statements = Lintel::DBI::splitSQL($sql);
-    if (@statements != 7) {
+    my $statements = Lintel::DBI::splitSQL($sql);
+    if (@$statements != 7) {
 	print "not ok 2\n";
 	return 1;
     } 
@@ -116,8 +120,9 @@ select name || ';' || number
 
 END
 
-    my @statements = Lintel::DBI::splitSQL($sql);
-    if (@statements != 4) {
+    my $obj = bless {}, 'Lintel::DBI';
+    my $statements = $obj->splitSQL($sql);
+    if (@$statements != 4) {
 	print "not ok 3\n";
 	return 1;
     } 

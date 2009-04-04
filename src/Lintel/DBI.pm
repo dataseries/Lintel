@@ -280,9 +280,9 @@ sub transaction {
 
 =pod
 
-=head2 $dbh->runSQL(@statements)
+=head2 $dbh->runSQL(\@statements)
 
-   $dbh->runSQL($statement, ...);
+   $dbh->runSQL([$statement, ...]);
 
 Runs a series of SQL commands in sequence from the supplied array.
 Each statement is prepared and executed.
@@ -290,8 +290,11 @@ Each statement is prepared and executed.
 =cut
 
 sub runSQL {
-    my ($self, @statements) = @_;
-    foreach my $statement (@statements) {
+    my ($self, $statements) = @_;
+    
+    confess "expected array reference" unless ref $statements eq 'ARRAY';
+
+    foreach my $statement (@$statements) {
 	$self->{dbh}->do($statement);
     }
 }
@@ -300,7 +303,8 @@ sub runSQL {
 
 =head2 Lintel::DBI::splitSQL()
 
-   my @statements = Lintel::DBI::splitSQL($sql);
+   my $statements = Lintel::DBI::splitSQL($sql);
+   my $statements = $dbh->splitSQL($sql)
 
 Returns an array of statements extracted from an overall SQL document $sql.
 The statement array is built by splitting the string on unembedded
@@ -314,7 +318,7 @@ semi-colons (';'), according to the following grammar:
 
 For example:
 
-   $dbh->runSQL( Lintel::DBI::splitSQL( <<END));
+   $dbh->runSQL(Lintel::DBI::splitSQL(<<END));
 create table users (id integer primary key, name char(20));
 create table email (user_id integer, address char(128));
 create index email_idx1 on email (user_id);
@@ -325,21 +329,23 @@ any errors in the SQL will be passed on to the database.  SplitSQL does
 not currently recognize any types not described above, so for example, 
 Oracle PL/SQL blocks will be split into little pieces.  
 
-Known unsupported syntax includes using backslash (\) escaped string 
+Known unsupported syntax includes using backslash (\) escaped string
 delimiters, PL/SQL blocks, and multi-line comments.  Backslash escaped
-string delimiters in particular will confuse splitSQL().  If in doubt, 
-split your SQL documents into separate statements and use runSQL()
-instead.
+string delimiters in particular will confuse splitSQL().  If in doubt,
+split your SQL documents into separate statements manually, splitSQL
+is for convenience.
 
 =cut
 
 sub splitSQL {
+    shift @_ if ref $_[0] && $_[0]->isa("Lintel::DBI");
+    die "?" if @_ != 1;
     my ($sql) = @_;
     my @statements = ();
     my $cursor = 0;
     my $statement;
     while ($cursor < length($sql)) {
-	($statement, $cursor) = nextStatement( $sql, $cursor);
+	($statement, $cursor) = nextStatement($sql, $cursor);
 	if (defined $statement) {
 	    push @statements, $statement;
 	} else {
@@ -347,7 +353,7 @@ sub splitSQL {
 	    last;
 	}
     }
-    return @statements;
+    return \@statements;
 }
 
 # TODO: Weigh the possible alternatives to the code below:
@@ -387,7 +393,7 @@ sub nextStatement {
 	if ($state eq 'ready') {
 	    # if not inside a comment or string
 	    if ($brk eq ';') {
-		return (substr( $sql, $start, $cursor-$start), $cursor);
+		return (substr($sql, $start, $cursor-$start), $cursor);
 	    }
 	    if ($brk eq '--') {
 		# if inside a comment then ';' doesn't count.  Change
@@ -489,9 +495,9 @@ create table if not exists lintel_dbi_config (
 );
 END
 
-    $self->runSQL( splitSQL( $lintel_dbi_config));
+    $self->runSQL(splitSQL($lintel_dbi_config));
     $self->transaction(sub {
-	    $self->runSQL( splitSQL($schema));
+	    $self->runSQL(splitSQL($schema));
 	    $self->dbiSetConfig($self->schema(), $schema_version);
 	});
 }
@@ -560,7 +566,7 @@ will die.
 
 For example:
 
-   $dbh->setupSchema( 3, $dochange, 
+   $dbh->setupSchema(3, $dochange, 
 	{
 	    1 => { to_version => 2,
 		   sql => 'alter table email change column fullname 
@@ -569,11 +575,11 @@ For example:
 		   sql => 'drop index email_idx1;
 			   create index email_idx1 on email (user_id);' }
 	    init => { to_version => 3,
-		      sql => "
+		      sql => $dbh->splitSQL("
 create table users (id integer primary key, 
                     name char(20));
 create table email (user_id integer, address char(128));
-create index email_idx1 on email (user_id);" } 
+create index email_idx1 on email (user_id);") } 
 	});
 
 =cut
@@ -592,7 +598,7 @@ sub setupSchema {
     }
 
     if ($db_version < $target_version) {
-	$self->migrateSchema( $target_version, $migrate);
+	$self->migrateSchema($target_version, $migrate);
     }
 
     if ($db_version != $target_version) {
