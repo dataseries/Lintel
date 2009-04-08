@@ -16,8 +16,11 @@ use strict;
 
 use Carp;
 use Cwd;
+use Data::Dumper;
 use Digest::SHA1 'sha1_hex';
 use English;
+use Fcntl ':seek';
+use File::Basename;
 use File::Compare;
 use File::Copy;
 use File::Path;
@@ -25,15 +28,13 @@ use File::Find;
 use File::stat;
 use FileHandle;
 use Getopt::Long;
-use File::Basename;
+use MIME::Base64;
 use POSIX 'ceil';
 use Pod::Usage;
-
 use Sys::Hostname;
-use MIME::Base64;
-use Data::Dumper;
-use Lintel::File::Lock;
 
+@PERL_MODULES_INC_UNSHIFT@
+use Lintel::File::Lock;
 
 # TODO: pull should walk in the current directory before walking in the
 # dependent ones since it may need additional dependencies, and/or they
@@ -139,6 +140,7 @@ my $time_log;
 my $monotone_dir = $ENV{MONTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
+my @original_arguments = @ARGV;
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
 GetOptions("y!" => \$auto_yes_to_prompts,
            "quiet!" => \$quiet, 
@@ -155,7 +157,7 @@ GetOptions("y!" => \$auto_yes_to_prompts,
 
 $time_log ||= $ENV{DEPTOOL_TIME_LOG};
 if (!defined $time_log) {
-    my $default_time_log = "$ENV{HOME}/.deptool-timings";
+    my $default_time_log = "$monotone_dir/deptool-timings";
     $time_log = $default_time_log if (-f $default_time_log);
 }
 
@@ -221,11 +223,10 @@ defaults to $HOME/.monotone.
 =item --time-log=<path>
 
 Specify the file to use for logging build times.  The default is
-$HOME/.deptool-timings.  If the file is present then deptool will
-write a base64 encoded log entry each time a command is run tracking
-the start and completion time for each command.  Unsuccessful 
-commands or commands that are aborted with a ^C are not logged.
-This can be also be specified using the DEPTOOL_TIME_LOG environment 
+I<monotone-dir>/deptool-timings.  If the file is present then deptool
+will write a base64 encoded log entry for each command. Unsuccessful
+commands or commands that are aborted with a ^C are not logged.  The
+default file can be specified using the DEPTOOL_TIME_LOG environment
 variable.
 
 =item --man
@@ -382,7 +383,6 @@ Same as cdopt, except for the debug build directory.
 =cut
 
 {
-    my $log_command = join(' ', map(quotemeta, @ARGV));
     my $command = shift @ARGV;
     my $fn = $commands{$command};
 
@@ -393,41 +393,34 @@ Same as cdopt, except for the debug build directory.
     aliasChdir($ENV{PWD}) if defined $ENV{PWD};
     my $start_time = time;
     &$fn;
-    addTimeLog($log_command, $start_time);
+    addTimeLog($start_time);
 }
 
 sub addTimeLog {
-    my ($command, $start_time) = @_;
+    my ($start_time) = @_;
 
-    return if (!defined $time_log);
-    touch($time_log) if (! -f $time_log);
+    return unless defined $time_log;
 
     my $timelog_entry = {
 	    version => 1,
-	    command => $command,
+	    command => [$0, @original_arguments ],
 	    host => hostname,
 	    directory => getcwd,
 	    starttime => $start_time,
 	    endtime => time
 	};
 	
-    if (my $lock = Lintel::File::Lock::getLock($time_log, 10)) {
-	open my $fh, ">>$time_log";
-	my $doc = encode_base64(Data::Dumper->Dump([$timelog_entry], 
-						   [qw/timelog_entry/]),
-				'');
+    if (my $lock = Lintel::File::Lock::getLock($time_log, 5)) {
+	seek($lock, 0, SEEK_END) or die "seek($time_log, END) failed: $!";
+	my $doc = encode_base64(Dumper($timelog_entry), '');
 	my $sha1 = sha1_hex($doc);
-	print $fh "$doc, $sha1\n";
-	close $fh;
+	print $lock "$doc $sha1\n" or die "print failed: $!";
+	close $lock or die "close failed: $!";
     } else {
-	warn "Unable to lock $time_log, for time logging\n";
+	warn "Skipping time logging; unable to lock $time_log\n";
     }
-}
 
-sub touch {
-    my ($file) = @_;
-    open my $fh, ">>$file" or die("Unable to touch $time_log: $!");
-    close $fh;
+    # TODO: add code that parses the time logs writes out SQL for mercury.
 }
 
 sub help {

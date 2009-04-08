@@ -29,12 +29,17 @@ Lintel::File::Lock - locking and unlocking of files
 
 =head2 getLock(filename, waittime, verbose)
 
-getLock will attempt to acquire a lock on filename.  It will return a
-locked rw FileHandle on success.  To release the lock, simply set the
-filehandle to undef.  If no waittime is specified, it will wait
-forever.  Otherwise if it has waited for waittime seconds, it will
-return undef.  Various additional information is printed to stderr if
-verbose is specified.  If some rare errors occur it will die.
+getLock will attempt to acquire a lock on filename.  The file will be
+created if it doesn't exist, but will not be modified by the locking.
+It will return a locked rw FileHandle on success.  If you are going to
+write to the file, you should call one of C<seek($fh, 0, SEEK_END); or
+seek($fh, 0, SEEK_SET);> to set the current writing position.
+
+To release the lock, set the filehandle to undef.  If no waittime is
+specified, it will wait forever.  Otherwise if it has waited for
+waittime seconds, it will return undef.  Various additional
+information is printed to stderr if verbose is specified.  If some
+rare errors occur it will die.
 
 =cut
 
@@ -49,10 +54,11 @@ sub getLock {
 	my $start = time;
 	while(1) {
 	    my $ret = flock($fh, LOCK_EX|LOCK_NB);
-	    unless(defined $ret) {
-	        die("flock($filename, LOCK_EX|LOCK_NB) failed: $!");
+	    if ($ret) {
+		return $fh;
+	    } elsif (! defined $ret) {
+	        die "flock($filename, LOCK_EX|LOCK_NB) failed: $!";
 	    }
-	    return $fh if $ret;
 
 	    my $remain = $waittime - (time - $start);
 	    print STDERR "delayed waiting for lock, $remain seconds remain...\n"
@@ -67,7 +73,7 @@ sub getLock {
 	}
 	return $fh;
     }
-    return $fh;
+    die "internal error";
 }
 
 =pod

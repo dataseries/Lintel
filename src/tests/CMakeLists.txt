@@ -51,7 +51,7 @@ LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
 IF(PERL_ENABLED)
-    ADD_TEST(deptool ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
+    ADD_TEST(deptool env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
     ADD_TEST(test_lintel_dbi ${PERL_PATH} -I${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../perl/test_lintel_dbi.pl)
 ENDIF(PERL_ENABLED)
 
