@@ -399,7 +399,7 @@ Same as cdopt, except for the debug build directory.
 sub addTimeLog {
     my ($command, $start_time) = @_;
 
-    return if (!defined $time_log);
+    if (!defined $time_log) return;
     touch($time_log) if (! -f $time_log);
 
     my $timelog_entry = {
@@ -1161,7 +1161,7 @@ of the tests to verify that the changes are internally consistent.
 sub depCommit {
     my %options;
 
-    depBuild('tests' => 0);
+    depBuild('tests' => 1);
     depWalk(sub { }, \&depCommitOne, 0);
 }
 
@@ -1258,9 +1258,9 @@ sub depCommitDoCommit {
         $auto_yes_to_prompts = 0 unless $first_time;
         $first_time = 0;
         print "depcommit: you have uncommitted differences in $cwd
-depcommit: will show differences after successful build\n";
-        userPrompt("build");
-        depBuild('tests' => 0);
+depcommit: will show differences after successful test\n";
+        userPrompt("build and test");
+        depBuild('tests' => 1);
         print "\n" x 20;
         aliasChdir($cwd);
         runCommand("mtn","diff");
