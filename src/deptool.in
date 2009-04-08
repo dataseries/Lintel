@@ -135,8 +135,7 @@ my $auto_yes_to_prompts = 0;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
-my $time_log = $ENV{DEPTOOL_TIME_LOG};
-$time_log ||= "$ENV{HOME}/.deptool-timings";
+my $time_log;
 my $monotone_dir = $ENV{MONTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
@@ -151,7 +150,14 @@ GetOptions("y!" => \$auto_yes_to_prompts,
            "build-debug=s" => \$Cache::build_debug,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage,
-	   "monotone-dir=s" => \$monotone_dir);
+	   "monotone-dir=s" => \$monotone_dir,
+	   "time-log=s" => \$time_log);
+
+$time_log ||= $ENV{DEPTOOL_TIME_LOG};
+if (!defined $time_log) {
+    my $default_time_log = "$ENV{HOME}/.deptool-timings";
+    $time_log = $default_time_log if (-f $default_time_log);
+}
 
 =pod
 
@@ -211,6 +217,16 @@ Specify the directory to search for monotone databases that include
 the current project.  This can be also be specified using the 
 MONOTONE_DIR environment variable, or failing that, the directory
 defaults to $HOME/.monotone.
+
+=item --time-log=<path>
+
+Specify the file to use for logging build times.  The default is
+$HOME/.deptool-timings.  If the file is present then deptool will
+write a base64 encoded log entry each time a command is run tracking
+the start and completion time for each command.  Unsuccessful 
+commands or commands that are aborted with a ^C are not logged.
+This can be also be specified using the DEPTOOL_TIME_LOG environment 
+variable.
 
 =item --man
 
@@ -382,6 +398,10 @@ Same as cdopt, except for the debug build directory.
 
 sub addTimeLog {
     my ($command, $start_time) = @_;
+
+    if (!defined $time_log) return;
+    touch($time_log) if (! -f $time_log);
+
     my $timelog_entry = {
 	    version => 1,
 	    command => $command,
@@ -390,21 +410,17 @@ sub addTimeLog {
 	    starttime => $start_time,
 	    endtime => time
 	};
-    if (-f $time_log || $ENV{DEPTOOL_TIME_LOG}) {
-        touch($time_log) if (! -f $time_log);
-            
-	if (my $lock = Lintel::File::Lock::getLock($time_log, 10)) {
-	    open my $fh, ">>$time_log";
-	    my $doc = encode_base64(Data::Dumper->Dump([$timelog_entry], 
-				                       [qw/timelog_entry/]),
-				    '');
-            my $sha1 = sha1_hex($doc);
-	    print $fh "$doc, $sha1\n";
-	    close $fh;
-	} else {
-	    warn "Unable to lock $time_log, for time logging\n";
-	}
-
+	
+    if (my $lock = Lintel::File::Lock::getLock($time_log, 10)) {
+	open my $fh, ">>$time_log";
+	my $doc = encode_base64(Data::Dumper->Dump([$timelog_entry], 
+						   [qw/timelog_entry/]),
+				'');
+	my $sha1 = sha1_hex($doc);
+	print $fh "$doc, $sha1\n";
+	close $fh;
+    } else {
+	warn "Unable to lock $time_log, for time logging\n";
     }
 }
 
