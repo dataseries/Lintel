@@ -24,8 +24,17 @@
 class LockOrderingGroup : boost::noncopyable {
 public:
     LockOrderingGroup() { 
-	cur_level.reset(new double);
-	*cur_level = 0;
+	prepare();
+    }
+
+    /// prepare a thread to use this lock ordering group; safe to call
+    /// multiple times -- it will do nothing if a group is already
+    /// prepared.
+    void prepare() {
+	if (cur_level.get() == NULL) {
+	    cur_level.reset(new double);
+	    *cur_level = 0;
+	}
     }
 
     double curLevel() const {
