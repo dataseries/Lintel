@@ -1,5 +1,5 @@
 #!@PERL_PATH@ -w
-# -*- Perl -*-
+# vim: set filetype=perl: # -*- Perl -*-
 #
 #  (c) Copyright 2004-2008, Hewlett-Packard Development Company, LP
 #
@@ -28,6 +28,12 @@ use Getopt::Long;
 use File::Basename;
 use POSIX 'ceil';
 use Pod::Usage;
+
+use Sys::Hostname;
+use MIME::Base64;
+use Data::Dumper;
+use Lintel::File::Lock;
+
 
 # TODO: pull should walk in the current directory before walking in the
 # dependent ones since it may need additional dependencies, and/or they
@@ -129,6 +135,8 @@ my $auto_yes_to_prompts = 0;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
+my $time_log = $ENV{DEPTOOL_TIME_LOG};
+$time_log ||= "$ENV{HOME}/.deptool-timings";
 my $monotone_dir = $ENV{MONTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
@@ -358,6 +366,7 @@ Same as cdopt, except for the debug build directory.
 =cut
 
 {
+    my $log_command = join(' ', map(quotemeta, @ARGV));
     my $command = shift @ARGV;
     my $fn = $commands{$command};
 
@@ -366,7 +375,43 @@ Same as cdopt, except for the debug build directory.
     
     # handle case where start dir is a symlink
     aliasChdir($ENV{PWD}) if defined $ENV{PWD};
+    my $start_time = time;
     &$fn;
+    addTimeLog($log_command, $start_time);
+}
+
+sub addTimeLog {
+    my ($command, $start_time) = @_;
+    my $timelog_entry = {
+	    version => 1,
+	    command => $command,
+	    host => hostname,
+	    directory => getcwd,
+	    starttime => $start_time,
+	    endtime => time
+	};
+    if (-f $time_log || $ENV{DEPTOOL_TIME_LOG}) {
+        touch($time_log) if (! -f $time_log);
+            
+	if (my $lock = Lintel::File::Lock::getLock($time_log, 10)) {
+	    open my $fh, ">>$time_log";
+	    my $doc = encode_base64(Data::Dumper->Dump([$timelog_entry], 
+				                       [qw/timelog_entry/]),
+				    '');
+            my $sha1 = sha1_hex($doc);
+	    print $fh "$doc, $sha1\n";
+	    close $fh;
+	} else {
+	    warn "Unable to lock $time_log, for time logging\n";
+	}
+
+    }
+}
+
+sub touch {
+    my ($file) = @_;
+    open my $fh, ">>$file" or die("Unable to touch $time_log: $!");
+    close $fh;
 }
 
 sub help {
