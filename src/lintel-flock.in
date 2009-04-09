@@ -97,16 +97,17 @@ sub background {
 
 	my $hostname = hostname();
 	seek($fh, 0, 0) or die "seek failed: $!";
+	truncate($fh, 0) or die "truncate failed: $!";
 	print $fh "locked for pid $callpid on $hostname\n"
 	    or die "print failed: $!";
-	seek($fh, 0, 0) or die "seek failed: $!";
 	while(1) {
 	    my $count = kill 0, $callpid;
 	    if ($count == 0) {
 		print STDERR "parent exited, exiting\n"
 		    if $verbose;
-		print $fh "unlocked\n"
-		    or die "print failed: $!";
+		seek($fh, 0, 0) or die "seek failed: $!";
+		truncate($fh, 0) or die "truncate failed: $!";
+		print $fh "unlocked\n" or die "print failed: $!";
 		exit(0);
 	    } else {
 		print STDERR "parent $callpid still there, waiting\n"

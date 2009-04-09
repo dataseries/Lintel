@@ -47,8 +47,8 @@ sub getLock {
     my ($filename, $waittime, $verbose) = @_;
     die "?" unless defined $filename;
 
-    my $fh = new FileHandle "+>>$filename"
-	or die "Unable to open $filename for rw append: $!";
+    my $fh = new FileHandle "+<$filename"
+	or die "Unable to open $filename for rw: $!";
     if (defined $waittime) {
 	die "??" if $waittime < 0;
 	my $start = time;
