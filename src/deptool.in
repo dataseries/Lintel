@@ -782,10 +782,14 @@ sub depBuildCheckOld {
         print "depbuild:  missing .deptool.build_stamp, build definitely out of date\n";
         return;
     }
-    if ($options->{did_install}) {
-        print "depbuild:  did an install in another directory, so we are out of date\n";
-        unlink(".deptool.build_stamp") or die "?";
-        return;
+    if ($options->{last_install}) {
+	my $ref_stat = stat(".deptool.build_stamp")
+	    or die "Unable to stat .deptool.build_stamp: $!";
+	if ($ref_stat->mtime() < $options->{last_install}) {
+	    print "depbuild:  did an install in another directory, so we are out of date\n";
+	    unlink(".deptool.build_stamp") or die "?";
+	    return;
+	}
     }
     my @old_files = depBuildFindOld($src);
     if (@old_files > 0) {
@@ -847,14 +851,21 @@ sub depBuildTest {
 }
 
 sub stampUpToDate {
-    my($which) = @_;
+    my($which, $options) = @_;
 
     return 0 unless -f ".deptool.${which}_stamp";
     my $build_stat = stat(".deptool.build_stamp")
         or die "Unable to stat .deptool.build_stamp: $!";
     my $which_stat = stat(".deptool.${which}_stamp")
         or die "Unable to stat .deptool.${which}_stamp: $!";
-    return $which_stat->mtime() > $build_stat->mtime();
+    if (defined $options) {
+        if (!defined $options->{last_install}
+	    || $which_stat->mtime() > $options->{last_install})
+	{
+	    $options->{last_install} = $which_stat->mtime();
+	} 
+    }
+    return ($which_stat->mtime() > $build_stat->mtime());
 }
 
 sub stamp {
@@ -875,12 +886,11 @@ sub stamp {
 sub depBuildInstall {
     my($build, $options) = @_;
 
-    if (stampUpToDate("install","build")) {
+    if (stampUpToDate("install",$options)) {
         print "depbuild: Install up to date in $build\n";
     } else {
         runCommand("make","install");
         stamp("install");
-        $options->{did_install} = 1;
     }
 }
 
