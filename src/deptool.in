@@ -799,7 +799,10 @@ sub depBuildCheckOld {
 	    ($dep,$sub_build_type) = ($1,$2);
 	}
 
-        die "Undefined key $dep" if (!defined $options->{"lastbuild $dep"});
+        if (!defined $options->{"lastbuild $dep"}) {
+	    warn("No last build time for $dep from $options->{building}");
+	    next;
+	}
 	if ($ref_stat->mtime() < $options->{"lastbuild $dep"}) {
 	    print "depbuild:  did an install in another directory, so we are out of date\n";
 	    unlink(".deptool.build_stamp") or die "?";
