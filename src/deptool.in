@@ -2394,8 +2394,8 @@ sub operatingSystem {
             $_ = <$debver>;
             close($debver);
             chomp;
-            if (/^\d+\.\d+$/o) {
-                $Cache::operating_system = "debian-$_";
+            if (/^(\d+\.\d+)(\.\d+)?$/o) {
+                $Cache::operating_system = "debian-$1";
             } elsif (m!^([a-z]+)/sid$!o) {
                 $Cache::operating_system = "debian-$1-unstable";
             } elsif (m!^testing$!o) {
