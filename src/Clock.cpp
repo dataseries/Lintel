@@ -129,6 +129,10 @@ void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
 void Clock::calibrateClock(bool print_calibration_information, 
 			   double max_conf95_rel,
 			   int print_calibration_warnings_after_tries) {
+    if (clock_rate != -Double::Inf) {
+	return; // already calibrated; don't handle changes.
+    }
+
     Tdbl clock_s, clock_e;
     Tll tick_s, tick_e;
 
@@ -137,105 +141,105 @@ void Clock::calibrateClock(bool print_calibration_information,
     }
 
     double tmp_clock_rate;
-    if (clock_rate == -Double::Inf) {
-	bindToProcessor();
-	for(int tries=0;tries<10;++tries) {
-	    calibrate.reset();
-	    tmp_clock_rate = -1;
-	    for(int ndelay=1;true;ndelay+=1) {
-		// De-schedule ourselves for a bit, to lower the
-		// chance of getting pre-empted while running the
-		// calibration
-		struct timeval timeout;
-		timeout.tv_sec = 0;
-		timeout.tv_usec = 10000;
-		select(0,NULL,NULL,NULL,&timeout);
 
-		clock_s = Clock::tod();
-		tick_s = cycleCounter();
-		for(volatile int d=0;d<ndelay*10000;d++) {
-		    /* empty */
-		}
-		clock_e = Clock::tod();
-		tick_e = cycleCounter();
+    bindToProcessor();
+    for(int tries=0;tries<10;++tries) {
+	calibrate.reset();
+	tmp_clock_rate = -1;
+	for(int ndelay=1;true;ndelay+=1) {
+	    // De-schedule ourselves for a bit, to lower the
+	    // chance of getting pre-empted while running the
+	    // calibration
+	    struct timeval timeout;
+	    timeout.tv_sec = 0;
+	    timeout.tv_usec = 10000;
+	    select(0,NULL,NULL,NULL,&timeout);
 
-		Tll tick_d = tick_e - tick_s;
-		Tdbl us_d = clock_e - clock_s;
-
-		if (us_d < 500) {
-		    ndelay += 20;
-		    continue;
-		}
-		if (us_d > 100000) {
-		    if (tries >= print_calibration_warnings_after_tries) {
-			fprintf(stderr,"WHOA, calibration didn't succeed after %ld samples; restarting\n",
-				calibrate.count());
-		    }
-		    tmp_clock_rate = -1;
-		    break;
-		}
-
-		double t = (double)tick_d / us_d;
-		calibrate.add(t);
-		if ((int)calibrate.count() < min_samples)
-		    continue;
-		if (print_calibration_information || tries >= print_calibration_warnings_after_tries) {
-		    fprintf(stderr, "Calibrating clock rate, try %d: ndelay=%ld us=%.5g ticks=%lld clock est %.6g;; clock mean %.10g, conf95 %.10g\n",
-			    tries, (long)ndelay, us_d, tick_d, t,calibrate.mean(),calibrate.conf95());
-		}
-		if (calibrate.conf95() < calibrate.mean() * max_conf95_rel) {
-		    tmp_clock_rate = calibrate.mean();
-		    INVARIANT(clock_rate == -Double::Inf,
-			      format("whoa, two threads calibrating at the same time?! %g != %g")
-			      % clock_rate % (-Double::Inf));
-		    clock_rate = tmp_clock_rate;
-		    INVARIANT(inverse_clock_rate == -Double::Inf,
-			      "error: two threads trying to calibrate at once ?!");
-		    inverse_clock_rate = 1.0 / clock_rate;
-
-		    // cycle_counter * icr = time in us * 1/1e6 = time
-		    // in seconds * 2**32 = time in Tfrac
-		    inverse_clock_rate_tfrac = inverse_clock_rate * (4294967296.0/1000000.0);
-		    std::vector<Tll> elapsed;
-		    const int nelapsed = 100;
-		    for(int i=0;i<nelapsed;i++) {
-			Tll start_cycle = cycleCounter();
-			tod();
-			Tll end_cycle = cycleCounter();
-			Tll delta = end_cycle - start_cycle;
-			elapsed.push_back(delta);
-		    }
-		    std::sort(elapsed.begin(),elapsed.end(),Clock_Tll_Order());
-		    int off = nelapsed/2; // median
-		    SINVARIANT((int)elapsed.size() > off &&
-			      elapsed[off] < 10 * clock_rate);
-
-		    // 2 * gives a little leeway to when it's running in 
-		    // practice
-		    // changed to 5 because we were having too many bad 
-		    // recalibates at high load.
-		    max_recalibrate_measure_time = 5 * elapsed[off];
-		    // increased the bound to 30us
-		    // (30*tmp_clock_rate); under load, this invariant
-		    // could fire; might want to warn, on a really
-		    // slow recalibrate, we could introduce a lot of
-		    // error.
-		    INVARIANT(max_recalibrate_measure_time < 30 * tmp_clock_rate,
-			      format("Internal sanity check failed, tod() takes too long, %d > %.2f\n")
-			      % max_recalibrate_measure_time
-			      % (20 * tmp_clock_rate));
-		    break;
-		}
+	    clock_s = Clock::tod();
+	    tick_s = cycleCounter();
+	    for(volatile int d=0;d<ndelay*10000;d++) {
+		/* empty */
 	    }
-	    if (tmp_clock_rate > 200) {
+	    clock_e = Clock::tod();
+	    tick_e = cycleCounter();
+
+	    Tll tick_d = tick_e - tick_s;
+	    Tdbl us_d = clock_e - clock_s;
+
+	    if (us_d < 500) {
+		ndelay += 20;
+		continue;
+	    }
+	    if (us_d > 100000) {
+		if (tries >= print_calibration_warnings_after_tries) {
+		    fprintf(stderr,"WHOA, calibration didn't succeed after %ld samples; restarting\n",
+			    calibrate.count());
+		}
+		tmp_clock_rate = -1;
+		break;
+	    }
+
+	    double t = (double)tick_d / us_d;
+	    calibrate.add(t);
+	    if ((int)calibrate.count() < min_samples)
+		continue;
+	    if (print_calibration_information || tries >= print_calibration_warnings_after_tries) {
+		fprintf(stderr, "Calibrating clock rate, try %d: ndelay=%ld us=%.5g ticks=%lld clock est %.6g;; clock mean %.10g, conf95 %.10g\n",
+			tries, (long)ndelay, us_d, tick_d, t,calibrate.mean(),calibrate.conf95());
+	    }
+	    if (calibrate.conf95() < calibrate.mean() * max_conf95_rel) {
+		tmp_clock_rate = calibrate.mean();
+		INVARIANT(clock_rate == -Double::Inf,
+			  format("whoa, two threads calibrating at the same time?! %g != %g")
+			  % clock_rate % (-Double::Inf));
+		clock_rate = tmp_clock_rate;
+		INVARIANT(inverse_clock_rate == -Double::Inf,
+			  "error: two threads trying to calibrate at once ?!");
+		inverse_clock_rate = 1.0 / clock_rate;
+
+		// cycle_counter * icr = time in us * 1/1e6 = time
+		// in seconds * 2**32 = time in Tfrac
+		inverse_clock_rate_tfrac = inverse_clock_rate * (4294967296.0/1000000.0);
+		std::vector<Tll> elapsed;
+		const int nelapsed = 100;
+		for(int i=0;i<nelapsed;i++) {
+		    Tll start_cycle = cycleCounter();
+		    tod();
+		    Tll end_cycle = cycleCounter();
+		    Tll delta = end_cycle - start_cycle;
+		    elapsed.push_back(delta);
+		}
+		std::sort(elapsed.begin(),elapsed.end(),Clock_Tll_Order());
+		int off = nelapsed/2; // median
+		SINVARIANT((int)elapsed.size() > off &&
+			   elapsed[off] < 10 * clock_rate);
+
+		// 2 * gives a little leeway to when it's running in 
+		// practice
+		// changed to 5 because we were having too many bad 
+		// recalibates at high load.
+		max_recalibrate_measure_time = 5 * elapsed[off];
+		// increased the bound to 30us
+		// (30*tmp_clock_rate); under load, this invariant
+		// could fire; might want to warn, on a really
+		// slow recalibrate, we could introduce a lot of
+		// error.
+		INVARIANT(max_recalibrate_measure_time < 30 * tmp_clock_rate,
+			  format("Internal sanity check failed, tod() takes too long, %d > %.2f\n")
+			  % max_recalibrate_measure_time
+			  % (20 * tmp_clock_rate));
 		break;
 	    }
 	}
-	INVARIANT(tmp_clock_rate > 200, format("Unable to calibrate clock rate to %.8g relative error") % max_conf95_rel);
-	unbindFromProcessor();
-	if (print_calibration_information) {
-	    cout << format("Final calibrated clock rate is %.8g, conf95 %.8g, %ld samples\n") % tmp_clock_rate % calibrate.conf95() % calibrate.count();
+	if (tmp_clock_rate > 200) {
+	    break;
 	}
+    }
+
+    INVARIANT(tmp_clock_rate > 200, format("Unable to calibrate clock rate to %.8g relative error") % max_conf95_rel);
+    unbindFromProcessor();
+    if (print_calibration_information) {
+	cout << format("Final calibrated clock rate is %.8g, conf95 %.8g, %ld samples\n") % tmp_clock_rate % calibrate.conf95() % calibrate.count();
     }
 }
 
