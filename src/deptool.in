@@ -19,7 +19,7 @@ use Cwd;
 use Data::Dumper;
 use Digest::SHA1 'sha1_hex';
 use English;
-use Fcntl ':seek';
+use Fcntl;
 use File::Basename;
 use File::Compare;
 use File::Copy;
@@ -67,7 +67,7 @@ sub usage {
    checkout <branch-substring...> # checkout branch and dependencies
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-b (optimize build)]
-   commit # commit branch after dependencies
+   commit [-t] [-d] [-b] # commit branch after dependencies
    publish # publish branch and dependencies
    cmake # run cmake with special options for current branch
    pin <revision> # pin branch at a particular revision
@@ -303,12 +303,14 @@ Build and install the current branch after building and installing its
 dependencies.  Select the type of build (debug or optimized) based on
 the current directory or the options.  
 
-=item commit
+=item commit [I<-t>] [I<-d>] [I<-b>]
 
 Commit the current branch after committing its dependencies.  If there
 are unknown files, prompt for them to be either added or ignored.  If
-there are changes, perform a build and test before performing the
-commit.
+there are changes, perform a build before performing the commit.
+
+Optionally the build tests can be run before committing, and the build
+type (debug or optimized) can be selected.
 
 =item publish
 
@@ -410,8 +412,10 @@ sub addTimeLog {
 	    endtime => time
 	};
 	
-    if (my $lock = Lintel::File::Lock::getLock($time_log, 5)) {
-	seek($lock, 0, SEEK_END) or die "seek($time_log, END) failed: $!";
+    if (my $lock = Lintel::File::Lock::getLockEx
+	    ($time_log, waittime => 5, 
+	     flags => O_WRONLY | O_CREAT | O_APPEND))
+    {
 	my $doc = encode_base64(Dumper($timelog_entry), '');
 	my $sha1 = sha1_hex($doc);
 	print $lock "$doc $sha1\n" or die "print failed: $!";
@@ -751,10 +755,11 @@ sub depBuild {
     $options{projects} = projects();
 
     depWalk(sub { }, sub { depBuildOne(\%options, @_) }, 1);
+    return %options;
 }
 
 sub depBuildOne {
-    my ($options, $build_type) = @_;
+    my ($options, $build_type, @dependencies) = @_;
 
     my $src = aliasGetCwd();
     die "? '$src' '$options->{projects}'" 
@@ -763,18 +768,19 @@ sub depBuildOne {
     my $build = "$options->{builddir}/$project";
     $build .= "-$build_type" if $build_type ne '';
     print "Building in $build\n" unless $quiet;
+    $options->{building} = $project;
     unless(-d $build) {
         mkpath($build);
     }
     aliasChdir($build);
-    depBuildCheckOld($src, $build, $options);
+    depBuildCheckOld($src, $build, $options, @dependencies);
     depBuildMake($src, $build, $options);
     depBuildTest($build, $options);
     depBuildInstall($build, $options)
 }
 
 sub depBuildCheckOld {
-    my($src, $build, $options) = @_;
+    my($src, $build, $options, @dependencies) = @_;
 
     print "depbuild: Checking if any files in $src\n";
     print "depbuild: are out of date w.r.t $build\n";
@@ -782,15 +788,25 @@ sub depBuildCheckOld {
         print "depbuild:  missing .deptool.build_stamp, build definitely out of date\n";
         return;
     }
-    if ($options->{last_install}) {
-	my $ref_stat = stat(".deptool.build_stamp")
-	    or die "Unable to stat .deptool.build_stamp: $!";
-	if ($ref_stat->mtime() < $options->{last_install}) {
+
+    my $ref_stat = stat(".deptool.build_stamp")
+	or die "Unable to stat .deptool.build_stamp: $!";
+
+    foreach my $dep (@dependencies) {
+	my $sub_build_type = '';
+	$dep =~ s!^[^/]*/!!;
+	if ($dep =~ /^(.+);(\w+)$/o) {
+	    ($dep,$sub_build_type) = ($1,$2);
+	}
+
+        die "Undefined key $dep" if (!defined $options->{"lastbuild $dep"});
+	if ($ref_stat->mtime() < $options->{"lastbuild $dep"}) {
 	    print "depbuild:  did an install in another directory, so we are out of date\n";
 	    unlink(".deptool.build_stamp") or die "?";
 	    return;
 	}
     }
+
     my @old_files = depBuildFindOld($src);
     if (@old_files > 0) {
         print "\n" x 5;
@@ -858,12 +874,11 @@ sub stampUpToDate {
         or die "Unable to stat .deptool.build_stamp: $!";
     my $which_stat = stat(".deptool.${which}_stamp")
         or die "Unable to stat .deptool.${which}_stamp: $!";
-    if (defined $options) {
-        if (!defined $options->{last_install}
-	    || $which_stat->mtime() > $options->{last_install})
-	{
-	    $options->{last_install} = $which_stat->mtime();
-	} 
+    if (defined $options && $which eq "install") {
+        my $lastbuild = $options->{"lastbuild $options->{building}"};
+        if (!defined $lastbuild || $lastbuild < $which_stat->mtime()) {
+	    $options->{"lastbuild $options->{building}"} = $which_stat->mtime();
+	}
     }
     return ($which_stat->mtime() > $build_stat->mtime());
 }
@@ -886,7 +901,7 @@ sub stamp {
 sub depBuildInstall {
     my($build, $options) = @_;
 
-    if (stampUpToDate("install",$options)) {
+    if (stampUpToDate("install", $options)) {
         print "depbuild: Install up to date in $build\n";
     } else {
         runCommand("make","install");
@@ -1164,17 +1179,18 @@ of the tests to verify that the changes are internally consistent.
 sub depCommit {
     my %options;
 
-    depBuild('tests' => 1);
-    depWalk(sub { }, \&depCommitOne, 0);
+    %options = depBuild();
+    depWalk(sub { }, sub { depCommitOne(%options); }, 0);
 }
 
 sub depCommitOne {
+    my %options = @_;
     my $cwd = aliasGetCwd();
 
     die "depcommit: ERROR missing _MTN directory in $cwd"
         unless -d "_MTN";
     depCommitUnknown();
-    depCommitDoCommit();
+    depCommitDoCommit( %options);
 }
 
 sub ignoresFileName() {
@@ -1250,6 +1266,7 @@ sub depCommitHaveChanges {
 }
     
 sub depCommitDoCommit {
+    my %options = @_;
     my $cwd = aliasGetCwd();
     my $first_time = 1;
     while(1) {
@@ -1261,9 +1278,9 @@ sub depCommitDoCommit {
         $auto_yes_to_prompts = 0 unless $first_time;
         $first_time = 0;
         print "depcommit: you have uncommitted differences in $cwd
-depcommit: will show differences after successful test\n";
-        userPrompt("build and test");
-        depBuild('tests' => 1);
+depcommit: will show differences after successful build\n";
+        userPrompt("build");
+        depBuild(%options);
         print "\n" x 20;
         aliasChdir($cwd);
         runCommand("mtn","diff");
@@ -2156,7 +2173,7 @@ sub depWalkRecurse ($$$$$$) {
     aliasChdir($src);
     print "depwalk: running walk function in $src ($build_type)\n\n"
         unless $quiet;
-    &$post_fn($build_type);
+    &$post_fn($build_type, @vcdeps);
     print "\n";
 }
 
