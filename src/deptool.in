@@ -795,6 +795,7 @@ sub parseDependency {
     if ($dep =~ /^(.+);(\w+)$/o) {
 	($dep,$sub_build_type) = ($1,$2);
     }
+    $sub_build_type ||= '';
     return ($dep, $sub_build_type);
 }
 
@@ -2157,7 +2158,9 @@ sub depWalk ($$$) {
 sub depWalkRecurse ($$$$$$) {
     my($pre_fn, $post_fn, $src, $visited, $use_sub_build_type, $build_type) = @_;
     if ($use_sub_build_type) {
-        return if $visited->{"$src $build_type"};
+	if (defined $visited->{"$src $build_type"}) {
+	    return if $visited->{"$src $build_type"};
+	}
         $visited->{"$src $build_type"} = 1;
     } else {
         return if $visited->{$src};
