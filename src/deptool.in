@@ -49,8 +49,15 @@ use Lintel::File::Lock;
 # misleading it as to what has been created and what should be recreated).
 
 # TODO: think about how to check for rebuild after make clean
-# TODO: allow for commits without testing (with an option)
+
 # TODO: separate between short and long tests
+
+# TODO: add ability to have hooks for pre-commit checks, this allows
+# for mechanical verification of common errors.
+
+# TODO: figure out a way to run all of the deptool commands for
+# regression testing; this may need to wait until we have alternative
+# monotone directory support.
 
 sub usage {
     pod2usage(-exitval => 'NOEXIT', -verbose => 0);
@@ -67,7 +74,7 @@ sub usage {
    checkout <branch-substring...> # checkout branch and dependencies
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-b (optimize build)]
-   commit [-t] [-d] [-b] # commit branch after dependencies
+   commit [--no-tests] [-d] [-b] # commit branch after dependencies
    publish # publish branch and dependencies
    cmake # run cmake with special options for current branch
    pin <revision> # pin branch at a particular revision
@@ -303,14 +310,15 @@ Build and install the current branch after building and installing its
 dependencies.  Select the type of build (debug or optimized) based on
 the current directory or the options.  
 
-=item commit [I<-t>] [I<-d>] [I<-b>]
+=item commit [I<--no-tests>] [I<-d>] [I<-b>]
 
 Commit the current branch after committing its dependencies.  If there
 are unknown files, prompt for them to be either added or ignored.  If
 there are changes, perform a build before performing the commit.
 
-Optionally the build tests can be run before committing, and the build
-type (debug or optimized) can be selected.
+Tests will be run by default before committing, but can be disabled
+with --no-tests.  You can also specify the build type to be run before
+committing.
 
 =item publish
 
@@ -412,10 +420,8 @@ sub addTimeLog {
 	    endtime => time
 	};
 	
-    if (my $lock = Lintel::File::Lock::getLockEx
-	    ($time_log, waittime => 5, 
-	     flags => O_WRONLY | O_CREAT | O_APPEND))
-    {
+    if (my $lock = Lintel::File::Lock::getLockEx($time_log, waittime => 5, 
+						 flags => O_WRONLY | O_CREAT | O_APPEND)) {
 	my $doc = encode_base64(Dumper($timelog_entry), '');
 	my $sha1 = sha1_hex($doc);
 	print $lock "$doc $sha1\n" or die "print failed: $!";
@@ -795,6 +801,16 @@ sub depBuildCheckOld {
     foreach my $dep (@dependencies) {
 	my $sub_build_type = '';
 	$dep =~ s!^[^/]*/!!;
+	# TODO-ks1: this is wrong, need to check against
+	# SimReal-process if there is a dependency on that, not
+	# against SimReal.  I suspect the right thing to do is to
+	# modify depWalk so that it provides dependent builds with a
+	# list of their dependencies so that we only calculate it
+	# once, but in this case, depending on $dep-$sub_build_type
+	# should do the right thing.  Therefore, make the former a
+	# todo, and implement the latter. Also factor out the code to
+	# get the dep and sub-build type, it's identical with the same
+	# thing in depWalkRecurse.
 	if ($dep =~ /^(.+);(\w+)$/o) {
 	    ($dep,$sub_build_type) = ($1,$2);
 	}
@@ -1176,13 +1192,8 @@ of the tests to verify that the changes are internally consistent.
 
 =cut
 
-### depcommit -- commit all the files in the dependency tree;
-### generates the variable depcommit_made_changes as a side effect
-
 sub depCommit {
-    my %options;
-
-    %options = depBuild();
+    my %options = depBuild(tests => 1);
     depWalk(sub { }, sub { depCommitOne(%options); }, 0);
 }
 
@@ -2176,6 +2187,7 @@ sub depWalkRecurse ($$$$$$) {
     aliasChdir($src);
     print "depwalk: running walk function in $src ($build_type)\n\n"
         unless $quiet;
+    # TODO-ks1: pass vcdeps as a array reference, then you can add things onto the end.
     &$post_fn($build_type, @vcdeps);
     print "\n";
 }

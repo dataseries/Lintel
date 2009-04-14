@@ -29,12 +29,12 @@ Lintel::File::Lock - locking and unlocking of files
 
 =head2 getLock(filename, [waittime, verbose, flags, mode])
 
-   my $fh = getLock( $filename, $waittime, $verbose, $flags, $mode);
-   my $fh = getLockEx( $filename,
-		       waittime => $waittime,
-		       verbose => $verbose,
-		       flags => $flags,
-		       mode => $mode);
+   my $fh = getLock($filename, $waittime, $verbose, $flags, $mode);
+   my $fh = getLockEx($filename,
+                      waittime => $waittime,
+		      verbose => $verbose,
+		      flags => $flags,
+		      mode => $mode);
 
 getLock will attempt to acquire a lock on filename.  By default, the 
 file will be created if it doesn't exist, and getLock will return
@@ -64,7 +64,7 @@ have functional locking.
 
 sub getLockEx {
     my ($filename, %param) = @_;
-    return getLock( $filename, $param{waittime}, $param{verbose}, 
+    return getLock($filename, $param{waittime}, $param{verbose}, 
 	            $param{flags}, $param{mode});
 }
 
@@ -75,7 +75,7 @@ sub getLock {
     $mode ||= 0666;
 
     my $fh;
-    sysopen( $fh, $filename, $flags, $mode) 
+    sysopen($fh, $filename, $flags, $mode) 
 	or die "Unable to create or open $filename for read/write: $!";
     if (defined $waittime) {
 	die "??" if $waittime < 0;
