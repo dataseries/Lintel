@@ -59,6 +59,9 @@ use Lintel::File::Lock;
 # regression testing; this may need to wait until we have alternative
 # monotone directory support.
 
+# TODO: deptool should add text to the checkin message indicating 
+# whether testing was performed for each commit.
+
 sub usage {
     pod2usage(-exitval => 'NOEXIT', -verbose => 0);
     confess @_ if @_ > 0;
@@ -785,8 +788,18 @@ sub depBuildOne {
     depBuildInstall($build, $options)
 }
 
+sub parseDependency { 
+    my ($dep) = @_;
+    my $sub_build_type;
+    $dep =~ s!^[^/]*/!!;
+    if ($dep =~ /^(.+);(\w+)$/o) {
+	($dep,$sub_build_type) = ($1,$2);
+    }
+    return ($dep, $sub_build_type);
+}
+
 sub depBuildCheckOld {
-    my($src, $build, $options, @dependencies) = @_;
+    my($src, $build, $options, $dependencies) = @_;
 
     print "depbuild: Checking if any files in $src\n";
     print "depbuild: are out of date w.r.t $build\n";
@@ -798,28 +811,14 @@ sub depBuildCheckOld {
     my $ref_stat = stat(".deptool.build_stamp")
 	or die "Unable to stat .deptool.build_stamp: $!";
 
-    foreach my $dep (@dependencies) {
-	my $sub_build_type = '';
-	$dep =~ s!^[^/]*/!!;
-	# TODO-ks1: this is wrong, need to check against
-	# SimReal-process if there is a dependency on that, not
-	# against SimReal.  I suspect the right thing to do is to
-	# modify depWalk so that it provides dependent builds with a
-	# list of their dependencies so that we only calculate it
-	# once, but in this case, depending on $dep-$sub_build_type
-	# should do the right thing.  Therefore, make the former a
-	# todo, and implement the latter. Also factor out the code to
-	# get the dep and sub-build type, it's identical with the same
-	# thing in depWalkRecurse.
-	if ($dep =~ /^(.+);(\w+)$/o) {
-	    ($dep,$sub_build_type) = ($1,$2);
-	}
+    foreach my $dep (@$dependencies) {
+	my ($project, $sub_build_type) = parseDependency($dep);
 
-        if (!defined $options->{"lastbuild $dep"}) {
-	    warn("No last build time for $dep from $options->{building}");
+        if (!defined $options->{"lastbuild $project"}) {
+	    warn("No last build time for $project from $options->{building}");
 	    next;
 	}
-	if ($ref_stat->mtime() < $options->{"lastbuild $dep"}) {
+	if ($ref_stat->mtime() < $options->{"lastbuild $project"}) {
 	    print "depbuild:  did an install in another directory, so we are out of date\n";
 	    unlink(".deptool.build_stamp") or die "?";
 	    return;
@@ -2171,14 +2170,10 @@ sub depWalkRecurse ($$$$$$) {
     if (@vcdeps > 0) {
         my $projects = projects();
         foreach my $dep (@vcdeps) {
-            my $sub_build_type = '';
-            $dep =~ s!^[^/]*/!!;
-            if ($dep =~ /^(.+);(\w+)$/o) {
-                ($dep,$sub_build_type) = ($1,$2);
-            }
+	    my ($project, $sub_build_type) = parseDependency( $dep);
 
-            my $depsrc = "$projects/$dep";
-	    depWalkTryCheckout($dep)
+            my $depsrc = "$projects/$project";
+	    depWalkTryCheckout($project)
 		unless -d $depsrc;
             depWalkRecurse($pre_fn, $post_fn, $depsrc, $visited, $use_sub_build_type, 
                            $sub_build_type);
@@ -2187,8 +2182,7 @@ sub depWalkRecurse ($$$$$$) {
     aliasChdir($src);
     print "depwalk: running walk function in $src ($build_type)\n\n"
         unless $quiet;
-    # TODO-ks1: pass vcdeps as a array reference, then you can add things onto the end.
-    &$post_fn($build_type, @vcdeps);
+    &$post_fn($build_type, \@vcdeps);
     print "\n";
 }
 
