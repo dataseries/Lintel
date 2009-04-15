@@ -795,6 +795,7 @@ sub parseDependency {
     if ($dep =~ /^(.+);(\w+)$/o) {
 	($dep,$sub_build_type) = ($1,$2);
     }
+    $sub_build_type ||= '';
     return ($dep, $sub_build_type);
 }
 
@@ -819,7 +820,8 @@ sub depBuildCheckOld {
 	    next;
 	}
 	if ($ref_stat->mtime() < $options->{"lastbuild $project"}) {
-	    print "depbuild:  did an install in another directory, so we are out of date\n";
+	    printf "depbuild:  out of date with regard to $project (%d < %d)\n",
+ 	        $ref_stat->mtime(), $options->{"lastbuild $project"};
 	    unlink(".deptool.build_stamp") or die "?";
 	    return;
 	}
@@ -1203,7 +1205,7 @@ sub depCommitOne {
     die "depcommit: ERROR missing _MTN directory in $cwd"
         unless -d "_MTN";
     depCommitUnknown();
-    depCommitDoCommit( %options);
+    depCommitDoCommit(%options);
 }
 
 sub ignoresFileName() {
@@ -1484,7 +1486,7 @@ available.  It performs the following steps:
 sub depPublish {
     print "deppublish: committing any outstanding changes\n";
     depCommit();
-    my %options = ( 'made_changes' => 1 );
+    my %options = ('made_changes' => 1);
     while ($options{made_changes}) {
         $options{made_changes} = 0;
         print "deppublish: verifying current version passes regression tests\n";
@@ -2154,8 +2156,27 @@ sub depWalk ($$$) {
     depWalkRecurse($pre_fn, $post_fn, $src, {}, $use_sub_build_type, '');
 }
 
+# TODO-ks1: extend visited to instead of having just a flag to note
+# visited, it's a hash map that has pre_visited, stamp => { build => ,
+# test => , install => } pass the hash map into, the pre and post
+# functions (make sure they have the same signature; both should take
+# all three arguments); use that hash map in stampUpToDate, and
+# require it to be passed in.  Inside of depWalkRecurse, initialize
+# the stamp files at the beginning, set them to 0 during the two
+# unlinks in depBuildCheckOld.  stamp() should also take the array,
+# and should update it when it makes the utime call, and then
+# stampUpToDate should only look at the array, not do stat calls on
+# it's own.
+#
+# Probably rename visited to
+# build_dir_status, possibly include dependencies in there, instead of
+# as a separate array,
+# e.g. $build_dir_status->{dirish}->{dependencies} = [
+# build_dir_status->{depdir}->{stamp} ]
+
 sub depWalkRecurse ($$$$$$) {
     my($pre_fn, $post_fn, $src, $visited, $use_sub_build_type, $build_type) = @_;
+
     if ($use_sub_build_type) {
         return if $visited->{"$src $build_type"};
         $visited->{"$src $build_type"} = 1;
@@ -2170,13 +2191,13 @@ sub depWalkRecurse ($$$$$$) {
     if (@vcdeps > 0) {
         my $projects = projects();
         foreach my $dep (@vcdeps) {
-	    my ($project, $sub_build_type) = parseDependency( $dep);
+	    my ($project, $sub_build_type) = parseDependency($dep);
 
             my $depsrc = "$projects/$project";
 	    depWalkTryCheckout($project)
 		unless -d $depsrc;
             depWalkRecurse($pre_fn, $post_fn, $depsrc, $visited, $use_sub_build_type, 
-                           $sub_build_type);
+			   $sub_build_type);
         }
     }
     aliasChdir($src);
