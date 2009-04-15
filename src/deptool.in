@@ -2156,7 +2156,7 @@ sub depWalk ($$$) {
     depWalkRecurse($pre_fn, $post_fn, $src, {}, $use_sub_build_type, '');
 }
 
-# TODO-ks1: extend visited to instead of having just a flag to note
+# TODO: extend visited to instead of having just a flag to note
 # visited, it's a hash map that has pre_visited, stamp => { build => ,
 # test => , install => } pass the hash map into, the pre and post
 # functions (make sure they have the same signature; both should take
