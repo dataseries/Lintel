@@ -904,7 +904,7 @@ sub stampUpToDate {
 }
 
 sub stamp {
-    my($which) = @_;
+    my($which, $options) = @_;
     
     my $filename = ".deptool.${which}_stamp";
     while(1) {
@@ -912,7 +912,7 @@ sub stamp {
             or die "Can't open $filename for append: $!";
         close($fh);
         utime undef, undef, $filename;
-        last if $which eq 'build' || stampUpToDate($which);
+        last if $which eq 'build' || stampUpToDate($which, $options);
         print "deptool: sleep(1) to make sure ${which} timestamp is more recent than build\n";
         sleep(1);
     }
@@ -925,7 +925,7 @@ sub depBuildInstall {
         print "depbuild: Install up to date in $build\n";
     } else {
         runCommand("make","install");
-        stamp("install");
+        stamp("install", $options);
     }
 }
 
