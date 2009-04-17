@@ -370,7 +370,7 @@ public:
     static Stats calibrate;
     static double inverse_clock_rate; // us/cycle
     static double inverse_clock_rate_tfrac; // tfrac/cycle
-    static Tll max_recalibrate_measure_time; // see todcc_recalibrate()
+    static uint64_t max_recalibrate_measure_time; // see todcc_recalibrate()
     // Cycle counter calibration variables
     Tdbl last_calibrate_tod, cycle_count_offset, recalibrate_interval;
     Tfrac last_calibrate_tod_tfrac;

@@ -35,7 +35,7 @@ const int min_samples = 20;
 double Clock::clock_rate = -Double::Inf;
 double Clock::inverse_clock_rate = -Double::Inf;
 double Clock::inverse_clock_rate_tfrac = -Double::Inf;
-Clock::Tll Clock::max_recalibrate_measure_time = 10000000000LL;
+uint64_t Clock::max_recalibrate_measure_time = 0; // forces recalibration always unless initialized
 Stats Clock::calibrate;
 
 static Clock::AllowUnsafeFreqScalingOpt allow_unsafe_frequency_scaling = Clock::AUFSO_No;
@@ -152,7 +152,7 @@ void Clock::calibrateClock(bool print_calibration_information,
 	    // calibration
 	    struct timeval timeout;
 	    timeout.tv_sec = 0;
-	    timeout.tv_usec = 10000;
+	    timeout.tv_usec = 15000;
 	    select(0,NULL,NULL,NULL,&timeout);
 
 	    clock_s = Clock::tod();
@@ -201,8 +201,8 @@ void Clock::calibrateClock(bool print_calibration_information,
 		// in seconds * 2**32 = time in Tfrac
 		inverse_clock_rate_tfrac = inverse_clock_rate * (4294967296.0/1000000.0);
 		std::vector<Tll> elapsed;
-		const int nelapsed = 100;
-		for(int i=0;i<nelapsed;i++) {
+		const uint32_t nelapsed = 100;
+		for(uint32_t i=0;i<nelapsed;i++) {
 		    Tll start_cycle = cycleCounter();
 		    tod();
 		    Tll end_cycle = cycleCounter();
@@ -210,9 +210,8 @@ void Clock::calibrateClock(bool print_calibration_information,
 		    elapsed.push_back(delta);
 		}
 		std::sort(elapsed.begin(),elapsed.end(),Clock_Tll_Order());
-		int off = nelapsed/2; // median
-		SINVARIANT((int)elapsed.size() > off &&
-			   elapsed[off] < 10 * clock_rate);
+		uint32_t off = nelapsed * 0.25; // 25th percentile
+		SINVARIANT(elapsed.size() > off);
 
 		// 2 * gives a little leeway to when it's running in 
 		// practice
@@ -314,8 +313,7 @@ Clock::Tdbl Clock::todcc_recalibrate() {
     INVARIANT(cur_us >= last_calibrate_tod,
 	      format("Whoa, tod_epoch() went backwards %.2f < %.2f")
 	      % cur_us % last_calibrate_tod);
-    if ((end_cycle < start_cycle) || (end_cycle - start_cycle) 
-	> static_cast<uint64_t>(max_recalibrate_measure_time)) {
+    if ((end_cycle < start_cycle) || (end_cycle - start_cycle) > max_recalibrate_measure_time) {
 #if 0
 	fprintf(stderr,"Whoa, bad todcc_recalibrate getting %lld took %lld to %lld = %lld, or %.3g us\n",cur_us, start_cycle, end_cycle, end_cycle - start_cycle, est_todus);
 	if (end_cycle == start_cycle) {
