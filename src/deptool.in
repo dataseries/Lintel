@@ -768,7 +768,7 @@ sub depBuild {
 }
 
 sub depBuildOne {
-    my ($options, $build_type, @dependencies) = @_;
+    my ($options, $build_type, $dependencies) = @_;
 
     my $src = aliasGetCwd();
     die "? '$src' '$options->{projects}'" 
@@ -782,7 +782,7 @@ sub depBuildOne {
         mkpath($build);
     }
     aliasChdir($build);
-    depBuildCheckOld($src, $build, $options, @dependencies);
+    depBuildCheckOld($project, $src, $build, $options, $dependencies);
     depBuildMake($src, $build, $options);
     depBuildTest($build, $options);
     depBuildInstall($build, $options)
@@ -800,7 +800,7 @@ sub parseDependency {
 }
 
 sub depBuildCheckOld {
-    my($src, $build, $options, $dependencies) = @_;
+    my($cur_project, $src, $build, $options, $dependencies) = @_;
 
     print "depbuild: Checking if any files in $src\n";
     print "depbuild: are out of date w.r.t $build\n";
@@ -815,6 +815,12 @@ sub depBuildCheckOld {
     foreach my $dep (@$dependencies) {
 	my ($project, $sub_build_type) = parseDependency($dep);
 
+	# self dependencies implies sub-build-type; these should only
+        # be checked against the source directory.  Maybe eventually
+        # allow a sub-build types compilation to depend on another
+        # sub-build type, but this seems weird since you can't specify
+        # an arbitrary order.
+	next if $cur_project eq $project;
         if (!defined $options->{"lastbuild $project"}) {
 	    warn("No last build time for $project from $options->{building}");
 	    next;
