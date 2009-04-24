@@ -31,64 +31,17 @@ MACRO(LINTEL_INSTALL_FILE_PATH dest_prefix)
     ENDFOREACH(file)
 ENDMACRO(LINTEL_INSTALL_FILE_PATH)
 
-# This macro searches for the perl module ${module_name}. It sets
-# ${variable}_FOUND to whether the module was found.  It creates a
-# configuration variable WITH_${variable} so the user can control
-# whether this perl module should be used.  Finally in combines these
-# into ${variable}_ENABLED for use in the CMakeLists.txt to determine
-# if we should build using this module.
-
-# TODO: make this a little more like the LintelFind macros, and move
-# it in there.
-
-MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
-    IF("${PERL_FOUND}" STREQUAL "")
-        INCLUDE(FindPerl)
-    ENDIF("${PERL_FOUND}" STREQUAL "")
-
-    IF("${${variable}_FOUND}" STREQUAL "YES")
-        # ... nothing to do, already found it
-    ELSEIF("${WITH_${variable}}" STREQUAL "OFF")
-        # user has explicitly disabled it; don't bother to check
-    ELSE("${${variable}_FOUND}" STREQUAL "YES")
-         SET(WITH_${variable} "ON" CACHE BOOL "Enable use of the ${module_name} perl module")
-         SET(LFPM_found NO)
-         IF(PERL_FOUND)
-	     # Tried OUTPUT_QUIET and ERROR_QUIET but with cmake 2.4-patch 5 
-	     # this didn't seem to make it quiet.
-             EXEC_PROGRAM(${PERL_EXECUTABLE}
-                          ARGS -e "\"use lib '${CMAKE_INSTALL_PREFIX}/share/perl5'; use ${module_name};\""
-                          RETURN_VALUE LFPM_return_value
-		          OUTPUT_VARIABLE LFPM_output
-			  ERROR_VARIABLE LFPM_error_output)
-             IF("${LFPM_return_value}" STREQUAL 0)
-                 SET(LFPM_found YES)
-             ENDIF("${LFPM_return_value}" STREQUAL 0)
-         ENDIF(PERL_FOUND)
-         SET(${variable}_FOUND ${LFPM_found} CACHE BOOL "Found ${module_name} perl module" FORCE)
-         MARK_AS_ADVANCED(${variable}_FOUND)
-    ENDIF("${${variable}_FOUND}" STREQUAL "YES")
-
-    IF("${WITH_${variable}}" STREQUAL ON AND ${${variable}_FOUND} STREQUAL "YES")
-        SET(${variable}_ENABLED YES)
-    ELSE("${WITH_${variable}}" STREQUAL ON AND ${${variable}_FOUND} STREQUAL "YES")
-        SET(${variable}_ENABLED NO)
-    ENDIF("${WITH_${variable}}" STREQUAL ON AND ${${variable}_FOUND} STREQUAL "YES")
-
-#    MESSAGE("HIYA ${variable} ${${variable}_ENABLED}")
-ENDMACRO(LINTEL_FIND_PERL_MODULE)
-
 # need to do this to pick up user installed modules.
 # need unshift so that if we have commonly installed perl modules
 # and user installed ones that the user installed ones take precedence.
-SET(PERL_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'${CMAKE_INSTALL_PREFIX}/share/perl5') if grep(\$_ eq '${CMAKE_INSTALL_PREFIX}/share/perl5', @INC) == 0;};")
+#
+# to write a test that will work before used modules are installed,
+# you want something like:
+# ADD_TEST(test-name env PERL5LIB=${Lintel_SOURCE_DIR}/src/perl-modules:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} program --args)
 
-# TODO: setting PERL5LIB with both the install prefix and the override
-# seems to work; (see tests/flock.sh); once everything is switched
-# over, to PERL5_MODULES_INC_UNSHIFT, we can drop the old one
+SET(PERL5_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'${CMAKE_INSTALL_PREFIX}/share/perl5') if grep(\$_ eq '${CMAKE_INSTALL_PREFIX}/share/perl5', @INC) == 0;};")
 
-SET(PERL5_MODULES_INC_UNSHIFT ${PERL_MODULES_INC_UNSHIFT})
-SET(PERL_MODULES_INC_UNSHIFT "${PERL_MODULES_INC_UNSHIFT} BEGIN { unshift(@INC, \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}) if defined \$ENV{LINTEL_REGRESSION_TEST_INC_DIR}; };")
+SET(PERL_MODULES_INC_UNSHIFT "die 'PERL_MODULES_INC_UNSHIFT is obsolete, use PERL5_MODULES_INC_UNSHIFT';")
 
 # Set LINTEL_LATEX_REBUILD_REQUIRED to force this to be found
 MACRO(LINTEL_LATEX_CONFIG)
