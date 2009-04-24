@@ -1,0 +1,8 @@
+#!/bin/sh
+wd="`pwd`"
+export OS=debian
+export UNAME_M=i686
+export PROJECTS=$wd/projects
+export BUILD_OPT=$wd/build/opt-$OS-$UNAME_M
+export BUILD_DEBUG=$wd/build/dbg-$OS-$UNAME_M
+export MONOTONE_DIR=$wd/monotone

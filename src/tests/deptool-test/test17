@@ -1,0 +1,13 @@
+#!/bin/sh
+. deptool-test
+
+touch projects/a/a.h
+sleep 1
+
+cd projects/c
+deptool build -d
+
+cd ../..
+cp -a build/dbg-debian-i686 build/dbg-debian-i686{test17}
+perl verify.pl 17 
+exit $?

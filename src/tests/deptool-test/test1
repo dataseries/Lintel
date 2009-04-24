@@ -1,0 +1,6 @@
+#!/bin/sh
+. deptool-test
+rm -rf projects
+rm -rf build
+deptool checkout c
+perl verify.pl 1

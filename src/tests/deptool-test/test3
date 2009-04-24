@@ -1,0 +1,15 @@
+#!/bin/sh
+. deptool-test
+date=`date`
+
+sleep 1
+touch projects/a/a.h
+#sed -i "s/@DATE.*@/@DATE:$date@/" projects/a/a.h 
+
+cd projects/c
+deptool build
+
+cd ../..
+cp -a build/opt-debian-i686 build/opt-debian-i686{test3}
+perl verify.pl 3
+exit $?

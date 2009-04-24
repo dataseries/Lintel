@@ -147,7 +147,7 @@ my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
 my $time_log;
-my $monotone_dir = $ENV{MONTONE_DIR};
+my $monotone_dir = $ENV{MONOTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
 my @original_arguments = @ARGV;
@@ -2286,10 +2286,10 @@ sub srcDir {
         s!^(($debug)|($opt))/!!o;
         if (-d "$projects/$_") {
             $_ = "$projects/$_";
-        } elsif (m!^(\w[^/]+)-(\w+)(/.*)$!o && -d "$projects/$1/$3") {
+        } elsif (m!^(\w[^/]*)-(\w+)(/.*)$!o && -d "$projects/$1/$3") {
             $build_subdir = $2;
             $_ = "$projects/$1$3";
-        } elsif (m!^(\w[^/]+)-(\w+)$!o && -d "$projects/$1") {
+        } elsif (m!^(\w[^/]*)-(\w+)$!o && -d "$projects/$1") {
             $build_subdir = $2;
             $_ = "$projects/$1";
         } else {

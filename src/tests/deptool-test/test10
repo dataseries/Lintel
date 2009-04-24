@@ -1,0 +1,13 @@
+#!/bin/sh
+. deptool-test
+
+sleep 1
+touch projects/a/a.h
+
+cd projects/c
+deptool build -t
+
+cd ../..
+cp -a build/opt-debian-i686 build/opt-debian-i686{test10}
+perl verify.pl 10 
+exit $?

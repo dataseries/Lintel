@@ -1,0 +1,4 @@
+  branch "dttest.hpl.hp.com/c"
+database "/.home-bill-h/ks1/work/deptool-test/monotone/dttest.db"
+     key ""
+  keydir ""
