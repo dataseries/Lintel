@@ -127,6 +127,7 @@ public:
 		  int nbuffers, int buffer_size, int print_nrange = 10);
 
 private:
+    friend class StatsQuantileTest;
     // add for only the quantile portion
     void addQuantile(const double value);
 
@@ -138,7 +139,9 @@ private:
 
     void collapse();
 
-    double getQuantileByIndex(int64_t target_index) const;
+    double getQuantileByIndex(uint64_t target_index) const;
+    double getQuantileByBinSearchIndex(uint64_t target_index) const;
+
     const double quantile_error;
     const int64_t Nbound;
 

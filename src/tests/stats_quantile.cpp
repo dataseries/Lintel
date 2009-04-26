@@ -19,6 +19,7 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Clock.hpp>
 #include <Lintel/Double.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/StatsQuantile.hpp>
 #include <Lintel/StringUtil.hpp>
@@ -26,6 +27,85 @@
 
 using namespace std;
 using boost::format;
+
+class StatsQuantileTest {
+public:
+    static void checkGetQuantile() {
+	StatsQuantile tmp("disambiguate", 7, 33);
+	
+	// 2000 entries with a 7x33 config gives us weights (28,21,5,4,1,1,1)
+	// with a partially filled final buffer
+
+	for(uint32_t i = 0; i < 2000; ++i) {
+	    tmp.add(i);
+	}
+	checkQuantile(tmp, "forward");
+	tmp.reset();
+	
+	for(int32_t i = 0; i < 2000; ++i) {
+	    tmp.add(-i);
+	}
+	checkQuantile(tmp, "backward");
+	tmp.reset();
+
+	for(uint32_t i = 0; i < 2000; ++i) {
+	    tmp.add(i / 100);
+	}
+	checkQuantile(tmp, "duplicate-forward");
+	tmp.reset();
+
+	for(uint32_t i = 0; i < 2000; ++i) {
+	    tmp.add(i % 100);
+	}
+	checkQuantile(tmp, "duplicate-forward-interleave");
+	tmp.reset();
+
+	for(int32_t i = 0; i <  2000; ++i) {
+	    tmp.add(-(i/100));
+	}
+	checkQuantile(tmp, "duplicate-backward");
+	tmp.reset();
+
+	for(uint32_t i = 0; i < 2000; ++i) {
+	    tmp.add(-(i % 100));
+	}
+	checkQuantile(tmp, "duplicate-backward-interleave");
+	tmp.reset();
+
+	uint32_t seed = getpid() ^ (Clock::cycleCounter() & 0xFFFFFFFF)
+	    ^ (Clock::todll() & 0xFFFFFFFF);
+	cout << format("quantile-check seeding with %d\n") % seed;
+	MersenneTwisterRandom mt(seed);
+
+	uint32_t vals = 2000 + mt.randInt(2000);
+	for(uint32_t i = 0; i < vals; ++i) {
+	    tmp.add(mt.randInt());
+	}
+	checkQuantile(tmp, "random");
+	tmp.reset();
+
+	for(uint32_t i = 0; i < vals/10; ++i) {
+	    uint32_t dups = mt.randInt(20);
+	    uint32_t val = mt.randInt();
+	    for(uint32_t j = 0; j < dups; ++j) {
+		tmp.add(val);
+	    }
+	}
+	checkQuantile(tmp, "random-dups");
+	tmp.reset();
+	cout << "Passed quantile-difference checks\n";
+    }
+
+    static void checkQuantile(const StatsQuantile &quantile, const string &description) {
+	quantile.getQuantile(0); // Force sorting, getQuantileBy* assumes sorted buffers
+	for(uint32_t i = 0; i < quantile.count(); ++i) {
+	    double a = quantile.getQuantileByIndex(i);
+	    double b = quantile.getQuantileByBinSearchIndex(i);
+	    INVARIANT(a == b, format("mismatch in %s quantile at pos %d: %.12g != %.12g")
+		      % description % i % a % b);
+	}
+    }
+};
 
 static void checkPhi(StatsQuantile &stats, vector<double> &sorted_list,
 		     Stats &exact_error, double epsilon, double phi) {
@@ -344,7 +424,9 @@ void checkNboundTests() {
 }
 
 int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
     Double::selfCheck(); // quantile was failing because of problems checked now in here
+
     if (argc == 2 && strcmp(argv[1],"add-performance") == 0) {
 	addPerformanceTest();
     }
@@ -408,6 +490,7 @@ int main(int argc, char *argv[]) {
 	printf("**** LONG TEST SUCCESSFUL\n");
     }	
 
+    StatsQuantileTest::checkGetQuantile();
     if (true) {
 	checkSmall();
     }
@@ -630,7 +713,7 @@ int main(int argc, char *argv[]) {
 	// testing is that the estimates are within the bounds 
 	printf("Merge checking  checking, 0.01 x 250000 pure-random:\n  ");
 	Stats exact_error;
-	test_merge(mt,0.01,250000,5,exact_error);
+	test_merge(mt, 0.01, 250000, 1, exact_error);
     }
     if (true) {
 	cout << "test random..."; cout.flush();
