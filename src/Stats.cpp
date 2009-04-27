@@ -227,7 +227,7 @@ void Stats::printTabular(int depth, std::ostream &out) const {
 }
   
 void Stats::printText(std::ostream &out) const {
-    out << boost::format("count=%lld, mean=%.8g, stddev=%.8g, min=%.8g, max=%.8g")
+    out << boost::format("count=%d, mean=%.8g, stddev=%.8g, min=%.8g, max=%.8g\n")
 	% countll() % mean() % stddev() % min() % max();
 }
 
