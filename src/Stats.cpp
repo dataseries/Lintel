@@ -24,49 +24,39 @@
 // Functions specific to the Statistics base class
 ///////////////////////////////////////////////////////////////////////////
 
-StatsBase::StatsBase()
-      : reset_count(0),		// make sure reset has a valid initial value
-	is_assigned(true)	// "successfully initialized"
-{
-    reset();			// Do most of the work here
-    reset_count = 0;		//  -- since this really is the first time
+StatsBase::StatsBase() : reset_count(0), is_assigned(true) {
+    reset();			
+    reset_count = 0; // this is really is the first time
 };
 
 
-StatsBase::~StatsBase()
-{
+StatsBase::~StatsBase() {
     DEBUG_SINVARIANT(checkInvariants());
     is_assigned = false;
 };
 
-bool StatsBase::checkInvariants() const
-{ 
+bool StatsBase::checkInvariants() const { 
     return is_assigned; 
 }
 
-void
-StatsBase::reset()
-{
+void StatsBase::reset() {
     DEBUG_SINVARIANT(checkInvariants());
     reset_count++;
 }
 
-double
-StatsBase::stddev() const
-{
+double StatsBase::stddev() const {
     DEBUG_SINVARIANT(checkInvariants());
     double sigsq = variance();
 
-    if (sigsq <= 0.0)
+    if (sigsq <= 0.0) {
 	return 0.0;
+    }
 
     DEBUG_SINVARIANT(sigsq > 0.0);
     return sqrt(sigsq);
 }
 
-double 
-StatsBase::relconf95() const
-{
+double StatsBase::relconf95() const {
     DEBUG_SINVARIANT(checkInvariants());
     return conf95()/mean();
 }
@@ -78,20 +68,14 @@ StatsBase::relconf95() const
 
 // Create a new one
 //
-Stats::Stats()
-      : StatsBase()
-{
+Stats::Stats() : StatsBase() {
   reset();
 };
 
 
-Stats::~Stats()	// Delete a value
-{};
+Stats::~Stats()	{};
 
-
-
-void Stats::reset()
-{
+void Stats::reset() {
     DEBUG_SINVARIANT(checkInvariants());
     StatsBase::reset();
     number = 0;
@@ -101,57 +85,51 @@ void Stats::reset()
     max_value = -Double::Inf;
 }
 
-
-
-void Stats::add(const double value)
-{
-    // TODO: make this a DEBUG_INVARIANT so it goes away if debugging
-    // invariants are disabled.
-    INVARIANT(value == value,
-	      "You tried to add a NaN to the stats object."); 
+void Stats::add(const double value) {
+    DEBUG_INVARIANT(value == value, "You tried to add a NaN to the stats object."); 
+		    
     ++number;
     sum += value;
     sumsq += value*value;
 
-    if (value < min_value)
+    if (value < min_value) {
 	min_value = value;
-    if (value > max_value)
+    }
+    if (value > max_value) {
 	max_value = value;
+    }
 }
 
-void
-Stats::add(const Stats &stat)
-{
+void Stats::add(const Stats &stat) {
     number += stat.number;
     sum += stat.sum;
     sumsq += stat.sumsq;
 
-    if (stat.min_value < min_value)
+    if (stat.min_value < min_value) {
 	min_value = stat.min_value;
-    if (stat.max_value > max_value)
+    }
+    if (stat.max_value > max_value) {
 	max_value = stat.max_value;
+    }
 }
 
-void
-Stats::addTimeSeq(const double value, const double timeSeq)
-{
+void Stats::addTimeSeq(const double value, const double timeSeq) {
     this->add(value);
 }
 
 // Accessor functions
 
-double Stats::mean() const
-{
+double Stats::mean() const {
     DEBUG_SINVARIANT(checkInvariants());
-    if (number == 0)
+    if (number == 0) {
 	return 0.0;
-    else
+    } else {
 	return double(sum)/double(number);
+    }
 };
 
 
-double Stats::variance() const
-{
+double Stats::variance() const {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return 0.0;
     double m = double(mean());
@@ -168,8 +146,7 @@ double Stats::variance() const
 // conf90 z= 1.645
 // conf95 z= 1.960
 // conf99 z= 2.576
-double Stats::conf95() const
-{
+double Stats::conf95() const {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return DBL_MAX; // **** Should really be NaN if count==0
     DEBUG_SINVARIANT(number > 0); // **** Could be number > 30 for statistical
@@ -181,26 +158,20 @@ double Stats::conf95() const
 
 // Summarize contents as a string
 
-std::string Stats::debugString() const
-{
-    // XXX rewrite using std::ostrstream.
+std::string Stats::debugString() const {
     DEBUG_SINVARIANT(checkInvariants());
 
-    if (count() == 0)
+    if (count() == 0) {
 	return "count 0";
-    else
-	return boost::str(boost::format("count %ld mean %G stddev %G var %G"
-					" 95%%conf %G rel95%%conf %G"
-					" min %G max %G")
-			  % count() % mean() % stddev() % variance()
-			  % conf95() % relconf95() 
-			  % min() % max());
+    } else {
+	return str(boost::format("count %d mean %G stddev %G var %G 95%%conf %G rel95%%conf %G"
+				 " min %G max %G") % count() % mean() % stddev() % variance()
+		   % conf95() % relconf95() % min() % max());
+    }
 };
 
 
-void
-Stats::printRome(int depth, std::ostream &out) const
-{
+void Stats::printRome(int depth, std::ostream &out) const {
     DEBUG_SINVARIANT(checkInvariants());
 
     std::string spaces;
@@ -221,9 +192,7 @@ Stats::printRome(int depth, std::ostream &out) const
     }
 }
 
-void
-Stats::printTabular(int depth, std::ostream &out) const
-{
+void Stats::printTabular(int depth, std::ostream &out) const {
   DEBUG_SINVARIANT(checkInvariants());
 
   std::string spaces;
@@ -257,16 +226,13 @@ Stats::printTabular(int depth, std::ostream &out) const
     }
 }
   
-void Stats::printText(std::ostream &out) const
-{
-    out << boost::format("count=%lld, mean=%.8g, stddev=%.8g, min=%.8g, max=%.8g")
+void Stats::printText(std::ostream &out) const {
+    out << boost::format("count=%d, mean=%.8g, stddev=%.8g, min=%.8g, max=%.8g\n")
 	% countll() % mean() % stddev() % min() % max();
 }
 
 
-Stats *
-Stats::another_new() const
-{
+Stats *Stats::another_new() const {
     return new Stats();
 }
 

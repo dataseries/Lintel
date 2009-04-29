@@ -18,7 +18,7 @@ use Getopt::Long;
 use Safe;
 use Pod::Usage;
 use Time::HiRes 'time';
-@PERL_MODULES_INC_UNSHIFT@;
+@PERL5_MODULES_INC_UNSHIFT@;
 use Plot::Mercury;
 
 eval "use Statistics::OLS;";

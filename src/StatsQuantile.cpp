@@ -17,9 +17,11 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
 #include <Lintel/HashMap.hpp>
+#include <Lintel/LintelLog.hpp>
 #include <Lintel/StatsQuantile.hpp>
 
 using namespace std;
+using boost::format;
 
 namespace {
     struct ErrorNbound {
@@ -75,11 +77,10 @@ StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _pri
       print_nrange(_print_nrange)
 {
     // sanity check that we haven't been called in a weird/wrong way.
-    INVARIANT(quantile_error < 0.2, boost::format("whoa, quantile_error %.3g >= 0.2??") 
-	      % quantile_error);
+    INVARIANT(quantile_error < 0.2, format("whoa, quantile_error %.3g >= 0.2??") % quantile_error);
     double tmp_nbound = Nbound; // easy for calculations
-    INVARIANT(in_nbound > 1, 
-	      boost::format("Usage error? StatsQuantile nbound set to %d?") % in_nbound);
+    INVARIANT(in_nbound > 1, format("Usage error? StatsQuantile nbound set to %d?") % in_nbound);
+	      
     int best_b = -1, best_k = -1;
 
     // If we are making lots of smallish StatsQuantiles, we can spend
@@ -118,8 +119,7 @@ StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _pri
 	bk_cache[ErrorNbound(quantile_error, Nbound)] = BK(best_b, best_k);
     }    
     INVARIANT(best_b > 0 && best_k > 0,
-	      boost::format("unable to find b/k for %.8g %.8g")
-	      % quantile_error % tmp_nbound);
+	      format("unable to find b/k for %.8g %.8g") % quantile_error % tmp_nbound);
 
     // lower bound sanity value
     if (best_k < 10) best_k = 10;
@@ -299,7 +299,7 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
 	return Double::NaN;
     }
     INVARIANT(count <= Nbound || allow_invalid_nbound,
-	      boost::format("Error: %d (# entries in quantile) > %d (Nbound on quantile)")
+	      format("Error: %d (# entries in quantile) > %d (Nbound on quantile)")
 	      % count % Nbound);
     INVARIANT(quantile >= 0.0 && quantile <= 1.0, "quantile out of bounds");
     // this is slightly different than the algorithm in the paper; the 
@@ -352,7 +352,8 @@ double StatsQuantile::getQuantile(double quantile, bool allow_invalid_nbound) co
     if (target_index == nentries) {
 	target_index = (long long)(nentries - 1);
     }
-    return getQuantileByIndex(target_index);
+    // can be switched back to getQuantileByIndex() if there are difficulties.
+    return getQuantileByBinSearchIndex(target_index);
 }
 
 int StatsQuantile::collapseFindFirstBuffer() {
@@ -372,7 +373,10 @@ int StatsQuantile::collapseFindFirstBuffer() {
     return first_buffer;
 }
 
-double StatsQuantile::getQuantileByIndex(int64_t target_index) const {
+// TODO-2010-04-26: remove this and the associated test case; if it's
+// lasted this long, then we're not having problems with the new
+// binary search version.
+double StatsQuantile::getQuantileByIndex(uint64_t target_index) const {
     int64_t cur_index = 0;
 
     PriorityQueue<std::pair<double, int>, pairCmp> tmp_pq(nbuffers);
@@ -419,6 +423,107 @@ double StatsQuantile::getQuantileByIndex(int64_t target_index) const {
     return Double::NaN;
 }
 
+namespace {
+    struct BinSearchState {
+	uint32_t min, max, orig_max, split_lower, split_upper;
+	explicit BinSearchState(uint32_t b) 
+	    : min(0), max(b), orig_max(b)
+	{ }
+	uint32_t mid() const { return (max + min) / 2; }
+	uint32_t remain() const { return max - min; }
+
+	void calculateBounds(double target, double *buffer) {
+	    double *lower = lower_bound(buffer + min, buffer + max, target);
+	    split_lower = lower - buffer;
+	    double *upper = upper_bound(buffer + min, buffer + max, target);
+	    split_upper = upper - buffer;
+	}
+    };
+
+    uint32_t biggestRemaining(const vector<BinSearchState> &state) {
+	uint32_t biggest = 0;
+	uint32_t remain = state[0].remain();
+	for(uint32_t i = 1; i < state.size(); ++i) {
+	    if (state[i].remain() > remain) {
+		biggest = i;
+		remain = state[i].remain();
+	    }
+	}
+	return biggest;
+    }
+}
+
+
+
+double StatsQuantile::getQuantileByBinSearchIndex(uint64_t target_index) const {
+    vector<BinSearchState> state;
+
+    // one last buffer if the last one is present
+    state.resize(cur_buffer + (cur_buffer_pos > 0 ? 1 : 0), BinSearchState(buffer_size)); 
+    if (cur_buffer_pos > 0) {
+	state[cur_buffer].max = state[cur_buffer].orig_max = cur_buffer_pos;
+    }
+
+    uint64_t entry_count = 0;
+    for(uint32_t i = 0; i < static_cast<uint32_t>(cur_buffer); ++i) {
+	entry_count += static_cast<uint64_t>(buffer_weight[i]) * buffer_size;
+    }
+    entry_count += cur_buffer_pos;
+    SINVARIANT(entry_count == countll());
+    
+    LintelLogDebug("StatsQuantile::getQuantile", format("entries %d") % entry_count);
+    while(true) {
+	uint32_t biggest = biggestRemaining(state);
+	double split_val = all_buffers[biggest][state[biggest].mid()];
+	LintelLogDebug("StatsQuantile::getQuantile", format("biggest %d, split @%.12g") 
+		       % biggest % split_val);
+
+	uint64_t count_lower = 0;
+	uint64_t count_match = 0;
+	uint64_t count_upper = 0;
+	for(uint32_t i = 0; i < state.size(); ++i) {
+	    state[i].calculateBounds(split_val, all_buffers[i]);
+	    LintelLogDebug("StatsQuantile::getQuantile", 
+			   format("  buffer %d wt=%d min=%d, sl=%d, su=%d, max=%d") 
+			   % i % buffer_weight[i] % state[i].min 
+			   % state[i].split_lower % state[i].split_upper % state[i].max);
+	    count_lower += buffer_weight[i] * state[i].split_lower; // 0 .. split_lower - 1
+	    count_match += buffer_weight[i] 
+		* (state[i].split_upper - state[i].split_lower); // split_lower .. split_upper -1
+	    count_upper += buffer_weight[i] 
+		* (state[i].orig_max - state[i].split_upper); // split_upper .. buffer_size - 1
+	}
+	LintelLogDebug("StatsQuantile::getQuantile", format("cl=%d, cm=%d, cu=%d")
+		       % count_lower % count_match % count_upper);
+	SINVARIANT(count_lower + count_match + count_upper == entry_count);
+
+	if (target_index < count_lower) {
+	    LintelLogDebug("StatsQuantile::getQuantile", "in-lower");
+	    bool any_changed = false;
+	    for(uint32_t i = 0; i < state.size(); ++i) {
+		if (state[i].max != state[i].split_lower) any_changed = true;
+		state[i].max = state[i].split_lower;
+		SINVARIANT(state[i].min <= state[i].max);
+	    }
+	    SINVARIANT(any_changed);
+	} else if (target_index < count_lower + count_match) {
+	    LintelLogDebug("StatsQuantile::getQuantile", "***match");
+	    return split_val; // even if we didn't find the exact match, we're good enough
+	} else if (target_index < count_lower + count_match + count_upper) {
+	    LintelLogDebug("StatsQuantile::getQuantile", "in-upper");
+	    bool any_changed = false;
+	    for(uint32_t i = 0; i < state.size(); ++i) {
+		if (state[i].min != state[i].split_upper) any_changed = true;
+		state[i].min = state[i].split_upper;
+		SINVARIANT(state[i].min <= state[i].max);
+	    }
+	    SINVARIANT(any_changed);
+	}
+    }
+    FATAL_ERROR("unimplemented");
+}
+  
+
 int64_t StatsQuantile::collapseSortBuffers(int first_buffer) {
     int64_t total_weight = 0;
     for(int i=first_buffer;i<nbuffers;i++) {
@@ -429,8 +534,7 @@ int64_t StatsQuantile::collapseSortBuffers(int first_buffer) {
 	    // could re-verify sortedness here, but we'll probably catch it later
 	} else {
 	    INVARIANT(i == (nbuffers - 1) || buffer_weight[i] == 1,
-		      boost::format("Huh %d != %d // %d") % i 
-		      % (nbuffers - 1) % buffer_weight[i]);
+		      format("Huh %d != %d // %d") % i % (nbuffers - 1) % buffer_weight[i]);
 	    // sort the buffer
 	    sort(all_buffers[i], all_buffers[i] + buffer_size, doubleOrder());
 	    buffer_sorted[i] = true;
@@ -517,8 +621,7 @@ void StatsQuantile::collapse() {
 	}
     }
     INVARIANT(next_quantile_offset / total_weight == buffer_size,
-	      boost::format("Huh, didn't get to correct quantile"
-			    " offset %lld/%d != %d?!")
+	      format("Huh, didn't get to correct quantile offset %lld/%d != %d?!")
 	      % next_quantile_offset % total_weight % buffer_size);
 
     // update all_buffers[first_buffer]
@@ -543,7 +646,7 @@ void StatsQuantile::dumpState() {
 	   cur_buffer,cur_buffer_pos);
 
     for(int i=0;i<=cur_buffer;i++) {
-	cout << boost::format("  buffer %d, level %d, weight %d:\n    ")
+	cout << format("  buffer %d, level %d, weight %d:\n    ")
 	    % i % buffer_level[i] % buffer_weight[i];
 	int max = i == cur_buffer ? cur_buffer_pos : buffer_size;
 	for(int j=0;j<max;j++) {
@@ -592,22 +695,22 @@ void StatsQuantile::printFile(FILE *out, int nranges) {
 
 void StatsQuantile::printTextRanges(ostream &out, int nranges, double multiplier) const {
     nranges = (nranges == -1 ? print_nrange : nranges);
-    out << boost::format("%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n")
+    out << format("%lld data points, mean %.6g +- %.6g [%.6g,%.6g]\n")
 	% countll() % (multiplier * mean()) % (multiplier * stddev()) 
 	% (multiplier * min()) % (multiplier * max());
     if (countll() == 0) return;
-    out << boost::format("    quantiles about every %.0f data points:")
+    out << format("    quantiles about every %.0f data points:")
 	% ((double)countll()/(double)nranges);
     double step = 1.0 / (double)nranges;
     int nquantiles = 0;
     for(double quantile = step;Double::lt(quantile,1.0);quantile += step) {
 	if ((nquantiles % 10) == 0) {
-	    out << boost::format("\n    %.4g%%: ") % (quantile * 100);
+	    out << format("\n    %.4g%%: ") % (quantile * 100);
 	} else {
 	    out << ", ";
 	}
 
-	out << boost::format("%.8g") % (multiplier * getQuantile(quantile));
+	out << format("%.8g") % (multiplier * getQuantile(quantile));
 	++nquantiles;
     }
     out << "\n";
@@ -630,10 +733,10 @@ void StatsQuantile::printTextTail(ostream &out, double multiplier) const {
 	if (tail_frac < 0.05) {
 	    out << ", ";
 	}
-	out << boost::format("%.12g%%: %.8g")
+	out << format("%.12g%%: %.8g")
 	    % (100*(1-tail_frac)) % (multiplier * getQuantile(1-tail_frac));
 	tail_frac /= 2.0;
-	out << boost::format(", %.12g%%: %.8g")
+	out << format(", %.12g%%: %.8g")
 	    % (100*(1-tail_frac)) % (multiplier * getQuantile(1-tail_frac));
 	tail_frac /= 5.0;
     }

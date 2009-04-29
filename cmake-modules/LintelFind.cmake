@@ -61,6 +61,9 @@
 # that the directories are compatible.  If ${variable}_FIND_REQUIRED
 # is set, it uses LINTEL_FIND_LIBRARY, otherwise LINTEL_WITH_LIBRARY.
 
+# LINTEL_FIND_PERL_MODULE(module_name variable) searches for a
+# particular perl module, and sets ${variable}_ENABLED 
+
 # TODO: there is a bunch of duplicate code in the below macros,
 # eliminate it.
 
@@ -314,3 +317,68 @@ MACRO(LINTEL_BOOST_EXTRA variable header libname)
         MESSAGE(FATAL_ERROR "Huh? different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
     ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
 ENDMACRO(LINTEL_BOOST_EXTRA variable header libname)
+
+# This macro searches for the perl module ${module_name}. It sets
+# ${variable}_FOUND to whether the module was found.  It creates a
+# configuration variable WITH_${variable} so the user can control
+# whether this perl module should be used.  Finally in combines these
+# into ${variable}_ENABLED for use in the CMakeLists.txt to determine
+# if we should build using this module.
+
+MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
+    IF("${PERL_FOUND}" STREQUAL "")
+        INCLUDE(FindPerl)
+    ENDIF("${PERL_FOUND}" STREQUAL "")
+
+    IF(${${variable}_FOUND})
+        # ... nothing to do, already found it
+    ELSE(${${variable}_FOUND})
+         SET(LFPM_found NO)
+         IF(PERL_FOUND)
+	     # Tried OUTPUT_QUIET and ERROR_QUIET but with cmake 2.4-patch 5 
+	     # this didn't seem to make it quiet.
+             EXEC_PROGRAM(${PERL_EXECUTABLE}
+                          ARGS -e "\"use lib '${CMAKE_INSTALL_PREFIX}/share/perl5'; use ${module_name};\""
+                          RETURN_VALUE LFPM_return_value
+		          OUTPUT_VARIABLE LFPM_output
+			  ERROR_VARIABLE LFPM_error_output)
+             IF("${LFPM_return_value}" STREQUAL 0)
+                 SET(LFPM_found YES)
+             ENDIF("${LFPM_return_value}" STREQUAL 0)
+         ENDIF(PERL_FOUND)
+         SET(${variable}_FOUND ${LFPM_found} CACHE BOOL "Found ${module_name} perl module" FORCE)
+         MARK_AS_ADVANCED(${variable}_FOUND)
+	 IF(${variable}_FOUND)
+	     MESSAGE(STATUS "Found perl module ${module_name}")
+	 ELSE(${variable}_FOUND)
+	     MESSAGE(STATUS "Unable to find perl module ${module_name} in ${CMAKE_INSTALL_PREFIX}/share/perl5 or default perl paths")
+	     IF(${variable}_FIND_REQUIRED)
+                 MESSAGE(FATAL_ERROR "ERROR: Could NOT find required perl module ${module_name}")
+	     ENDIF(${variable}_FIND_REQUIRED)
+	 ENDIF(${variable}_FOUND)
+    ENDIF(${${variable}_FOUND})
+ENDMACRO(LINTEL_FIND_PERL_MODULE)
+
+MACRO(LINTEL_WITH_PERL_MODULE module_name variable)
+    SET(WITH_${variable} "ON" CACHE BOOL "Enable use of the ${module_name} perl module")
+    IF(WITH_${variable})
+        LINTEL_FIND_PERL_MODULE(${module_name} ${variable})
+        IF(${${variable}_FOUND})
+            SET(${variable}_ENABLED YES)
+        ELSE(${${variable}_FOUND})
+            SET(${variable}_ENABLED NO)
+        ENDIF(${${variable}_FOUND})
+    ELSE(WITH_${variable})
+        SET(${variable}_ENABLED NO)
+    ENDIF(WITH_${variable})
+
+#    MESSAGE("HIYA ${variable} ${${variable}_ENABLED}")
+ENDMACRO(LINTEL_WITH_PERL_MODULE)
+
+MACRO(LINTEL_REQUIRED_PERL_MODULE module_name variable)
+    SET(${variable}_FIND_REQUIRED ON)
+    LINTEL_FIND_PERL_MODULE(${module_name} ${variable})
+ENDMACRO(LINTEL_REQUIRED_PERL_MODULE module_name variable)
+
+
+  

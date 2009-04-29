@@ -16,9 +16,7 @@
 using namespace std;
 using boost::format;
 
-LeastSquares::Linear
-LeastSquares::fitLinearVertical(const WeightedData &data)
-{
+LeastSquares::Linear LeastSquares::fitLinearVertical(const WeightedData &data) {
     double sum_w = 0,  sum_wx = 0, sum_wy = 0, sum_wxx = 0, sum_wxy = 0;
 
     INVARIANT(data.size() > 1, "must have at least 2 points for linear fit");
@@ -40,11 +38,8 @@ LeastSquares::fitLinearVertical(const WeightedData &data)
     return ret;
 }
 
-void
-LeastSquares::printText(ostream &to) const
-{
+void LeastSquares::printText(ostream &to) const {
     for(WeightedData::const_iterator i = data.begin(); i != data.end(); ++i) {
-	to << boost::format("%24.18g %24.18g %24.18g\n") % 
-	    i->x % i->y % i->weight;
+	to << boost::format("%24.18g %24.18g %24.18g\n") % i->x % i->y % i->weight;
     }
 }

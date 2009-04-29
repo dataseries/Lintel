@@ -32,7 +32,6 @@ void test_splitjoin() {
     SINVARIANT(ojoin == "a/bcd//ef");
 }
 
-// TODO: change this to test stringToInteger instead
 void test_stringtoint32() {
     SINVARIANT(stringToInteger<int32_t>("77737373") == 77737373);
     SINVARIANT(stringToInteger<int32_t>("-2133324") == -2133324);

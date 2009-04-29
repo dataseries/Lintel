@@ -72,10 +72,10 @@ The username and password fields default to the values found in
 $HOME/.my.cnf, or to the username of the current user and no password
 if that file is missing.
 
-The application name defaults to the name of the file containing the
-calling function if none is supplied.  It is currently used for the
-schema versioning code. It may be used for error messages in the
-future.
+The application name defaults to the name of the file (with any path
+bits stripped off) containing the calling function if none is
+supplied.  It is currently used for the schema versioning code. It may
+be used for error messages in the future.
 
 =cut
 
@@ -106,7 +106,19 @@ sub connect {
 	if ref $class;
     $dsn = 'DBI:mysql:test:localhost' unless defined $dsn;
     $db_username = getpwuid($UID) unless defined $db_username;
-    $application ||= (caller)[1]; 
+    unless (defined $application) {
+	# regardless of which path we use to get to this, we should
+	# use the "same" name.
+
+	# TODO: think about whether you should be required to specify
+	# an application.  Before I stripped off the pathname, this
+	# did the wrong thing depending on how it was run.  Afterwards
+	# it kinda does the right thing, but it might be better to
+	# make app designers pick names for their apps, so that
+	# renaming executables doesn't change the application.
+	$application = (caller)[1]; 
+	$application =~ s!^.*/!!o;
+    }
 
     if (!defined $db_password && $dsn =~ /^DBI:mysql/o) {
 	my ($name,$passwd,$uid,$gid,$quota,$comment,$gcos,
@@ -270,11 +282,7 @@ sub transaction {
     };
     if ($@) {
         $self->rollbackTxn();
-	if ($@ =~ /\n$/o) {
-	    croak($@);
-	} else {
-            confess("Transaction aborted.  Error: $@");
-	}
+	confess("Transaction aborted.  Error: $@");
     }
 }
 
@@ -295,7 +303,8 @@ sub runSQL {
     confess "expected array reference" unless ref $statements eq 'ARRAY';
 
     foreach my $statement (@$statements) {
-	$self->{dbh}->do($statement);
+	my $rows = $self->{dbh}->do($statement)
+	    or confess "Failed to run statement '$statement'";
     }
 }
 
@@ -404,7 +413,7 @@ sub nextStatement {
 		# EOF, return nothing
 		return (undef, $cursor);
 	    }
-	    if ($brk eq '"' || $brk eq "'") {
+	    if ($brk eq "\"" || $brk eq "'") {
 		# if inside a quoted string then ';' doesn't count. 
 		# Change state until a matching quote is found. SQL
 		# escapes quotes within strings by using '' which 
@@ -464,6 +473,10 @@ sub dbiSetConfig {
                          "replace into lintel_dbi_config values (?, ?)");
     }
     $self->{sth}->lintelDbiSetConfig($name, $value);
+    my $v2 = $self->getConfig($name);
+    $v2 = '' unless defined $v2;
+    die "Error, mismatch in setConfig/getConfig: $name -> '$value' != '$v2'"
+	unless $v2 eq $value;
 }
 
 =pod
@@ -482,24 +495,33 @@ sub getConfig {
         $self->load_sths(lintelDbiGetConfig => 
 			 "select value from lintel_dbi_config where name = ?");
     }
+    die "Can't get configuration for long (> 254 byte) names ($name)"
+	if length $name > 254;
+
     return $self->{sth}->lintelDbiGetConfig($name)->value();
 }
 
 sub loadSchema {
     my ($self, $schema_version, $schema, $option) = @_;
 
+    # TODO-sprint: figure out how to migrate the lintel_dbi_config --
+    # name used to be varchar(32), which is not long enough for fairly
+    # short schema names, e.g. battery-info.pl was truncated.
+
     my $lintel_dbi_config = <<END;
 create table if not exists lintel_dbi_config (
-	name varchar(32) primary key,
+	name varchar(255) primary key,
 	value varchar(1024)
 );
 END
 
-    $self->runSQL(splitSQL($lintel_dbi_config));
+    $self->runSQL([$lintel_dbi_config]);
+    print "Loading schema...\n";
     $self->transaction(sub {
-	    $self->runSQL(splitSQL($schema));
+	    $self->runSQL($schema);
 	    $self->dbiSetConfig($self->schema(), $schema_version);
 	});
+    print "Done Loading schema...\n";
 }
 
 sub migrateSchema {
@@ -543,6 +565,8 @@ sub getInstalledSchemaVersion {
 	$version = $self->getConfig($self->schema());
     };
 
+    warn "getSchema failed: $@"
+	if $@;
     return $version;
 }
 
@@ -566,14 +590,14 @@ will die.
 
 For example:
 
-   $dbh->setupSchema(3, $dochange, 
+   $dbh->setupSchema(3, 
 	{
 	    1 => { to_version => 2,
 		   sql => 'alter table email change column fullname 
 			   name char(20);' },
 	    2 => { to_version => 3, 
-		   sql => 'drop index email_idx1;
-			   create index email_idx1 on email (user_id);' }
+		   sql => $dbh->splitSQL('drop index email_idx1;
+ 			                  create index email_idx1 on email (user_id);') }
 	    init => { to_version => 3,
 		      sql => $dbh->splitSQL("
 create table users (id integer primary key, 
@@ -588,18 +612,27 @@ sub setupSchema {
     my ($self, $target_version, $migrate) = @_;
     my $db_version = $self->getInstalledSchemaVersion();
 
+    my $schema_name = $self->schema();
+
     if (!defined $db_version) {
 	if ($migrate->{init}) {
-	    $self->loadSchema($migrate->{init}->{to_version}, 
-			      $migrate->{init}->{sql});
+	    my $sql = $migrate->{init}->{sql};
+	    unless (ref $sql) {
+		warn "$sql contains a ';', did you mean to run this through \$dbh->splitSQL?\n
+you can eliminate this warning by making your sql an array reference."
+                    if $sql =~ /;.*\S/o;
+		$sql = [$sql];
+	    }
+	    $self->loadSchema($migrate->{init}->{to_version}, $sql);
 	} else {
 	    die "There is no schema installed for $self->{application}";
 	}
-    }
-
-    if ($db_version < $target_version) {
+    } elsif ($db_version < $target_version) {
 	$self->migrateSchema($target_version, $migrate);
     }
+
+    $db_version = $self->getInstalledSchemaVersion();
+    $db_version ||= 0;
 
     if ($db_version != $target_version) {
 	die "This version of $self->{application} uses schema version $target_version,\nbut the database has version $db_version";

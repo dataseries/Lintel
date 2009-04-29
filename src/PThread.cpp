@@ -112,7 +112,6 @@ void PThread::setStackSize(size_t size) {
 	      % strerror(ret));
 }
 
-// TODO: see if we need to do something to support cygwin
 #ifndef __CYGWIN__
 size_t PThread::getGuardSize() {
 #ifdef __CYGWIN__

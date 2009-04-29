@@ -33,7 +33,7 @@ use POSIX 'ceil';
 use Pod::Usage;
 use Sys::Hostname;
 
-@PERL_MODULES_INC_UNSHIFT@
+@PERL5_MODULES_INC_UNSHIFT@
 use Lintel::File::Lock;
 
 # TODO: pull should walk in the current directory before walking in the
