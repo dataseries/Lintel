@@ -501,8 +501,18 @@ sub getConfig {
     return $self->{sth}->lintelDbiGetConfig($name)->value();
 }
 
+=pod
+
+=head2 $dbh->loadSchema($schema_version, \@schema);
+
+    $self->loadSchema( $version, [ $statement1, ... ]);
+
+Initializes the schema and stores the schema version so that it can later be used for
+schema migration.  Creates the 'lintel_dbi_config' table if it isn't yet defined.
+
+=cut
 sub loadSchema {
-    my ($self, $schema_version, $schema, $option) = @_;
+    my ($self, $schema_version, $schema) = @_;
 
     # TODO-sprint: figure out how to migrate the lintel_dbi_config --
     # name used to be varchar(32), which is not long enough for fairly
@@ -577,9 +587,9 @@ sub getInstalledSchemaVersion {
 
    $dbh->setupSchema($target_version, {
 	    init    => { to_version => I<version>
-			 sql => "I<schema SQL>" },
+			 sql => $dbh->splitSQL("I<schema SQL>") },
 	    I<version> => { to_version => I<version>
-	                    sql => "I<schema SQL>" },
+	                    sql => $dbh->splitSQL("I<schema SQL>") },
 	    ...
 	});
 
@@ -592,18 +602,19 @@ For example:
 
    $dbh->setupSchema(3, 
 	{
-	    1 => { to_version => 2,
-		   sql => 'alter table email change column fullname 
-			   name char(20);' },
-	    2 => { to_version => 3, 
-		   sql => $dbh->splitSQL('drop index email_idx1;
- 			                  create index email_idx1 on email (user_id);') }
 	    init => { to_version => 3,
-		      sql => $dbh->splitSQL("
+		      sql => $dbh->splitSQL(<<END) }
 create table users (id integer primary key, 
                     name char(20));
 create table email (user_id integer, address char(128));
-create index email_idx1 on email (user_id);") } 
+create index email_idx1 on email (user_id);
+END
+	    1 => { to_version => 2,
+		   sql => ['alter table email change column fullname 
+			   name char(20);'] },
+	    2 => { to_version => 3, 
+		   sql => ['drop index email_idx1;',
+			   'create index email_idx1 on email (user_id);'] }
 	});
 
 =cut
