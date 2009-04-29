@@ -125,7 +125,7 @@ sub connect {
     }
 
     my $dbh = DBI->connect($dsn, $db_username, $db_password, 
-			   { RaiseError => 1});
+			   { RaiseError => 1, PrintError => 1});
     my $sth = bless { }, 'Lintel::DBI::sth';
     return bless { 'dbh' => $dbh, 
 		   'sth' => $sth, 
@@ -453,7 +453,7 @@ will die if the client tries to set a key with the prefix 'lintel-dbi-'.
 
 sub setConfig {
     my ($self, $name, $value) = @_;
-    cluck("lintel-dbi- is a reserved namespace") if ($name =~ /^lintel-dbi-/o);
+    cluck("$prefix is a reserved namespace") if ($name =~ /^$prefix/o);
     $self->dbiSetConfig($name, $value);
 }
 
@@ -478,11 +478,29 @@ Returns the value of the config key specified, or undef if none is defined.
 
 sub getConfig {
     my ($self, $name) = @_;
+    my $value;
     if (! defined($self->{sth}->{__definitions}->{lintelDbiGetConfig})) {
+	$self->{dbh}->{PrintError} = 0;
+	$self->{dbh}->{RaiseError} = 0;
         $self->load_sths(lintelDbiGetConfig => 
 			 "select value from lintel_dbi_config where name = ?");
+	$self->{dbh}->{PrintError} = 1;
+	$self->{dbh}->{RaiseError} = 1;
     }
-    return $self->{sth}->lintelDbiGetConfig($name)->value();
+    eval {
+	$value = $self->{sth}->lintelDbiGetConfig($name)->value();
+    };
+    return $value;
+}
+
+sub loadDbiConfigSchema {
+    my ($self) = @_;
+    $self->runSQL(splitSQL(<<END));
+create table if not exists lintel_dbi_config (
+	name varchar(32) primary key,
+	value varchar(1024)
+);
+END
 }
 
 =pod
@@ -498,14 +516,7 @@ schema migration.  Creates the 'lintel_dbi_config' table if it isn't yet defined
 sub loadSchema {
     my ($self, $schema_version, $schema) = @_;
 
-    my $lintel_dbi_config = <<END;
-create table if not exists lintel_dbi_config (
-	name varchar(32) primary key,
-	value varchar(1024)
-);
-END
-
-    $self->runSQL(splitSQL($lintel_dbi_config));
+    $self->loadDbiConfigSchema();
     $self->transaction(sub {
 	    $self->runSQL($schema);
 	    $self->dbiSetConfig($self->schema(), $schema_version);
@@ -513,25 +524,25 @@ END
 }
 
 sub migrateSchema {
-    my ($self, $schema_version, $migration) = @_;
-    my $db_version = $self->getInstalledSchemaVersion();
+    my ($self, $schema_version, $migration, $db_version) = @_;
 
     while ($db_version < $schema_version) {
         if (defined $migration->{$db_version}) {
            $self->transaction(sub {
                    $self->runSQL($migration->{$db_version}->{sql});
-                   $self->setConfig(
-                           $self->{application},
+                   $self->dbiSetConfig(
+                           $self->schema(),
                            $migration->{$db_version}->{to_version}
                        );
                });
-           $db_version = $migration->{$db_version}->{to_version}
+           $db_version = $self->getInstalledSchemaVersion();
        } else {
            croak "There is no defined upgrade path from version $db_version to $schema_version";
        }
     }
 
     print "Database migrated\n";
+    return $db_version;
 }
 
 =pod
@@ -559,7 +570,7 @@ sub getInstalledSchemaVersion {
 
 =pod
 
-=head2 $dbh->setupSchema($target_version, \%migration);
+=head2 $dbh->setupSchema($target_version, \%migration, [$from_version]);
 
    $dbh->setupSchema($target_version, {
 	    init    => { to_version => I<version>
@@ -573,6 +584,10 @@ Setup schema checks the current version of the schema installed, and
 installs or migrates the schema to match the target_version.  If 
 the schema installation or migration fails for any reason setupSchema
 will die.
+
+The from_version parameter indicates the currently installed schema 
+version.  If omitted, from_version defaults to the value returned by 
+getInstalledSchemaVersion().
 
 For example:
 
@@ -591,13 +606,13 @@ END
 	    2 => { to_version => 3, 
 		   sql => ['drop index email_idx1;',
 			   'create index email_idx1 on email (user_id);'] }
-	});
+	}, $installed_version);
 
 =cut
 
 sub setupSchema {
-    my ($self, $target_version, $migrate) = @_;
-    my $db_version = $self->getInstalledSchemaVersion();
+    my ($self, $target_version, $migrate, $db_version) = @_;
+    $db_version ||= $self->getInstalledSchemaVersion();
 
     if (!defined $db_version) {
 	if ($migrate->{init}) {
@@ -609,7 +624,7 @@ sub setupSchema {
     }
 
     if ($db_version < $target_version) {
-	$self->migrateSchema($target_version, $migrate);
+	$db_version = $self->migrateSchema($target_version, $migrate, $db_version);
     }
 
     if ($db_version != $target_version) {
