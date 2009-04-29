@@ -25,7 +25,7 @@ use File::stat;
 use Fcntl ':mode';
 use DirHandle;
 use File::Path;
-@PERL_MODULES_INC_UNSHIFT@
+@PERL5_MODULES_INC_UNSHIFT@
 BEGIN { $Global::BP_ModulePath = "@CMAKE_INSTALL_PREFIX@/share/bp_modules";
         unshift(@INC, $Global::BP_ModulePath); }
 use BatchParallel::common;

@@ -87,9 +87,10 @@ public:
     virtual std::string debugString() const;
     virtual void printRome(int depth, std::ostream &out) const;
     virtual void printTabular(int depth, std::ostream &out) const;
-    // TODO: decide whether this function should print trailing newline,
-    // and if so, how it should deal with formats that are naturally multi-line
-    // also whether indentation, etc should be in the interface.
+
+    /// Print text prints out a block of text including the trailing
+    /// newline that gives a basic, human-readable summary of this
+    /// statistic.
     virtual void printText(std::ostream &out) const;
     friend std::ostream &operator<<(std::ostream &to, const Stats &s) {
 	s.printText(to);
