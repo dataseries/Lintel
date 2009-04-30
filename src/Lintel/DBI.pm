@@ -491,7 +491,6 @@ Returns the value of the config key specified, or undef if none is defined.
 
 sub getConfig {
     my ($self, $name) = @_;
-    my $value;
     if (! defined($self->{sth}->{__definitions}->{lintelDbiGetConfig})) {
 	$self->{dbh}->{PrintError} = 0;
 	$self->{dbh}->{RaiseError} = 0;
@@ -502,10 +501,7 @@ sub getConfig {
     }
     die "Can't get configuration for long (> 254 byte) names ($name)"
 	if length $name > 254;
-    eval {
-	$value = $self->{sth}->lintelDbiGetConfig($name)->value();
-    };
-    return $value;
+    return eval { $self->{sth}->lintelDbiGetConfig($name)->value(); };
 }
 
 sub loadDbiConfigSchema {
