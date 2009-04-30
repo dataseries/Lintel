@@ -522,7 +522,7 @@ END
 
 =head2 $dbh->loadSchema($schema_version, \@schema);
 
-    $self->loadSchema( $version, [ $statement1, ... ]);
+    $self->loadSchema($version, [ $statement1, ... ]);
 
 Initializes the schema and stores the schema version so that it can later be used for
 schema migration.  Creates the 'lintel_dbi_config' table if it isn't yet defined.
