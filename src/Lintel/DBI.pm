@@ -10,6 +10,9 @@ use strict;
 # TODO: think about how we can safely write tests for this.  Perhaps
 # use one of the DBI against CSV or sqllite backends.
 
+# TODO: weigh alternatives regarding automatic schema migration and
+# propose a standard approach.
+
 my %invalid_sth_names = map { $_ => 1 }
     qw/AUTOLOAD DESTROY fetchArray fetchHash oneRow atMostOneRow/;
 
