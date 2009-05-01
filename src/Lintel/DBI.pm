@@ -606,10 +606,14 @@ will die.
 
 The from_version parameter indicates the currently installed schema 
 version.  If omitted, from_version defaults to the value returned by 
-getInstalledSchemaVersion().
+getInstalledSchemaVersion().  
+
+Setting the from version is useful when transforming existing code and
+databases to using the Lintel::DBI built-in schema management support.
 
 For example:
 
+   my $dbh = new Lintel::DBI( application => 'watchdog');
    $dbh->setupSchema(3, 
 	{
 	    init => { to_version => 3,
