@@ -39,6 +39,7 @@ my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "password=s" => \$password,
 			 "history=s" => \$history_file,
 			 "man!" => \$print_manpage);
+my $runfile = shift @ARGV;
 pod2usage(-verbose => 2) if $print_manpage;
 eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
 
@@ -72,6 +73,7 @@ my $plotfiles = 0;
 my $command_error = 0; # Set this if there is an error evaluating a command
 		       # so that we can stop a 'history do' or other 
 		       # multi-part command; ** not completed as of 3Jan01 ** 
+
 
 unless (-t STDIN) {
     # skip reading history, don't update it when done
@@ -122,6 +124,7 @@ my $define_mode = 0;
 my @define;
 my $markerre;
 my $prompt = ">> ";
+history("run $runfile") if ($runfile);
 while (defined ($_ = $term->readline($prompt))) {
     $command_error = 0;
     eval { &docmd($_) };
