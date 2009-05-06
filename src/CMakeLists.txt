@@ -55,6 +55,7 @@ SET(LIBLINTEL_SOURCES
 	StatsSeries.cpp
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
+	BoyerMooreHorspool.cpp
 	${LIBLINTEL_THREAD_SOURCES}
 )
 
