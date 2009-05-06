@@ -44,6 +44,7 @@ SET(INCLUDE_FILES
 	StringUtil.hpp
 	TestUtil.hpp
 	Tuples.hpp
+	BoyerMooreHorspool.hpp
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
