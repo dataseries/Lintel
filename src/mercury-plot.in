@@ -39,7 +39,6 @@ my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "password=s" => \$password,
 			 "history=s" => \$history_file,
 			 "man!" => \$print_manpage);
-my $runfile = shift @ARGV;
 pod2usage(-verbose => 2) if $print_manpage;
 eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
 
@@ -52,8 +51,8 @@ die "Usage: $0
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
     [--history=<history-filename, default $history_file>]
-    [--help] [--man]\n"
-    unless $success;
+    [--help] [--man] [input-file ...]\n"
+    unless $success && @ARGV <= 1;
 
 if (defined $db) {
     ($Plot::Mercury::Default_DSN,$user,$password) 
@@ -124,7 +123,10 @@ my $define_mode = 0;
 my @define;
 my $markerre;
 my $prompt = ">> ";
-history("run $runfile") if ($runfile);
+
+map { die "command line input file $_ is not readable" unless -f $_ && -r $_; } @ARGV;
+map { history("run $_") } @ARGV;
+
 while (defined ($_ = $term->readline($prompt))) {
     $command_error = 0;
     eval { &docmd($_) };
