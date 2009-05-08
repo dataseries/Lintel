@@ -52,7 +52,7 @@ die "Usage: $0
     [--user=<user>] [--password=<password>]
     [--history=<history-filename, default $history_file>]
     [--help] [--man] [input-file ...]\n"
-    unless $success && @ARGV <= 1;
+    unless $success;
 
 if (defined $db) {
     ($Plot::Mercury::Default_DSN,$user,$password) 
