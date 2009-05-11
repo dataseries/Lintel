@@ -23,20 +23,22 @@ using namespace std;
 #include <vector>
 
 #include <Lintel/Clock.hpp>
+#include <Lintel/Double.hpp>
+#include <Lintel/LintelLog.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/PThread.hpp>
 #include <Lintel/Stats.hpp>
-#include <Lintel/Double.hpp>
-#include <Lintel/MersenneTwisterRandom.hpp>
 
+using namespace std;
 using boost::format;
 
-const int min_samples = 20;
 // Use -Double::Inf so things blow up suitably if these get used.
 double Clock::clock_rate = -Double::Inf;
 double Clock::inverse_clock_rate = -Double::Inf;
 double Clock::inverse_clock_rate_tfrac = -Double::Inf;
 uint64_t Clock::max_recalibrate_measure_time = 0; // forces recalibration always unless initialized
-Stats Clock::calibrate;
+Clock::Tfrac Clock::estimated_todtfrac_quanta = 0;
+uint64_t Clock::estimated_cycles_per_quanta = 0;
 
 static Clock::AllowUnsafeFreqScalingOpt allow_unsafe_frequency_scaling = Clock::AUFSO_No;
 static bool may_have_frequency_scaling = true; 
@@ -126,6 +128,93 @@ void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
     allow_unsafe_frequency_scaling = allow;
 }
 
+void Clock::initialMeasurements() {
+    {
+	vector<Tll> elapsed;
+	vector<Tfrac> tod_delta;
+	const uint32_t nelapsed = 500;
+	elapsed.reserve(nelapsed);
+	tod_delta.reserve(nelapsed);
+	Tfrac prev_tod = todTfrac();
+	for(uint32_t i=0; i < nelapsed || tod_delta.size() < 20; i++) {
+	    Tll start_cycle = cycleCounter();
+	    Tfrac cur_tod = todTfrac();
+	    Tll end_cycle = cycleCounter();
+	    elapsed.push_back(end_cycle - start_cycle);
+	    if (cur_tod - prev_tod > 0) {
+		tod_delta.push_back(cur_tod - prev_tod);
+		prev_tod = cur_tod;
+	    }
+	}
+	sort(elapsed.begin(),elapsed.end(),Clock_Tll_Order());
+	sort(tod_delta.begin(), tod_delta.end());
+	uint32_t off = elapsed.size() * 0.25; // 25th percentile
+
+	// If we're over 2x the estimated time to call tod, then we
+	// really know nothing about how to calibrate so have to rely
+	// on the kernel timekeeping.
+	max_recalibrate_measure_time = 2 * elapsed[off];
+	
+	off = tod_delta.size() * 0.25; // 25th percentile
+	estimated_todtfrac_quanta = tod_delta[off];
+    }
+
+    {
+	// Estimate min # cycles to pass a quanta
+	vector<uint64_t> cycles;
+	// This many measurements will be somewhat slow on windows
+	// ~0.45s since we have to pass through 3 tod changes, and the
+	// windows quanta is 15ms.
+	const uint32_t nmeasurements = 10;
+	cycles.reserve(nmeasurements);
+	Tfrac prev_tod, cur_tod, next_tod;
+	uint64_t cycle_a, cycle_b;
+	while(cycles.size() < nmeasurements) {
+	    cycle_a = cycleCounter();
+	    prev_tod = todTfrac();
+	    do {
+		cycle_a = cycleCounter();
+		cur_tod = todTfrac();
+	    } while(cur_tod == prev_tod);
+	    do {
+		next_tod = todTfrac();
+		cycle_b = cycleCounter();
+	    } while (next_tod == cur_tod);
+	    if (cycle_b > cycle_a) {
+		// upper bound on cycles to move through a quanta
+		cycles.push_back(cycle_b - cycle_a);
+	    }
+	}
+	Stats truncated_mean;
+	for(uint32_t i = nmeasurements * 0.25; i < nmeasurements * 0.75; ++i) {
+	    truncated_mean.add(cycles[i]);
+	}
+	estimated_cycles_per_quanta = static_cast<uint64_t>(round(truncated_mean.mean()));
+    }
+}
+
+void Clock::setClockRate(double estimated_mhz) {
+    INVARIANT(clock_rate == -Double::Inf,
+	      format("whoa, two threads calibrating at the same time?! %g != %g")
+	      % clock_rate % (-Double::Inf));
+    clock_rate = estimated_mhz;
+    INVARIANT(inverse_clock_rate == -Double::Inf,
+	      "error: two threads trying to calibrate at once ?!");
+    inverse_clock_rate = 1.0 / estimated_mhz;
+
+    // cycle_counter * icr = time in us * 1/1e6 = time
+    // in seconds * 2**32 = time in Tfrac
+    inverse_clock_rate_tfrac = inverse_clock_rate * (4294967296.0/1000000.0);
+    // increased the bound to 30us
+    // (30*tmp_clock_rate); under load, this invariant
+    // could fire; might want to warn, on a really
+    // slow recalibrate, we could introduce a lot of
+    // error.
+    INVARIANT(max_recalibrate_measure_time < 30 * clock_rate,
+	      format("Internal sanity check failed, tod() takes too long, %d > %.2f\n")
+	      % max_recalibrate_measure_time % (30 * clock_rate));
+}
+
 void Clock::calibrateClock(bool print_calibration_information, 
 			   double max_conf95_rel,
 			   int print_calibration_warnings_after_tries) {
@@ -133,112 +222,97 @@ void Clock::calibrateClock(bool print_calibration_information,
 	return; // already calibrated; don't handle changes.
     }
 
-    Tdbl clock_s, clock_e;
-    Tll tick_s, tick_e;
+    Tfrac calibrate_start = todTfrac();
 
     if (allow_unsafe_frequency_scaling != AUFSO_Yes) {
 	checkForPossibleFrequencyScaling();
     }
 
-    double tmp_clock_rate;
+    string errors;
+
+    LintelLogDebug("lintel::Clock", "starting time calibration");
 
     bindToProcessor();
+
+    initialMeasurements();
+
+    uint64_t target_cycles = estimated_cycles_per_quanta * 25; // 25us on unix
+
+    const uint32_t min_samples = 40; // 1ms total on unix
+    const uint32_t max_samples = 400;
+    vector<double> measurements;
+    Stats truncated_mean;
     for(int tries=0;tries<10;++tries) {
-	calibrate.reset();
-	tmp_clock_rate = -1;
-	for(int ndelay=1;true;ndelay+=1) {
-	    // De-schedule ourselves for a bit, to lower the
-	    // chance of getting pre-empted while running the
-	    // calibration
-	    struct timeval timeout;
-	    timeout.tv_sec = 0;
-	    timeout.tv_usec = 15000;
-	    select(0,NULL,NULL,NULL,&timeout);
-
-	    clock_s = Clock::tod();
-	    tick_s = cycleCounter();
-	    for(volatile int d=0;d<ndelay*10000;d++) {
-		/* empty */
+	measurements.clear();
+	measurements.reserve(min_samples);
+	uint32_t fail_count = 0;
+	while (true) {
+	    uint64_t cycles_a = cycleCounter();
+	    Tfrac tod_start = todTfrac();
+	    uint64_t cycles_b = cycleCounter();
+	    uint64_t cycles_end = cycles_a + target_cycles;
+	    uint64_t cycles_c = cycles_b;
+	    while(cycles_c > cycles_a && cycles_c < cycles_end) {
+		cycles_c = cycleCounter();
 	    }
-	    clock_e = Clock::tod();
-	    tick_e = cycleCounter();
+	    Tfrac tod_end = todTfrac();
+	    uint64_t cycles_d = cycleCounter();
 
-	    Tll tick_d = tick_e - tick_s;
-	    Tdbl us_d = clock_e - clock_s;
-
-	    if (us_d < 500) {
-		ndelay += 20;
-		continue;
-	    }
-	    if (us_d > 100000) {
-		if (tries >= print_calibration_warnings_after_tries) {
-		    fprintf(stderr,"WHOA, calibration didn't succeed after %ld samples; restarting\n",
-			    calibrate.count());
+	    if (cycles_c <= cycles_a || (cycles_c - cycles_end) > 10000) {
+		// useless, cycles went backwards, or went forward by
+		// a lot, so we must have either switched cores or
+		// been descheduled
+		++fail_count;
+		if (fail_count > 10) {
+		    errors.append("too many failures taking timing measurements\n");
+		    break;
 		}
-		tmp_clock_rate = -1;
-		break;
+	    } else {
+		uint64_t cycles_start = (cycles_a + cycles_b) / 2;
+		uint64_t cycles_end = (cycles_c + cycles_d) / 2;
+		double elapsed_cycles = cycles_end - cycles_start;
+		double elapsed_seconds = TfracToDouble(tod_end - tod_start);
+		
+		measurements.push_back(elapsed_cycles / (1.0e6 * elapsed_seconds));
 	    }
-
-	    double t = (double)tick_d / us_d;
-	    calibrate.add(t);
-	    if ((int)calibrate.count() < min_samples)
-		continue;
-	    if (print_calibration_information || tries >= print_calibration_warnings_after_tries) {
-		fprintf(stderr, "Calibrating clock rate, try %d: ndelay=%ld us=%.5g ticks=%lld clock est %.6g;; clock mean %.10g, conf95 %.10g\n",
-			tries, (long)ndelay, us_d, tick_d, t,calibrate.mean(),calibrate.conf95());
-	    }
-	    if (calibrate.conf95() < calibrate.mean() * max_conf95_rel) {
-		tmp_clock_rate = calibrate.mean();
-		INVARIANT(clock_rate == -Double::Inf,
-			  format("whoa, two threads calibrating at the same time?! %g != %g")
-			  % clock_rate % (-Double::Inf));
-		clock_rate = tmp_clock_rate;
-		INVARIANT(inverse_clock_rate == -Double::Inf,
-			  "error: two threads trying to calibrate at once ?!");
-		inverse_clock_rate = 1.0 / clock_rate;
-
-		// cycle_counter * icr = time in us * 1/1e6 = time
-		// in seconds * 2**32 = time in Tfrac
-		inverse_clock_rate_tfrac = inverse_clock_rate * (4294967296.0/1000000.0);
-		std::vector<Tll> elapsed;
-		const uint32_t nelapsed = 100;
-		for(uint32_t i=0;i<nelapsed;i++) {
-		    Tll start_cycle = cycleCounter();
-		    tod();
-		    Tll end_cycle = cycleCounter();
-		    Tll delta = end_cycle - start_cycle;
-		    elapsed.push_back(delta);
+	    if (measurements.size() >= min_samples) {
+		sort(measurements.begin(), measurements.end());
+		truncated_mean.reset();
+		for(uint32_t i = measurements.size() * 0.25; i < measurements.size() * 0.75; ++i) {
+		    truncated_mean.add(measurements[i]);
 		}
-		std::sort(elapsed.begin(),elapsed.end(),Clock_Tll_Order());
-		uint32_t off = nelapsed * 0.25; // 25th percentile
-		SINVARIANT(elapsed.size() > off);
-
-		// 2 * gives a little leeway to when it's running in 
-		// practice
-		// changed to 5 because we were having too many bad 
-		// recalibates at high load.
-		max_recalibrate_measure_time = 5 * elapsed[off];
-		// increased the bound to 30us
-		// (30*tmp_clock_rate); under load, this invariant
-		// could fire; might want to warn, on a really
-		// slow recalibrate, we could introduce a lot of
-		// error.
-		INVARIANT(max_recalibrate_measure_time < 30 * tmp_clock_rate,
-			  format("Internal sanity check failed, tod() takes too long, %d > %.2f\n")
-			  % max_recalibrate_measure_time
-			  % (20 * tmp_clock_rate));
-		break;
+		if (truncated_mean.conf95() < truncated_mean.mean() * max_conf95_rel) {
+		    break;
+		}
+	    }
+	    if (measurements.size() >= max_samples) {
+		errors.append("too many measurements taken, trying again\n");
 	    }
 	}
-	if (tmp_clock_rate > 200) {
+
+	if (measurements.size() < min_samples) {
+	    continue;
+	}
+
+	if (print_calibration_information || tries >= print_calibration_warnings_after_tries) {
+	    cerr << format("Calibrating clock rate, try %d: est mean %.10g, conf95 %.10g\n")
+		% tries % truncated_mean.mean() % truncated_mean.conf95();
+	}
+	if (truncated_mean.conf95() < truncated_mean.mean() * max_conf95_rel) {
+	    setClockRate(truncated_mean.mean());
 	    break;
 	}
     }
 
-    INVARIANT(tmp_clock_rate > 200, format("Unable to calibrate clock rate to %.8g relative error") % max_conf95_rel);
+    INVARIANT(clock_rate > 200, 
+	      format("Unable to calibrate clock rate to %.8g relative error.  Errors:\n") 
+	      % max_conf95_rel % errors);
     unbindFromProcessor();
     if (print_calibration_information) {
-	cout << format("Final calibrated clock rate is %.8g, conf95 %.8g, %ld samples\n") % tmp_clock_rate % calibrate.conf95() % calibrate.count();
+	Tfrac calibrate_end = todTfrac();
+	double calibrate_ms = 1000 * TfracToDouble(calibrate_end - calibrate_start);
+	cout << format("Final calibrated clock rate is %.8g, conf95 %.8g, %d samples; %.3fms to calibrate\n") 
+	    % clock_rate % truncated_mean.conf95() % truncated_mean.count() % calibrate_ms;
     }
 }
 
@@ -249,12 +323,12 @@ Clock::Clock(bool allow_calibration)
       last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0),
       epoch_offset(0)
 {
-    if (clock_rate == -1) {
+    if (clock_rate <= 0) {
 	INVARIANT(allow_calibration,
 		  "you failed to call Clock::calibrateClock()!");
 	calibrateClock();
-	SINVARIANT(clock_rate > 0);
     }
+    SINVARIANT(clock_rate > 0);
     setRecalibrateIntervalSeconds();
 }
 
@@ -338,6 +412,21 @@ Clock::Tdbl Clock::todcc_recalibrate() {
     return cur_us;
 }
 
+Clock::Tfrac Clock::todccTfrac_recalibrate() {
+    if (may_have_frequency_scaling) {
+	if (allow_unsafe_frequency_scaling == AUFSO_WarnSlow ||
+	    allow_unsafe_frequency_scaling == AUFSO_Slow) {
+	    return todTfrac();
+	} else {
+	    SINVARIANT(allow_unsafe_frequency_scaling == AUFSO_Yes ||
+		       allow_unsafe_frequency_scaling == AUFSO_WarnFast);
+	}
+    }
+
+    // TODO: implement...
+    FATAL_ERROR("unimplemented");
+}
+
 void Clock::setRecalibrateInterval(Tdbl interval_us) {
     setRecalibrateIntervalSeconds(interval_us * 1e-6);
 }
@@ -377,7 +466,6 @@ void Clock::timingTest() {
     // verify anything.  Fix the #if 0 down below at the same time;
     // it's using todcc() and it's not worth fixing until we have real
     // regression stuff on this.
-    return;
 
     Clock::Tdbl measurement_time = 1000000;
     Clock::Tfrac measurement_time_tfrac = Clock::secNanoToTfrac(5,0);

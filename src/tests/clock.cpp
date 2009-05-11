@@ -5,12 +5,19 @@
 */
 
 #include <Lintel/Clock.hpp>
+#include <Lintel/LintelLog.hpp>
 
-int
-main()
-{
+int main(int argc, char *argv[]) {
+    LintelLog::parseEnv();
+
     Clock::allowUnsafeFrequencyScaling(Clock::AUFSO_WarnFast);
+    if (LintelLog::wouldDebug("calibrate")) {
+	Clock::calibrateClock(true);
+	return 0;
+    }
     Clock::selfCheck();
-    Clock::timingTest();
+    if (LintelLog::wouldDebug("timing")) {
+	Clock::timingTest();
+    }
     return 0;
 }

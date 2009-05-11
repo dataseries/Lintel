@@ -110,6 +110,11 @@ public:
 			       double max_conf95_rel = 0.01,
 			       int print_calibration_warnings_after_tries = 1);
 
+    /// True if calibrateClock has already been run
+    static bool isCalibrated() {
+	return clock_rate > 0;
+    }
+
     Clock(bool allow_calibration = false);
 
     static uint64_t cycleCounter() {
@@ -165,6 +170,7 @@ public:
     }	
 
     Tdbl todcc_recalibrate();
+    Tfrac todccTfrac_recalibrate();
 
     // Not a good idea to use the todcc from multiple threads; have a separate
     // Clock object for each of them, for example via Clock::perThread()
@@ -199,7 +205,7 @@ public:
 	uint64_t cur_cc = cycleCounter();
 	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
 	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
-	    return secondsToTfrac(todcc_recalibrate()*1e-6);
+	    return todccTfrac_recalibrate();
 	} else {
 	    last_cc = cur_cc;
 	    double delta_tfrac = static_cast<uint32_t>(delta_cc) * inverse_clock_rate_tfrac;
@@ -367,15 +373,22 @@ public:
     
 public:
     static double clock_rate; // MhZ, assume SMP processors run at same rate.
-    static Stats calibrate;
     static double inverse_clock_rate; // us/cycle
     static double inverse_clock_rate_tfrac; // tfrac/cycle
-    static uint64_t max_recalibrate_measure_time; // see todcc_recalibrate()
+
+    // Set in initialMeasurements()
+    static uint64_t max_recalibrate_measure_time; 
+    static Tfrac estimated_todtfrac_quanta;
+    static uint64_t estimated_cycles_per_quanta;
+
     // Cycle counter calibration variables
     Tdbl last_calibrate_tod, cycle_count_offset, recalibrate_interval;
     Tfrac last_calibrate_tod_tfrac;
     uint64_t last_cc, last_recalibrate_cc, recalibrate_interval_cycles;
 private:
+    static void initialMeasurements();
+    static void setClockRate(double estimated_mhz);
+
     static pthread_key_t per_thread_clock;
 
     unsigned epoch_offset;
