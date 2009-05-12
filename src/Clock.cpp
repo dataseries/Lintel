@@ -148,14 +148,14 @@ void Clock::initialMeasurements() {
 	}
 	sort(elapsed.begin(),elapsed.end(),Clock_Tll_Order());
 	sort(tod_delta.begin(), tod_delta.end());
-	uint32_t off = elapsed.size() * 0.25; // 25th percentile
+	uint32_t off = static_cast<uint32_t>(elapsed.size() * 0.25); // 25th percentile
 
 	// If we're over 2x the estimated time to call tod, then we
 	// really know nothing about how to calibrate so have to rely
 	// on the kernel timekeeping.
 	max_recalibrate_measure_time = 2 * elapsed[off];
 	
-	off = tod_delta.size() * 0.25; // 25th percentile
+	off = static_cast<uint32_t>(tod_delta.size() * 0.25); // 25th percentile
 	estimated_todtfrac_quanta = tod_delta[off];
     }
 
@@ -172,21 +172,25 @@ void Clock::initialMeasurements() {
 	while(cycles.size() < nmeasurements) {
 	    cycle_a = cycleCounter();
 	    prev_tod = todTfrac();
-	    do {
+	    do { // Wait for a quanta shift
 		cycle_a = cycleCounter();
 		cur_tod = todTfrac();
-	    } while(cur_tod == prev_tod);
+	    } while(cur_tod == prev_tod); 
 	    do {
 		next_tod = todTfrac();
 		cycle_b = cycleCounter();
 	    } while (next_tod == cur_tod);
-	    if (cycle_b > cycle_a) {
+	    if (cycle_b > cycle_a) { 
 		// upper bound on cycles to move through a quanta
 		cycles.push_back(cycle_b - cycle_a);
+	    } else {
+		// We definately switched cores, so this measurement is bogus.
 	    }
 	}
 	Stats truncated_mean;
-	for(uint32_t i = nmeasurements * 0.25; i < nmeasurements * 0.75; ++i) {
+	for(uint32_t i = static_cast<uint32_t>(nmeasurements * 0.25); 
+	    i < static_cast<uint32_t>(nmeasurements * 0.75);
+	    ++i) {
 	    truncated_mean.add(cycles[i]);
 	}
 	estimated_cycles_per_quanta = static_cast<uint64_t>(round(truncated_mean.mean()));
@@ -278,7 +282,9 @@ void Clock::calibrateClock(bool print_calibration_information,
 	    if (measurements.size() >= min_samples) {
 		sort(measurements.begin(), measurements.end());
 		truncated_mean.reset();
-		for(uint32_t i = measurements.size() * 0.25; i < measurements.size() * 0.75; ++i) {
+		for(uint32_t i = static_cast<uint32_t>(measurements.size() * 0.25); 
+		    i < static_cast<uint32_t>(measurements.size() * 0.75);
+		    ++i) {
 		    truncated_mean.add(measurements[i]);
 		}
 		if (truncated_mean.conf95() < truncated_mean.mean() * max_conf95_rel) {
