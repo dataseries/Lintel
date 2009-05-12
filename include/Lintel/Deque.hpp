@@ -148,7 +148,20 @@ public:
 	return iterator(*this, q_back);
     }
 
+    // TODO: add tests that check for proper destruction of items in
+    // the queue.  Do the same thing for hashmap.
     void clear() {
+	if (!empty()) {
+	    size_t max = q_back > q_front ? q_back : q_size;
+	    for(size_t i = q_front; i < max; ++i) {
+		allocator.destroy(deque + i);
+	    }
+	    if (q_back < q_front) {
+		for(size_t i = 0; i < q_back; ++i) {
+		    allocator.destroy(deque + i);
+		}
+	    }
+	}
 	q_front = q_back = 0;
 	DEBUG_SINVARIANT(empty());
     }
@@ -193,9 +206,9 @@ private:
     }
     Alloc allocator;
     T *deque; 
-    unsigned q_front; 
-    unsigned q_back;
-    unsigned q_size;
+    size_t q_front; 
+    size_t q_back;
+    size_t q_size;
 };
 
 void DequeTest();
