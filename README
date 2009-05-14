@@ -33,7 +33,6 @@ BUILDING
    cd ~/projects
    mtn -d ~/.monotone/ssd.db co -b ssd.hpl.hp.com/Lintel Lintel
    cd Lintel
-   autoreconf --install
    # monotone intro: https://twiki.hpl.hp.com/bin/view/StorageSystems/MonotoneIntro
 
 1b) Get source code (via tarball, from anywhere):
@@ -47,7 +46,8 @@ BUILDING
 2) configure the package:
    mkdir -p ~/build/optimize/Lintel
    cd ~/build/optimize/Lintel
-   ccmake ~/projects/Lintel
+   ccmake [-DCMAKE_INSTALL_PREFIX=<install-prefix>] ~/projects/Lintel
+   (we use an install prefix like ~/build/optimize)
 
 3) compile and install the package:
    cd ~/build/optimize/Lintel:

@@ -121,7 +121,7 @@ cddebug bits only work under sh-based shells right now.
     s () { eval `$DEPTOOL cdsrc $PWD` }
     b () { eval `$DEPTOOL cdopt $PWD "$@"` }
     d () { eval `$DEPTOOL cddebug $PWD "$@"` }
-
+    # note in bash you have to put returns after the { and before the }
 
 Occasionally if something has been incorrectly committed, or you want
 to force reconfiguration, you may need commands like:
