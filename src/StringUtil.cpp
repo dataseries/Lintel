@@ -83,26 +83,26 @@ join(const string &joinstr, const vector<string> &bits)
     return ret;
 }
 
+// TODO: try a hextable with 255 2 character entries, and see if using
+// .append(pair, 2) runs faster than two .push_back's another option
+// is to build an 8-16 character buffer and append the whole thing in
+// one go.
 
 static char hextable[] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 
-string
-hexstring(const void *_data, unsigned datasize)
-{
+string hexstring(const void *_data, unsigned datasize) {
     const unsigned char *data = reinterpret_cast<const unsigned char *>(_data);
     string ret;
-    ret.resize(datasize*2);
+    ret.reserve(datasize*2);
     for(unsigned int i=0;i<datasize;++i) {
         unsigned int c = (unsigned char)(data[i]);
-        ret[i*2] = hextable[(c >> 4) & 0xF];
-        ret[i*2+1] = hextable[c & 0xF];
+        ret.push_back(hextable[(c >> 4) & 0xF]);
+        ret.push_back(hextable[c & 0xF]);
     }
     return ret;
 }
 
-string
-maybehexstring(const string &a)
-{
+string maybehexstring(const string &a) {
     for(unsigned int i=0;i<a.size();++i) {
 	if (!isprint(a[i])) {
 	    return hexstring(a);
