@@ -83,6 +83,49 @@ join(const string &joinstr, const vector<string> &bits)
     return ret;
 }
 
+static unsigned char escapetable[9][2] = { { '\0', '0'  },
+					   { '\'', '\'' },
+					   { '\"', '\"' },
+					   { '\b', 'b'  },
+					   { '\n', 'n'  },
+					   { '\r', 'r'  },
+					   { '\t', 't'  },
+					   {  26 , 'Z'  },
+					   { '\\', '\\' } };
+
+string 
+escapestring(const void * _data, unsigned datasize) {
+    const unsigned char *data = reinterpret_cast<const unsigned char *>(_data);
+    int to_escape = 0;
+    for(unsigned int i=0; i<datasize; ++i) {
+	for(unsigned int c=0; c<9; ++c) {
+	    if (data[i] == escapetable[c][0]) {
+		to_escape++;
+		break;
+	    }
+	}
+    }
+
+    string ret;
+    ret.resize(datasize+to_escape);
+    for(unsigned int i=0,  j=0; i<datasize; ++i) {
+	unsigned int c;
+	for(c=0; c<9; ++c) {
+	    if (data[i] == escapetable[c][0]) {
+		ret[j] = '\\';
+		++j;
+		break;
+	    }
+	}
+	if(c==9) {
+	    ret[j] = data[i];
+	} else {
+	    ret[j] = escapetable[c][1];
+	}
+	++j;
+    }
+    return ret;
+}
 
 static char hextable[] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 

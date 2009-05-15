@@ -74,6 +74,14 @@ void test_wstring2string() {
 }
 #endif
 
+void test_escapestring() {
+    string pre("XY\"\'\t\b\n\r\\%_0bnrtZ");
+    pre[0] = 26;
+    pre[1] = 0;
+    string post("\\Z\\0\\\"\\\'\\t\\b\\n\\r\\\\%_0bnrtZ");
+    INVARIANT(escapestring(pre) == post, "\n" + post + " isn't \n" + escapestring(pre));
+}
+
 // TODO: test the remainder of things in StringUtil.hpp
 
 int main(int argc, char *argv[]) {
@@ -85,5 +93,6 @@ int main(int argc, char *argv[]) {
     test_string2wstring();
     test_wstring2string();
 #endif
+    test_escapestring();
     return 0;
 }

@@ -38,6 +38,14 @@ split(const std::string &instr, const std::string &splitstr) {
 /** join parts, each entry separated by joinstr */
 std::string join(const std::string &joinstr, const std::vector<std::string> &parts);
 
+/** escape data for size bytes */
+std::string escapestring(const void * data, unsigned datasize);
+
+/** escape instr */
+inline std::string escapestring(const std::string &instr) {
+    return escapestring(static_cast<const void *>(instr.data()), instr.size());
+}
+
 /** convert data for size bytes into a hex string */
 std::string hexstring(const void *data, unsigned datasize);
 
