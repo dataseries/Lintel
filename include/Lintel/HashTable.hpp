@@ -516,11 +516,14 @@ public:
 	return sizeof(hte) * chains.capacity() + sizeof(int) * entry_points.capacity();
     }
 
-    // this is useful if you want to build up a big table of data, but then
-    // want to store it on disk sorted, of course once you sort the vector,
-    // you've just destroyed the hash table, but the only other choice
-    // is to hash pointers to the data, which loses more memory space.
-    // The vector needs to be dense for this to be safe.
+    // this is useful if you want to build up a big table of data, but
+    // then want to store it on disk sorted, of course once you sort
+    // the vector, you've just destroyed the hash table, but the only
+    // other choice is to hash pointers to the data, which loses more
+    // memory space.  The vector needs to be dense for this to be
+    // safe.  In other words, one must have either (a) only added
+    // items to the hash, or (b) re-added as many items as were
+    // removed.
 
     // TODO: add a "densify" function that will go through and remove things
     // from the end of the hash table and put them in free entries until
