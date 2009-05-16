@@ -83,6 +83,13 @@ join(const string &joinstr, const vector<string> &bits)
     return ret;
 }
 
+// TODO-joe, rename to mysql_escape, document where the escape table
+// came from.  Potentially have todo for 256 char lookup.
+
+// TODO: do an escape function such as 
+// http://search.cpan.org/~you/Encode-Escape-0.14/lib/Encode/Escape.pm
+// with 256 char lookup for speed.
+
 static unsigned char escapetable[9][2] = { { '\0', '0'  },
 					   { '\'', '\'' },
 					   { '\"', '\"' },

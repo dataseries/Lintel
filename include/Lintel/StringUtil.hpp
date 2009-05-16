@@ -38,12 +38,16 @@ split(const std::string &instr, const std::string &splitstr) {
 /** join parts, each entry separated by joinstr */
 std::string join(const std::string &joinstr, const std::vector<std::string> &parts);
 
+// TODO-joe: document what is escaped; for example, it doesn't escape
+// spaces; one possibility would be to make it equivalent to perl
+// quotemeta.
+
 /** escape data for size bytes */
 std::string escapestring(const void * data, unsigned datasize);
 
 /** escape instr */
 inline std::string escapestring(const std::string &instr) {
-    return escapestring(static_cast<const void *>(instr.data()), instr.size());
+    return escapestring(instr.data(), instr.size());
 }
 
 /** convert data for size bytes into a hex string */
@@ -51,7 +55,7 @@ std::string hexstring(const void *data, unsigned datasize);
 
 /** convert instr into a hex string */
 inline std::string hexstring(const std::string &instr) {
-    return hexstring(static_cast<const void *>(instr.data()), instr.size());
+    return hexstring(instr.data(), instr.size());
 }
 
 /** convert instr into a hex string if it contains non-printing characters */
