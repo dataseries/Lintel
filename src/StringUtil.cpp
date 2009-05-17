@@ -83,53 +83,58 @@ join(const string &joinstr, const vector<string> &bits)
     return ret;
 }
 
-// TODO-joe, rename to mysql_escape, document where the escape table
-// came from.  Potentially have todo for 256 char lookup.
-
-// TODO: do an escape function such as 
+// TODO-future: do an escape function such as 
 // http://search.cpan.org/~you/Encode-Escape-0.14/lib/Encode/Escape.pm
 // with 256 char lookup for speed.
 
-static unsigned char escapetable[9][2] = { { '\0', '0'  },
-					   { '\'', '\'' },
-					   { '\"', '\"' },
-					   { '\b', 'b'  },
-					   { '\n', 'n'  },
-					   { '\r', 'r'  },
-					   { '\t', 't'  },
-					   {  26 , 'Z'  },
-					   { '\\', '\\' } };
+static unsigned char mysql_escape_table[256] = 
+    {//   0     1     2     3     4     5     6     7     8     9    
+        '0',    0,    0,    0,    0,    0,    0,    0,  'b',  't', // 0
+        'n',    0,    0,  'r',    0,    0,    0,    0,    0,    0, // 1
+          0,    0,    0,    0,    0,    0,  'Z',    0,    0,    0, // 2
+          0,    0,    0,    0, '\"',    0,    0,    0,    0, '\'', // 3
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 4
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 5
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 6
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 7
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 8
+          0,    0, '\\',    0,    0,    0,    0,    0,    0,    0, // 9
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 10
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 11
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 12
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 13
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 14
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 15
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 16
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 17
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 18
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 19
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 20
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 21
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 22
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 23
+          0,    0,    0,    0,    0,    0,    0,    0,    0,    0, // 24
+          0,    0,    0,    0,    0,    0 } ;                      // 25
 
 string 
-escapestring(const void * _data, unsigned datasize) {
+mysql_escape(const void * _data, unsigned datasize) {
     const unsigned char *data = reinterpret_cast<const unsigned char *>(_data);
     int to_escape = 0;
     for(unsigned int i=0; i<datasize; ++i) {
-	for(unsigned int c=0; c<9; ++c) {
-	    if (data[i] == escapetable[c][0]) {
-		to_escape++;
-		break;
-	    }
+	if (mysql_escape_table[data[i]]!=0) {
+	    to_escape++;
 	}
     }
 
     string ret;
-    ret.resize(datasize+to_escape);
-    for(unsigned int i=0,  j=0; i<datasize; ++i) {
-	unsigned int c;
-	for(c=0; c<9; ++c) {
-	    if (data[i] == escapetable[c][0]) {
-		ret[j] = '\\';
-		++j;
-		break;
-	    }
-	}
-	if(c==9) {
-	    ret[j] = data[i];
+    ret.reserve(datasize+to_escape);
+    for(unsigned int i=0; i<datasize; ++i) {
+	if (mysql_escape_table[data[i]]!=0) {
+	    ret.push_back('\\');
+	    ret.push_back(mysql_escape_table[data[i]]);
 	} else {
-	    ret[j] = escapetable[c][1];
+	    ret.push_back(data[i]);
 	}
-	++j;
     }
     return ret;
 }

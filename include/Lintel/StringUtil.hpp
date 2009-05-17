@@ -42,12 +42,18 @@ std::string join(const std::string &joinstr, const std::vector<std::string> &par
 // spaces; one possibility would be to make it equivalent to perl
 // quotemeta.
 
-/** escape data for size bytes */
-std::string escapestring(const void * data, unsigned datasize);
+/** escapes data for passing into MySQL; doesn't escape for string
+    comparison functions (e.g. the LIKE operator).  Produces \0 \' \"
+    \b \n \r \t \Z (ASCII 26) and \\ 
 
-/** escape instr */
-inline std::string escapestring(const std::string &instr) {
-    return escapestring(instr.data(), instr.size());
+    See http://dev.mysql.com/doc/refman/5.0/en/string-syntax.html for
+    further details on MySQL's string escaping requirements.
+*/
+
+std::string mysql_escape(const void * data, unsigned datasize);
+
+inline std::string mysql_escape(const std::string &instr) {
+    return mysql_escape(instr.data(), instr.size());
 }
 
 /** convert data for size bytes into a hex string */
