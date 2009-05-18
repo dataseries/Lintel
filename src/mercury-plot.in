@@ -20,6 +20,8 @@ use Pod::Usage;
 use Time::HiRes 'time';
 @PERL5_MODULES_INC_UNSHIFT@;
 use Plot::Mercury;
+use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
+use IO::Pty;
 
 eval "use Statistics::OLS;";
 my $missing_statistics_ols = $@;
@@ -138,6 +140,7 @@ while (defined ($_ = $term->readline($prompt))) {
 ### QUESTION: that have methods, so that extensibility is easier?
 
 sub docmd {
+    readinput($gnuplot_fifo, 0);
     $_ = shift;
     if ($define_mode) {
 	if(/^enddefine$/o) {
@@ -256,6 +259,7 @@ sub docmd {
 	$command_error = 1;
     }
     shift @history if @history > 100;
+    readinput($gnuplot_fifo, 1);
 }
 
 sub savehistory {
@@ -269,6 +273,7 @@ sub savehistory {
 }
 
 sub history {
+    readinput($gnuplot_fifo, 0);
     $_ = shift;
 
     if (/^save$/o) {
@@ -321,6 +326,7 @@ sub history {
 	chomp;
 	print "Unknown command 'history $_'; try help history\n";
     }
+    readinput($gnuplot_fifo, 1);
 }
 		
 sub saveexit {
@@ -753,25 +759,54 @@ sub barplot {
 sub start_gnuplot {
     return if defined $gnuplot_fifo;
     print "Starting Gnuplot...\n";
-    my $fifoname = "/tmp/.plot.fifo.$$";
-    system("mkfifo $fifoname")
-	unless -e $fifoname;
-    die "Couldn't make fifo $fifoname\n"
-	  unless -e $fifoname;
+    my $pty = new IO::Pty() or die "Unable to get a pty";
+    my $slave = $pty->slave;
     my $pid = fork;
     if ($pid == 0) {
-	  eval {exec "@GNUPLOT_PATH@ < $fifoname";};
+	  $pty->make_slave_controlling_terminal or die;
+	  close $pty;
+	  $slave->set_raw;
+	  close STDIN;
+	  open(STDIN, "<&".$slave->fileno) or die;
+	  close STDOUT;
+	  open(STDOUT, ">&".$slave->fileno) or die;
+	  close STDERR;
+	  open(STDERR, ">&".$slave->fileno) or die;
+	  eval {exec "@GNUPLOT_PATH@";};
 	  exit(1);
     }
+    $pty->close_slave();
     select(undef,undef,undef,0.25); # wait a little for it to start.
     waitpid($pid,&WNOHANG);
     unless (kill (0,$pid) == 1) {
 	  die "Unable to start gnuplot!\n";
     }
     print "done.\n";
-    $gnuplot_fifo = new FileHandle ">$fifoname"
-	  or die "Unable to open $fifoname: $!";
+    my $flags = fcntl( $pty, F_GETFL, 0) or die;
+    fcntl( $pty, F_SETFL, $flags | O_NONBLOCK) or die;
+    $gnuplot_fifo = $pty;
     $gnuplot_fifo->autoflush(1);
+}
+
+sub readinput {
+    my ($pty, $timeout) = @_;
+    my $lastline = '';
+    my $count = 0;
+    return if (!$pty);
+    $|=1;
+retry:
+    while (1) {
+	while (my $line = <$pty>) {
+	    $lastline=$line;
+	    print $line;
+	}
+	if ($lastline =~ /gnuplot> $/) {
+	    print "\n";
+	    last;
+	}
+	last if ($count++ >= $timeout*100);
+	select(undef, undef, undef, 0.01);
+    }
 }
 
 sub gnuplot {
