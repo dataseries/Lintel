@@ -117,12 +117,12 @@ static unsigned char mysql_escape_table[256] =
           0,    0,    0,    0,    0,    0 } ;                      // 25
 
 string 
-mysql_escape(const void * _data, unsigned datasize) {
+mysqlEscape(const void * _data, unsigned datasize) {
     const unsigned char *data = reinterpret_cast<const unsigned char *>(_data);
     int to_escape = 0;
     for(unsigned int i=0; i<datasize; ++i) {
 	if (mysql_escape_table[data[i]]!=0) {
-	    to_escape++;
+	    ++to_escape;
 	}
     }
 

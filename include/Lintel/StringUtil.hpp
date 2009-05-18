@@ -50,10 +50,10 @@ std::string join(const std::string &joinstr, const std::vector<std::string> &par
     further details on MySQL's string escaping requirements.
 */
 
-std::string mysql_escape(const void * data, unsigned datasize);
+std::string mysqlEscape(const void * data, unsigned datasize);
 
-inline std::string mysql_escape(const std::string &instr) {
-    return mysql_escape(instr.data(), instr.size());
+inline std::string mysqlEscape(const std::string &instr) {
+    return mysqlEscape(instr.data(), instr.size());
 }
 
 /** convert data for size bytes into a hex string */

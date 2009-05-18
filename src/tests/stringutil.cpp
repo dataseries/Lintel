@@ -74,12 +74,12 @@ void test_wstring2string() {
 }
 #endif
 
-void test_mysql_escape() {
+void test_mysqlEscape() {
     string pre("XY\"\'\t\b\n\r\\%_0bnrtZ");
     pre[0] = 26;
     pre[1] = 0;
     string post("\\Z\\0\\\"\\\'\\t\\b\\n\\r\\\\%_0bnrtZ");
-    INVARIANT(mysql_escape(pre) == post, "\n" + post + " isn't \n" + mysql_escape(pre));
+    INVARIANT(mysqlEscape(pre) == post, "\n" + post + " isn't \n" + mysqlEscape(pre));
 }
 
 // TODO: test the remainder of things in StringUtil.hpp
@@ -93,6 +93,6 @@ int main(int argc, char *argv[]) {
     test_string2wstring();
     test_wstring2string();
 #endif
-    test_mysql_escape();
+    test_mysqlEscape();
     return 0;
 }
