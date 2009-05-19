@@ -818,7 +818,7 @@ sub readinput {
 	    print "\n";
 	    last;
 	}
-	last if defined $timeout ++$count >= $timeout*100;
+	last if (defined($timeout) && $count++ >= $timeout*100);
 	select(undef, undef, undef, 0.01);
     }
 }
