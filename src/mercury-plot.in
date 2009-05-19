@@ -101,6 +101,7 @@ if (-f $history_file) {
 
 sub saveexit;
 sub help;
+sub pause;
 sub sqlselect;
 sub htmlselect;
 sub sqlplot;
@@ -208,6 +209,9 @@ sub docmd {
 	psplot($1);
     } elsif (/^help$/o) {
 	help;
+    } elsif (/^pause\s+(.+)$/o) {
+	push(@history,$_);
+	pause($1);
     } elsif (/^help\s+(.+)$/o) {
 	help($1);
     } elsif (/^history skipto (\w+)\s*$/o) {
@@ -349,6 +353,16 @@ sub helphistory {
     print "source <filename> \# same as history run <filename>\n";
     print "history skipto <markername> \# useful for scripts, skips ahead to a marker.\n";
     print "history marker <markername> \# useful associated with script.\n";
+}
+
+sub pause {
+    my ($arg) = @_;
+    if (@_ > 0) {
+	print $gnuplot_fifo "pause $arg\n";
+    } else {
+	print $gnuplot_fifo "pause\n";
+    }
+    readinput($gnuplot_fifo, undef);
 }
 
 sub help {
@@ -804,7 +818,7 @@ retry:
 	    print "\n";
 	    last;
 	}
-	last if ($count++ >= $timeout*100);
+	last if (defined($timeout) && $count++ >= $timeout*100);
 	select(undef, undef, undef, 0.01);
     }
 }
