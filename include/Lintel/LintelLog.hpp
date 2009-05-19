@@ -106,6 +106,10 @@ public:
 	return instance->debug_levels[category.id] >= level;
     }
 
+    static uint8_t getDebugLevel(const Category &category) {
+	return instance->debug_levels[category.id];
+    }
+
     /// this version is much slower than statically constructing a
     /// LintelLog::Category, but is somewhat simpler to use
     static bool wouldDebug(const std::string &category, unsigned level = 1);

@@ -112,19 +112,27 @@ protected:
         if (ret == 0) {
             return true;
         }
-        INVARIANT(ret == EBUSY,
-		  boost::format("Invalid error(%d,%s) on trylock") 
+        INVARIANT(ret == EBUSY, boost::format("Invalid error(%d,%s) on trylock") 
 		  % ret % strerror(ret));
         return false;
     }
 
+    bool timedLock(const struct timespec &abs_timeout) {
+	int ret = pthread_mutex_timedlock(&m, &abs_timeout);
+	if (ret == 0) {
+	    return true;
+	}
+	INVARIANT(ret == ETIMEDOUT,
+		  boost::format("Invalid error(%d, %s) on timedlock") % ret % strerror(ret));
+	return false;
+    }
+	
     void lock() {
 	if (trylock()) {
 	    return;
 	}
 	int ret = pthread_mutex_lock(&m);
-	INVARIANT(ret==0, boost::format("pthread_mutex_lock failed: %s") 
-		  % strerror(ret));
+	INVARIANT(ret==0, boost::format("pthread_mutex_lock failed: %s") % strerror(ret));
 	++ncontention;
     }
 
@@ -150,8 +158,15 @@ public:
     { }
     ~PThreadMutex() { }
 
+    /// returns true on successful lock
     bool trylock() {
 	return PThreadScopedOnlyMutex::trylock();
+    }
+
+    /// attempts to lock mutex before abs_timeout (see clock_gettime);
+    /// returns true if the lock was acquired.
+    bool timedLock(const struct timespec &abs_timeout) {
+	return PThreadScopedOnlyMutex::timedLock(abs_timeout);
     }
 
     void lock() {

@@ -19,6 +19,7 @@
 #include <Lintel/AssertBoost.hpp>
 
 using namespace std;
+using boost::format;
 
 static vector<assert_hook_fn> pre_msg_fns, post_msg_fns;
 string global_assertboost_no_details("No additional details provided");
@@ -39,7 +40,7 @@ const char * AssertBoostException::what() throw () {
 }
 
 const std::string AssertBoostException::summary() {
-    return (boost::format("AssertBoostException(%s,%s,%d,%s)")
+    return (format("AssertBoostException(%s,%s,%d,%s)")
 	    % expression % filename % line % msg).str();
 }
 
@@ -80,7 +81,7 @@ static void AssertBoostFailOutput(const char *expression, const char *file,
     fflush(stderr);  cerr.flush(); // Belts ...
     fflush(stdout);  cout.flush(); // ... and braces
 	
-    cerr << boost::format("\n**** Assertion failure in file %s, line %d\n"
+    cerr << format("\n**** Assertion failure in file %s, line %d\n"
 			  "**** Failed expression: %s\n")
 	% file % line % expression;
 	
@@ -143,7 +144,8 @@ void AssertBoostFail(const char *expression, const char *file, int line,
     fflush(stdout);  cout.flush(); // ... and braces
 
     if (assert_boost_fail_recurse) {
-	cerr << "**** Recursing on assertions, you have a bad hook" << endl;
+	cerr << format("**** Recursing on assertions, you have a bad hook\n"
+		       "recursed on %s:%d") % file % line << endl;
     } else {
 	for(vector<assert_hook_fn>::iterator i = pre_msg_fns.begin();
 	    i != pre_msg_fns.end(); ++i) {
@@ -166,7 +168,7 @@ void AssertBoostFail(const char *expression, const char *file, int line,
 }
 
 void AssertBoostFail(const char *expression, const char *file, int line,
-		     const boost::format &format) {
+		     const format &format) {
     string msg;
     try {
 	msg = format.str();
