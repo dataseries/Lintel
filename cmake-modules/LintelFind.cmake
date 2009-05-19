@@ -75,7 +75,7 @@
 MACRO(LINTEL_FIND_HEADER variable header)
     IF(${variable}_INCLUDE_DIR)
         # Already in cache, be silent
-        SET(${variable}_FIND_QUIETLY YES)
+        SET(${variable}_FIND_QUIETLY ON)
     ENDIF(${variable}_INCLUDE_DIR)
     
     # This is the recommended cmake idiom to use a locally built version
@@ -222,7 +222,7 @@ MACRO(LINTEL_FIND_PROGRAM variable program)
 	    SET(${variable}_PATH ${variable}-NOTFOUND)
 	ELSE(NOT EXISTS "${${variable}_PATH}")
 	    # Already in cache, be silent
-	    SET(${variable}_FIND_QUIETLY YES)
+	    SET(${variable}_FIND_QUIETLY ON)
 	ENDIF(NOT EXISTS "${${variable}_PATH}")
     ENDIF(${variable}_PATH)
 
@@ -325,15 +325,15 @@ ENDMACRO(LINTEL_BOOST_EXTRA variable header libname)
 # into ${variable}_ENABLED for use in the CMakeLists.txt to determine
 # if we should build using this module.
 
-MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
+MACRO(LINTEL_FIND_PERL_MODULE variable module_name)
     IF("${PERL_FOUND}" STREQUAL "")
         INCLUDE(FindPerl)
     ENDIF("${PERL_FOUND}" STREQUAL "")
 
-    IF(${${variable}_FOUND})
+    IF(${variable}_FOUND)
         # ... nothing to do, already found it
-    ELSE(${${variable}_FOUND})
-         SET(LFPM_found NO)
+    ELSE(${variable}_FOUND)
+         SET(LFPM_found OFF)
          IF(PERL_FOUND)
 	     # Tried OUTPUT_QUIET and ERROR_QUIET but with cmake 2.4-patch 5 
 	     # this didn't seem to make it quiet.
@@ -343,7 +343,7 @@ MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
 		          OUTPUT_VARIABLE LFPM_output
 			  ERROR_VARIABLE LFPM_error_output)
              IF("${LFPM_return_value}" STREQUAL 0)
-                 SET(LFPM_found YES)
+                 SET(LFPM_found ON)
              ENDIF("${LFPM_return_value}" STREQUAL 0)
          ENDIF(PERL_FOUND)
          SET(${variable}_FOUND ${LFPM_found} CACHE BOOL "Found ${module_name} perl module" FORCE)
@@ -356,29 +356,27 @@ MACRO(LINTEL_FIND_PERL_MODULE module_name variable)
                  MESSAGE(FATAL_ERROR "ERROR: Could NOT find required perl module ${module_name}")
 	     ENDIF(${variable}_FIND_REQUIRED)
 	 ENDIF(${variable}_FOUND)
-    ENDIF(${${variable}_FOUND})
+    ENDIF(${variable}_FOUND)
 ENDMACRO(LINTEL_FIND_PERL_MODULE)
 
-MACRO(LINTEL_WITH_PERL_MODULE module_name variable)
+MACRO(LINTEL_WITH_PERL_MODULE variable module_name)
     SET(WITH_${variable} "ON" CACHE BOOL "Enable use of the ${module_name} perl module")
     IF(WITH_${variable})
-        LINTEL_FIND_PERL_MODULE(${module_name} ${variable})
-        IF(${${variable}_FOUND})
-            SET(${variable}_ENABLED YES)
-        ELSE(${${variable}_FOUND})
-            SET(${variable}_ENABLED NO)
-        ENDIF(${${variable}_FOUND})
+        LINTEL_FIND_PERL_MODULE(${variable} ${module_name})
+        IF(${variable}_FOUND)
+            SET(${variable}_ENABLED ON)
+        ELSE(${variable}_FOUND)
+            SET(${variable}_ENABLED OFF)
+        ENDIF(${variable}_FOUND)
     ELSE(WITH_${variable})
-        SET(${variable}_ENABLED NO)
+        SET(${variable}_ENABLED OFF)
     ENDIF(WITH_${variable})
-
-#    MESSAGE("HIYA ${variable} ${${variable}_ENABLED}")
 ENDMACRO(LINTEL_WITH_PERL_MODULE)
 
-MACRO(LINTEL_REQUIRED_PERL_MODULE module_name variable)
+MACRO(LINTEL_REQUIRED_PERL_MODULE variable module_name)
     SET(${variable}_FIND_REQUIRED ON)
-    LINTEL_FIND_PERL_MODULE(${module_name} ${variable})
-ENDMACRO(LINTEL_REQUIRED_PERL_MODULE module_name variable)
+    LINTEL_FIND_PERL_MODULE(${variable} ${module_name})
+ENDMACRO(LINTEL_REQUIRED_PERL_MODULE)
 
 
   

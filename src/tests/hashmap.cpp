@@ -88,9 +88,15 @@ template<typename INT> uint32_t test_int_type(const string &type) {
 	    ret ^= k ^ v;
 	    SINVARIANT(hm[k] == v);
 	    hm.remove(k);
-	    hm.remove(k + max_ents, false);
+	    if (!hm.exists(k + max_ents)) {
+		// had a bug where removal of non-existent things gave
+		// incorrect size count.  However, removal of
+		// something that actually exists (low probability,
+		// but possible) gives an error on hm vs stdmap size.
+		hm.remove(k + max_ents, false);
+	    }
 	    stdmap.erase(i);
-	    SINVARIANT(hm.size() == stdmap.size());
+	    INVARIANT(hm.size() == stdmap.size(), format("%d != %d") % hm.size() % stdmap.size());
 	}
 	SINVARIANT(hm.size() == 0);
     }
@@ -100,6 +106,7 @@ template<typename INT> uint32_t test_int_type(const string &type) {
 }
 
 void test_types() {
+    cout << format("Using random seed %d\n") % rng.seed_used;
     // these runs test HashMap against std::map with random key-value pairs.
     test_int_type<int>("int");
     test_int_type<unsigned>("unsigned");

@@ -21,6 +21,8 @@ use Time::HiRes 'time';
 @PERL5_MODULES_INC_UNSHIFT@;
 use Plot::Mercury;
 use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
+# TODO: make it possible to run mercury without IO::Pty -- that module
+# isn't part of a standard RHEL4 install.
 use IO::Pty;
 
 eval "use Statistics::OLS;";
@@ -818,7 +820,7 @@ sub readinput {
 	    print "\n";
 	    last;
 	}
-	last if (defined($timeout) && $count++ >= $timeout*100);
+	last if defined $timeout && ++$count >= $timeout*100;
 	select(undef, undef, undef, 0.01);
     }
 }
