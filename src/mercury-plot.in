@@ -782,8 +782,8 @@ sub start_gnuplot {
 	  die "Unable to start gnuplot!\n";
     }
     print "done.\n";
-    my $flags = fcntl( $pty, F_GETFL, 0) or die;
-    fcntl( $pty, F_SETFL, $flags | O_NONBLOCK) or die;
+    my $flags = fcntl($pty, F_GETFL, 0) or die;
+    fcntl($pty, F_SETFL, $flags | O_NONBLOCK) or die;
     $gnuplot_fifo = $pty;
     $gnuplot_fifo->autoflush(1);
 }
@@ -794,7 +794,7 @@ sub readinput {
     my $count = 0;
     return if (!$pty);
     $|=1;
-retry:
+
     while (1) {
 	while (my $line = <$pty>) {
 	    $lastline=$line;
@@ -804,7 +804,7 @@ retry:
 	    print "\n";
 	    last;
 	}
-	last if ($count++ >= $timeout*100);
+	last if ++$count >= $timeout*100;
 	select(undef, undef, undef, 0.01);
     }
 }
