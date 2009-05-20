@@ -23,7 +23,15 @@ use Plot::Mercury;
 use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
 # TODO: make it possible to run mercury without IO::Pty -- that module
 # isn't part of a standard RHEL4 install.
+
+# TODO: now that we can use a pty to talk to gnuplot, we need to
+# scatter calls to readinput throughout the code, for example without
+# the one in pngplot before the "Wait for stability on gnuplot writing
+# the ps file" comment, we don't get a postscript file generated.
+
 use IO::Pty;
+my $using_pty = 1;
+
 
 eval "use Statistics::OLS;";
 my $missing_statistics_ols = $@;
@@ -808,8 +816,7 @@ sub readinput {
     my ($pty, $timeout) = @_;
     my $lastline = '';
     my $count = 0;
-    return if (!$pty);
-    $|=1;
+    return unless defined $pty;
 
     while (1) {
 	while (my $line = <$pty>) {
@@ -877,17 +884,20 @@ sub pngplot {
 	print "psplot to psplot-$$..ps failed; can't pngplot.\n";
 	return 0;
     }
+    readinput($gnuplot_fifo, undef);
     # Wait for stability on gnuplot writing the ps file...
-    while(! -f "psplot-$$..ps") {
-	print "waiting(nops psplot-$$..ps)... ";
-	sleep(1);
-    }
-    my $cur_size = -s "psplot-$$..ps";
-    while(1) {
-	print "waiting(size $cur_size)... ";
-	sleep(5);
-	last if $cur_size > 0 && $cur_size == -s "psplot-$$..ps";
-	$cur_size = -s "psplot-$$..ps";
+    unless ($using_pty) {
+	while(! -f "psplot-$$..ps") {
+	    print "waiting(nops psplot-$$..ps)... ";
+	    sleep(1);
+	}
+	my $cur_size = -s "psplot-$$..ps";
+	while(1) {
+	    print "waiting(size $cur_size)... ";
+	    sleep(5);
+	    last if $cur_size > 0 && $cur_size == -s "psplot-$$..ps";
+	    $cur_size = -s "psplot-$$..ps";
+	}
     }
     print "pstopnm... ";
     my $dblw = $width * 2;
