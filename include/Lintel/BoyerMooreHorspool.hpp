@@ -19,11 +19,12 @@ class BoyerMooreHorspool {
 public:
     /** Constructs a new @c BoyerMooreHorspool that is capable of searching for the specified
         @param needle within a given string. The needle is fixed for the object, whereas the
-        haystack is provided to the matches method. */
+        haystack is provided to the matches method. @param needleLength is the length of the
+        needle. */
     BoyerMooreHorspool(const char *needle, int32_t needleLength);
     ~BoyerMooreHorspool();
 
-    /** Returns true if and only if needle is a substring of @param haystack. */
+    /** Returns true if and only if needle is a substring of @param haystack\. */
     bool matches(const char *haystack, int32_t haystackLength);
 
 private:
