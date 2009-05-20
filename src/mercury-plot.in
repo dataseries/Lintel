@@ -29,6 +29,8 @@ use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
 # the one in pngplot before the "Wait for stability on gnuplot writing
 # the ps file" comment, we don't get a postscript file generated.
 
+# TODO: switch from use of open(GLOBAL, "...") to new FileHandle
+# this caused nested includes to not work.
 use IO::Pty;
 my $using_pty = 1;
 
@@ -98,15 +100,15 @@ unless (-t STDIN) {
 
 my @history;
 if (-f $history_file) {
-    open(HIST,$history_file) 
+    my $fh = new FileHandle $history_file
 	|| die "Unable to open $history_file for read: $!\n";
-    @history = <HIST>;
+    @history = <$fh>;
     foreach $_ (@history) {
 	chomp;
 	$term->addhistory($_);
     }
     print "Loaded history from ${history_file}.\n";
-    close(HIST);
+    close($fh);
 }
 
 sub saveexit;
@@ -277,9 +279,10 @@ sub docmd {
 }
 
 sub savehistory {
-    if (open(HIST,">$history_file")) {
-	print HIST join("\n",@history),"\n";
-	close(HIST);
+    my $fh = new FileHandle ">$history_file";
+    if (defined $fh) {
+	print $fh join("\n",@history),"\n";
+	close($fh);
 	print "Saved history to $history_file\n";
     } else {
 	print "Warning, unable to save history to $history_file: $!\n";
@@ -295,22 +298,25 @@ sub history {
     } elsif (/^clear$/o) {
 	@history = ();
     } elsif (/^load\s+(.+)$/o) {
-	if (open(HIST,$1)) {
-	    print "Loading history from $1\n";
-	    while(<HIST>) {
+	my $fn = $1;
+	my $fh = new FileHandle $fn;
+	if (defined $fh) {
+	    print "Loading history from $fn\n";
+	    while(<$fh>) {
 		chomp;
 		$term->addhistory($_);
 	    }
 	} else {
-	    print "Unable to open $1: $!\n";
+	    print "Unable to open $fn: $!\n";
 	}
     } elsif (/^run\s+(.+)$/o) {
 	my $filename = $1;
-	if (open(HIST,$filename)) {
+	my $fh = new FileHandle $filename;
+	if (defined $fh) {
 	    print "Running history from $filename\n";
 	    my @save_history = @history;
 	    my $linenum = 0;
-	    while(<HIST>) {
+	    while(<$fh>) {
 		++$linenum;
 		next if /^#/o;
 		next if /^\s*$/o;
@@ -333,7 +339,7 @@ sub history {
 	} else {
 	    print "Unable to open $1: $!\n";
 	}
-	close(HIST);
+	close($fh);
     } elsif (/^marker\s+(\w+)$/o) {
 	# marker; from probably commented out skipto.
     } else {
