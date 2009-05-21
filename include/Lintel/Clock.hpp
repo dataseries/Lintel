@@ -368,7 +368,18 @@ public:
     // nbadgettod counts the number of times we got the time of day, but
     // switched CPUs or took forever to do it, thereby invalidating the
     // effort to calibrate the cycle counter to the time of day.
+    // TODO: deprecate nbadgettod, bad_get_tod_cycle_gap.count() == nbadgettod
     int nrecalibrate, nbadgettod;
+    
+    /// How many cycles did it take when we got the tod, but found
+    /// that either the cycle counter had gone backwards, or that it
+    /// took excessively long to get the current tod.  This variable
+    /// will be initialized to a Stats object on the first use, but is
+    /// a pointer so that it could be replaced by a StatsQuantile if
+    /// the caller is willing to tolerate occasionally much longer
+    /// time spent updating the stats in exchange for the full
+    /// distribution of the delay times.
+    Stats *bad_get_tod_cycle_gap;
     static void timingTest();
     
 public:

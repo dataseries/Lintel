@@ -323,7 +323,7 @@ void Clock::calibrateClock(bool print_calibration_information,
 }
 
 Clock::Clock(bool allow_calibration)
-    : nrecalibrate(0), nbadgettod(0),
+    : nrecalibrate(0), nbadgettod(0), bad_get_tod_cycle_gap(NULL), 
       last_calibrate_tod(0), cycle_count_offset(0), recalibrate_interval(0),
       last_calibrate_tod_tfrac(0),
       last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0),
@@ -394,13 +394,10 @@ Clock::Tdbl Clock::todcc_recalibrate() {
 	      format("Whoa, tod_epoch() went backwards %.2f < %.2f")
 	      % cur_us % last_calibrate_tod);
     if ((end_cycle < start_cycle) || (end_cycle - start_cycle) > max_recalibrate_measure_time) {
-#if 0
-	fprintf(stderr,"Whoa, bad todcc_recalibrate getting %lld took %lld to %lld = %lld, or %.3g us\n",cur_us, start_cycle, end_cycle, end_cycle - start_cycle, est_todus);
-	if (end_cycle == start_cycle) {
-	    ntodzerotime++;
+	if (bad_get_tod_cycle_gap == NULL) {
+	    bad_get_tod_cycle_gap = new Stats;
 	}
-	badrecalibration_delta.add(last_recalibrate_cc - start_cycle - max_recalibrate_measure_time);
-#endif
+	bad_get_tod_cycle_gap->add(end_cycle - start_cycle);
 	++nbadgettod;
 	// next two lines guarantee failure next time assuming the cycle
 	// counter isn't reset and booting takes a little time
@@ -429,8 +426,49 @@ Clock::Tfrac Clock::todccTfrac_recalibrate() {
 	}
     }
 
-    // TODO: implement...
-    FATAL_ERROR("unimplemented");
+
+    INVARIANT(clock_rate > 0,
+	      "You do not appear to have setup a Clock object; how did you get here?");
+
+    // TODO: consider measuring how long a tod_epoch usually takes and
+    // then moving us forward until we cross a boundary, without that
+    // we get a weird wobble every recalibration interval --
+    // alternately could check to see if the time is still consistent
+    // with the last one, and if so, just adjust the offsets,
+    // e.g. estimate where in the cur_us we actually are.
+
+    // TODO: also consider setting for sooner re-calibration if we are
+    // above some low water mark for how long the gettod takes, for
+    // example, above the 10% rate from calibrateClock()
+
+    uint64_t start_cycle = cycleCounter();
+    Clock::Tfrac cur_time = todTfrac();
+    uint64_t end_cycle = cycleCounter();
+    INVARIANT(cur_time >= last_calibrate_tod_tfrac,
+	      format("Whoa, todTfrac() went backwards %d.%09d < %d.%09d")
+	      % TfracToSec(cur_time) % TfracToNanoSec(cur_time)
+	      % TfracToSec(last_calibrate_tod_tfrac) % TfracToNanoSec(last_calibrate_tod_tfrac));
+    if ((end_cycle <= start_cycle) || (end_cycle - start_cycle) >= max_recalibrate_measure_time) {
+	LintelLogDebug("lintel::Clock", format("Whoa, bad todcc_recalibrate getting %d took %d to %d = %d, or %.3g us\n")
+		       % cur_time % start_cycle % end_cycle % (end_cycle - start_cycle)
+		       % (static_cast<double>(end_cycle - start_cycle)/clock_rate));
+#if 0
+	badrecalibration_delta.add(last_recalibrate_cc - start_cycle - max_recalibrate_measure_time);
+#endif
+	++nbadgettod;
+	// next line guarantees recalibration next time assuming the
+	// cycle counter isn't reset and booting takes a little time
+	last_recalibrate_cc = 0; 
+    } else {
+	uint64_t mid_cycle = (start_cycle + end_cycle)/2;
+	last_calibrate_tod_tfrac = cur_time;
+
+	last_recalibrate_cc = last_cc = mid_cycle;
+	
+	++nrecalibrate;
+    }
+    
+    return cur_time;
 }
 
 void Clock::setRecalibrateInterval(Tdbl interval_us) {
@@ -474,7 +512,7 @@ void Clock::timingTest() {
     // regression stuff on this.
 
     Clock::Tdbl measurement_time = 1000000;
-    Clock::Tfrac measurement_time_tfrac = Clock::secNanoToTfrac(5,0);
+    Clock::Tfrac measurement_time_tfrac = Clock::secNanoToTfrac(1,0);
     Clock::calibrateClock(true,0.001);
     Clock myclock;
     myclock.setRecalibrateIntervalSeconds();
@@ -511,6 +549,23 @@ void Clock::timingTest() {
 	printf("todll()               %9d   %8.0f   %7.4g   %7.4g     %5.3g\n",
 	       nreps, end - start, ns_per_todll, ns_per_todll / (1000.0*inverse_clock_rate),
 	       ns_per_tod/ns_per_todll);
+    }
+
+    // Test Clock::todTfrac()
+    if (true) {
+	nreps = 0;
+	Clock::Tfrac start = myclock.todTfrac();
+	Clock::Tfrac end_target = start + measurement_time_tfrac;
+	do {
+	    nreps += 1;
+	} while (myclock.todTfrac() < end_target);
+	Clock::Tfrac end = myclock.todTfrac();
+	SINVARIANT(end > start && end - start >= measurement_time_tfrac);
+	double elapsed_ns = Clock::TfracToDouble(end - start) * 1.0e9;
+	double ns_per_todcc = elapsed_ns / static_cast<double>(nreps);
+	cout << format("todTfrac              %9d   %8.0f   %7.4g   %7.4g     %5.3g\n")
+	    % nreps % (elapsed_ns * 1e-3) % ns_per_todcc
+	    % (ns_per_todcc / (1000.0*inverse_clock_rate)) % (ns_per_tod/ns_per_todcc);
     }
 
     // Test Clock::todcc_direct()
