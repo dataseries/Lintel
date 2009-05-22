@@ -452,9 +452,10 @@ Clock::Tfrac Clock::todccTfrac_recalibrate() {
 	LintelLogDebug("lintel::Clock", format("Whoa, bad todcc_recalibrate getting %d took %d to %d = %d, or %.3g us\n")
 		       % cur_time % start_cycle % end_cycle % (end_cycle - start_cycle)
 		       % (static_cast<double>(end_cycle - start_cycle)/clock_rate));
-#if 0
-	badrecalibration_delta.add(last_recalibrate_cc - start_cycle - max_recalibrate_measure_time);
-#endif
+	if (bad_get_tod_cycle_gap == NULL) {
+	    bad_get_tod_cycle_gap = new Stats;
+	}
+	bad_get_tod_cycle_gap->add(end_cycle - start_cycle);
 	++nbadgettod;
 	// next line guarantees recalibration next time assuming the
 	// cycle counter isn't reset and booting takes a little time
