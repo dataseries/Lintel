@@ -267,9 +267,18 @@ void Clock::calibrateClock(bool print_calibration_information,
 		// a lot, so we must have either switched cores or
 		// been descheduled
 		++fail_count;
-		if (fail_count > 10) {
-		    errors.append("too many failures taking timing measurements\n");
+		if (fail_count > 128) {
+		    errors.append(str(format("%d failures taking timing measurements, only %d successful\n") % fail_count % measurements.size()));
 		    break;
+		}
+		if ((fail_count % 16) == 0) {
+		    // we're getting pre-empted or re-scheduled a lot.
+		    // de-schedule in the hopes that when we come back 
+		    struct timeval timeout;
+		    timeout.tv_sec = 0;
+		    // 128 / 16 * 11000 = 88,000us or ~0.1s
+		    timeout.tv_usec = (fail_count / 16) * 11000;
+		    select(0, NULL, NULL, NULL, &timeout);
 		}
 	    } else {
 		uint64_t cycles_start = (cycles_a + cycles_b) / 2;
@@ -311,7 +320,7 @@ void Clock::calibrateClock(bool print_calibration_information,
     }
 
     INVARIANT(clock_rate > 200, 
-	      format("Unable to calibrate clock rate to %.8g relative error.  Errors:\n") 
+	      format("Unable to calibrate clock rate to %.8g relative error.  Errors:%s\n") 
 	      % max_conf95_rel % errors);
     unbindFromProcessor();
     if (print_calibration_information) {
