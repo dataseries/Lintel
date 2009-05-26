@@ -275,7 +275,6 @@ sub docmd {
 	$command_error = 1;
     }
     shift @history if @history > 100;
-    readinput($gnuplot_fifo, 1);
 }
 
 sub savehistory {
@@ -346,7 +345,6 @@ sub history {
 	chomp;
 	print "Unknown command 'history $_'; try help history\n";
     }
-    readinput($gnuplot_fifo, 1);
 }
 		
 sub saveexit {
@@ -571,6 +569,7 @@ sub refresh_plot {
     } else {
 	print $gnuplot_fifo "plot ", join(", ",@foo), "\n";
     }
+    readinput($gnuplot_fifo, 10);
 }
 
 sub sqlplot {
@@ -841,6 +840,7 @@ sub readinput {
 sub gnuplot {
     &start_gnuplot;
     print $gnuplot_fifo "$_[0]\nreplot\n";
+    readinput($gnuplot_fifo, 10); 
 }
 
 sub psplot {
@@ -866,6 +866,7 @@ sub psplot {
     print $gnuplot_fifo "replot\n";
     print $gnuplot_fifo "set output\n";
     print $gnuplot_fifo "set terminal x11\n";
+    readinput($gnuplot_fifo, 10); 
     return 1;
 }
 
@@ -1052,6 +1053,7 @@ sub unplot {
     } else {
 	@plots = ();
 	print $gnuplot_fifo "reset\n";
+	readinput($gnuplot_fifo, 10); 
     }
     refresh_plot;
 }
