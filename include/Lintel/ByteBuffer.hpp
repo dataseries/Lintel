@@ -138,9 +138,20 @@ namespace lintel {
     public:
 	/// Construct a ByteBuffer.  If we allow copy on write, then
 	/// when we perform mutating operations, if this is not a
-	/// unique copy, then we copy the underlying buffer.  This is
-	/// off by default on the assumption that it could be slow and
-	/// is unlikely to be the desired behavior.
+	/// unique copy, then we copy the underlying buffer.  If it is
+	/// not, then if there copies, mutations are not allowed
+	/// (until all but one copy is destroyed). This is off by
+	/// default on the assumption that it could be slow and is
+	/// unlikely to be the desired behavior.  In no case does a
+	/// copy produce a bit-for-bit copy of the buffer
+	/// automatically, only a write after a copy does.  In no case
+	/// will a write to one ByteBuffer cause a change in another.
+	///
+	/// This argument is poorly named, but nobody can think of a
+	/// truly better name.  allow_mutable_copies was one
+	/// suggestion, but doesn't capture that even when false, you
+	/// can make copies, and then once all but one have been
+	/// destroyed, you can continue making mutations.
 	explicit ByteBuffer(bool allow_copy_on_write = false) 
 	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(allow_copy_on_write) { }
 
