@@ -8,6 +8,7 @@
 SET(INCLUDE_FILES
 	AssertBoost.hpp
 	AssertException.hpp
+	ByteBuffer.hpp
 	Clock.hpp
 	CompilerMarkup.hpp
 	ConstantString.hpp
