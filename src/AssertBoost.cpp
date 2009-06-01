@@ -146,6 +146,13 @@ void AssertBoostFail(const char *expression, const char *file, int line,
     if (assert_boost_fail_recurse) {
 	cerr << format("**** Recursing on assertions, you have a bad hook\n"
 		       "recursed on %s:%d") % file % line << endl;
+	if (getenv("LINTEL_ASSERT_BOOST_RECURSE_SLEEP") != NULL) {
+	    cerr << format("**** Sleeping on recursion as requested, pid %d") % getpid() << endl;
+	    sleep(3600);
+	} else {
+	    cerr << "**** You can set the LINTEL_ASSERT_BOOST_RECURSE_SLEEP environment variable\n"
+		"**** so that the application will sleep for an hour on this error\n";
+	}
     } else {
 	for(vector<assert_hook_fn>::iterator i = pre_msg_fns.begin();
 	    i != pre_msg_fns.end(); ++i) {

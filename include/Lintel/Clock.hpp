@@ -27,6 +27,9 @@
 #include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/Stats.hpp>
 
+// A ton of cycle counter reading code can be found at
+// http://www.fftw.org/cycle.h
+
 #if __HP_aCC
 extern "C" {
     void readControlRegister16(long long *);
