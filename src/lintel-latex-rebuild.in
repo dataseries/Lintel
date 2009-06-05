@@ -8,7 +8,9 @@
 
 usage() {
     [ "$1" != "" ] && echo "$@"
-    echo "Usage: $0 <srcdir> <main-texfile-basename>"
+    echo "Usage: $0 [--tex <path>] [--bib <path>] [--bst <path>]"
+    echo "    <srcdir> <main-texfile-basename>"
+    echo "    <path> is a : separated sequence of paths"
     exit 0
 }
 
@@ -22,29 +24,42 @@ if [ "$1" = "--selfcheck" ]; then
     exit 0
 fi
 
+CONTINUE=true
+while $CONTINUE; do
+    case "$1" in
+	--tex)
+	    shift
+	    [ $# != 0 ] || usage
+	    TEXINPUTS=$1:$TEXINPUTS
+	    shift
+	    ;;
+	--bib)
+	    shift
+	    [ $# != 0 ] || usage
+	    BIBINPUTS=$1:$BIBINPUTS
+	    shift
+	    ;;
+	--bst)
+	    shift
+	    [ $# != 0 ] || usage
+	    BSTINPUTS=$1:$BSTINPUTS
+	    shift
+	    ;;
+	*)
+	    CONTINUE=false
+	    ;;
+    esac
+done
+
 [ $# != 2 -o "$1" = "-h" ] && usage "Missing arguments ($#)"
 
 [ ! -d "$1" ] && usage "'$1' is not a directory"
 [ ! -f "$1/$2.tex" ] && usage "'$1/$2.tex' is not a file"
 [ `echo "$2" | wc -w` != 1 ] && usage "Main texfile is not one word"
 
-# Trailing : is important; it causes the standard directories to be included.
-if [ "$TEXINPUTS" = "" ]; then
-    TEXINPUTS=$1:
-else 
-    TEXINPUTS=$1:$TEXINPUTS
-fi
-if [ "$BIBINPUTS" = "" ]; then
-    BIBINPUTS=$1:
-else
-    BIBINPUTS=$1:$BIBINPUTS
-fi
-if [ "$BSTINPUTS" = "" ]; then
-    BSTINPUTS=$1:
-else
-    BSTINPUTS=$1:$BSTINPUTS
-fi
-
+TEXINPUTS=$1:$TEXINPUTS
+BIBINPUTS=$1:$BIBINPUTS
+BSTINPUTS=$1:$BSTINPUTS
 
 export TEXINPUTS
 export BIBINPUTS

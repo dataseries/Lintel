@@ -43,6 +43,8 @@ SET(PERL5_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'${CMAKE_INSTALL_PREFIX}/sha
 
 SET(PERL_MODULES_INC_UNSHIFT "die 'PERL_MODULES_INC_UNSHIFT is obsolete, use PERL5_MODULES_INC_UNSHIFT';")
 
+# TODO: move this into LintelDocs.cmake
+
 # Set LINTEL_LATEX_REBUILD_REQUIRED to force this to be found
 MACRO(LINTEL_LATEX_CONFIG)
     INCLUDE(LintelFind)
@@ -62,7 +64,8 @@ MACRO(LINTEL_LATEX_CONFIG)
 ENDMACRO(LINTEL_LATEX_CONFIG)
 
 # Automatically picks up the *.tex, *.eps dependencies; others can be
-# specified in ${basename}_EXTRA_DEPENDS
+# specified in ${basename}_EXTRA_DEPENDS; set ${basename}_LINTEL_LATEX_ARGS
+# to [--tex <path>] [--bib <path>] to specify extra paths for latex to use.
 
 MACRO(LINTEL_LATEX basename)
     IF(LINTEL_LATEX_REBUILD_ENABLED)
@@ -81,7 +84,9 @@ MACRO(LINTEL_LATEX basename)
 	    OUTPUT ${${basename}_REBUILD_OUTPUTS}
             COMMAND ${LINTEL_LATEX_REBUILD_PATH}
 	    ARGS
-	        ${CMAKE_CURRENT_SOURCE_DIR} ${basename}
+	        ${${basename}_LINTEL_LATEX_ARGS}
+		${XYZZY}
+                ${CMAKE_CURRENT_SOURCE_DIR} ${basename}
             DEPENDS
 		${${basename}_TEX_DEPENDS}
 		${${basename}_BIB_DEPENDS}
