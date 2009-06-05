@@ -192,6 +192,9 @@ PThreadScopedOnlyMutex::~PThreadScopedOnlyMutex() {
     int ret = pthread_mutex_destroy(&m);
     INVARIANT(ret == 0,
 	      format("unable to destroy mutex: %s") % strerror(ret));
+#if DEBUG
+    memset(&m, 0x55, sizeof(m));
+#endif
 }
 
 #if GLIBC_PTHREADS && GLIBC_OLD_PTHREADS
