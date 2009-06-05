@@ -8,19 +8,22 @@
 # Script for running batch processing type operations, extended
 # by a module that controls how the jobs are selected and executed
 use strict;
-use DBI;
-use Term::ReadLine;
+use Carp 'confess';
 use Data::ShowTable;
+use DBI;
 use English;
+use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
 use FileHandle;
-use POSIX ":sys_wait_h";
 use Getopt::Long;
-use Safe;
+use IO::Select;
 use Pod::Usage;
+use POSIX ":sys_wait_h";
+use Safe;
+use Term::ReadLine;
 use Time::HiRes 'time';
+
 @PERL5_MODULES_INC_UNSHIFT@;
 use Plot::Mercury;
-use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
 # TODO: make it possible to run mercury without IO::Pty -- that module
 # isn't part of a standard RHEL4 install.
 
@@ -153,7 +156,6 @@ while (defined ($_ = $term->readline($prompt))) {
 ### QUESTION: that have methods, so that extensibility is easier?
 
 sub docmd {
-    readinput($gnuplot_fifo, 0);
     $_ = shift;
     if ($define_mode) {
 	if(/^enddefine$/o) {
@@ -275,6 +277,7 @@ sub docmd {
 	$command_error = 1;
     }
     shift @history if @history > 100;
+    syncToGnuplot() if defined $gnuplot_fifo;
 }
 
 sub savehistory {
@@ -289,7 +292,6 @@ sub savehistory {
 }
 
 sub history {
-    readinput($gnuplot_fifo, 0);
     $_ = shift;
 
     if (/^save$/o) {
@@ -339,6 +341,7 @@ sub history {
 	    print "Unable to open $1: $!\n";
 	}
 	close($fh);
+	syncToGnuplot() if defined $gnuplot_fifo;
     } elsif (/^marker\s+(\w+)$/o) {
 	# marker; from probably commented out skipto.
     } else {
@@ -376,7 +379,7 @@ sub pause {
     } else {
 	print $gnuplot_fifo "pause\n";
     }
-    readinput($gnuplot_fifo, undef);
+    syncToGnuplot();
 }
 
 sub help {
@@ -569,7 +572,7 @@ sub refresh_plot {
     } else {
 	print $gnuplot_fifo "plot ", join(", ",@foo), "\n";
     }
-    readinput($gnuplot_fifo, 10);
+    syncToGnuplot();
 }
 
 sub sqlplot {
@@ -817,30 +820,86 @@ sub start_gnuplot {
     $gnuplot_fifo->autoflush(1);
 }
 
-sub readinput {
-    my ($pty, $timeout) = @_;
-    my $lastline = '';
-    my $count = 0;
-    return unless defined $pty;
+# The idea here is that we keep reading from gnuplot until we are able
+# to send a return to it and have it "immediately" come back.  That
+# condition indicates that it is likely that gnuplot is now done
+# processing events.
 
-    while (1) {
-	while (my $line = <$pty>) {
-	    $lastline=$line;
-	    print $line;
+sub syncToGnuplot {
+    confess "gnuplot is not running" unless defined $gnuplot_fifo; 
+    my $select = IO::Select->new();
+    $select->add($gnuplot_fifo);
+
+    my $started = time;
+    my $max_delay = 60;
+    my $last_warn = time;
+    while(1) {
+	my @ready = $select->can_read(0.1);
+	if (@ready == 0) {
+	    return if fastReplyFromGnuplot($select);
+	    die "Waited $max_delay seconds for gnuplot to finish, aborting"
+		if (time - $started) > $max_delay;
+	    if ((time - $last_warn) > ($max_delay/10)) {
+		my $waited = time - $started;
+		$last_warn = time;
+		warn "Warning, still waiting after $waited seconds for gnuplot to finish.\n";
+	    }
+	} else {
+	    while (my $line = <$gnuplot_fifo>) {
+		print $line;
+	    }
 	}
-	if ($lastline =~ /gnuplot> $/) {
-	    print "\n";
-	    last;
-	}
-	last if defined $timeout && ++$count >= $timeout*100;
-	select(undef, undef, undef, 0.01);
     }
+}
+
+# We send a return, we should get at most an echoed return and the
+# next prompt.  We should get it quickly.  Anything else is wrong.
+sub fastReplyFromGnuplot {
+    my ($select) = @_;
+    confess "gnuplot isn't running" unless defined $gnuplot_fifo;
+
+    my $debug = 0;
+    print "FRFG\n" if $debug;
+    print $gnuplot_fifo "\n";
+    my $max_reply_time = time + 0.05;
+    my $continue = 1;
+    while ($continue) {
+	my $delay = $max_reply_time - time;
+	if ($delay <= 0) { # we lose, too long waiting
+	    print "Waited too long\n" if $debug;
+	    return 0;
+	}
+
+	$select->can_read($delay);
+
+	while (1) {
+	    my $line = <$gnuplot_fifo>;
+	    last unless defined $line;
+	    print "Line\n" if $debug;
+	    print $line;
+	    if ($line =~ /\s*\n$/o) {
+		# ok
+	    } elsif ($line =~ /^gnuplot> $/o) {
+		# what we want
+		$continue = 0;
+		last;
+	    } else {
+		print "Unexpected '$line'\n" if $debug;
+		return 0; # something else
+	    }
+	}
+    }
+    print "ExpectBlank\n" if $debug;
+    my $line = <$gnuplot_fifo>;
+    return 1 if ! defined $line; # and nothing after it, so we're good.
+    print $line;
+    return 0; # something else came in, not good.
 }
 
 sub gnuplot {
     &start_gnuplot;
     print $gnuplot_fifo "$_[0]\nreplot\n";
-    readinput($gnuplot_fifo, 10); 
+    syncToGnuplot(); 
 }
 
 sub psplot {
@@ -866,7 +925,7 @@ sub psplot {
     print $gnuplot_fifo "replot\n";
     print $gnuplot_fifo "set output\n";
     print $gnuplot_fifo "set terminal x11\n";
-    readinput($gnuplot_fifo, 10); 
+    syncToGnuplot(); 
     return 1;
 }
 
@@ -891,7 +950,7 @@ sub pngplot {
 	print "psplot to psplot-$$..ps failed; can't pngplot.\n";
 	return 0;
     }
-    readinput($gnuplot_fifo, undef);
+    syncToGnuplot();
     # Wait for stability on gnuplot writing the ps file...
     unless ($using_pty) {
 	while(! -f "psplot-$$..ps") {
@@ -1053,7 +1112,7 @@ sub unplot {
     } else {
 	@plots = ();
 	print $gnuplot_fifo "reset\n";
-	readinput($gnuplot_fifo, 10); 
+	syncToGnuplot(); 
     }
     refresh_plot;
 }
