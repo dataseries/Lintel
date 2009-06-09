@@ -171,7 +171,7 @@ extern char *AssertMakeMessage(const char *format, ...)
     fflush(stdout);  std::cout.flush(); // ... and braces
     fprintf(stderr, "\n**** AssertMakeMessage: warning: message too long\n");
     fflush(stderr);
-    assert_message[ASSERT_MESSAGE_LENGTH] = '\0'; // force an end-of-string
+    assert_message[ASSERT_MESSAGE_LENGTH-1] = '\0'; // force an end-of-string
   }
 
   va_end(ap);
