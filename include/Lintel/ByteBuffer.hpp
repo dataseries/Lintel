@@ -1,4 +1,6 @@
 /* -*-C++-*- */
+#ifndef LINTEL_BYTEBUFFER_HPP
+#define LINTEL_BYTEBUFFER_HPP
 /*
    (c) Copyright 2009, Hewlett-Packard Development Company, LP
 
@@ -17,11 +19,18 @@
 #include <sys/types.h>
 
 #include <string>
+#include <iostream>
 
 #include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <Lintel/AssertBoost.hpp>
+
+// WARNING: This class is used by thrift.  When modifying the class
+// ensure that no changes are made to the structural layout of the
+// classes (no virtual functions, no additional member values), or 
+// else you will have to rebuild/package thrift. Thrift is not 
+// rebuilt by deptool.
 
 // TODO: consider using intrusive pointer to reduce the memory
 // overhead of the ByteBuffer and number of allocations necessary.
@@ -57,7 +66,7 @@ namespace lintel {
 	    return byte_data + front;
 	}
 	    
-	template<typename T> const T *readStartAs() {
+	template<typename T> const T *readStartAs() const {
 	    return reinterpret_cast<const T *>(readStart());
 	}
 	void consume(size_t amt) {
@@ -80,6 +89,11 @@ namespace lintel {
 	void extend(size_t amt) {
 	    DEBUG_SINVARIANT(amt <= writeAvailable());
 	    back += amt;
+	}
+
+        void truncate(size_t amt = 0) {
+	    DEBUG_SINVARIANT(amt >= 0 && amt <= readAvailable());
+	    back = front + amt;
 	}
 
 	void resizeBuffer(uint32_t new_size) {
@@ -120,7 +134,7 @@ namespace lintel {
 	    data_size = front = back = 0;
 	}
 	
-	std::string asString() {
+	std::string asString() const {
 	    return std::string(readStartAs<char>(), readAvailable());
 	}
     private:
@@ -153,7 +167,29 @@ namespace lintel {
 	/// can make copies, and then once all but one have been
 	/// destroyed, you can continue making mutations.
 	explicit ByteBuffer(bool allow_copy_on_write = false) 
-	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(allow_copy_on_write) { }
+	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(allow_copy_on_write) { 
+	}
+
+	explicit ByteBuffer(const std::string& init) 
+	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(false) {
+	    write(init);
+	}
+
+	explicit ByteBuffer(const char *str, int32_t len=-1) 
+	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(false) {
+	    if (len < 0) {
+		len = strlen(str);
+	    }
+	    write(str, len);
+	}
+#if 0
+	ByteBuffer(const lintel::ByteBuffer &buf) 
+	    : rep(buf.rep), allow_copy_on_write(buf.allow_copy_on_write) {
+	    if (!allow_copy_on_write) {
+		const_cast<ByteBuffer&>(buf).disconnect();
+	    }
+	}
+#endif
 
 	/// true if there are no bytes in the buffer
 	bool empty() const {
@@ -182,7 +218,7 @@ namespace lintel {
 	/// particular type.  Note that there is no guarantee that the
 	/// read buffer is properly aligned with the type unless you
 	/// have previously called shift().
-	template<typename T> const T *readStartAs() {
+	template<typename T> const T *readStartAs() const {
 	    return rep->readStartAs<T>();
 	}
 
@@ -205,6 +241,59 @@ namespace lintel {
 	uint8_t *writeStart() {
 	    uniqueify();
 	    return rep->writeStart();
+	}
+
+	/// writes buf contents into this buffer.
+	void write(const ByteBuffer &buf) {
+	    write( buf.readStart(), buf.readAvailable());
+	}
+
+	/// writes string contents to the bytebuffer
+	void write(const std::string& str) {
+	    write( str.data(), str.size());
+	}
+
+	/// writes character data to the bytebuffer, resizing if needed
+	void write(const void *buf, int32_t size) {
+	    uniqueify();
+	    SINVARIANT(size >= 0);
+	    if (writeAvailable() < (size_t)size) {
+	        int needed = size - writeAvailable();
+		resizeBuffer( bufferSize() + needed);
+	    }
+	    memcpy(writeStart(), buf, size);
+	    extend(size);
+	}
+
+	/// writes bytes to the bytebuffer, resizing if needed
+	void pad(char b, int32_t size) {
+	    uniqueify();
+	    SINVARIANT(size >= 0);
+	    if (writeAvailable() < (size_t)size) {
+	        int needed = size - writeAvailable();
+		resizeBuffer( bufferSize() + needed);
+	    }
+	    memset(writeStart(), b, size);
+	    extend(size);
+	}
+
+	/// 
+	void trunc_or_pad(int32_t size, char b = 0) {
+	    SINVARIANT(size >= 0);
+	    if (readAvailable() >= (unsigned)size) {
+		uniqueify(size == 0);
+	        rep->truncate(size);
+	    } else {
+		pad( b, size);
+	    }
+	}
+
+	/// replace buffer contents from content of a byte array
+        void replace(int32_t offset, const void *src, int32_t length) {
+	    uniqueify();
+	    SINVARIANT(length >= 0);
+	    SINVARIANT(static_cast<uint32_t>(offset + length) < readAvailable());
+	    memcpy(const_cast<uint8_t *>(readStart())+offset, src, length);
 	}
 
 	template<typename T> T *writeStartAs() {
@@ -244,23 +333,74 @@ namespace lintel {
 	/// Purge the buffer, this sets the buffer size to 0 and frees
 	/// the associated data.
 	void purge() {
-	    uniqueify();
+	    uniqueify(true);
 	    rep->purge();
 	}
 
-	/// Return the available part of the read buffer as a string
-	std::string asString() {
-	    return rep->asString();
+	/// Place a new value into the ByteBuffer throwing away any
+	/// previous contents.
+	void assign( const ByteBuffer& buf) {
+	    purge();
+	    write(buf);
 	}
-    private:
-	void uniqueify() {
-	    if (!rep.unique()) {
-		SINVARIANT(allow_copy_on_write);
-		NoCopyByteBuffer *new_buf = new NoCopyByteBuffer();
+	
+	/// Place a new string into the ByteBuffer throwing away any
+	/// previous content.
+	void assign( const std::string& src) {
+	    purge();
+	    write(src);
+	}
+
+	/// Place the specified bytes into the ByteBuffer, throwing away
+	/// any previous contents.
+	void assign( const void * src, int32_t len) {
+	    purge();
+	    write(src, len);
+	}
+
+	/// Disconnect from the buffer.  If there are no other references
+	/// the buffer will be deleted.  The buffer is no longer usable
+	/// after a call to disconnect()
+	void disconnect() {
+	    rep.reset();
+	}
+
+	/// Force the underlying buffer to be released and reallocated.  
+	/// If 'purge' is true the new buffer will be empty, if false 
+	/// its contents will be copied from the old buffer before the
+	/// old buffer is released.
+	void reinit( bool purge=true) {
+	    NoCopyByteBuffer *new_buf = new NoCopyByteBuffer();
+	    if (!purge) {
 		new_buf->resizeBuffer(rep->readAvailable());
 		memcpy(new_buf->writeStart(), rep->readStart(), rep->readAvailable());
 		new_buf->extend(rep->readAvailable());
-		rep.reset(new_buf);
+	    }
+	    rep.reset(new_buf); // release the old buffer, attach the new
+	}
+
+	/// Return the available part of the read buffer as a string
+	std::string asString() const {
+	    return rep->asString();
+	}
+
+	bool operator==(const ByteBuffer& rhs) const {
+	    if (readAvailable() != rhs.readAvailable()) return false;
+	    if (memcmp(readStart(), rhs.readStart(), readAvailable()) != 0) {
+		return false;
+	    }
+	    return true;
+	}
+
+	bool operator!=(const ByteBuffer& rhs) const {
+	    return !(*this == rhs);
+	}
+
+    private:
+	void uniqueify( bool purge=false) {
+	    if (!rep.unique()) {
+		SINVARIANT(allow_copy_on_write);
+		reinit( purge);
 	    }
 	}
 
@@ -268,3 +408,4 @@ namespace lintel {
 	bool allow_copy_on_write;
     };
 }
+#endif
