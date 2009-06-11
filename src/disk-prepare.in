@@ -47,20 +47,23 @@ sub find_drives {
     print "Detecting drives for tracing ";
     my @drivepatterns;
     my %serials;
+    my %noserial;
     while(<CONFIG>) {
 	next if /^#/o || /^\s*$/o;
 	if (/^drivepattern (\S+)$/o) {
 	    push(@drivepatterns, $1);
-	} elsif (/^serial (\S+)$/o) {
+	} elsif (/^serial ('(.+)')$/o) {
 	    $serials{$1} = 1;
+	} elsif (/^noserial (\S+)$/o) {
+	    $noserial{$1} = 1;
 	} else {
 	    chomp;
 	    die "Unrecognized line in /etc/driverdump.config: '$_'";
 	}
     }
 
-    opendir(DEV, "/dev") or die "bad";
     my @drives;
+    opendir(DEV, "/dev") or die "bad";
     while($_ = readdir(DEV)) {
 	foreach my $pat (@drivepatterns) {
 	    if (/^$pat$/) {
@@ -70,21 +73,41 @@ sub find_drives {
 	}
     }
     closedir(DEV);
+    my $ret = 0;
+    opendir(DEV, "/dev/cciss") or $ret=1;
+    if ($ret == 0) {
+	while($_ = readdir(DEV)) {
+	    foreach my $pat (@drivepatterns) {
+		if (/^$pat$/) {
+		    push(@drives, "cciss/$_");
+		    last;
+		}
+	    }
+	}
+	closedir(DEV);
+    }
+
     @drives = sort bydriveorder @drives;
     my $count = @drives;
     print "($count possibles): ";
     my @nosginfo;
     foreach my $drive (@drives) {
 	is_drive($drive);
-	my $serial = serial_number($drive);
-	if (! defined $serial) {
-	    push(@nosginfo, $drive);
-	} elsif ($serials{$serial}) {
+	if ($noserial{$drive}) {
 	    print ", " if @Global::drives;
 	    push(@Global::drives, $drive);
 	    print "$drive";
 	} else {
-	    push(@Global::not_used_drives, $drive);
+	    my $serial = serial_number($drive);
+	    if (! defined $serial) {
+		push(@nosginfo, $drive);
+	    } elsif ($serials{$serial}) {
+		print ", " if @Global::drives;
+		push(@Global::drives, $drive);
+		print "$drive";
+	    } else {
+		push(@Global::not_used_drives, $drive);
+	    }
 	}
     }
     print "\n";
@@ -179,7 +202,7 @@ sub format_drives {
 	    my $ret = system("dd if=/dev/zero of=/dev/${drive}1 bs=1024k count=1 >/dev/null 2>&1");
 	    die "\ndd failed for /dev/${drive}1" 
 		unless $ret == 0;
-	    my $fs = 'xfs';
+	    my $fs = 'ext2';
 	    if ($fs eq 'ext2') {
 		$ret = system("mkfs.ext2 -m 0 -O sparse_super -T largefile4 /dev/${drive}1 >/dev/null 2>&1");
 		die "\nmkfs.ext2 failed for /dev/${drive}1"
@@ -219,38 +242,44 @@ sub mount_drives {
     my @drives = find_drives();
     my %mounted = get_mounted();
     
-    unless(-d "/mnt") {
-	mkdir("/mnt",0755) or die "bad";
+    unless(-d "/usr/local/share/kba-disk-map") {
+	system("install /usr/local/share/kba-disk-map") == 0 or die "bad";
     }
+    system("chmod --reference=/dev/shm /usr/local/share/kba-disk-map") == 0 
+	or die "bad";	
+    
 
     print "Cleaning...";
     my $first = 1;
-    opendir(DIR,"/mnt") or die "bad";
+    opendir(DIR,"/usr/local/share/kba-disk-map") or die "bad";
     while(my $dir = readdir(DIR)) {
-	next unless $dir =~ /^trace-(\S+)$/o;
+	next unless $dir =~ /^disk(\d+)$/o;
 	next if $mounted{$1};
 
 	print ", " unless $first;
 	$first = 0;
 	print "$dir";
-	rmdir("/mnt/$dir") or die "bad /mnt/$dir";
+	rmdir("/usr/local/share/kba-disk-map/$dir") 
+	    or die "bad /usr/local/share/kba-disk-map/$dir";
     }
     closedir(DIR);
     print "; " unless $first;
     print "done.\n";
 
-    $first = 1;
+    my $count = 0;
     print "Mounting...";
     foreach my $drive (@drives) {
 	next if $mounted{$drive};
-	print ", " unless $first; 
-	$first = 0;
+	print ", " unless $count==0; 
 	print "$drive";
-	mkdir("/mnt/trace-$drive",0755) or die "bad: $!";
-	my $ret = system("mount /dev/${drive}1 /mnt/trace-$drive");
+	mkdir("/usr/local/share/kba-disk-map/disk$count",0755) or die "bad: $!";
+	my $ret = system("mount /dev/${drive}1 /usr/local/share/kba-disk-map/disk$count");
 	die "mount failed" unless $ret == 0;
+	system("chmod --reference=/dev/shm /usr/local/share/kba-disk-map/disk$count") == 0 
+	    or die "bad";	
+	$count = $count+1;
     }
-    print "; " unless $first;
+    print "; " unless $count==0;
     print "done.\n";
 }
 
@@ -263,9 +292,9 @@ sub umount_drives {
 	print ", " unless $first;
 	$first = 0;
 	print "$mounted";
-	my $ret = system("umount /mnt/trace-$mounted");
+	my $ret = system("umount /usr/local/share/kba-disk-map/disk$mounted");
 	die "umount failed" unless $ret == 0;
-	rmdir("/mnt/trace-$mounted") or die "bad";
+	rmdir("/usr/local/share/kba-disk-map/disk$mounted") or die "bad";
     }
     print "; " unless $first;
     print "done.\n";
@@ -300,8 +329,8 @@ sub zero_drives {
     my $ok = 1;
     foreach my $drive (@drives) {
 	print ", " unless $drive eq $drives[0];
-	print "$drive";
 	my $size = $sizes{$drive};
+	print "$drive";
 	die "??" unless defined $size && $size->{cylinders} > 1000 && $size->{cylinder_bytes} > 1000000;
 	my $pid = fork();
 	unless (defined $pid && $pid >= 0) {
@@ -342,8 +371,8 @@ sub get_mounted {
     my %mounted;
     open(MOUNT, "mount |") or die "??";
     while(<MOUNT>) {
-	next unless m!^/dev/(\S+)1 on /mnt/trace-(\S+) !o;
-	die "?? $1 $2" unless $1 eq $2;
+	next unless m!^/dev/(\S+)1 on /usr/local/share/kba-disk-map/disk(\d+) !o;
+	#die "?? $1 $2" unless $1 eq $2;
 	$mounted{$2} = 1;
     }
     close(MOUNT);
@@ -361,12 +390,15 @@ sub get_drive_sizes {
     return %$sizes;
 }
 
-sub get_sfdisk_info {
+
+sub get_specific_sfdisk_info {
+    my($diskpath) = @_;
     my %ok;
     my %sizes;
-    open(SFDISK, "sfdisk -uS -l 2>&1 |") or die "bad";
+    open(SFDISK, "sfdisk -uS -l $diskpath 2>&1 |") or die "bad";
     while(<SFDISK>) {
-	die "??1" unless /^\s*$/o;
+	
+	die "??1 '$_'" unless /^\s*$/o;
 	$_ = <SFDISK>;
 	die "?? $_ ??" unless m!^Disk /dev/(\S+): (\d+) cylinders, (\d+) heads, (\d+) sectors/track!o;
 	my ($drive, $cylinders, $heads, $sectorspercyl) = ($1,$2, $3, $4);
@@ -413,6 +445,33 @@ sub get_sfdisk_info {
     }
     close(SFDISK);
     return (\%ok, \%sizes);
+}    
+
+sub get_sfdisk_info { 
+
+    # The old get_sfdisk_info would ask about every drive, even ones
+    # we're not supposed to touch.  If a drive was listed don't touch
+    # because it is broken, we were still probing it; this makes the
+    # parsing uphappy.  Rather than make the parsing tolerate broken
+    # drives, we'll still choke on a broken drive, and instead try to
+    # probe only those drives listed as OK to poke.
+
+    my @drives = find_drives();
+    my %ok;
+    my %sizes;
+
+    # TODO-review: yeah, this is an i++ comment, but anyway...  We're
+    # getting 1 (or more, but probably 1) sfdisk_info from
+    # get_specific_sfdisk_info, then appending it to ok and sizes; the
+    # pattern to append to the hashes was taken from:
+    # http://stackoverflow.com/questions/350018/how-can-i-combine-hashes-in-perl/350190
+
+    foreach my $drive (@drives) {
+	my($tempOK, $tempSizes) = get_specific_sfdisk_info("/dev/$drive");
+	@ok{keys %$tempOK} = values %$tempOK;
+	@sizes{keys %$tempSizes} = values %$tempSizes;
+    }
+    return (\%ok, \%sizes);
 }
 
 sub serial_number {
@@ -424,7 +483,7 @@ sub serial_number {
 	or die "bad";
     $_ = <SGINFO>;
     die "No sginfo" unless defined $_;
-    if (/^Serial Number '(.+)'$/) {
+    if (/^Serial Number ('(.+)')$/) {
 	$ret = $1;
     } else {
 	chomp;
