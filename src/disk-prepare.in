@@ -372,7 +372,6 @@ sub get_mounted {
     open(MOUNT, "mount |") or die "??";
     while(<MOUNT>) {
 	next unless m!^/dev/(\S+)1 on /usr/local/share/kba-disk-map/disk(\d+) !o;
-	#die "?? $1 $2" unless $1 eq $2;
 	$mounted{$2} = 1;
     }
     close(MOUNT);
@@ -460,10 +459,9 @@ sub get_sfdisk_info {
     my %ok;
     my %sizes;
 
-    # TODO-review: yeah, this is an i++ comment, but anyway...  We're
-    # getting 1 (or more, but probably 1) sfdisk_info from
-    # get_specific_sfdisk_info, then appending it to ok and sizes; the
-    # pattern to append to the hashes was taken from:
+    # We're getting 1 (or more, but probably 1) sfdisk_info from
+    # get_specific_sfdisk_info, then appending it to ok and sizes; the pattern
+    # to append to the hashes was taken from:
     # http://stackoverflow.com/questions/350018/how-can-i-combine-hashes-in-perl/350190
 
     foreach my $drive (@drives) {
