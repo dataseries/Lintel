@@ -47,7 +47,7 @@
 
       - Notes on using the stl: LintelStlNotes
 
-    \section Obsolete/being removed
+    \section Obsolete or being removed
     
       - LintelAssert
 

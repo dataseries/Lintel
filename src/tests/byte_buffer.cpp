@@ -10,6 +10,8 @@
     Regression test.
 */
 
+// TODO-eric: lots of tests.
+
 #include <iostream>
 
 #include <Lintel/ByteBuffer.hpp>

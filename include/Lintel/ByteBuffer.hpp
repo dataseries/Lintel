@@ -69,6 +69,11 @@ namespace lintel {
 	template<typename T> const T *readStartAs() const {
 	    return reinterpret_cast<const T *>(readStart());
 	}
+
+	uint8_t *writeableReadStart() {
+	    return byte_data + front;
+	}
+
 	void consume(size_t amt) {
 	    DEBUG_SINVARIANT(amt <= readAvailable());
 	    front += amt;
@@ -170,26 +175,28 @@ namespace lintel {
 	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(allow_copy_on_write) { 
 	}
 
-	explicit ByteBuffer(const std::string& init) 
-	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(false) {
-	    write(init);
+	/// Create a ByteBuffer and initialize it with the contents of @param init
+	///
+	/// @param init string to initialize with
+	/// @param allow_copy_on_write should we allow this byte buffer to be copied if needed?
+	explicit ByteBuffer(const std::string &init, bool allow_copy_on_write = false) 
+	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(allow_copy_on_write) {
+	    append(init);
 	}
 
-	explicit ByteBuffer(const char *str, int32_t len=-1) 
-	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(false) {
+	/// Create a ByteBuffer and initialize it with the contents of @param init
+	/// If @param len < 0, automatically call strlen on init to get the length.
+	///
+	/// @param init character array to initialize with
+	/// @param len length of the character array, or < 0 to use strlen to determine length
+	/// @param allow_copy_on_write should we allow this byte buffer to be copied if needed?
+	explicit ByteBuffer(const char *init, ssize_t len = -1, bool allow_copy_on_write = false) 
+	    : rep(new NoCopyByteBuffer()), allow_copy_on_write(allow_copy_on_write) {
 	    if (len < 0) {
-		len = strlen(str);
+		len = strlen(init);
 	    }
-	    write(str, len);
+	    append(init, len);
 	}
-#if 0
-	ByteBuffer(const lintel::ByteBuffer &buf) 
-	    : rep(buf.rep), allow_copy_on_write(buf.allow_copy_on_write) {
-	    if (!allow_copy_on_write) {
-		const_cast<ByteBuffer&>(buf).disconnect();
-	    }
-	}
-#endif
 
 	/// true if there are no bytes in the buffer
 	bool empty() const {
@@ -222,6 +229,16 @@ namespace lintel {
 	    return rep->readStartAs<T>();
 	}
 
+	/// writeable pointer to the start of the read data, valid to
+	/// be written for up to readAvailable() + writeAvailable()
+	/// bytes.  Useful for constructing a buffer and then
+	/// manipulating it, for example, updating a size near the
+	/// front of the buffer.
+	uint8_t *writeableReadStart() {
+	    uniqueify();
+	    return rep->writeableReadStart();
+	}
+
 	/// remove bytes from being readable, readAvailable() is
 	/// reduced by amt.  Invalid to call with amt >
 	/// readAvailable().
@@ -236,6 +253,10 @@ namespace lintel {
 	    return rep->writeAvailable();
 	}
 
+	// TODO-eric: replace this with writeExtend(size_t amt); 
+	// writeStart + extend should always occur in pairs, and
+	// the current usage is unsafe since the checks for the
+	// appropriate size happen after you've overwritten stuff
 	/// pointer to the start of where data could be written.
 	/// Valid to be written for up to writeAvailable() bytes.
 	uint8_t *writeStart() {
@@ -243,21 +264,43 @@ namespace lintel {
 	    return rep->writeStart();
 	}
 
-	/// writes buf contents into this buffer.
-	void write(const ByteBuffer &buf) {
-	    write( buf.readStart(), buf.readAvailable());
+	/// pointer to the start of where data could be written, as
+	/// interpreted a a pointer to T.  Valid to be written for up
+	/// to writeAvailable() bytes, or writeAvailable()/sizeof(T)
+	/// elements
+	template<typename T> T *writeStartAs() {
+	    uniqueify();
+	    return rep->writeStartAs<T>();
 	}
 
-	/// writes string contents to the bytebuffer
-	void write(const std::string& str) {
-	    write( str.data(), str.size());
+	/// after bytes are written into the array, you can extend the
+	/// array to cover the bytes that have been added into the
+	/// array.  Invalid to call with amt > writeAvailable()
+	void extend(size_t amt) {
+	    uniqueify();
+	    rep->extend(amt);
 	}
 
-	/// writes character data to the bytebuffer, resizing if needed
-	void write(const void *buf, int32_t size) {
+
+	/// append contents of @param buf to this buffer, resizing if necessary.
+	void append(const ByteBuffer &buf) {
+	    append(buf.readStart(), buf.readAvailable());
+	}
+
+	/// appends contents of @param str to this buffer, resizing if necessary.
+	void append(const std::string &str) {
+	    append(str.data(), str.size());
+	}
+
+	/// appends contents of @param buf with length @param size to this
+	/// buffer, resizing if necessary.
+	// 
+	/// @param buf buffer for appending to the byte buffer
+	/// @param size length of buf
+	void append(const void *buf, size_t size) {
 	    uniqueify();
 	    SINVARIANT(size >= 0);
-	    if (writeAvailable() < (size_t)size) {
+	    if (writeAvailable() < size) {
 	        int needed = size - writeAvailable();
 		resizeBuffer( bufferSize() + needed);
 	    }
@@ -265,6 +308,7 @@ namespace lintel {
 	    extend(size);
 	}
 
+#if 0 // TODO-eric: remove or document use.
 	/// writes bytes to the bytebuffer, resizing if needed
 	void pad(char b, int32_t size) {
 	    uniqueify();
@@ -287,32 +331,39 @@ namespace lintel {
 		pad( b, size);
 	    }
 	}
+#endif
 
-	/// replace buffer contents from content of a byte array
-        void replace(int32_t offset, const void *src, int32_t length) {
-	    uniqueify();
-	    SINVARIANT(length >= 0);
-	    SINVARIANT(static_cast<uint32_t>(offset + length) < readAvailable());
-	    memcpy(const_cast<uint8_t *>(readStart())+offset, src, length);
+	/// replace part of ByteBuffer contents starting at @param
+	/// offset with @param src for @param length bytes.  If
+	/// allow_extend is true, then offset + length must be <
+	/// readAvailable() + writeAvailable(), and replace will
+	/// automatically extend the ByteBuffer to cover the entire.
+	/// Otherwise, offset + length must be < readAvailable().
+	/// 
+	/// @param offset start offset in the byte array for replacing
+	/// @param src source data for replacing
+	/// @param length length of data for replacing
+	/// @param allow_extend does the replaced data have to fit in the current readable data?
+        void replace(size_t offset, const void *src, size_t length, bool allow_extend = false) {
+	    if (allow_extend) {
+		SINVARIANT(offset + length < (readAvailable() + writeAvailable()));
+		memcpy(writeableReadStart() + offset, src, length);
+		if (offset + length > readAvailable()) {
+		    rep->extend(offset + length - readAvailable());
+		}
+	    } else {
+		SINVARIANT(offset + length < readAvailable());
+		memcpy(writeableReadStart() + offset, src, length);
+	    }
 	}
 
-	template<typename T> T *writeStartAs() {
-	    uniqueify();
-	    return rep->writeStartAs<T>();
-	}
-
-	/// after bytes are written into the array, you can extend the
-	/// array to cover the bytes that have been added into the
-	/// array.  Invalid to call with amt > writeAvailable()
-	void extend(size_t amt) {
-	    uniqueify();
-	    rep->extend(amt);
-	}
 
 	/// Resize the bufer to be new_size bytes in length.  It is an
 	/// error to call this with readAvailable() > new_size.
 	/// Currently readable data will be moved to the beginning of
-	/// the buffer.
+	/// the buffer.  Note this function is called resizeBuffer
+	/// rather than just resize because it does *not* zero the
+	/// buffer as is done in all of the STL resize functions.
 	void resizeBuffer(uint32_t new_size) {
 	    uniqueify();
 	    rep->resizeBuffer(new_size);
@@ -333,74 +384,78 @@ namespace lintel {
 	/// Purge the buffer, this sets the buffer size to 0 and frees
 	/// the associated data.
 	void purge() {
-	    uniqueify(true);
+	    uniqueify();
 	    rep->purge();
 	}
 
-	/// Place a new value into the ByteBuffer throwing away any
-	/// previous contents.
-	void assign( const ByteBuffer& buf) {
-	    purge();
-	    write(buf);
+	/// Copy the value in @param src into this ByteBuffer,
+	/// overwriting any prior contents.
+	void assign(const ByteBuffer &src) {
+	    reset();
+	    append(src.readStart(), src.readAvailable());
 	}
 	
-	/// Place a new string into the ByteBuffer throwing away any
-	/// previous content.
-	void assign( const std::string& src) {
-	    purge();
-	    write(src);
+	/// Copy the value in @param src into this ByteBuffer,
+	/// overwriting any prior contents.
+	void assign(const std::string &src) {
+	    reset();
+	    append(src);
 	}
 
-	/// Place the specified bytes into the ByteBuffer, throwing away
-	/// any previous contents.
-	void assign( const void * src, int32_t len) {
-	    purge();
-	    write(src, len);
+	/// Copy the value in @param src for @param len bytes into
+	/// this ByteBuffer, overwriting any prior contents.
+	void assign(const void *src, size_t len) {
+	    reset();
+	    append(src, len);
 	}
 
+#if 0 // TODO-eric: figure out use or discard; this is dangerous
 	/// Disconnect from the buffer.  If there are no other references
 	/// the buffer will be deleted.  The buffer is no longer usable
 	/// after a call to disconnect()
 	void disconnect() {
 	    rep.reset();
 	}
-
-	/// Force the underlying buffer to be released and reallocated.  
-	/// If 'purge' is true the new buffer will be empty, if false 
-	/// its contents will be copied from the old buffer before the
-	/// old buffer is released.
-	void reinit( bool purge=true) {
-	    NoCopyByteBuffer *new_buf = new NoCopyByteBuffer();
-	    if (!purge) {
-		new_buf->resizeBuffer(rep->readAvailable());
-		memcpy(new_buf->writeStart(), rep->readStart(), rep->readAvailable());
-		new_buf->extend(rep->readAvailable());
-	    }
-	    rep.reset(new_buf); // release the old buffer, attach the new
-	}
+#endif
 
 	/// Return the available part of the read buffer as a string
 	std::string asString() const {
 	    return rep->asString();
 	}
 
-	bool operator==(const ByteBuffer& rhs) const {
-	    if (readAvailable() != rhs.readAvailable()) return false;
-	    if (memcmp(readStart(), rhs.readStart(), readAvailable()) != 0) {
+	
+	/// Compare two byte buffers for equality.
+	bool operator==(const ByteBuffer &rhs) const {
+	    if (readAvailable() != rhs.readAvailable()) {
 		return false;
 	    }
-	    return true;
+	    return memcmp(readStart(), rhs.readStart(), readAvailable()) == 0;
 	}
 
+	/// Compare two byte buffers for inequality
 	bool operator!=(const ByteBuffer& rhs) const {
 	    return !(*this == rhs);
 	}
 
+	/// Force this ByteBuffer to be unique; note that this
+	/// function can be slow because it will make a copy of the
+	/// underlying buffer.
+	void forceUnique() {
+	    if (!rep.unique()) {
+		NoCopyByteBuffer *new_buf = new NoCopyByteBuffer();
+		new_buf->resizeBuffer(rep->readAvailable());
+		memcpy(new_buf->writeStart(), rep->readStart(), rep->readAvailable());
+		new_buf->extend(rep->readAvailable());
+		rep.reset(new_buf);
+	    }
+	}	    
+
     private:
-	void uniqueify( bool purge=false) {
+	void uniqueify() {
 	    if (!rep.unique()) {
 		SINVARIANT(allow_copy_on_write);
-		reinit( purge);
+		
+		forceUnique();
 	    }
 	}
 
@@ -408,4 +463,6 @@ namespace lintel {
 	bool allow_copy_on_write;
     };
 }
+
 #endif
+
