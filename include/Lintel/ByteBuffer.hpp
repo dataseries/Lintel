@@ -9,11 +9,11 @@
 
 /** @file 
 
-    A class similar to a string, but able to be quickly initialized.
-    The main problem with strings is that there is no efficient way to
-    read from a file into a string, the string has to be constructed
-    by calling assign or append from some other buffer resulting in
-    multiple copies.
+    A class that represents an array of bytes that can be efficiently
+    initialized.  The main problem with strings is that there is no efficient
+    way to read from a file into a string, the string has to be constructed by
+    calling assign or append from some other buffer resulting in multiple
+    copies.
 */
 
 #include <sys/types.h>
@@ -149,13 +149,33 @@ namespace lintel {
 	size_t data_size, front, back;
     };
 
-    /// Copy on write buffer of bytes.  This is similar to a C++
-    /// string, but data can be efficiently read into the buffer.
-    /// With a string, the data first has to be read into a separate
-    /// buffer and then copied into the string.
+    /// Copy on write buffer of bytes.  Unlike C++ strings, data can be
+    /// efficiently read into the buffer.  With a string, the data first has to
+    /// be read into a separate buffer and then copied into the string.
     class ByteBuffer {
     public:
-	/// Construct a ByteBuffer.  If we allow copy on write, then
+	/// Construct a ByteBuffer.
+	///
+	/// A ByteBuffer is unique, if it never has been copied through the
+	/// assignment operator, or if only one copy remains. Otherwise, there
+	/// are multiple copies, so it is not unique.
+	///
+	/// allow_copy_on_write specifies what happens when the ByteBuffer is
+	/// *not* unique. If true, like strings, a mutating operation will make
+	/// a duplicate of the underlying buffer and mutate that. If false,
+	/// unlike strings, then mutations are an error.
+	///
+	/// By default, we set this to false, on the assumption that it could be
+	/// slow and is unlikely to be the desired behavior. In no case does a
+	/// copy produce a bit-for-bit copy of the buffer automatically, only a
+	/// write after a copy does.  In no case will a write to one ByteBuffer
+	/// cause a change in another.
+	///
+	/// TODO-eric: check with Joe on above comment. Another suggestion for
+	/// the variable name: enable_copy_when_not_unique.
+	///
+
+	/// Old comment: If we allow copy on write, then
 	/// when we perform mutating operations, if this is not a
 	/// unique copy, then we copy the underlying buffer.  If it is
 	/// not, then if there copies, mutations are not allowed
@@ -184,6 +204,9 @@ namespace lintel {
 	    append(init);
 	}
 
+	// TODO-eric: create a copy constructor and equals operator to emphasize
+	// that its doing what we expect.
+	
 	/// Create a ByteBuffer and initialize it with the contents of @param init
 	/// If @param len < 0, automatically call strlen on init to get the length.
 	///
@@ -346,13 +369,13 @@ namespace lintel {
 	/// @param allow_extend does the replaced data have to fit in the current readable data?
         void replace(size_t offset, const void *src, size_t length, bool allow_extend = false) {
 	    if (allow_extend) {
-		SINVARIANT(offset + length < (readAvailable() + writeAvailable()));
+		SINVARIANT(offset + length <= (readAvailable() + writeAvailable()));
 		memcpy(writeableReadStart() + offset, src, length);
 		if (offset + length > readAvailable()) {
 		    rep->extend(offset + length - readAvailable());
 		}
 	    } else {
-		SINVARIANT(offset + length < readAvailable());
+		SINVARIANT(offset + length <= readAvailable());
 		memcpy(writeableReadStart() + offset, src, length);
 	    }
 	}
@@ -466,3 +489,27 @@ namespace lintel {
 
 #endif
 
+#if 0
+{
+    ByteBuffer a;
+    ByteBuffer b;
+    
+    ByteBuffer *c = &a;
+
+    ByteBuffer &d(a);
+
+    b = a; // not unique.
+
+    a = ByteBuffer();
+
+    // a and b are now unique;
+    
+    {
+	ByteBuffer c("c");
+	a = c;
+	// a and c are not unique
+    }
+	
+}
+
+#endif
