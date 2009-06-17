@@ -65,8 +65,8 @@ ENDMACRO(LINTEL_LATEX_CONFIG)
 
 # Automatically picks up the *.tex, *.eps dependencies; others can be
 # specified in ${basename}_EXTRA_DEPENDS; set ${basename}_LINTEL_LATEX_ARGS
-# to [--tex <path>] [--bib <path>] to specify extra paths for latex to use.
-
+# to [--tex <path>] [--bib <path>] to specify extra paths for latex to use,
+# or include [--paper <paper-size>] to specify a non-letter paper size.
 MACRO(LINTEL_LATEX basename)
     IF(LINTEL_LATEX_REBUILD_ENABLED)
 	FILE(GLOB_RECURSE ${basename}_TEX_DEPENDS
@@ -85,7 +85,6 @@ MACRO(LINTEL_LATEX basename)
             COMMAND ${LINTEL_LATEX_REBUILD_PATH}
 	    ARGS
 	        ${${basename}_LINTEL_LATEX_ARGS}
-		${XYZZY}
                 ${CMAKE_CURRENT_SOURCE_DIR} ${basename}
             DEPENDS
 		${${basename}_TEX_DEPENDS}
