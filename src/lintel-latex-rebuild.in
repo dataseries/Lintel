@@ -8,7 +8,7 @@
 
 usage() {
     [ "$1" != "" ] && echo "$@"
-    echo "Usage: $0 [--tex <path>] [--bib <path>] [--bst <path>]"
+    echo "Usage: $0 [--tex <path>] [--bib <path>] [--bst <path>] [--paper <paper-size>]"
     echo "    <srcdir> <main-texfile-basename>"
     echo "    <path> is a : separated sequence of paths"
     exit 0
@@ -24,6 +24,7 @@ if [ "$1" = "--selfcheck" ]; then
     exit 0
 fi
 
+PAPER_SIZE=letter
 CONTINUE=true
 while $CONTINUE; do
     case "$1" in
@@ -43,6 +44,12 @@ while $CONTINUE; do
 	    shift
 	    [ $# != 0 ] || usage
 	    BSTINPUTS=$1:$BSTINPUTS
+	    shift
+	    ;;
+	--paper)
+	    shift
+	    [ $# != 0 ] || usage
+	    PAPER_SIZE=$1
 	    shift
 	    ;;
 	*)
@@ -104,18 +111,19 @@ done
 dvips_err=0
 dvipdf_err=0
 if [ $latex_err = 0 -a $bibtex_err = 0 ]; then
-    @DVIPS_CONVERTER@ -tletter -o$TEXFILE.ps.tmp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
+    @DVIPS_CONVERTER@ -t $PAPER_SIZE -o $TEXFILE.ps.tmp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
     dvips_err=$?
     # Make .ps file creation atomic
     [ $dvips_err = 0 ] && mv $TEXFILE.ps.tmp $TEXFILE.ps
     # Why not run dvipdf?  The current version of dvipdf defaults to A4 paper
     # and doesn't pass options to dvips (the underlying engine for dvipdf).
     # so we call dvips and ps2pdf14 directly.
-    @DVIPS_CONVERTER@ -Ppdf -Pcmz -Pamz -t letter -D 600 -Z -G0 -o $TEXFILE.pdftemp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
+    @DVIPS_CONVERTER@ -P pdf -P cmz -P amz -t $PAPER_SIZE -D 600 -Z -G0 -o $TEXFILE.pdftemp $TEXFILE.dvi >>$TEXFILE.rebuild.out 2>&1
     dvipstemp_err=$?
     # Note both options are needed to force all the fonts to be
     # embedded; file size effect seems to be small in one test case;
     # if that's wrong, then it should be made an option.
+    # you can verify font embedding with pdffonts
     EMBEDFONTS="-dPDFSETTINGS=/prepress -dEmbedAllFonts=true"
     # Doesn't seem to be any downside to using these options.
     OPTIMIZE="-dOptimize=true -dUseFlateCompression=true"
