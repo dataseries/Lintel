@@ -66,10 +66,6 @@ namespace lintel {
 	    return byte_data + front;
 	}
 	    
-	template<typename T> const T *readStartAs() const {
-	    return reinterpret_cast<const T *>(readStart());
-	}
-
 	uint8_t *writeableReadStart() {
 	    return byte_data + front;
 	}
@@ -83,22 +79,15 @@ namespace lintel {
 	    return data_size - back;
 	}
 
-	uint8_t *writeStart() {
-	    return byte_data + back;
+	uint8_t *writeStart(size_t extend_amt) {
+	    uint8_t *ret = byte_data + back;
+	    extend(extend_amt);
+	    return ret;
 	}
 
-	template<typename T> T *writeStartAs() {
-	    return reinterpret_cast<T *>(writeStart());
-	}	    
-	    
 	void extend(size_t amt) {
-	    DEBUG_SINVARIANT(amt <= writeAvailable());
+	    SINVARIANT(amt <= writeAvailable());
 	    back += amt;
-	}
-
-        void truncate(size_t amt = 0) {
-	    DEBUG_SINVARIANT(amt >= 0 && amt <= readAvailable());
-	    back = front + amt;
 	}
 
 	void resizeBuffer(uint32_t new_size) {
@@ -139,9 +128,6 @@ namespace lintel {
 	    data_size = front = back = 0;
 	}
 	
-	std::string asString() const {
-	    return std::string(readStartAs<char>(), readAvailable());
-	}
     private:
 	uint8_t *byte_data;
 	// Data is valid for [data + front, data + back - 1], and has
@@ -203,6 +189,18 @@ namespace lintel {
 	    append(init, len);
 	}
 
+	/// Copy constructor
+	ByteBuffer(const ByteBuffer &from) 
+	    : rep(from.rep), allow_copy_on_write(from.allow_copy_on_write)
+	{ }
+
+	/// Assignment operator
+	ByteBuffer &operator =(const ByteBuffer &rhs) {
+	    rep = rhs.rep;
+	    allow_copy_on_write = rhs.allow_copy_on_write;
+	    return *this;
+	}
+
 	/// true if there are no bytes in the buffer
 	bool empty() const {
 	    return rep->empty();
@@ -231,7 +229,7 @@ namespace lintel {
 	/// read buffer is properly aligned with the type unless you
 	/// have previously called shift().
 	template<typename T> const T *readStartAs() const {
-	    return rep->readStartAs<T>();
+	    return reinterpret_cast<const T *>(readStart());
 	}
 
 	/// writeable pointer to the start of the read data, valid to be written
@@ -258,32 +256,48 @@ namespace lintel {
 	    return rep->writeAvailable();
 	}
 
-	// TODO-eric: replace this with writeExtend(size_t amt); 
-	// writeStart + extend should always occur in pairs, and
-	// the current usage is unsafe since the checks for the
-	// appropriate size happen after you've overwritten stuff
-	/// pointer to the start of where data could be written.
-	/// Valid to be written for up to writeAvailable() bytes.
-	uint8_t *writeStart() {
+	/// pointer to the start of where @param extend_amt bytes of
+	/// data can be written.  Valid to be written for up to
+	/// writeAvailable() bytes.  Invalid to call with extend_amt >
+	/// writeAvailable().  Readable region will be increased by
+	/// extend_amt after this call.  Normally you would just use
+	/// this method, but if you don't know exactly how many bytes
+	/// will arrive, you can use writeStart(0) + extend, e.g. a
+	/// call to read() on a network socket.
+	///
+	/// @param extend_amt how many bytes will be written. Hence
+	/// readAvailable() will increase by extend_amt.
+	uint8_t *writeStart(size_t extend_amt) {
 	    uniqueify();
-	    return rep->writeStart();
+	    return rep->writeStart(extend_amt);
 	}
 
 	/// pointer to the start of where data could be written, as
 	/// interpreted a a pointer to T.  Valid to be written for up
-	/// to writeAvailable() bytes, or writeAvailable()/sizeof(T)
-	/// elements
-	template<typename T> T *writeStartAs() {
-	    uniqueify();
-	    return rep->writeStartAs<T>();
+	/// to writeAvailable() / sizeof(T) elements.  Invalid to call
+	/// with extend_elements * sizeof(T) > writeAvailable().
+	/// Readable region will be increased by sizeof(T) *
+	/// extend_elements.
+	///
+	/// @param extend_elements how many elements will be written.
+	/// Hence readAvailable() will increase by sizeof(T) *
+	/// extend_elements.
+	template<typename T> T *writeStartAs(size_t extend_elements) {
+	    return reinterpret_cast<T *>(writeStart(extend_elements * sizeof(T)));
 	}
 
 	/// after bytes are written into the array, you can extend the
 	/// array to cover the bytes that have been added into the
-	/// array.  Invalid to call with amt > writeAvailable()
+	/// array.  Invalid to call with amt > writeAvailable().  
 	void extend(size_t amt) {
 	    uniqueify();
 	    rep->extend(amt);
+	}
+
+	/// The same as extend except it counts in units of elements
+	/// rather than bytes.
+	template<typename T> void extendAs(size_t extend_elements) {
+	    extend(sizeof(T) * extend_elements);
 	}
 
 
@@ -292,14 +306,14 @@ namespace lintel {
 	    append(buf.readStart(), buf.readAvailable());
 	}
 
-	/// appends contents of @param str to this buffer, resizing if necessary.
+	/// append contents of @param str to this buffer, resizing if necessary.
 	void append(const std::string &str) {
 	    append(str.data(), str.size());
 	}
 
 	/// appends contents of @param buf with length @param size to this
 	/// buffer, resizing if necessary.
-	// 
+	///
 	/// @param buf buffer for appending to the byte buffer
 	/// @param size length of buf
 	void append(const void *buf, size_t size) {
@@ -309,57 +323,19 @@ namespace lintel {
 	        int needed = size - writeAvailable();
 		resizeBuffer( bufferSize() + needed);
 	    }
-	    memcpy(writeStart(), buf, size);
-	    extend(size);
+	    memcpy(writeStart(size), buf, size);
 	}
-
-#if 0 // TODO-eric: remove or document use.
-	/// writes bytes to the bytebuffer, resizing if needed
-	void pad(char b, int32_t size) {
-	    uniqueify();
-	    SINVARIANT(size >= 0);
-	    if (writeAvailable() < (size_t)size) {
-	        int needed = size - writeAvailable();
-		resizeBuffer( bufferSize() + needed);
-	    }
-	    memset(writeStart(), b, size);
-	    extend(size);
-	}
-
-	/// 
-	void trunc_or_pad(int32_t size, char b = 0) {
-	    SINVARIANT(size >= 0);
-	    if (readAvailable() >= (unsigned)size) {
-		uniqueify(size == 0);
-	        rep->truncate(size);
-	    } else {
-		pad( b, size);
-	    }
-	}
-#endif
 
 	/// replace part of ByteBuffer contents starting at @param
-	/// offset with @param src for @param length bytes.  If
-	/// allow_extend is true, then offset + length must be <
-	/// readAvailable() + writeAvailable(), and replace will
-	/// automatically extend the ByteBuffer to cover the entire.
+	/// offset with @param src for @param length bytes.  
 	/// Otherwise, offset + length must be < readAvailable().
 	/// 
 	/// @param offset start offset in the byte array for replacing
 	/// @param src source data for replacing
 	/// @param length length of data for replacing
-	/// @param allow_extend does the replaced data have to fit in the current readable data?
-        void replace(size_t offset, const void *src, size_t length, bool allow_extend = false) {
-	    if (allow_extend) {
-		SINVARIANT(offset + length <= (readAvailable() + writeAvailable()));
-		memcpy(writeableReadStart() + offset, src, length);
-		if (offset + length > readAvailable()) {
-		    rep->extend(offset + length - readAvailable());
-		}
-	    } else {
-		SINVARIANT(offset + length <= readAvailable());
-		memcpy(writeableReadStart() + offset, src, length);
-	    }
+        void replace(size_t offset, const void *src, size_t length) {
+	    SINVARIANT(offset + length <= readAvailable());
+	    memcpy(writeableReadStart() + offset, src, length);
 	}
 
 
@@ -414,18 +390,9 @@ namespace lintel {
 	    append(src, len);
 	}
 
-#if 0 // TODO-eric: figure out use or discard; this is dangerous
-	/// Disconnect from the buffer.  If there are no other references
-	/// the buffer will be deleted.  The buffer is no longer usable
-	/// after a call to disconnect()
-	void disconnect() {
-	    rep.reset();
-	}
-#endif
-
 	/// Return the available part of the read buffer as a string
 	std::string asString() const {
-	    return rep->asString();
+	    return std::string(readStartAs<char>(), readAvailable());
 	}
 
 	
@@ -449,8 +416,8 @@ namespace lintel {
 	    if (!rep.unique()) {
 		NoCopyByteBuffer *new_buf = new NoCopyByteBuffer();
 		new_buf->resizeBuffer(rep->readAvailable());
-		memcpy(new_buf->writeStart(), rep->readStart(), rep->readAvailable());
-		new_buf->extend(rep->readAvailable());
+		memcpy(new_buf->writeStart(rep->readAvailable()), 
+		       rep->readStart(), rep->readAvailable());
 		rep.reset(new_buf);
 	    }
 	}	    
@@ -471,27 +438,3 @@ namespace lintel {
 
 #endif
 
-#if 0
-{
-    ByteBuffer a;
-    ByteBuffer b;
-    
-    ByteBuffer *c = &a;
-
-    ByteBuffer &d(a);
-
-    b = a; // not unique.
-
-    a = ByteBuffer();
-
-    // a and b are now unique;
-    
-    {
-	ByteBuffer c("c");
-	a = c;
-	// a and c are not unique
-    }
-	
-}
-
-#endif

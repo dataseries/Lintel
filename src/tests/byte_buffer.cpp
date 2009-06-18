@@ -30,14 +30,16 @@ void basicChecks(ByteBuffer &buf) {
     buf.resizeBuffer(8192);
     SINVARIANT(buf.readAvailable() == 0);
     SINVARIANT(buf.writeAvailable() == 8192);
-    uint32_t *ibuf = buf.writeStartAs<uint32_t>();
-    for(uint32_t i = 0; i < 8192/4; ++i) {
+    uint32_t *ibuf = buf.writeStartAs<uint32_t>(3072/4);
+    for(uint32_t i = 0; i < 3072/4; ++i) {
 	ibuf[i] = i;
     }
-    buf.extend(3072);
     SINVARIANT(buf.readAvailable() == 3072);
     SINVARIANT(buf.writeAvailable() == 8192 - 3072);
-    buf.extend(8192-3072);
+    ibuf = reinterpret_cast<uint32_t *>(buf.writeStart(8192-3072));
+    for(uint32_t i = 0; i < (8192-3072)/4; ++i) {
+	ibuf[i] = i + 3072/4;
+    }
     SINVARIANT(buf.readAvailable() == 8192);
     SINVARIANT(buf.writeAvailable() == 0);
     for(uint32_t i = 0; i < 8192/4; ++i) {
@@ -54,18 +56,15 @@ void basicChecks(ByteBuffer &buf) {
     SINVARIANT(buf.readAvailable() == 0 && buf.writeAvailable() == 0 
 	       && buf.bufferSize() == 0);
     buf.resizeBuffer(8);
-    buf.writeStartAs<int64_t>()[0] = 0x123456789ABCDEFLL;
-    buf.extend(8);
+    buf.writeStartAs<int64_t>(1)[0] = 0x123456789ABCDEFLL;
     buf.resizeBuffer(24);
     SINVARIANT(buf.writeAvailable() == 16);
-    buf.writeStartAs<int64_t>()[0] = 0x234567891ABCDEFLL;
-    buf.extend(8);
+    buf.writeStartAs<int64_t>(1)[0] = 0x234567891ABCDEFLL;
     SINVARIANT(*buf.readStartAs<int64_t>() == 0x123456789ABCDEFLL);
     buf.consume(8);
     SINVARIANT(buf.writeAvailable() == 8);
     SINVARIANT(*buf.readStartAs<int64_t>() == 0x234567891ABCDEFLL);
-    buf.writeStartAs<int64_t>()[0] = 0x345678912ABCDEFLL;
-    buf.extend(8);
+    buf.writeStartAs<int64_t>(1)[0] = 0x345678912ABCDEFLL;
     buf.shift();
     SINVARIANT(*buf.readStartAs<int64_t>() == 0x234567891ABCDEFLL);
     buf.consume(8);
@@ -98,12 +97,12 @@ void randomChecks(ByteBuffer &buf) {
 		}
 		SINVARIANT(buf.writeAvailable() >= nbytes);
 	    }
+	    uint8_t *write_at = buf.writeStart(nbytes);
 	    for(uint32_t j = 0; j < nbytes; ++j) {
 		uint8_t v = mt.randInt() & 0xFF;
 		expected.push_back(v);
-		buf.writeStart()[j] = v;
+		write_at[j] = v;
 	    }
-	    buf.extend(nbytes);
 	} else { // read
 	    ++read_count;
 	    if (buf.readAvailable() < nbytes) {
@@ -141,8 +140,7 @@ void copyChecks(ByteBuffer &buf) {
 
     string data("Hello, World.");
     buf.resizeBuffer(data.size());
-    memcpy(buf.writeStart(), data.data(), data.size());
-    buf.extend(data.size());
+    memcpy(buf.writeStart(data.size()), data.data(), data.size());
     SINVARIANT(buf.readAvailable() == data.size());
     
     ByteBuffer buf2 = buf;
@@ -151,7 +149,7 @@ void copyChecks(ByteBuffer &buf) {
     SINVARIANT(buf.readAvailable() == data.size());
     SINVARIANT(buf2.readAvailable() == data.size() - 5);
     string data2(", Xorld.");
-    buf2.writeStart()[-6] = 'X';
+    buf2.writeableReadStart()[2] = 'X';
     SINVARIANT(buf.asString() == data);
     SINVARIANT(buf2.asString() == data2);
     cout << "passed copy checks\n";
