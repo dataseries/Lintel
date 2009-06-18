@@ -172,9 +172,6 @@ namespace lintel {
 	    append(init);
 	}
 
-	// TODO-eric: create a copy constructor and equals operator to emphasize
-	// that its doing what we expect.
-	
 	/// Create a ByteBuffer and initialize it with the contents of @param init
 	/// If @param len < 0, automatically call strlen on init to get the length.
 	///
@@ -400,6 +397,9 @@ namespace lintel {
 	bool operator==(const ByteBuffer &rhs) const {
 	    if (readAvailable() != rhs.readAvailable()) {
 		return false;
+	    }
+	    if (rep == rhs.rep) {
+		return true;
 	    }
 	    return memcmp(readStart(), rhs.readStart(), readAvailable()) == 0;
 	}

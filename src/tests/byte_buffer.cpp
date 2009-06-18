@@ -10,8 +10,6 @@
     Regression test.
 */
 
-// TODO-eric: lots of tests.
-
 #include <iostream>
 
 #include <Lintel/ByteBuffer.hpp>
@@ -30,15 +28,16 @@ void basicChecks(ByteBuffer &buf) {
     buf.resizeBuffer(8192);
     SINVARIANT(buf.readAvailable() == 0);
     SINVARIANT(buf.writeAvailable() == 8192);
-    uint32_t *ibuf = buf.writeStartAs<uint32_t>(3072/4);
+    uint32_t *ibuf = buf.writeStartAs<uint32_t>(1024/4);
     for(uint32_t i = 0; i < 3072/4; ++i) {
 	ibuf[i] = i;
     }
+    buf.extend(3072-1024);
     SINVARIANT(buf.readAvailable() == 3072);
     SINVARIANT(buf.writeAvailable() == 8192 - 3072);
-    ibuf = reinterpret_cast<uint32_t *>(buf.writeStart(8192-3072));
     for(uint32_t i = 0; i < (8192-3072)/4; ++i) {
-	ibuf[i] = i + 3072/4;
+	reinterpret_cast<uint32_t *>(buf.writeStart(0))[0] = i + 3072/4;
+	buf.extendAs<uint32_t>(1);
     }
     SINVARIANT(buf.readAvailable() == 8192);
     SINVARIANT(buf.writeAvailable() == 0);
@@ -152,7 +151,75 @@ void copyChecks(ByteBuffer &buf) {
     buf2.writeableReadStart()[2] = 'X';
     SINVARIANT(buf.asString() == data);
     SINVARIANT(buf2.asString() == data2);
+
     cout << "passed copy checks\n";
+}
+
+void constructorTests() {
+    ByteBuffer buf1(string("abcdef"));
+
+    SINVARIANT(buf1.asString() == "abcdef");
+    
+    ByteBuffer buf2("xyzzy\0abc", 9);
+    
+    SINVARIANT(buf2.asString() == string("xyzzy\0abc", 9));
+
+    ByteBuffer buf3("foo");
+    SINVARIANT(buf3.asString() == "foo");
+
+    ByteBuffer buf4(buf3);
+    SINVARIANT(buf4.asString() == "foo");
+
+    ByteBuffer buf5 = buf4;
+    SINVARIANT(buf5.asString() == "foo");
+    
+    cout << "passed constructor checks\n";
+}
+
+void appendReplaceAssignTests() {
+    ByteBuffer buf1;
+
+    buf1.append("abc");
+    buf1.append("def");
+
+    SINVARIANT(buf1.asString() == "abcdef");
+
+    ByteBuffer buf2("123");
+    buf2.append(buf1);
+
+    SINVARIANT(buf2.asString() == "123abcdef");
+
+    buf2.append("456789", 2);
+    SINVARIANT(buf2.asString() == "123abcdef45");
+
+    buf2.replace(1, "AZ", 2);
+    SINVARIANT(buf2.asString() == "1AZabcdef45");
+
+    ByteBuffer buf3("zzz");
+    SINVARIANT(buf3.asString() == "zzz");
+    buf3.assign(buf1);
+    SINVARIANT(buf3.asString() == "abcdef");
+
+    buf1.assign("bbb");
+    SINVARIANT(buf1.asString() == "bbb");
+
+    buf2.assign("12345", 3);
+    SINVARIANT(buf2.asString() == "123");
+
+    SINVARIANT(buf2 != buf1);
+
+    buf2.assign(buf1);
+    SINVARIANT(buf1 == buf2);
+
+    ByteBuffer buf4(buf2);
+    SINVARIANT(buf4 == buf2 && buf4 == buf1);
+
+    buf4.forceUnique();
+    buf4.append("aa");
+    SINVARIANT(buf4 != buf2);
+    SINVARIANT(buf4.asString() == "bbbaa");
+
+    cout << "passed append/replace/assign checks\n";
 }
 
 int main() {
@@ -161,5 +228,8 @@ int main() {
     basicChecks(buf);
     randomChecks(buf);
     copyChecks(buf);
+    constructorTests();
+    appendReplaceAssignTests();
+
     return 0;
 }
