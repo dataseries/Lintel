@@ -73,25 +73,43 @@ export BIBINPUTS
 export BSTINPUTS
 TEXFILE=$2
 
-if [ -f $1/$TEXFILE.blg -o -f $1/$TEXFILE.bbl -o -f $1/$TEXFILE.dvi ]; then
-    echo "$1/$TEXFILE.{blg,bbl,dvi} already exist."
+if [ -f $1/$TEXFILE.blg -o -f $1/$TEXFILE.bbl -o -f $1/$TEXFILE.dvi -o -f $1/$TEXFILE.aux ]; then
+    echo "some of $1/$TEXFILE.{blg,bbl,dvi,aux} already exist."
     echo "this is likely to give you the wrong result; make clean in that dir?"
     exit 1
 fi
     
-rebuild() {
+rebuild_latex() {
     echo -n " latex"
-    @LATEX_COMPILER@ $TEXFILE.tex </dev/null >$TEXFILE.rebuild.out 2>&1
+    echo "" >>$TEXFILE.rebuild.out
+    echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
+    echo "---                rebuild latex               ---" >>$TEXFILE.rebuild.out
+    echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
+    @LATEX_COMPILER@ $TEXFILE.tex </dev/null >>$TEXFILE.rebuild.out 2>&1
     latex_err=$?
+}
+
+rebuild_bibtex() {
     echo -n " bibtex"
+    echo "" >>$TEXFILE.rebuild.out
+    echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
+    echo "---               rebuild bibtex               ---" >>$TEXFILE.rebuild.out
+    echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
     @BIBTEX_COMPILER@ $TEXFILE >>$TEXFILE.rebuild.out 2>&1
     bibtex_err=$?
+}
+
+rebuild() {
+    echo "Latex rebuild run at `date` on `hostname`" >$TEXFILE.rebuild.out
+    rebuild_latex
+    rebuild_bibtex
 }
 
 # Two initial rounds to get enough far through that it could be stable
 echo -n "initial latex rounds:"
 rebuild
 rebuild
+rebuild_latex
 echo " done."
 
 i=0
@@ -105,6 +123,7 @@ while [ "`grep -c 'Rerun to get' $TEXFILE.rebuild.out`" != 0 ]; do
     fi
     echo -n "latex convergence round $i:" 
     rebuild
+    rebuild_latex
     echo
 done
 
