@@ -12,6 +12,10 @@
     "Approximate medians and other quantiles in one pass with limited memory"
     by G. Manku and S. Rajagopalan and B. Lindsay
     Proceedings of the ACM SIGMOD, 1998. 
+
+    An improved algorithm (don't need nbound, reduced memory usage is
+    "Space-Efficient Online Computation of Quantile Summaries",
+    Greenwald and Khanna, http://eprints.kfupm.edu.sa/66004/1/66004.pdf
 */
 
 #ifndef LINTEL_STATSQUANTILE_HPP
