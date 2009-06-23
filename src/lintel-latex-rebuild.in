@@ -176,7 +176,7 @@ if [ "$any_err" = "" ]; then
     exit 0
 else 
     echo "--------- ERROR in $TEXFILE -----------"
-    tail -50 $TEXFILE.rebuild.out
+    cat $TEXFILE.rebuild.out
     echo "--------- ERROR in $TEXFILE -----------"
     echo "Full log file is $TEXFILE.rebuild.out"
     echo "$any_err failed, removing $TEXFILE.{dvi,ps,pdf} files"
