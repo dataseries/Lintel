@@ -12,6 +12,12 @@ INCLUDE_DIRECTORIES(
 	${Boost_INCLUDE_DIRS}
 	)
 
+IF(COMMAND CMAKE_POLICY)
+    CMAKE_POLICY(SET CMP0003 NEW) # don't warn about -lpthread, it's ok.
+    CMAKE_POLICY(SET CMP0005 OLD) # we escape a string definition below
+    # once we are cmake 2.6 and above only we can set this to new and remove the escaping
+ENDIF(COMMAND CMAKE_POLICY)
+
 ADD_DEFINITIONS(-DLIBLINTEL_VERSION="\\"${LINTEL_VERSION}\\"")
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     ADD_DEFINITIONS(-DDEBUG)

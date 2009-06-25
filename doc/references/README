@@ -1,0 +1,16 @@
+Currently (2009-Jun) recommended citation format for papers is:
+  first-author:citation-description:venue
+
+For example:
+  ghemawat:google-fs:sosp2003, alpern:myth-scalable-high-perf:ppsc1995
+
+The rationale is that some people remember a paper by author, or by
+citation or by venue.  An earlier attempt included co-authors as
++last-name-initials, but the extra characters didn't seem to help with
+memory, although with the prior format skipping some of the other
+pieces, it helped with disambiguation.
+
+Recommended format for books and web sites is still under flux.
+
+
+TODO: add some test that loads all the .bib files to make sure they are clean.

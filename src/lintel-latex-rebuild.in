@@ -64,9 +64,9 @@ done
 [ ! -f "$1/$2.tex" ] && usage "'$1/$2.tex' is not a file"
 [ `echo "$2" | wc -w` != 1 ] && usage "Main texfile is not one word"
 
-TEXINPUTS=$1:$TEXINPUTS
-BIBINPUTS=$1:$BIBINPUTS
-BSTINPUTS=$1:$BSTINPUTS
+TEXINPUTS=$1:$TEXINPUTS:@CMAKE_INSTALL_PREFIX@/share/lintel-latex-rebuild:
+BIBINPUTS=$1:$BIBINPUTS:@CMAKE_INSTALL_PREFIX@/share/lintel-latex-rebuild:
+BSTINPUTS=$1:$BSTINPUTS:@CMAKE_INSTALL_PREFIX@/share/lintel-latex-rebuild:
 
 export TEXINPUTS
 export BIBINPUTS

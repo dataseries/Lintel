@@ -11,3 +11,5 @@ LINTEL_DOCS_BUILD()
 
 INSTALL(FILES doxygen.config.in 
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/Lintel)
+
+ADD_SUBDIRECTORY(references)
