@@ -14,3 +14,4 @@ ADD_CUSTOM_TARGET(all-bib ALL
 INSTALL(FILES ${BIB_FILES} ${CMAKE_CURRENT_BINARY_DIR}/lintel-latex-all.bib 
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/lintel-latex-rebuild)
 
+ADD_TEST(web-sites-check ${CMAKE_CURRENT_SOURCE_DIR}/check-web-sites-bib.sh)

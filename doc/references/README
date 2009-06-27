@@ -1,16 +1,41 @@
-Currently (2009-Jun) recommended citation format for papers is:
-  first-author:citation-description:venue
+---++ Paper citation format:
 
-For example:
-  ghemawat:google-fs:sosp2003, alpern:myth-scalable-high-perf:ppsc1995
+  Currently (2009-Jun) recommended citation format for papers is:
+    first-author:citation-description:venue
+  
+  For example:
+    ghemawat:google-fs:sosp2003, alpern:myth-scalable-high-perf:ppsc1995
+  
+  The rationale is that some people remember a paper by author, or by
+  citation or by venue.  An earlier attempt included co-authors as
+  +last-name-initials, but the extra characters didn't seem to help with
+  memory, although with the prior format skipping some of the other
+  pieces, it helped with disambiguation.
 
-The rationale is that some people remember a paper by author, or by
-citation or by venue.  An earlier attempt included co-authors as
-+last-name-initials, but the extra characters didn't seem to help with
-memory, although with the prior format skipping some of the other
-pieces, it helped with disambiguation.
+---++ Book citation format:
 
-Recommended format for books and web sites is still under flux.
+  Recommended format for books is still under flux.
 
+---++ Web citation format:
+
+  Recommended citation format for web sites is still under flux, pick
+  one from the web-sites.bib file, or make up a new one.  A few things
+  are checked:
+
+    1) web-sites.bib should have only @misc{ entries, they need to
+       start at the beginning of a line, and have no spaces in the
+       above shown part.
+
+    2) Exactly one of a '  author =' or '  key =' should be present in
+       each entry.  The two leading spaces are required, and a space
+       after author or key.
+
+    3) Each reference should have a note that includes a '\url{...}'
+       value, and an 'Accessed <month> <year>' It is recommended to
+       not include a . after the url as that could be confusing.
+       Because of the way the check is done, this all has to be on one
+       line.
+
+---++
 
 TODO: add some test that loads all the .bib files to make sure they are clean.
