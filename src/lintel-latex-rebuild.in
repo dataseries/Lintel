@@ -187,16 +187,19 @@ cleanup_abort() {
     exit 1
 }
 
-if $ERROR_ON_WARNINGS; then
-    WARNING_COUNT=`grep -i warning $TEXFILE.rebuild.out | wc -l`
-    if [ $WARNING_COUNT != 0 ]; then
-	show_warnings
-	echo "ERROR: Warnings are currently treated as errors"
-	cleanup_abort
+check_warnerror() {
+    if $ERROR_ON_WARNINGS; then
+	WARNING_COUNT=`grep -i warning $TEXFILE.rebuild.out | wc -l`
+	if [ $WARNING_COUNT != 0 ]; then
+	    show_warnings
+	    echo "ERROR: Warnings are currently treated as errors"
+	    cleanup_abort
+	fi
     fi
-fi
+}
 
 if [ "$any_err" = "" ]; then
+    check_warnerror
     show_warnings
     echo "Full log file is $TEXFILE.rebuild.out"
     echo "Successful latex rebuild." 
