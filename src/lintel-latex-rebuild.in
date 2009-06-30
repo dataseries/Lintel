@@ -8,8 +8,10 @@
 
 usage() {
     [ "$1" != "" ] && echo "$@"
-    echo "Usage: $0 [--tex <path>] [--bib <path>] [--bst <path>] [--paper <paper-size>]"
-    echo "    <srcdir> <main-texfile-basename>"
+    echo "Usage: $0"
+    echo "  [--tex <path>] [--bib <path>] [--bst <path>] [--paper <paper-size>]"
+    echo "  [--error-on-warnings] <srcdir> <main-texfile-basename>"
+    echo "-----"
     echo "    <path> is a : separated sequence of paths"
     exit 0
 }
@@ -26,6 +28,7 @@ fi
 
 PAPER_SIZE=letter
 CONTINUE=true
+ERROR_ON_WARNINGS=false
 while $CONTINUE; do
     case "$1" in
 	--tex)
@@ -51,6 +54,10 @@ while $CONTINUE; do
 	    [ $# != 0 ] || usage
 	    PAPER_SIZE=$1
 	    shift
+	    ;;
+	--error-on-warnings)
+	    shift
+	    ERROR_ON_WARNINGS=true
 	    ;;
 	*)
 	    CONTINUE=false
@@ -167,10 +174,33 @@ elif [ $ps2pdf14_err != 0 ]; then
     any_err=ps2pdf14
 fi
 
-if [ "$any_err" = "" ]; then
+show_warnings() {
     echo "--------- Warnings for $TEXFILE ----------"
     grep -i warning $TEXFILE.rebuild.out
     echo "--------- Warnings for $TEXFILE ----------"
+}
+
+cleanup_abort() {
+    echo "Full log file is $TEXFILE.rebuild.out"
+    echo "$any_err failed, removing $TEXFILE.{dvi,ps,pdf} files"
+    rm $TEXFILE.dvi $TEXFILE.ps $TEXFILE.pdf 
+    exit 1
+}
+
+check_warnerror() {
+    if $ERROR_ON_WARNINGS; then
+	WARNING_COUNT=`grep -i warning $TEXFILE.rebuild.out | wc -l`
+	if [ $WARNING_COUNT != 0 ]; then
+	    show_warnings
+	    echo "ERROR: Warnings are currently treated as errors"
+	    cleanup_abort
+	fi
+    fi
+}
+
+if [ "$any_err" = "" ]; then
+    check_warnerror
+    show_warnings
     echo "Full log file is $TEXFILE.rebuild.out"
     echo "Successful latex rebuild." 
     exit 0
@@ -178,10 +208,7 @@ else
     echo "--------- ERROR in $TEXFILE -----------"
     cat $TEXFILE.rebuild.out
     echo "--------- ERROR in $TEXFILE -----------"
-    echo "Full log file is $TEXFILE.rebuild.out"
-    echo "$any_err failed, removing $TEXFILE.{dvi,ps,pdf} files"
-    rm $TEXFILE.dvi $TEXFILE.ps $TEXFILE.pdf 
-    exit 1
+    cleanup_abort
 fi
 
 
