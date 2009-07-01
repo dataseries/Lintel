@@ -2087,7 +2087,7 @@ sub cdSrc {
 sub cdBuild {
     my($what) = @_;
 
-    my $cwd = cdInitialPrep(2, "cd${what} <cur-working-dir> [build-type]");
+    my $cwd = cdInitialPrep(2, "cd${what} <cur-working-dir> [build-type|nil] -- type defaults to previous; use nil to reset.");
 
     my ($project, $subprojdir, $buildtype) = divideDir($cwd);
     $subprojdir ||= '';
@@ -2100,8 +2100,9 @@ sub cdBuild {
     $buildtype = $ENV{$deptool_env}
         if $buildtype eq '' && defined $ENV{$deptool_env};
     $buildtype = $ARGV[1] if @ARGV == 2;
+    $buildtype ||= 'nil';
 
-    my $xbuildtype = $buildtype eq '' ? '' : "-$buildtype";
+    my $xbuildtype = $buildtype eq 'nil' ? '' : "-$buildtype";
     my $envvar = $what eq 'opt' ? 'BUILD_OPT' : 'BUILD_DEBUG'; 
     my $builddir = "$ENV{$envvar}/$project$xbuildtype$subprojdir";
     if (! -d $builddir) {
