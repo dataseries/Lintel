@@ -72,7 +72,7 @@ sub usage {
 
 =head1 SYNOPSIS
 
- % deptool <command> [-y (auto-yes to prompts)] [--man] [options] [args]
+ % deptool <command> [--man] [options] [args]
    init [--server=<hostname>] [branch-prefix...]
    checkout <branch-substring...> # checkout branch and dependencies
    pull # pull branch and dependencies
@@ -142,7 +142,7 @@ then build in that directory.
 
 =cut
 
-my $auto_yes_to_prompts = 0;
+my $auto_yes_to_prompts = 1;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
@@ -152,7 +152,7 @@ $monotone_dir ||= "$ENV{HOME}/.monotone";
 
 my @original_arguments = @ARGV;
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
-GetOptions("y!" => \$auto_yes_to_prompts,
+GetOptions("auto-yes!" => \$auto_yes_to_prompts,
            "quiet!" => \$quiet, 
 	   "noconfig!" => \$noconfig,
            "projects=s" => \$Cache::projects,
@@ -177,10 +177,11 @@ if (!defined $time_log) {
 
 =over 4
 
-=item -y 
+=item -no-auto-yes 
 
-Automatically answer 'yes' to all of the prompts that are provided if
-there is a sane default answer.
+Do not automatically answer 'yes' to all of the prompts that are
+provided if there is a sane default answer.  Default is true because
+in practice that's what everyone did.
 
 =item --quiet
 
