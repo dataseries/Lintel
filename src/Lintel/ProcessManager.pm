@@ -1,0 +1,217 @@
+package Lintel::ProcessManager;
+
+=pod
+
+=head1 NAME
+
+Lintel::ProcessManager - library for dealing with sub-processes
+
+=head1 SYNOPSIS
+
+    use Lintel::ProcessManager;
+
+    my $process_manager 
+        = new Lintel::ProcessManager([debug => 0],
+                                     [auto_kill_on_destroy => 0|1 (default)]);
+
+
+    my $pid = $process_manager->fork(cmd => '...' | [...] | sub { ... },
+                                     [setpgid => 0|1,]
+                                     [stdout => '/path',]
+                                     [stderr => '/path|STDOUT',]
+                                     [exitfn => sub { my($pid, $status) = @_; ... }]);
+
+    my %pid_to_status = $process_manager->wait([timeout]);
+
+    $process_manager->enableSignals([sub { my ($pm) = @_; 'should-call-wait' }]);
+
+    my $nchildren = $process_manager->nChildren();
+
+    my @pids = $process_manager->children();
+    
+=cut
+
+use strict;
+use warnings;
+
+use Carp;
+use POSIX qw(:sys_wait_h setpgid);
+use Time::HiRes 'time';
+
+sub new {
+    my ($class, %opts) = @_;
+
+    $opts{children} = {};
+    $opts{in_signal_handler} = 0;
+
+    return bless \%opts, $class;
+}
+
+sub DESTROY {
+    my ($this) = @_;
+
+    if ($this->nChildren() > 0) {
+	unless (defined $this->{auto_kill_on_destroy}) {
+	    warn "deleting process manager with children still present, auto-kill\n ";
+	    $this->{auto_kill_on_destroy} = 1;
+	}
+	if ($this->{auto_kill_on_destroy}) {
+	    foreach my $pid ($this->children()) {
+		kill ('TERM', $pid) 
+		    or warn "Unable to kill $pid process group: $!";
+	    }
+	}
+    }
+}
+
+sub waitForFile {
+    my ($this, $path) = @_;
+
+    return unless defined $path;
+    for(my $start = time; ! -f $path; ) {
+	my $delay = time - $start;
+	die "Waited too long ($delay seconds) for fork to make $path" 
+	    unless $delay < 3;
+	select(undef,undef,undef,0.01);
+    }
+}
+	
+
+sub fork {
+    my ($this, %opts) = @_;
+
+    confess "missing cmd option" unless defined $opts{cmd};
+
+    my $cmd = $opts{cmd};
+    $cmd = join(' ', @$cmd) if ref $cmd eq 'ARRAY';
+    $cmd = 'FUNCTION' if ref $cmd eq 'CODE';
+
+    if ($this->{debug}) {
+	my $stdout = $opts{stdout} || 'STDOUT';
+	my $stderr = $opts{stdout} || 'STDERR';
+	print "Running '$cmd', stdout=$stdout, stderr=$stderr\n";
+    }
+
+    if (defined $opts{stdout} && -f $opts{stdout}) {
+	unlink($opts{stdout}) || confess "Can't delete $opts{stdout}: $!";
+    }
+    if (defined $opts{stderr} && -f $opts{stderr} && $opts{stderr} ne 'STDOUT') {
+	unlink($opts{stderr}) || confess "Can't delete $opts{stdout}: $!";
+    }
+    my $pid = fork;
+    confess "fork failed: $!" unless defined $pid && $pid >= 0;
+
+    if ($pid == 0) { 
+	print "Child $$\n" if $this->{debug};
+	if ($opts{setpgid}) {
+	    print "setpgid -- $$\n" if $this->{debug};
+	    # Make us a separate process group so we can kill the entire
+	    # set of children (if any) as a single group.
+	    setpgid(0, 0) or confess "Can't setpgid: $!";
+	}
+	if (defined $opts{stdout}) {
+	    open(STDOUT, ">$opts{stdout}")
+		or die "Can't write to $opts{stdout}: $!";
+	}
+	if (defined $opts{stderr}) {
+	    if ($opts{stderr} eq 'STDOUT') {
+		open(STDERR, ">&STDOUT")
+		    or confess "Can't dup stdout: $!";
+	    } else {
+		open(STDERR, ">$opts{stderr}")
+		    or die "Can't write to $opts{stderr}: $!";
+	    }
+	}
+	print STDERR "exec $cmd -- $$\n" if $this->{debug};
+
+	if (ref $opts{cmd} eq 'ARRAY') {
+	    exec @{$opts{cmd}};
+	} elsif (ref $opts{cmd} eq 'CODE') {
+	    my $fn = $opts{cmd};
+	    &$fn;
+	    exit(0);
+	} else {
+	    exec $opts{cmd};
+	}
+
+	confess "exec($cmd) failed: $!";
+    }
+
+    $this->waitForFile($opts{stdout});
+    $this->waitForFile($opts{stderr});
+
+    $this->{children}->{$pid} = $opts{exitfn};
+
+    return $pid;
+}
+    
+sub wait {
+    my ($this, $timeout) = @_;
+
+    confess "Can't call wait from inside signal handler -- race condition"
+	if $this->{in_signal_handler};
+
+    confess "Can't call wait without any children" 
+	unless $this->nChildren() > 0;
+    my %exited;
+    my $exit_count = 0;
+    my $started = time;
+    while (1) {
+	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
+	    my $status = $?;
+	    print "exit($child) -> $status\n" if $this->{debug};
+	    
+	    $exited{$child} = $status;
+	    ++$exit_count;
+
+	    unless (exists $this->{children}->{$child}) {
+		warn "Unexpected pid $child exited with status $status";
+	    } else {
+		my $fn = $this->{children}->{$child};
+		&$fn($child, $status) if defined $fn;
+		delete $this->{children}->{$child};
+	    }
+	}
+	if ($exit_count == 0) {
+	    last if defined $timeout && time >= $started + $timeout;
+	    select(undef, undef, undef, 0.1);
+	} else {
+	    last;
+	}
+    }
+
+    return %exited;
+}
+
+sub enableSignals {
+    my ($this, $fn) = @_;
+
+    die "?" if defined $this->{signal_handler_fn};
+
+    $this->{signal_handler_fn} = sub {
+	confess "signal recursion" if $this->{in_signal_handler};
+	++$this->{in_signal_handler};
+
+	&$fn if defined $fn;
+	
+	--$this->{in_signal_handler};
+	$SIG{CHLD} = $this->{signal_handler_fn};
+    };
+
+    $SIG{CHLD} = $this->{signal_handler_fn};
+}
+
+sub children {
+    my ($this) = @_;
+
+    return keys %{$this->{children}};
+}
+
+sub nChildren {
+    my ($this) = @_;
+
+    return scalar $this->children();
+}
+
+1;
+
