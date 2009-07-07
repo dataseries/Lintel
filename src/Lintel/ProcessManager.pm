@@ -11,7 +11,7 @@ Lintel::ProcessManager - library for dealing with sub-processes
     use Lintel::ProcessManager;
 
     my $process_manager 
-        = new Lintel::ProcessManager([debug => 0],
+        = new Lintel::ProcessManager([debug => 0|1],
                                      [auto_kill_on_destroy => 0|1 (default)]);
 
 
@@ -19,15 +19,17 @@ Lintel::ProcessManager - library for dealing with sub-processes
                                      [setpgid => 0|1,]
                                      [stdout => '/path',]
                                      [stderr => '/path|STDOUT',]
-                                     [exitfn => sub { my($pid, $status) = @_; ... }]);
+                                     [exitfn => sub { my ($pid, $status) = @_; ... }]);
 
     my %pid_to_status = $process_manager->wait([timeout]);
 
     $process_manager->enableSignals([sub { my ($pm) = @_; 'should-call-wait' }]);
 
+    my @pids = $process_manager->children();
+
     my $nchildren = $process_manager->nChildren();
 
-    my @pids = $process_manager->children();
+=head1 FUNCTIONS
     
 =cut
 
@@ -37,6 +39,22 @@ use warnings;
 use Carp;
 use POSIX qw(:sys_wait_h setpgid);
 use Time::HiRes 'time';
+
+=pod
+
+=head2 my $mgr = new Lintel::ProcessManager(%options)
+
+Create a new process manager.  You can pass a list of options to
+control how the process manager will behave.  Right now there are two
+options you can specify: debug, and auto_kill_on_destroy.  The debug
+option will turn on a few additional bits of output, and is really for
+developers.  auto_kill_on_destroy tells the process manager what to do
+when it is destroyed, but still have active sub-processes.  By default
+the answer is it prints a warning and sends a term signal to all of
+the sub-processes.  Setting the value to 1 disables the warning, and 0
+disables the killing.
+
+=cut
 
 sub new {
     my ($class, %opts) = @_;
@@ -76,6 +94,50 @@ sub waitForFile {
     }
 }
 	
+=pod
+
+=head2 $mgr->fork(%options)
+
+Create a new sub-process.  The options control what process is created
+and how it operates.  Options include:
+
+=over 4
+
+=item cmd => '...' | [...] | sub { ... }
+
+What command should be executed in the sub-process.  This option can
+be either a single string, which is then passed to exec, an array
+reference which is dereferenced and passed to exec, or a subrouting
+which is executed, and if it returns, the process will exit(0).  The
+choice between the string and array reference is to control whether
+the command is run through a shell (string) or not (array ref).
+
+=item setpgid => 0|1
+
+Should the sub-process execute setpgid after forking.  If yes, this
+process will become a new process group leader, and so can be killed
+as a group.
+
+=item stdout => 'path'
+
+What path (if any) should stdout be redirected to for the sub process.
+
+=item stderr => 'path|STDOUT'
+
+What path (if any) should stderr be redirected to for the sub process.
+If the special value STDOUT is specified, then stderr is set to be
+stdout.
+
+=item exitfn => sub { my ($pid, $status) = @_; ... }
+
+What function should be called when the sub-process exits.  The
+process will be given both the process id that exited and the status
+of the exit.  It can take any desired action.  Exit functions will be
+called during an execution of the wait() method.
+
+=back
+
+=cut
 
 sub fork {
     my ($this, %opts) = @_;
@@ -145,6 +207,18 @@ sub fork {
 
     return $pid;
 }
+
+=pod
+
+=head2 my %pid_to_status = $mgr->wait([timeout])
+
+Wait for children to exit up to timeout seconds.  Return a map from
+process id to status for each child that exited.  If an exitfn was
+specified for each pid, then the function will be called.  It is an
+error to call this from within the process manager signal handler, or
+without any children.
+
+=cut
     
 sub wait {
     my ($this, $timeout) = @_;
@@ -184,6 +258,18 @@ sub wait {
     return %exited;
 }
 
+=pod
+
+=head2 $mgr->enableSignals(sub { my ($mgr) = @_; ... })
+
+Specify a function to call when a child exits.  This notifies the
+application that it should call wait shortly.  It is an error to call
+wait() within the handler.  The reason is that there is a race
+condition between the signal handler being called and the data
+structures being set up to handle the sub-process exiting.
+
+=cut
+
 sub enableSignals {
     my ($this, $fn) = @_;
 
@@ -202,11 +288,29 @@ sub enableSignals {
     $SIG{CHLD} = $this->{signal_handler_fn};
 }
 
+=pod
+
+=head2 my @pids = $mgr->children()
+
+Return an array of the process id's of all the sub-processes
+
+=cut
+
 sub children {
     my ($this) = @_;
 
     return keys %{$this->{children}};
 }
+
+=pod
+
+=head2 my $count = $mgr->nChildren()
+
+Return the number of currently active children, i.e. ones that were
+started but have not yet exited, or have exited but wait() has not
+been called.
+
+=cut
 
 sub nChildren {
     my ($this) = @_;

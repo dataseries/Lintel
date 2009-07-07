@@ -143,6 +143,32 @@ you want special builds, then you can list them as
 same effect as creating a dependency where you run b I<sub-build-type> and
 then build in that directory.
 
+To control parallel builds, you need to edit the file deptool.config
+(note this will eventually replace .version_control_deps).
+deptool.config should be a file that returns a hash reference.  The
+hash reference has a series of options inside it that control how
+deptool will operate.  Options include:
+
+=over 4
+
+=item parallel_test => [0|1]
+
+Should deptool execute the tests for this directory in parallel.  The
+default is 0 (no).
+
+=item parallel_test_path => sub { my ($build_path) = @_; return 0|1; }
+
+Given the current build path, should deptool execute tests in
+parallel?  This function allows you to have parallel tests for some
+build modes and not for others.
+
+=iterm sequential_tests => [#,...]
+
+Specify a list of numbers for tests that have to be run sequentially.
+All of the sequential tests will be executed before any of the
+parallel tests.  This option has no effect if parallel tests are not
+enabled.
+
 =cut
 
 my $auto_yes_to_prompts = 1;
@@ -730,7 +756,7 @@ END
 
 =pod
 
-=head2 build [I<-t>] [I<-d>] [I<-b>]
+=head2 build [I<-t>] [I<-d>] [I<-b>] [I<-p>]
 
 This command will build the current project directory after building
 and installing all of the dependencies.  The type of build is
@@ -739,7 +765,10 @@ determined by the current directory and the options.  If either -d or
 respectively.  If we are in the projects directory or an optimized
 build directory, we perform an optimized build.  If we are in a debug
 build directory, we perform a debug build.  If -t is specified, tests
-will be run in addition to building and installing each of the packages.
+will be run in addition to building and installing each of the
+packages.  If -p is specified, then the build is executed in parallel.
+Note that parallel builds are still an experimental feature, they have
+not been extensively tested.
 
 If a directory hasn't been configured, then the deptool cmake command
 will be automatically run to configure the package before it is built.
@@ -1221,12 +1250,6 @@ sub dbpStartParallelTest {
 
     return $build_path;
 }
-
-# { 
-#    parallel_test => [0|1],
-#    parallel_test_path => sub { my ($path) = @_; return 0|1; }
-#    sequential_tests => [#,#,#],
-# }
 
 # TODO: drop .version_control_deps, and move into deptool.config
 sub readConfig {
