@@ -103,6 +103,7 @@ sub fork {
 
     if ($pid == 0) { 
 	print "Child $$\n" if $this->{debug};
+	$this->{children} = {};
 	if ($opts{setpgid}) {
 	    print "setpgid -- $$\n" if $this->{debug};
 	    # Make us a separate process group so we can kill the entire
@@ -138,7 +139,7 @@ sub fork {
     }
 
     $this->waitForFile($opts{stdout});
-    $this->waitForFile($opts{stderr});
+    $this->waitForFile($opts{stderr}) unless defined $opts{stderr} && $opts{stderr} eq 'STDOUT';
 
     $this->{children}->{$pid} = $opts{exitfn};
 

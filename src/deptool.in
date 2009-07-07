@@ -31,7 +31,9 @@ use Getopt::Long;
 use MIME::Base64;
 use POSIX 'ceil';
 use Pod::Usage;
+use Safe;
 use Sys::Hostname;
+use Time::HiRes 'time';
 
 @PERL5_MODULES_INC_UNSHIFT@
 use Lintel::File::Lock;
@@ -1017,7 +1019,7 @@ sub dbpStartBuild {
 		     POSIX::nice(10) or die "nice failed: $!";
 		     depBuildMake($info->{src}, $build_path);
 		 },
-		 exitfn => sub { $info->{running_build} = 0 },
+		 exitfn => sub { $info->{running_build} = 0; $info->{status_build} = $_[1]; },
 		 stdout => 'deptool.build.out', stderr => 'deptool.build.err');
 
 	    return $build_path;
@@ -1029,6 +1031,223 @@ sub dbpStartBuild {
     }
     # print "No builds active\n";
     return undef;
+}
+
+sub dbpGetMaxTest {
+    my $tests = new FileHandle "ctest -N |"
+	or die "Can't run ctest -N";
+    $_ = <$tests>; die "?" unless /^Start processing tests$/o;
+    $_ = <$tests>; die "?" unless /^Test project \S+$/o;
+
+    my $maxtest = 0;
+    while(<$tests>) {
+	die "?" unless m!^\s*\d+/\s*(\d+)\s* Testing !o;
+	$maxtest = $1;
+    }
+    close($tests);
+    return $maxtest;
+}
+
+sub dbpGetTestStatus {
+    my ($num) = @_;
+
+    my $file = "Testing/Parallel/$num/handler_output";
+    my $fh = new FileHandle($file) or die "can't read $file: $!";
+    $_ = <$fh>; die "?" unless /^Test project \S+$/o;
+    $_ = <$fh>; die "?" unless /^$/o;
+    $_ = <$fh>; die "?" unless m!^\s*(\d+)/$!o;
+    my $tnum = $1;
+    chomp;
+    my $tnum_line = $_;
+    die "internal $tnum $num" unless $tnum == $num;
+    $_ = <$fh>; die "?" unless m!^\s*\d+ Testing (.*?)\s+(\S+)\s*$!o;
+    my ($test_name, $status) = ($1, $2, $3);
+    return ("${tnum_line}$_", $test_name, $status);
+}
+
+sub dbpReadCTestOutput {
+    my ($filename) = @_;
+
+    my $fh = new FileHandle($filename) or die "Unable to open $filename for read: $!";
+    my $cur_section = 'unknown';
+    my $ret = {};
+    while (<$fh>) {
+	if (s/\[([A-Z_]+)\] \n$//o) {
+	    my $new_section = $1;
+	    $ret->{$cur_section} .= $_ if $_ ne '';
+	    $cur_section = $new_section;
+	} else {
+	    $ret->{$cur_section} .= $_;
+	}
+    }
+    die "did not find sections in $filename" if $cur_section eq 'unknown';
+    
+    return $ret;
+}
+
+sub dbpRunIndividualTest {
+    my ($test) = @_;
+
+    print "Start test at ", time, "\n";
+    $ENV{DEPTOOL_PARALLEL_TEST_NUM} = $test;
+    my $testdir = "Testing/Parallel/$test";
+    my $fh = new FileHandle("ctest -V -O $testdir/log -I $test,$test,1 2>&1 |")
+	or die "Can not fork ctest: $!";
+
+    while(<$fh>) {
+	# throw this all away, it's intermingled output streams
+	# without any signals of separation, so is effectively
+	# useless.
+    }
+    my $ok = close($fh) || 0; 
+    print "End test at ", time, "\n";
+
+    my $sections = dbpReadCTestOutput("$testdir/log");
+
+    while (my ($section, $data) = each %$sections) {
+	$section =~ tr/A-Z/a-z/;
+	my $filename = "$testdir/$section";
+	my $fh = new FileHandle(">$filename") or die "can not write $filename: $!";
+	print $fh $data or die "can't print to $filename: $!";
+	close($fh) or die "can't close $filename: $!";
+    }
+
+    if ($ok) {
+	rename("$testdir/handler_verbose_output", "$testdir/success_output")
+	    or die "rename failed: $!";
+	die "Ok, but missing Passed in handler_output"
+	    unless $sections->{HANDLER_OUTPUT} =~ /Passed/o;
+	exit(0);
+    } else {
+	rename("$testdir/handler_verbose_output", "$testdir/failure_output")
+	    or die "rename failed: $!";
+	die "Not ok, but have Passed in handler_output"
+	    if $sections->{HANDLER_OUTPUT} =~ /Passed/o;
+	exit(3);
+    }
+}
+
+sub dbpDoParallelTest {
+    my ($build_path, $config) = @_;
+
+    my ($maxtest) = dbpGetMaxTest();
+
+    die "unimplemented no tests" unless $maxtest > 0;
+
+    my $children = new Lintel::ProcessManager(auto_kill_on_destroy => 1);
+    my $parallelism = $ENV{MAKE_PARALLELISM} || 1;
+
+    map { rmtree($_) if -d $_ } qw(Testing/Temporary Testing/Parallel);
+
+    mkpath("Testing/Parallel");
+
+    my @status = map { 77 } 1 .. $maxtest;
+
+    my $starttest = sub {
+	my ($test) = @_;
+
+	my $testdir = "Testing/Parallel/$test";
+	mkdir($testdir, 0777) or die "Can not mkdir $testdir: $!";
+
+	$children->fork(cmd => sub { dbpRunIndividualTest($test); },
+			exitfn => sub { $status[$test] = $_[1]; },
+			stdout => "$testdir/deptool_out", stderr => 'STDOUT');
+    };
+
+    my %sequential_tests;
+    if (defined $config->{sequential_tests}) {
+	print "Running sequential tests.\n";
+	foreach my $test (@{$config->{sequential_tests}}) {
+	    die "invalid test $test\n" unless $test =~ /^\d+$/o && $test > 0 && $test < $maxtest;
+	    $sequential_tests{$test} = 1;
+	    print "Test $test\n";
+	    &$starttest($test);
+	    $children->wait();
+	    die "?" unless $children->nChildren() == 0;
+	}
+    }
+
+    print "Running parallel tests:\n";
+    for (my $i = $maxtest; $i >= 1; --$i) {
+	next if $sequential_tests{$i};
+	print "Start test $i\n";
+	&$starttest($i);
+	while ($children->nChildren() >= $parallelism) {
+	    $children->wait();
+	}
+    }
+    while ($children->nChildren() > 0) {
+	$children->wait();
+    }
+    print "All tests finished.\n";
+
+    my @all;
+    my @failed;
+    for (my $i = 1; $i <= $maxtest; ++$i) {
+	my ($line, $testname, $status) = dbpGetTestStatus($i);
+	push (@all, $line);
+	if ($status eq 'Passed') {
+	    die "status mismatch" unless $status[$i] == 0;
+	} else {
+	    die "status mismatch" unless $status[$i] == 3 << 8;
+	    push(@failed, [$testname, "Testing/Parallel/$i/failure_output"] );
+	}
+    }
+
+    if (@failed == 0) {
+	print "Test Status:\n";
+	print @all;
+	exit(0);
+    } else {
+	system("cat $failed[0]->[1]");
+	print "\n\n------\nSOME TESTS FAILED.\n", @all, "\n";
+	print "Failing tests: ", join(", ", map { $_->[0] } @failed), "\n";
+	print "Output from $failed[0]->[0] shown above\n";
+	print "All failure data present as $build_path/Testing/Parallel/*/failure_output\n";
+	exit(1);
+    }
+}
+
+
+sub dbpStartParallelTest {
+    my ($children, $info, $build_path, $config) = @_;
+
+    print "Starting parallel test in $build_path\n";
+    $info->{"running_test"} = 1;
+
+    $children->fork(cmd => sub { dbpDoParallelTest($build_path, $config); }, 
+		    exitfn => sub { $info->{"running_test"} = 0; $info->{status_test} = $_[1]; },
+ 		    stdout => "deptool.test.out", stderr => "deptool.test.err");
+
+    return $build_path;
+}
+
+# { 
+#    parallel_test => [0|1],
+#    parallel_test_path => sub { my ($path) = @_; return 0|1; }
+#    sequential_tests => [#,#,#],
+# }
+
+# TODO: drop .version_control_deps, and move into deptool.config
+sub readConfig {
+    my ($cfg_path) = @_;
+
+    unless (-r $cfg_path) {
+	print "Warning, missing $cfg_path\n";
+	return {};
+    }
+
+    my $fh = new FileHandle($cfg_path)
+	or die "Can not open $cfg_path for read: $!";
+    # slurp mode
+    local $/; 
+    my $file = <$fh>;
+
+    my $compartment = new Safe;
+    my $result = $compartment->reval($file);
+    die "Unable to evaluate $cfg_path: $@" if $@;
+    die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
+    return $result;
 }
 
 sub dbpStartWhich {
@@ -1049,10 +1268,21 @@ sub dbpStartWhich {
 
 	if ($which_stamp <= $build_stamp) {
 	    aliasChdir($build_path);
+	    if ($which eq 'test') {
+		my $config = readConfig(projects() . "/$info->{src}/deptool.config");
+		if ($config->{parallel_test} 
+		    || (defined $config->{parallel_test_path} 
+			&& &{$config->{parallel_test_path}}($build_path))) {
+		    return dbpStartParallelTest($children, $info, $build_path, $config);
+		}
+	    }
+
 	    print "Starting $which in $build_path\n";
 	    $info->{"running_$which"} = 1;
-	    $children->fork(cmd => "make $which", exitfn => sub { $info->{"running_$which"} = 0; },
-			    stdout => "deptool.$which.out", stderr => "deptool.$which.err");
+	    $children->fork(cmd => "make $which", 
+			    stdout => "deptool.$which.out", stderr => "deptool.$which.err",
+			    exitfn => sub { $info->{"running_$which"} = 0; 
+					    $info->{"status_$which"} = $_[1]; });
 	    return $build_path;
 	} else {
 	    print "Up to date $which in $build_path\n";
@@ -1077,11 +1307,25 @@ sub dbpFinishWhich {
 	return;
     }
 
-    print "Finish $which of $dir\n";
+    die "internal" unless defined $info->{"status_$which"};
     aliasChdir($dir);
-    stamp($which);
-    $info->{"done_$which"} = 1;
-    $running->{$which} = undef;
+    if ($info->{"status_$which"} == 0) {
+	print "Finish $which of $dir\n";
+	stamp($which);
+	$info->{"done_$which"} = 1;
+	$running->{$which} = undef;
+    } else {
+	print "\n";
+	print "--------------------\n";
+	print "ERROR: failed $which in $dir\n";
+	print "-------------------- STDOUT:\n";
+	system("cat deptool.$which.out");
+	if (-s "deptool.$which.err") {
+	    print "\n-------------------- STDERR:\n";
+	    system("cat deptool.$which.err");
+	}
+	exit(1);
+    }
 }
 
 sub depBuildParallel {
