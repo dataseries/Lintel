@@ -31,10 +31,13 @@ use Getopt::Long;
 use MIME::Base64;
 use POSIX 'ceil';
 use Pod::Usage;
+use Safe;
 use Sys::Hostname;
+use Time::HiRes 'time';
 
 @PERL5_MODULES_INC_UNSHIFT@
 use Lintel::File::Lock;
+use Lintel::ProcessManager;
 
 # TODO: pull should walk in the current directory before walking in the
 # dependent ones since it may need additional dependencies, and/or they
@@ -139,6 +142,32 @@ you want special builds, then you can list them as
 'I<dependency>;I<sub-build-type>' (without the '').  This input has the
 same effect as creating a dependency where you run b I<sub-build-type> and
 then build in that directory.
+
+To control parallel builds, you need to edit the file deptool.config
+(note this will eventually replace .version_control_deps).
+deptool.config should be a file that returns a hash reference.  The
+hash reference has a series of options inside it that control how
+deptool will operate.  Options include:
+
+=over 4
+
+=item parallel_test => [0|1]
+
+Should deptool execute the tests for this directory in parallel.  The
+default is 0 (no).
+
+=item parallel_test_path => sub { my ($build_path) = @_; return 0|1; }
+
+Given the current build path, should deptool execute tests in
+parallel?  This function allows you to have parallel tests for some
+build modes and not for others.
+
+=iterm sequential_tests => [#,...]
+
+Specify a list of numbers for tests that have to be run sequentially.
+All of the sequential tests will be executed before any of the
+parallel tests.  This option has no effect if parallel tests are not
+enabled.
 
 =cut
 
@@ -727,7 +756,7 @@ END
 
 =pod
 
-=head2 build [I<-t>] [I<-d>] [I<-b>]
+=head2 build [I<-t>] [I<-d>] [I<-b>] [I<-p>]
 
 This command will build the current project directory after building
 and installing all of the dependencies.  The type of build is
@@ -736,7 +765,10 @@ determined by the current directory and the options.  If either -d or
 respectively.  If we are in the projects directory or an optimized
 build directory, we perform an optimized build.  If we are in a debug
 build directory, we perform a debug build.  If -t is specified, tests
-will be run in addition to building and installing each of the packages.
+will be run in addition to building and installing each of the
+packages.  If -p is specified, then the build is executed in parallel.
+Note that parallel builds are still an experimental feature, they have
+not been extensively tested.
 
 If a directory hasn't been configured, then the deptool cmake command
 will be automatically run to configure the package before it is built.
@@ -747,6 +779,7 @@ sub depBuild {
     my %options = @_;
     $options{tests} ||= 0;
 
+    my $parallel = 0;
     my $cwd = aliasGetCwd();
     my $debug = buildDebug();
     if ($cwd =~ /^$debug/o) {
@@ -758,14 +791,19 @@ sub depBuild {
     my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
                          "t|tests!" => \$options{tests},
                          "o|optimize" => sub { $options{mode} = 'optimize' },
-                         "d|debug" => sub { $options{mode} = 'debug' });
+                         "d|debug" => sub { $options{mode} = 'debug' },
+			 "p|parallel!" => \$parallel);
     usage("unknown option to build") unless $ret;
 
     $options{builddir} = $options{mode} eq 'debug' ? buildDebug() : buildOpt();
     $options{projects} = projects();
 
-    depWalk(sub { }, sub { depBuildOne(\%options, @_) }, 1);
-    return %options;
+    if ($parallel) {
+	return depBuildParallel(\%options);
+    } else {
+	depWalk(sub { }, sub { depBuildOne(\%options, @_) }, 1);
+	return %options;
+    }
 }
 
 sub depBuildOne {
@@ -847,7 +885,7 @@ sub depBuildCheckOld {
 
 sub depBuildFindOld {
     my ($src) = @_; 
-    die "??" unless defined $src;
+    confess "?? $src" unless defined $src && -d $src && -f ".deptool.build_stamp";
 
     my $ref_stat = stat(".deptool.build_stamp")
         or die "Unable to stat .deptool.build_stamp: $!";
@@ -862,7 +900,7 @@ sub depBuildFindOld {
 }
 
 sub depBuildMake {
-    my($src, $build, $options) = @_;
+    my($src, $build) = @_;
 
     if (-f ".deptool.build_stamp") {
         print "depbuild: $build already has current build\n";
@@ -898,7 +936,7 @@ sub stampUpToDate {
 
     return 0 unless -f ".deptool.${which}_stamp";
     my $build_stat = stat(".deptool.build_stamp")
-        or die "Unable to stat .deptool.build_stamp: $!";
+        or confess "Unable to stat .deptool.build_stamp: $!";
     my $which_stat = stat(".deptool.${which}_stamp")
         or die "Unable to stat .deptool.${which}_stamp: $!";
     if (defined $options && $which eq "install") {
@@ -934,6 +972,455 @@ sub depBuildInstall {
         runCommand("make","install");
         stamp("install", $options);
     }
+}
+
+sub projectBuildPath {
+    my ($build_dir, $project, $sub_type) = @_;
+
+    my $dir = "$build_dir/$project";
+    $dir .= "-$sub_type" if $sub_type ne '';
+    return $dir;
+}
+
+sub stampTime {
+    my ($build_path, $which) = @_;
+
+    my $file = "$build_path/.deptool.${which}_stamp";
+    return 0 unless -f $file;
+    my $stat = stat($file) or die "Can't stat $file: $!";
+    return $stat->mtime();
+}
+
+sub dbpStartBuild {
+    my ($children, $pending, $dependencies) = @_;
+
+    for (my $i=0; $i < @$pending; ++$i) {
+	my ($build_path, $type) = @{$pending->[$i]};
+	next unless $type eq 'build';
+
+	unless (-d $build_path) {
+	    mkdir($build_path, 0777) or die "Can not mkdir($build_path): $!";
+	}
+	aliasChdir($build_path);
+
+	my $info = $dependencies->{$build_path};
+	my $deps_done_install = 1;
+	my $build_stamp = stampTime($build_path, "build");
+	my $out_of_date = $build_stamp > 0 ? 0 : 1;
+	map { 
+	    my $path = $_;
+	    my $dep_info = $dependencies->{$path};
+
+	    if ($dep_info->{src} eq $info->{src}) { 
+		# ignore self dependencies
+	    } else {
+		if ($dep_info->{done_install}) {
+		    my $them_install_stamp = stampTime($path, 'install');
+		    $out_of_date = 1 if $build_stamp <= $them_install_stamp;
+		} else {
+		    # print "$build_path waiting on $_\n";
+		    $deps_done_install = 0;
+		}
+	    }
+	} keys %{$info->{deps}};
+
+	next unless $deps_done_install;
+
+	splice(@$pending, $i, 1);
+
+	aliasChdir($build_path);
+
+	if (!$out_of_date && $build_stamp > 0) {
+	    my @old = depBuildFindOld(projects() . "/$info->{src}");
+	    if (@old > 0) {
+		print "Local rebuild of $build_path\n";
+		$out_of_date = 1;
+	    }
+	}
+
+	if ($out_of_date) {
+	    print "Start build in $build_path\n";
+	    unlink(".deptool.build_stamp");
+	    $info->{running_build} = 1;
+	    $children->fork(
+		 cmd => sub {
+		     # builds are nice to be behind install/test
+		     POSIX::nice(10) or die "nice failed: $!";
+		     depBuildMake($info->{src}, $build_path);
+		 },
+		 exitfn => sub { $info->{running_build} = 0; $info->{status_build} = $_[1]; },
+		 stdout => 'deptool.build.out', stderr => 'deptool.build.err');
+
+	    return $build_path;
+	} else {
+	    print "Up to date build in $build_path\n";
+	    $info->{done_build} = 1;
+	    return undef;
+	}
+    }
+    # print "No builds active\n";
+    return undef;
+}
+
+sub dbpGetMaxTest {
+    my $tests = new FileHandle "ctest -N |"
+	or die "Can't run ctest -N";
+    $_ = <$tests>; die "?" unless /^Start processing tests$/o;
+    $_ = <$tests>; die "?" unless /^Test project \S+$/o;
+
+    my $maxtest = 0;
+    while(<$tests>) {
+	die "?" unless m!^\s*\d+/\s*(\d+)\s* Testing !o;
+	$maxtest = $1;
+    }
+    close($tests);
+    return $maxtest;
+}
+
+sub dbpGetTestStatus {
+    my ($num) = @_;
+
+    my $file = "Testing/Parallel/$num/handler_output";
+    my $fh = new FileHandle($file) or die "can't read $file: $!";
+    $_ = <$fh>; die "?" unless /^Test project \S+$/o;
+    $_ = <$fh>; die "?" unless /^$/o;
+    $_ = <$fh>; die "?" unless m!^\s*(\d+)/$!o;
+    my $tnum = $1;
+    chomp;
+    my $tnum_line = $_;
+    die "internal $tnum $num" unless $tnum == $num;
+    $_ = <$fh>; die "?" unless m!^\s*\d+ Testing (.*?)\s+(\S+)\s*$!o;
+    my ($test_name, $status) = ($1, $2, $3);
+    return ("${tnum_line}$_", $test_name, $status);
+}
+
+sub dbpReadCTestOutput {
+    my ($filename) = @_;
+
+    my $fh = new FileHandle($filename) or die "Unable to open $filename for read: $!";
+    my $cur_section = 'unknown';
+    my $ret = {};
+    while (<$fh>) {
+	if (s/\[([A-Z_]+)\] \n$//o) {
+	    my $new_section = $1;
+	    $ret->{$cur_section} .= $_ if $_ ne '';
+	    $cur_section = $new_section;
+	} else {
+	    $ret->{$cur_section} .= $_;
+	}
+    }
+    die "did not find sections in $filename" if $cur_section eq 'unknown';
+    
+    return $ret;
+}
+
+sub dbpRunIndividualTest {
+    my ($test) = @_;
+
+    print "Start test at ", time, "\n";
+    $ENV{DEPTOOL_PARALLEL_TEST_NUM} = $test;
+    my $testdir = "Testing/Parallel/$test";
+    my $fh = new FileHandle("ctest -V -O $testdir/log -I $test,$test,1 2>&1 |")
+	or die "Can not fork ctest: $!";
+
+    while(<$fh>) {
+	# throw this all away, it's intermingled output streams
+	# without any signals of separation, so is effectively
+	# useless.
+    }
+    my $ok = close($fh) || 0; 
+    print "End test at ", time, "\n";
+
+    my $sections = dbpReadCTestOutput("$testdir/log");
+
+    while (my ($section, $data) = each %$sections) {
+	$section =~ tr/A-Z/a-z/;
+	my $filename = "$testdir/$section";
+	my $fh = new FileHandle(">$filename") or die "can not write $filename: $!";
+	print $fh $data or die "can't print to $filename: $!";
+	close($fh) or die "can't close $filename: $!";
+    }
+
+    if ($ok) {
+	rename("$testdir/handler_verbose_output", "$testdir/success_output")
+	    or die "rename failed: $!";
+	die "Ok, but missing Passed in handler_output"
+	    unless $sections->{HANDLER_OUTPUT} =~ /Passed/o;
+	exit(0);
+    } else {
+	rename("$testdir/handler_verbose_output", "$testdir/failure_output")
+	    or die "rename failed: $!";
+	die "Not ok, but have Passed in handler_output"
+	    if $sections->{HANDLER_OUTPUT} =~ /Passed/o;
+	exit(3);
+    }
+}
+
+sub dbpDoParallelTest {
+    my ($build_path, $config) = @_;
+
+    my ($maxtest) = dbpGetMaxTest();
+
+    die "unimplemented no tests" unless $maxtest > 0;
+
+    my $children = new Lintel::ProcessManager(auto_kill_on_destroy => 1);
+    my $parallelism = $ENV{MAKE_PARALLELISM} || 1;
+
+    map { rmtree($_) if -d $_ } qw(Testing/Temporary Testing/Parallel);
+
+    mkpath("Testing/Parallel");
+
+    my @status = map { 77 } 1 .. $maxtest;
+
+    my $starttest = sub {
+	my ($test) = @_;
+
+	my $testdir = "Testing/Parallel/$test";
+	mkdir($testdir, 0777) or die "Can not mkdir $testdir: $!";
+
+	$children->fork(cmd => sub { dbpRunIndividualTest($test); },
+			exitfn => sub { $status[$test] = $_[1]; },
+			stdout => "$testdir/deptool_out", stderr => 'STDOUT');
+    };
+
+    my %sequential_tests;
+    if (defined $config->{sequential_tests}) {
+	print "Running sequential tests.\n";
+	foreach my $test (@{$config->{sequential_tests}}) {
+	    die "invalid test $test\n" unless $test =~ /^\d+$/o && $test > 0 && $test < $maxtest;
+	    $sequential_tests{$test} = 1;
+	    print "Test $test\n";
+	    &$starttest($test);
+	    $children->wait();
+	    die "?" unless $children->nChildren() == 0;
+	}
+    }
+
+    print "Running parallel tests:\n";
+    for (my $i = $maxtest; $i >= 1; --$i) {
+	next if $sequential_tests{$i};
+	print "Start test $i\n";
+	&$starttest($i);
+	while ($children->nChildren() >= $parallelism) {
+	    $children->wait();
+	}
+    }
+    while ($children->nChildren() > 0) {
+	$children->wait();
+    }
+    print "All tests finished.\n";
+
+    my @all;
+    my @failed;
+    for (my $i = 1; $i <= $maxtest; ++$i) {
+	my ($line, $testname, $status) = dbpGetTestStatus($i);
+	push (@all, $line);
+	if ($status eq 'Passed') {
+	    die "status mismatch" unless $status[$i] == 0;
+	} else {
+	    die "status mismatch" unless $status[$i] == 3 << 8;
+	    push(@failed, [$testname, "Testing/Parallel/$i/failure_output"] );
+	}
+    }
+
+    if (@failed == 0) {
+	print "Test Status:\n";
+	print @all;
+	exit(0);
+    } else {
+	system("cat $failed[0]->[1]");
+	print "\n\n------\nSOME TESTS FAILED.\n", @all, "\n";
+	print "Failing tests: ", join(", ", map { $_->[0] } @failed), "\n";
+	print "Output from $failed[0]->[0] shown above\n";
+	print "All failure data present as $build_path/Testing/Parallel/*/failure_output\n";
+	exit(1);
+    }
+}
+
+
+sub dbpStartParallelTest {
+    my ($children, $info, $build_path, $config) = @_;
+
+    print "Starting parallel test in $build_path\n";
+    $info->{"running_test"} = 1;
+
+    $children->fork(cmd => sub { dbpDoParallelTest($build_path, $config); }, 
+		    exitfn => sub { $info->{"running_test"} = 0; $info->{status_test} = $_[1]; },
+ 		    stdout => "deptool.test.out", stderr => "deptool.test.err");
+
+    return $build_path;
+}
+
+# TODO: drop .version_control_deps, and move into deptool.config
+sub readConfig {
+    my ($cfg_path) = @_;
+
+    unless (-r $cfg_path) {
+	print "Warning, missing $cfg_path\n";
+	return {};
+    }
+
+    my $fh = new FileHandle($cfg_path)
+	or die "Can not open $cfg_path for read: $!";
+    # slurp mode
+    local $/; 
+    my $file = <$fh>;
+
+    my $compartment = new Safe;
+    my $result = $compartment->reval($file);
+    die "Unable to evaluate $cfg_path: $@" if $@;
+    die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
+    return $result;
+}
+
+sub dbpStartWhich {
+    my ($which, $children, $pending, $dependencies) = @_;
+
+    for (my $i=0; $i < @$pending; ++$i) {
+	my ($build_path, $type) = @{$pending->[$i]};
+	next unless $type eq $which;
+
+	my $info = $dependencies->{$build_path};
+
+	next unless $info->{done_build};
+
+	splice(@$pending, $i, 1);
+
+	my $build_stamp = stampTime($build_path, "build");
+	my $which_stamp = stampTime($build_path, $which);
+
+	if ($which_stamp <= $build_stamp) {
+	    aliasChdir($build_path);
+	    if ($which eq 'test') {
+		my $config = readConfig(projects() . "/$info->{src}/deptool.config");
+		if ($config->{parallel_test} 
+		    || (defined $config->{parallel_test_path} 
+			&& &{$config->{parallel_test_path}}($build_path))) {
+		    return dbpStartParallelTest($children, $info, $build_path, $config);
+		}
+	    }
+
+	    print "Starting $which in $build_path\n";
+	    $info->{"running_$which"} = 1;
+	    $children->fork(cmd => "make $which", 
+			    stdout => "deptool.$which.out", stderr => "deptool.$which.err",
+			    exitfn => sub { $info->{"running_$which"} = 0; 
+					    $info->{"status_$which"} = $_[1]; });
+	    return $build_path;
+	} else {
+	    print "Up to date $which in $build_path\n";
+	    $info->{"done_$which"} = 1;
+	    return undef;
+	}
+    }
+    # print "No $which active\n";
+    return undef;
+}
+
+sub dbpFinishWhich {
+    my ($which, $running, $dependencies) = @_;
+
+    my $dir = $running->{$which};
+    return unless defined $dir;
+    my $info = $dependencies->{$dir};
+
+    die "??" unless defined $info->{"running_$which"};
+    unless ($info->{"running_$which"} == 0) {
+	# print "$which not done\n";
+	return;
+    }
+
+    die "internal" unless defined $info->{"status_$which"};
+    aliasChdir($dir);
+    if ($info->{"status_$which"} == 0) {
+	print "Finish $which of $dir\n";
+	stamp($which);
+	$info->{"done_$which"} = 1;
+	$running->{$which} = undef;
+    } else {
+	print "\n";
+	print "--------------------\n";
+	print "ERROR: failed $which in $dir\n";
+	print "-------------------- STDOUT:\n";
+	system("cat deptool.$which.out");
+	if (-s "deptool.$which.err") {
+	    print "\n-------------------- STDERR:\n";
+	    system("cat deptool.$which.err");
+	}
+	exit(1);
+    }
+}
+
+sub depBuildParallel {
+    my ($options) = @_;
+
+    my $projects = projects();
+    my $start_src = rootSrcDir();
+    $start_src =~ s!^.*/!!o;
+
+    # Calculate all things we could build and their dependencies
+    my %dependencies;
+    my @pending = ([$start_src,'']);
+    while (@pending > 0) {
+	my ($src, $sub_build_type) = @{shift @pending};
+	my $build_path = projectBuildPath($options->{builddir}, $src, $sub_build_type);
+	next if defined $dependencies{$build_path};
+	aliasChdir("$projects/$src");
+	my @vcdeps = readVCDeps(".version_control_deps");
+
+	my $info = $dependencies{$build_path} = { 
+	    src => $src,
+	    deps => {}
+	};
+	
+	foreach my $dep (@vcdeps) {
+	    my ($dep_project, $dep_sub_type) = parseDependency($dep);
+
+	    my $dep_src = "$projects/$dep_project";
+	    depWalkTryCheckout($dep_project) unless -d $dep_src;
+
+	    push(@pending, [$dep_project, $dep_sub_type]);
+	    my $dep_path = projectBuildPath($options->{builddir}, $dep_project, $dep_sub_type);
+	    $info->{deps}->{$dep_path} = 1;
+	}
+    }
+    
+    # reverse is a hack to classify some bits later until I can fix it to
+    # estimate and order
+    foreach my $build_dir (reverse sort keys %dependencies) {
+	map { push(@pending, [ $build_dir, $_ ]); } qw/build test install/;
+    }
+
+    @pending = grep ($_->[1] ne 'test', @pending) unless $options->{tests};
+
+    my %running;
+    my $children = new Lintel::ProcessManager(auto_kill_on_destroy => 1);
+
+    my $prev_pending_size = @pending;
+    # Process everything we have to process.
+    while (@pending > 0 || $children->nChildren() > 0) {
+	unless (defined $running{build}) {
+	    $running{build} = dbpStartBuild($children, \@pending, \%dependencies);
+	}
+	foreach my $which (qw/install test/) {
+	    next if defined $running{$which};
+	    $running{$which} = dbpStartWhich($which, $children, \@pending, \%dependencies);
+	}
+
+	if (@pending == $prev_pending_size) {
+	    # only wait if we couldn't get anything removed
+	    die "? $pending[0]->[1] $pending[0]->[0]" unless $children->nChildren() > 0;
+
+	    $children->wait();
+
+	    foreach my $which (qw/build install test/) {
+		dbpFinishWhich($which, \%running, \%dependencies);
+	    }
+	}
+	$prev_pending_size = @pending;
+    }
+
+    return %$options;
 }
 
 ## ##### Dependency clear
@@ -1739,6 +2226,7 @@ sub makeDiffOrder {
 	  $dir ||= '';
 	  $suffix ||= 'no-suffix';
           my $test_key = $dir =~ m!/tests\b!o ? 0 : 1;
+	  my $thrift_key = $suffix eq 'thrift' ? 0 : 1;
           my $header_key = $suffix eq 'hpp' ? 0 : 1;
           my $cmake_key = $name =~ /^CMake/o ? 0 : 1;
           
@@ -2203,8 +2691,7 @@ sub depWalkRecurse ($$$$$$) {
 	    my ($project, $sub_build_type) = parseDependency($dep);
 
             my $depsrc = "$projects/$project";
-	    depWalkTryCheckout($project)
-		unless -d $depsrc;
+	    depWalkTryCheckout($project) unless -d $depsrc;
             depWalkRecurse($pre_fn, $post_fn, $depsrc, $visited, $use_sub_build_type, 
 			   $sub_build_type);
         }
@@ -2636,7 +3123,7 @@ sub quietRunCommand {
 sub aliasChdir {
     my($dir) = @_;
 
-    chdir($dir) or die "Unable to chdir($dir): $!";
+    chdir($dir) or confess "Unable to chdir($dir): $!";
     my $here = getcwd();
     return if defined $Cache::alias_cd{$here};
     print "ACD $here -> $dir\n" if 0;
