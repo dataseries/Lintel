@@ -87,10 +87,11 @@ ENDIF(MERCURY_PLOT_ENABLED)
 
 ################################### LONGER TESTS
 
+LINTEL_SIMPLE_LONG_TEST(stats_quantile stats_quantile-long)
+
 IF(ENABLE_CLOCK_TEST)
-    LINTEL_SIMPLE_TEST(clock)
+     LINTEL_SIMPLE_TEST(clock)
 ENDIF(ENABLE_CLOCK_TEST)
 
 ADD_TEST(flock-long ${CMAKE_CURRENT_SOURCE_DIR}/flock.sh ${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_BINARY_DIR}/.. ${CMAKE_INSTALL_PREFIX})
 
-LINTEL_SIMPLE_LONG_TEST(stats_quantile stats_quantile-long)
