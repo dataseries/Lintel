@@ -93,6 +93,7 @@ IF(PERL_ENABLED)
     	Lintel/Net/SSH/KnownHostsFile.pm
     	Lintel/File/Lock.pm
 	Lintel/DBI.pm
+	Lintel/ProcessManager.pm
     )
 ENDIF(PERL_ENABLED)
 
