@@ -162,12 +162,12 @@ Given the current build path, should deptool execute tests in
 parallel?  This function allows you to have parallel tests for some
 build modes and not for others.
 
-=item sequential_tests => [#,...]
+=item sequential_tests => [qr/test-name-re/,...]
 
-Specify a list of numbers for tests that have to be run sequentially.
-All of the sequential tests will be executed before any of the
-parallel tests.  This option has no effect if parallel tests are not
-enabled.
+Specify a list of regex's for tests that have to be run sequentially.  All of
+the sequential tests will be executed before any of the parallel tests.  It is
+an error for a regexp to match multiple tests or no tests.  This option has no
+effect if parallel tests are not enabled.
 
 =cut
 
@@ -1062,19 +1062,22 @@ sub dbpStartBuild {
     return undef;
 }
 
-sub dbpGetMaxTest {
+sub dbpGetCTestInfo {
     my $tests = new FileHandle "ctest -N |"
 	or die "Can't run ctest -N";
     $_ = <$tests>; die "?" unless /^Start processing tests$/o;
     $_ = <$tests>; die "?" unless /^Test project \S+$/o;
 
     my $maxtest = 0;
+    my @testlist;
     while(<$tests>) {
-	die "?" unless m!^\s*\d+/\s*(\d+)\s* Testing !o;
+	die "?" unless m!^\s*\d+/\s*(\d+)\s* Testing (\S+)\s*$!o;
+	push(@testlist, $2);
 	$maxtest = $1;
     }
     close($tests);
-    return $maxtest;
+    die "test count mismatch" unless @testlist == $maxtest;
+    return @testlist;
 }
 
 sub dbpGetTestStatus {
@@ -1159,9 +1162,9 @@ sub dbpRunIndividualTest {
 sub dbpDoParallelTest {
     my ($build_path, $config) = @_;
 
-    my ($maxtest) = dbpGetMaxTest();
+    my @testlist = dbpGetCTestInfo();
 
-    die "unimplemented no tests" unless $maxtest > 0;
+    die "unimplemented no tests" unless @testlist > 0;
 
     my $children = new Lintel::ProcessManager(auto_kill_on_destroy => 1);
     my $parallelism = $ENV{MAKE_PARALLELISM} || 1;
@@ -1170,7 +1173,7 @@ sub dbpDoParallelTest {
 
     mkpath("Testing/Parallel");
 
-    my @status = map { 77 } 1 .. $maxtest;
+    my @status = map { 77 } 1 .. scalar @testlist;
 
     my $starttest = sub {
 	my ($test) = @_;
@@ -1187,17 +1190,27 @@ sub dbpDoParallelTest {
     if (defined $config->{sequential_tests}) {
 	print "Running sequential tests.\n";
 	foreach my $test (@{$config->{sequential_tests}}) {
-	    die "invalid test $test\n" unless $test =~ /^\d+$/o && $test > 0 && $test < $maxtest;
-	    $sequential_tests{$test} = 1;
-	    print "Test $test\n";
-	    &$starttest($test);
+	    my $match_num;
+	    for (my $testnum = 0; $testnum < @testlist; ++$testnum) {
+		next unless $testlist[$testnum] =~ /$test/;
+		die "Two tests match $test ($match_num and $testnum+1)" 
+		    if defined $match_num;
+		$match_num = $testnum + 1; # ctest counts from 1.
+	    }
+	    die "Did not find any test that matched $test"
+		unless defined $match_num;
+	    die "Already ran test $match_num ($test)"
+		if $sequential_tests{$match_num};
+	    $sequential_tests{$match_num} = 1;
+	    print "Test $match_num\n";
+	    &$starttest($match_num);
 	    $children->wait();
 	    die "?" unless $children->nChildren() == 0;
 	}
     }
 
     print "Running parallel tests:\n";
-    for (my $i = $maxtest; $i >= 1; --$i) {
+    for (my $i = @testlist; $i >= 1; --$i) {
 	next if $sequential_tests{$i};
 	print "Start test $i\n";
 	&$starttest($i);
@@ -1212,7 +1225,7 @@ sub dbpDoParallelTest {
 
     my @all;
     my @failed;
-    for (my $i = 1; $i <= $maxtest; ++$i) {
+    for (my $i = 1; $i <= @testlist; ++$i) {
 	my ($line, $testname, $status) = dbpGetTestStatus($i);
 	push (@all, $line);
 	if ($status eq 'Passed') {
