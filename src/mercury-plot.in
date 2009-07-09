@@ -876,15 +876,15 @@ sub fastReplyFromGnuplot {
 	    my $line = <$gnuplot_fifo>;
 	    last unless defined $line;
 	    print "Line\n" if $debug;
-	    print $line;
 	    if ($line =~ /\s*\n$/o) {
+		print $line;
 		# ok
 	    } elsif ($line =~ /^gnuplot> $/o) {
-		# what we want
+		# what we want, hide prompt
 		$continue = 0;
 		last;
 	    } else {
-		print "Unexpected '$line'\n" if $debug;
+		warn "Unexpected '$line'\n";
 		return 0; # something else
 	    }
 	}
