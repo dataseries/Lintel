@@ -31,6 +31,7 @@ SET(BIB_FILES
     scientific-programming.bib
     siam-parallel-scientific.bib
     sigact.bib
+    sigcomm.bib
     sigmod.bib
     sosp.bib
     supercomputing-review.bib
