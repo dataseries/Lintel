@@ -128,7 +128,7 @@ What path (if any) should stderr be redirected to for the sub process.
 If the special value STDOUT is specified, then stderr is set to be
 stdout.
 
-=item exitfn => sub { my ($pid, $status) = @_; ... }
+item exitfn => sub { my ($pid, $status) = @_; ... }
 
 What function should be called when the sub-process exits.  The
 process will be given both the process id that exited and the status
@@ -307,8 +307,8 @@ sub children {
 =head2 my $count = $mgr->nChildren()
 
 Return the number of currently active children, i.e. ones that were
-started but have not yet exited, or have exited but wait() has not
-been called.
+started but have not yet exited or been reaped (have exited but wait() has
+not been called).
 
 =cut
 

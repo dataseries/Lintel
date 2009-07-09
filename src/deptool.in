@@ -162,7 +162,7 @@ Given the current build path, should deptool execute tests in
 parallel?  This function allows you to have parallel tests for some
 build modes and not for others.
 
-=iterm sequential_tests => [#,...]
+=item sequential_tests => [#,...]
 
 Specify a list of numbers for tests that have to be run sequentially.
 All of the sequential tests will be executed before any of the
