@@ -169,6 +169,8 @@ the sequential tests will be executed before any of the parallel tests.  It is
 an error for a regexp to match multiple tests or no tests.  This option has no
 effect if parallel tests are not enabled.
 
+=back
+
 =cut
 
 my $auto_yes_to_prompts = 1;
