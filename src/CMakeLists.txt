@@ -135,6 +135,12 @@ IF(PERL_ENABLED)
     LIST(APPEND LINTEL_FEATURES perl)
 ENDIF(PERL_ENABLED)
 
+# Built, but intentionally not installed.
+ADD_CUSTOM_TARGET(deptool-noexternal ALL 
+                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-noexternal.sh
+		          ${CMAKE_CURRENT_SOURCE_DIR} 
+		  DEPENDS deptool.in Lintel/File/Lock.pm Lintel/ProcessManager.pm)
+
 ################################## LIBRARY
 
 ADD_LIBRARY(Lintel ${LIBRARY_TYPE} ${LIBLINTEL_SOURCES})
