@@ -3004,10 +3004,12 @@ sub operatingSystem {
             $Cache::operating_system = "unknown";
         }
         if ($Cache::operating_system =~ /unknown/o) {
-            print "Unknown OS, using $Cache::operating_system\n";
-	    print "Set \$OS to avoid warning, or fix deptool to auto-detect\n";
-	    print "Hit return to continue: ";
-	    $_ = <STDIN>;
+            print STDERR "Unknown OS, using $Cache::operating_system\n";
+	    print STDERR "Set \$OS to avoid warning, or fix deptool to auto-detect\n";
+	    unless ($quiet) { # We're probably running under getEnv.
+		print "Hit return to continue: ";
+		$_ = <STDIN>;
+	    }
         }
     }
     return $Cache::operating_system;
