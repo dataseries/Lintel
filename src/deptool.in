@@ -2973,7 +2973,7 @@ sub operatingSystem {
             } elsif (m!^testing$!o) {
                 $Cache::operating_system = "debian-testing-unstable";
             } else {
-                s/\W//go;
+                s/\W//go; s/\s/_/go;
                 $Cache::operating_system = "debian-unknown-$_";
             }
         } elsif (-f "/etc/redhat-release") {
@@ -2985,14 +2985,29 @@ sub operatingSystem {
             if (/^Red Hat Enterprise Linux.+release (\d+)\b/o) {
                 $Cache::operating_system = "rhel$1";
             } else {
-                s/\W//go;
+                s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "rh-unknown-$_";
             }
+	} elsif (-f "/etc/SuSE-release") {
+	    my $susever = new FileHandle("/etc/SuSE-release")
+		or die "Can't open /etc/SuSE-release for read: $!";
+	    $_ = <$susever>;
+	    close($susever);
+	    chomp;
+	    if (/^openSUSE (\d+)\.\d+ /o) {
+		$Cache::operating_system = "opensuse-$1";
+	    } else {
+                s/\W/_/go; s/\s/_/go;
+		$Cache::operating_system = "opensuse-unknown-$_";
+	    }
         } else {
             $Cache::operating_system = "unknown";
         }
         if ($Cache::operating_system =~ /unknown/o) {
-            warn "Unknown OS, using $Cache::operating_system";
+            print "Unknown OS, using $Cache::operating_system\n";
+	    print "Set \$OS to avoid warning, or fix deptool to auto-detect\n";
+	    print "Hit return to continue: ";
+	    $_ = <STDIN>;
         }
     }
     return $Cache::operating_system;
