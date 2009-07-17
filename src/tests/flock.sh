@@ -51,11 +51,13 @@ verify_locked() {
 
 verify_unlocked
 echo "Starting sleep..."
-$builddir/lintel-flock --filename=$LOCKFILE --command='sleep 5' &
+$builddir/lintel-flock --filename=$LOCKFILE --command='sleep 10' &
+SLEEP_PID=$!
 echo "Starting lock timeout..."
 V=`$builddir/lintel-flock --filename=$LOCKFILE --command=false --waittime=2`
 verify_locked
 echo "lock timeout succeeded"
+kill $SLEEP_PID
 wait
 echo "Done with blocked lock test"
 
