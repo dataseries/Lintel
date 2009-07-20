@@ -61,6 +61,7 @@ kill $SLEEP_PID
 wait
 echo "Done with blocked lock test"
 
+ps -efl | grep lintel-flock
 ### Parallel test
 
 verify_unlocked
