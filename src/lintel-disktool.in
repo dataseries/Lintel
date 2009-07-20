@@ -1,7 +1,16 @@
-#!/usr/bin/perl -w
+#!@PERL_PATH@ -w
+# -*- Perl -*-
 use strict;
+use Data::Dumper;
+use DirHandle;
 use English;
+use File::Find;
+use File::Path;
+use FileHandle;
 
+# TODO: redo file to conform with new coding convention
+
+my $config_path = "/etc/lintel-disktool.config";
 usage() unless @ARGV >= 1;
 usage("You need to be root") unless 0 == $EUID;
 
@@ -9,9 +18,12 @@ $|=1;
 
 if ($ARGV[0] eq 'partition') {
     partition_drives();
-} elsif ($ARGV[0] eq 'add_serial') {
+} elsif ($ARGV[0] eq 'add-serial') {
     shift @ARGV;
-    add_serial(@ARGV);
+    addSerial(@ARGV);
+} elsif ($ARGV[0] eq 'add-uuid') {
+    shift @ARGV;
+    addUuid(@ARGV);
 } elsif ($ARGV[0] eq 'format') {
     format_drives();
 } elsif ($ARGV[0] eq 'mount') {
@@ -22,6 +34,10 @@ if ($ARGV[0] eq 'partition') {
     list();
 } elsif ($ARGV[0] eq 'zero') {
     zero_drives($ARGV[1]);
+} elsif ($ARGV[0] eq 'debug-sfdisk') {
+    $Global::debug = 1;
+    my @ret = getSpecificSfdiskInfo($ARGV[1]);
+    print Dumper(@ret);
 } else {
     usage("Unknown command '$ARGV[0]'");
 }
@@ -40,81 +56,94 @@ sub bydriveorder {
 } 
 
 
-sub find_drives {
-    return @Global::drives if @Global::drives > 0;
-    open(CONFIG,"/etc/driverdump.config") 
-	or die "Unable to open /etc/driverdump.config for read: $!";
-    print "Detecting drives for tracing ";
-    my @drivepatterns;
-    my %serials;
-    my %noserial;
+sub readConfig {
+    return if @Global::drivepatterns > 0;
+
+    open(CONFIG, $config_path) 
+	or die "Unable to open $config_path for read: $!";
+
     while(<CONFIG>) {
 	next if /^#/o || /^\s*$/o;
 	if (/^drivepattern (\S+)$/o) {
-	    push(@drivepatterns, $1);
+	    push(@Global::drivepatterns, $1);
 	} elsif (/^serial ('(.+)')$/o) {
-	    $serials{$1} = 1;
-	} elsif (/^noserial (\S+)$/o) {
-	    $noserial{$1} = 1;
+	    # TODO-sprint: really ought to not pay attention to the trailing spaces in serial
+	    # numbers and should strip them off
+	    $Global::serials{$1} = 1;
+	} elsif (/^uuid (\S+)$/o) {
+	    $Global::uuids{$1} = 1;
+	} elsif (/^mount_path\s+(\S+)$/o) {
+	    $Global::mount_path = $1;
+	} elsif (/^chmod_as\s+(\S+)$/o) {
+	    $Global::chmod_as = $1;
+	} elsif (/^clean_mounts_pattern\s*(\S+)$/o) {
+	    $Global::clean_mounts_pattern = $1;
+	} elsif (/^drive_to_dir_expr\s*(\S.+)$/o) { # has $count and $drive defined
+	    $Global::drive_to_dir_expr = $1;
 	} else {
 	    chomp;
-	    die "Unrecognized line in /etc/driverdump.config: '$_'";
+	    die "Unrecognized line in $config_path: '$_'";
 	}
     }
+    close(CONFIG);
+    die "No drivepattern's found in $config_path"
+	unless @Global::drivepatterns > 0;
+}
 
+sub find_drives {
+    return @Global::drives if @Global::drives > 0;
+    
+    readConfig();
+    my @devices;
+
+    find(sub { return unless $File::Find::name =~ m!^/dev/[a-z]!o && -b $_;
+	       #print "Hi $File::Find::name\n"; 
+	       push(@devices, $File::Find::name); }, 
+	 "/dev");
+
+    print "Detecting drives for tracing ";
     my @drives;
-    opendir(DEV, "/dev") or die "bad";
-    while($_ = readdir(DEV)) {
-	foreach my $pat (@drivepatterns) {
+
+    local $_;
+    foreach $_ (@devices) {
+	s!^/dev/!!o;
+
+	foreach my $pat (@Global::drivepatterns) {
 	    if (/^$pat$/) {
-		push(@drives, "$_");
+		push(@drives, $_);
 		last;
 	    }
 	}
-    }
-    closedir(DEV);
-    my $ret = 0;
-    opendir(DEV, "/dev/cciss") or $ret=1;
-    if ($ret == 0) {
-	while($_ = readdir(DEV)) {
-	    foreach my $pat (@drivepatterns) {
-		if (/^$pat$/) {
-		    push(@drives, "cciss/$_");
-		    last;
-		}
-	    }
-	}
-	closedir(DEV);
     }
 
     @drives = sort bydriveorder @drives;
     my $count = @drives;
     print "($count possibles): ";
-    my @nosginfo;
+    my @no_id_info;
     foreach my $drive (@drives) {
 	is_drive($drive);
-	if ($noserial{$drive}) {
+
+	my $serial = serial_number($drive);
+	my $uuid = uuidNumber($drive);
+	if (! defined $serial && ! defined $uuid) {
+	    push(@no_id_info, $drive);
+	} elsif (defined $serial && $Global::serials{$serial}) {
+	    print ", " if @Global::drives;
+	    push(@Global::drives, $drive);
+	    print "$drive";
+	} elsif (defined $uuid && $Global::uuids{$uuid}) {
 	    print ", " if @Global::drives;
 	    push(@Global::drives, $drive);
 	    print "$drive";
 	} else {
-	    my $serial = serial_number($drive);
-	    if (! defined $serial) {
-		push(@nosginfo, $drive);
-	    } elsif ($serials{$serial}) {
-		print ", " if @Global::drives;
-		push(@Global::drives, $drive);
-		print "$drive";
-	    } else {
-		push(@Global::not_used_drives, $drive);
-	    }
+	    push(@Global::not_used_drives, $drive);
 	}
     }
     print "\n";
-    die "Unable to find any drives for tracing" 
+    die "Unable to find any drives for tracing; ignored: " . join(" ", @Global::not_used_drives)
 	unless @Global::drives;
-    if (@nosginfo) {
-	print "Unable to get sginfo -s on: ", join(", ", @nosginfo), "\n";
+    if (@no_id_info) {
+	print "Unable to get sginfo -s or udevinfo on: ", join(", ", @no_id_info), "\n";
     }
     return @Global::drives;
 }
@@ -127,15 +156,34 @@ sub list {
     exit(0);
 }
 
-sub add_serial {
+sub addSerial {
     my(@drives) = @_;
 
+    open(CONFIG, ">>$config_path");
     foreach my $drive (@drives) {
 	is_drive($drive);
 	my $serial = serial_number($drive);
-	open(CONFIG, ">>/etc/driverdump.config");
+	die "Unable to get serial number from $drive"
+	    unless defined $serial;
 	print CONFIG "serial $serial\n";
     }
+    close(CONFIG);
+}
+
+sub addUuid {
+    my(@drives) = @_;
+
+    my $config = new FileHandle ">>$config_path"
+	or die "Can't open $config_path for append: $!";
+
+    foreach my $drive (@drives) {
+	is_drive($drive);
+	my $uuid = uuidNumber($drive);
+	die "Unable to get uuid number from $drive"
+	    unless defined $uuid;
+	print $config "uuid $uuid\n";
+    }
+    close($config);
 }
 	
 
@@ -171,12 +219,21 @@ sub partition_drives {
     }
 }
 
+sub driveToPartition {
+    my ($drive) = @_;
+
+    return "/dev/${drive}1" if -b "/dev/${drive}1";
+    return "/dev/${drive}p1" if -b "/dev/${drive}p1";
+    die "Unable to convert $drive to partition";
+}
+
 sub format_drives {
     my @drives = find_drives();
     my %ok = get_ok_partitions();
     my %mounted = get_mounted();
 
-    print "formatting (in parallel): ";
+    my $fs = 'ext2';
+    print "formatting as $fs (in parallel): ";
     my $ok = 1;
     my %children;
     foreach my $drive (@drives) {
@@ -202,14 +259,14 @@ sub format_drives {
 	    my $ret = system("dd if=/dev/zero of=/dev/${drive}1 bs=1024k count=1 >/dev/null 2>&1");
 	    die "\ndd failed for /dev/${drive}1" 
 		unless $ret == 0;
-	    my $fs = 'ext2';
+	    my $partition = driveToPartition($drive);
 	    if ($fs eq 'ext2') {
-		$ret = system("mkfs.ext2 -m 0 -O sparse_super -T largefile4 /dev/${drive}1 >/dev/null 2>&1");
-		die "\nmkfs.ext2 failed for /dev/${drive}1"
+		$ret = system("mkfs.ext2 -m 0 -O sparse_super -T largefile4 $partition >/dev/null 2>&1");
+		die "\nmkfs.ext2 failed for $partition"
 		    unless $ret == 0;
 	    } elsif ($fs eq 'xfs')  {
-		$ret = system("mkfs.xfs /dev/${drive}1 >/dev/null 2>&1");
-		die "\nmkfs.xfs failed for /dev/${drive}1"
+		$ret = system("mkfs.xfs $partition >/dev/null 2>&1");
+		die "\nmkfs.xfs failed for $partition"
 		    unless $ret == 0;
 	    } else {
 		die "huh $fs";
@@ -242,44 +299,55 @@ sub mount_drives {
     my @drives = find_drives();
     my %mounted = get_mounted();
     
-    unless(-d "/usr/local/share/kba-disk-map") {
-	system("install /usr/local/share/kba-disk-map") == 0 or die "bad";
+    die "Unable to mount drives, $config_path doesn't define mount_path"
+	unless defined $Global::mount_path;
+    die "Unable to mount drives, $config_path doesn't define drive_to_dir_expr"
+	unless defined $Global::drive_to_dir_expr;
+    unless (-d $Global::mount_path) {
+	mkpath($Global::mount_path);
     }
-    system("chmod --reference=/dev/shm /usr/local/share/kba-disk-map") == 0 
-	or die "bad";	
-    
-
-    print "Cleaning...";
-    my $first = 1;
-    opendir(DIR,"/usr/local/share/kba-disk-map") or die "bad";
-    while(my $dir = readdir(DIR)) {
-	next unless $dir =~ /^disk(\d+)$/o;
-	next if $mounted{$1};
-
-	print ", " unless $first;
-	$first = 0;
-	print "$dir";
-	rmdir("/usr/local/share/kba-disk-map/$dir") 
-	    or die "bad /usr/local/share/kba-disk-map/$dir";
+    if (defined $Global::chmod_as) {
+	system("chmod --reference=$Global::chmod_as $Global::mount_path") == 0 
+	    or die "unable to chmod $Global::mount_path as $Global::chmod_as";
     }
-    closedir(DIR);
-    print "; " unless $first;
-    print "done.\n";
+
+    if (defined $Global::clean_mounts_pattern) {
+	print "Cleaning...";
+
+	my $dir = new DirHandle($Global::mount_path);
+	my @dirs = grep(/$Global::clean_mounts_pattern/o && !$mounted{$_}, readdir($dir));
+	foreach my $dir (@dirs) {
+	    print " $dir";
+	    rmdir("$Global::mount_path/$dir") 
+		or die "Unable to rmdir $Global::mount_path/$dir: $!";
+	}
+	print " done\n";
+    }
 
     my $count = 0;
     print "Mounting...";
     foreach my $drive (@drives) {
 	next if $mounted{$drive};
-	print ", " unless $count==0; 
-	print "$drive";
-	mkdir("/usr/local/share/kba-disk-map/disk$count",0755) or die "bad: $!";
-	my $ret = system("mount /dev/${drive}1 /usr/local/share/kba-disk-map/disk$count");
+	print ", " unless $count == 0; 
+	print $drive;
+	my $dir = eval $Global::drive_to_dir_expr;
+	die "drive_to_dir_expr error: $@" if $@;
+	die "$drive -> $dir (/ disallowed)" if $dir =~ m!/!o;
+
+	my $path = "$Global::mount_path/$dir";
+	unless (-d $path) {
+	    mkdir($path, 0777) or die "unable to mkdir($path): $!";
+	}
+	my $partition = driveToPartition($drive);
+	my $ret = system("mount $partition $path");
 	die "mount failed" unless $ret == 0;
-	system("chmod --reference=/dev/shm /usr/local/share/kba-disk-map/disk$count") == 0 
-	    or die "bad";	
-	$count = $count+1;
+	if (defined $Global::chmod_as) {
+	    system("chmod --reference=$Global::chmod_as $path") == 0
+		or die "chmod of $path as $Global::chmod_as failed: $!";
+	}
+	++$count;
     }
-    print "; " unless $count==0;
+    print "; " unless $count == 0;
     print "done.\n";
 }
 
@@ -292,9 +360,13 @@ sub umount_drives {
 	print ", " unless $first;
 	$first = 0;
 	print "$mounted";
-	my $ret = system("umount /usr/local/share/kba-disk-map/disk$mounted");
+	my $ret = system("umount $Global::mount_path/$mounted");
 	die "umount failed" unless $ret == 0;
-	rmdir("/usr/local/share/kba-disk-map/disk$mounted") or die "bad";
+	if (defined $Global::clean_mounts_pattern 
+	    && $mounted =~ /$Global::clean_mounts_pattern/o) {
+	    rmdir("$Global::mount_path/$mounted")
+		or die "rmdir($Global::mount_path/$mounted) failed: $!";
+	}
     }
     print "; " unless $first;
     print "done.\n";
@@ -368,11 +440,15 @@ sub zero_drives {
 }
 
 sub get_mounted {
+    readConfig();
+
+    die "Can't get mounted, $config_path does not define mount_path"
+	unless defined $Global::mount_path;
     my %mounted;
     open(MOUNT, "mount |") or die "??";
     while(<MOUNT>) {
-	next unless m!^/dev/(\S+)1 on /usr/local/share/kba-disk-map/disk(\d+) !o;
-	$mounted{$2} = 1;
+	next unless m!^/dev/\S+1 on $Global::mount_path/([^/ ]+) type \S+ \S+$!o;
+	$mounted{$1} = 1;
     }
     close(MOUNT);
     return %mounted;
@@ -390,18 +466,18 @@ sub get_drive_sizes {
 }
 
 
-sub get_specific_sfdisk_info {
-    my($diskpath) = @_;
+sub getSpecificSfdiskInfo {
+    my ($diskpath) = @_;
     my %ok;
     my %sizes;
     open(SFDISK, "sfdisk -uS -l $diskpath 2>&1 |") or die "bad";
     while(<SFDISK>) {
-	
 	die "??1 '$_'" unless /^\s*$/o;
 	$_ = <SFDISK>;
 	die "?? $_ ??" unless m!^Disk /dev/(\S+): (\d+) cylinders, (\d+) heads, (\d+) sectors/track!o;
 	my ($drive, $cylinders, $heads, $sectorspercyl) = ($1,$2, $3, $4);
-	$sizes{$drive} = {'cylinders' => $cylinders, 'heads' => $heads, 'sectors_per_cylinder' => $sectorspercyl, 'sector_bytes' => 512,
+	$sizes{$drive} = {'cylinders' => $cylinders, 'heads' => $heads, 
+			  'sectors_per_cylinder' => $sectorspercyl, 'sector_bytes' => 512,
 			  'cylinder_bytes' => $heads * $sectorspercyl * 512};
 	$_ = <SFDISK>;
 	if (/^Warning: The partition table/o) {
@@ -431,11 +507,13 @@ sub get_specific_sfdisk_info {
 	# boot from them, don't waste the little bit of space at the
 	# front.  Every bit helps.
 
-#	printf "Maybe %d; $bits[1] == 1; $bits[2] == %d; $bits[3] == %d\n", 
-#   	    scalar @bits, $cylinders * 255*63 - 1, $cylinders * 255*63 - 1;
-	if (-b "/dev/${drive}1" && @bits == 6 && $bits[1] =~ /^\d+$/o && $bits[1] == 1
-	    && $bits[2] =~ /^\d+$/o && $bits[2] == $cylinders * 255*63 - 1 
-	    && $bits[3] =~ /^\d+$/o && $bits[3] == $cylinders * 255*63 - 1) {
+	my $expected_sectors = 1.0 * $cylinders * $heads * $sectorspercyl - 1;
+	printf "Maybe %d; $bits[1] == 1; $bits[2] == %.0f; $bits[3] == %.0f\n", 
+   	    scalar @bits, $expected_sectors, $expected_sectors 
+		if $Global::debug;
+	if (-b $bits[0] && @bits == 6 && $bits[1] =~ /^\d+$/o && $bits[1] == 1
+	    && $bits[2] =~ /^\d+$/o && $bits[2] == $expected_sectors 
+	    && $bits[3] =~ /^\d+$/o && $bits[3] == $expected_sectors) {
 	    $ok{$drive} = 1;
 	}
 	$_ = <SFDISK>; die "??" unless m!^/dev/${drive}p?2\s+!;
@@ -447,7 +525,6 @@ sub get_specific_sfdisk_info {
 }    
 
 sub get_sfdisk_info { 
-
     # The old get_sfdisk_info would ask about every drive, even ones
     # we're not supposed to touch.  If a drive was listed don't touch
     # because it is broken, we were still probing it; this makes the
@@ -460,12 +537,12 @@ sub get_sfdisk_info {
     my %sizes;
 
     # We're getting 1 (or more, but probably 1) sfdisk_info from
-    # get_specific_sfdisk_info, then appending it to ok and sizes; the pattern
+    # getSpecificSfdiskInfo, then appending it to ok and sizes; the pattern
     # to append to the hashes was taken from:
     # http://stackoverflow.com/questions/350018/how-can-i-combine-hashes-in-perl/350190
 
     foreach my $drive (@drives) {
-	my($tempOK, $tempSizes) = get_specific_sfdisk_info("/dev/$drive");
+	my($tempOK, $tempSizes) = getSpecificSfdiskInfo("/dev/$drive");
 	@ok{keys %$tempOK} = values %$tempOK;
 	@sizes{keys %$tempSizes} = values %$tempSizes;
     }
@@ -477,19 +554,41 @@ sub serial_number {
 
     $drive =~ s!^/dev/!!o;
     my $ret;
-    open(SGINFO, "sginfo -s /dev/$drive |")
+    open(SGINFO, "sginfo -s /dev/$drive 2>&1 |")
 	or die "bad";
     $_ = <SGINFO>;
-    die "No sginfo" unless defined $_;
-    if (/^Serial Number ('(.+)')$/) {
+    if (!defined $_) {
+	$ret = undef;
+    } elsif (/^Serial Number ('(.+)')$/) {
 	$ret = $1;
+    } elsif (/^Error doing INQUIRY/o) {
+	$ret = undef;
+    } elsif (/^A device name that understands SCSI/o) {
+	$ret = undef;
     } else {
 	chomp;
-	die "First line from sginfo not 'Serial Number ...', but '$_'";
+	die "First line from sginfo -s /dev/$drive not 'Serial Number ...', but '$_'";
     }
     close(SGINFO);
     return $ret;
+}
+
+sub uuidNumber {
+    my ($drive) = @_;
+
+    $drive =~ s!^/dev/!!o;
+    my $ret;
+    my $fh = new FileHandle "udevinfo -q symlink --name /dev/$drive |"
+	or die "Unable to run udevinfo: $!";
+    local $_ = <$fh>; chomp;
+    if (m!^disk/by-uuid/([a-f0-9-]+)\s*$!o) {
+	$ret = $1;
+    } else {
+	# ignore
+    }
+    close($fh);
     
+    return $ret;
 }
 
 sub is_drive { # not partition
@@ -500,7 +599,7 @@ sub is_drive { # not partition
     die "Stat of /dev/$drive failed: $!"
 	unless @stat;
 
-    die "/etc/driverdump.config pattern matched $drive, which is a partition, not a drive"
+    die "$config_path pattern matched $drive, which is a partition, not a drive"
 	unless 0 == ($stat[6] & 0xF);
     
 }
