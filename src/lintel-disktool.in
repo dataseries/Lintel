@@ -21,9 +21,9 @@ if ($ARGV[0] eq 'partition') {
 } elsif ($ARGV[0] eq 'add-serial') {
     shift @ARGV;
     addSerial(@ARGV);
-} elsif ($ARGV[0] eq 'add-uuid') {
+} elsif ($ARGV[0] eq 'add-sysfs-id') {
     shift @ARGV;
-    addUuid(@ARGV);
+    addSysfsId(@ARGV);
 } elsif ($ARGV[0] eq 'format') {
     format_drives();
 } elsif ($ARGV[0] eq 'mount') {
@@ -46,7 +46,7 @@ sub usage {
     my($msg) = @_;
 
     print STDERR "Error: @_\n" if @_;
-    die "Usage: $0 (list)|(add_serial)|(partition)|(format)|(mount)|(umount)";
+    die "Usage: $0 (list)|(add-serial)|(add-sysfs-id)|(partition)|(format)|(mount)|(umount)";
 }
 	
 sub bydriveorder {
@@ -70,8 +70,8 @@ sub readConfig {
 	    # TODO-sprint: really ought to not pay attention to the trailing spaces in serial
 	    # numbers and should strip them off
 	    $Global::serials{$1} = 1;
-	} elsif (/^uuid (\S+)$/o) {
-	    $Global::uuids{$1} = 1;
+	} elsif (/^sysfsid (\S+)$/o) {
+	    $Global::sysfsIds{$1} = 1;
 	} elsif (/^mount_path\s+(\S+)$/o) {
 	    $Global::mount_path = $1;
 	} elsif (/^chmod_as\s+(\S+)$/o) {
@@ -124,14 +124,14 @@ sub find_drives {
 	is_drive($drive);
 
 	my $serial = serial_number($drive);
-	my $uuid = uuidNumber($drive);
-	if (! defined $serial && ! defined $uuid) {
+	my $sysfsId = sysfsIdNumber($drive);
+	if (! defined $serial && ! defined $sysfsId) {
 	    push(@no_id_info, $drive);
 	} elsif (defined $serial && $Global::serials{$serial}) {
 	    print ", " if @Global::drives;
 	    push(@Global::drives, $drive);
 	    print "$drive";
-	} elsif (defined $uuid && $Global::uuids{$uuid}) {
+	} elsif (defined $sysfsId && $Global::sysfsIds{$sysfsId}) {
 	    print ", " if @Global::drives;
 	    push(@Global::drives, $drive);
 	    print "$drive";
@@ -143,7 +143,7 @@ sub find_drives {
     die "Unable to find any drives for tracing; ignored: " . join(" ", @Global::not_used_drives)
 	unless @Global::drives;
     if (@no_id_info) {
-	print "Unable to get sginfo -s or udevinfo on: ", join(", ", @no_id_info), "\n";
+	print "Unable to get sginfo -s or sysfs info on: ", join(", ", @no_id_info), "\n";
     }
     return @Global::drives;
 }
@@ -170,7 +170,7 @@ sub addSerial {
     close(CONFIG);
 }
 
-sub addUuid {
+sub addSysfsId {
     my(@drives) = @_;
 
     my $config = new FileHandle ">>$config_path"
@@ -178,10 +178,10 @@ sub addUuid {
 
     foreach my $drive (@drives) {
 	is_drive($drive);
-	my $uuid = uuidNumber($drive);
-	die "Unable to get uuid number from $drive"
-	    unless defined $uuid;
-	print $config "uuid $uuid\n";
+	my $sysfsId = sysfsIdNumber($drive);
+	die "Unable to get sysfs id number from $drive"
+	    unless defined $sysfsId;
+	print $config "sysfsid $sysfsId\n";
     }
     close($config);
 }
@@ -549,6 +549,27 @@ sub get_sfdisk_info {
     return (\%ok, \%sizes);
 }
 
+# There are lots of different unique serial numbers; some aren't very
+# good.  blkid and vol_id are both filesystem related (ext series
+# generally) and not tied to the block device.  If the device never
+# had an ext filesystem (or was zeroed) it won't have a blkid or
+# vol_id. udevinfo gives inconsistent results; sometimes it returns
+# information tied to the first partition, sometimes it gives another
+# number, and sometimes it gives nothing at all.
+
+# Right now we use the scsi id (through sginfo) and the sysfs device
+# id.  The sysfs id is related to the attachment point (PCI bus id:
+# SAS port:target:expander id:expander port id:etc) more than the
+# block device, but it is better than the other bad alternatives.
+
+# TODO-sprint: Change unique id number code to guess at the type of
+# device and specifically use the correct type of serial number.  That
+# is, for SCSI devices use sginfo, for cciss use hpaculi, for md
+# arrays use mdadm, for sillyProprietary use sillyProprietaryUtil,
+# etc.  We probably want scsi, Pxxx, lvm, and md, and probably roughly
+# in that order.  Think about whether we want to leave the sysfsid code in
+# as a fallback which is better than "no-serial".
+
 sub serial_number {
     my($drive) = @_;
 
@@ -573,15 +594,17 @@ sub serial_number {
     return $ret;
 }
 
-sub uuidNumber {
+sub sysfsIdNumber {
     my ($drive) = @_;
 
     $drive =~ s!^/dev/!!o;
+    $drive =~ s,/,!,o;
     my $ret;
-    my $fh = new FileHandle "udevinfo -q symlink --name /dev/$drive |"
-	or die "Unable to run udevinfo: $!";
-    local $_ = <$fh>; chomp;
-    if (m!^disk/by-uuid/([a-f0-9-]+)\s*$!o) {
+
+    my $fh = new FileHandle "readlink /sys/block/$drive/device |"
+	or die "Unable to readlink sysfs for $drive: $!";
+    local $_ = <$fh>;  chomp;
+    if (m,^\.\./\.\./devices/(\S+)\s*$,o) {
 	$ret = $1;
     } else {
 	# ignore
