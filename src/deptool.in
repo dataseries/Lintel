@@ -80,7 +80,7 @@ sub usage {
    checkout <branch-substring...> # checkout branch and dependencies
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-b (optimize build)]
-   commit [--no-tests] [-d] [-b] # commit branch after dependencies
+   commit [--no-tests] # commit branch after dependencies
    publish # publish branch and dependencies
    cmake # run cmake with special options for current branch
    pin <revision> # pin branch at a particular revision
@@ -180,6 +180,9 @@ my $noconfig = 0;
 my $time_log;
 my $monotone_dir = $ENV{MONOTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
+
+$Global::last_stamp_timestamp = time();
+
 
 my @original_arguments = @ARGV;
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
@@ -676,9 +679,6 @@ See help checkout
 =cut
 
 sub depCheckout {
-    my $result = GetOptions("y!" => \$auto_yes_to_prompts);
-    usage("Unknown error") unless $result;
-
     usage("No branch-substrings specified") unless @ARGV > 0;
 
     my $projects = projects();
@@ -778,10 +778,9 @@ will be automatically run to configure the package before it is built.
 =cut
 
 sub depBuild {
-    my %options = @_;
-    $options{tests} ||= 0;
+    my %options = ('tests' => 0);
 
-    my $parallel = 0;
+    my $parallel = 0; # TODO-2009-09-01: remove this and the warning below
     my $cwd = aliasGetCwd();
     my $debug = buildDebug();
     if ($cwd =~ /^$debug/o) {
@@ -790,8 +789,7 @@ sub depBuild {
         $options{mode} = 'optimize';
     }
 
-    my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
-                         "t|tests!" => \$options{tests},
+    my $ret = GetOptions("t|tests!" => \$options{tests},
                          "o|optimize" => sub { $options{mode} = 'optimize' },
                          "d|debug" => sub { $options{mode} = 'debug' },
 			 "p|parallel!" => \$parallel);
@@ -800,33 +798,9 @@ sub depBuild {
     $options{builddir} = $options{mode} eq 'debug' ? buildDebug() : buildOpt();
     $options{projects} = projects();
 
-    if ($parallel) {
-	return depBuildParallel(\%options);
-    } else {
-	depWalk(sub { }, sub { depBuildOne(\%options, @_) }, 1);
-	return %options;
-    }
-}
-
-sub depBuildOne {
-    my ($options, $build_type, $dependencies) = @_;
-
-    my $src = aliasGetCwd();
-    die "? '$src' '$options->{projects}'" 
-        unless $src =~ /^$options->{projects}/o;
-    my($project, $subdir, $tmp) = divideDir($src);
-    my $build = "$options->{builddir}/$project";
-    $build .= "-$build_type" if $build_type ne '';
-    print "Building in $build\n" unless $quiet;
-    $options->{building} = $project;
-    unless(-d $build) {
-        mkpath($build);
-    }
-    aliasChdir($build);
-    depBuildCheckOld($project, $src, $build, $options, $dependencies);
-    depBuildMake($src, $build, $options);
-    depBuildTest($build, $options);
-    depBuildInstall($build, $options)
+    warn "-p is no longer needed for depbuild"
+	if $parallel;
+    return depBuildParallel(\%options);
 }
 
 sub parseDependency { 
@@ -840,52 +814,7 @@ sub parseDependency {
     return ($dep, $sub_build_type);
 }
 
-sub depBuildCheckOld {
-    my($cur_project, $src, $build, $options, $dependencies) = @_;
-
-    print "depbuild: Checking if any files in $src\n";
-    print "depbuild: are out of date w.r.t $build\n";
-    if (! -f ".deptool.build_stamp") {
-        print "depbuild:  missing .deptool.build_stamp, build definitely out of date\n";
-        return;
-    }
-
-    my $ref_stat = stat(".deptool.build_stamp")
-	or die "Unable to stat .deptool.build_stamp: $!";
-
-    foreach my $dep (@$dependencies) {
-	my ($project, $sub_build_type) = parseDependency($dep);
-
-	# self dependencies implies sub-build-type; these should only
-        # be checked against the source directory.  Maybe eventually
-        # allow a sub-build types compilation to depend on another
-        # sub-build type, but this seems weird since you can't specify
-        # an arbitrary order.
-	next if $cur_project eq $project;
-        if (!defined $options->{"lastbuild $project"}) {
-	    warn("No last build time for $project from $options->{building}");
-	    next;
-	}
-	if ($ref_stat->mtime() < $options->{"lastbuild $project"}) {
-	    printf "depbuild:  out of date with regard to $project (%d < %d)\n",
- 	        $ref_stat->mtime(), $options->{"lastbuild $project"};
-	    unlink(".deptool.build_stamp") or die "?";
-	    return;
-	}
-    }
-
-    my @old_files = depBuildFindOld($src);
-    if (@old_files > 0) {
-        print "\n" x 5;
-        print join("\n", @old_files, '');
-        print "depbuild: out of date w.r.t above files.";
-        unlink(".deptool.build_stamp") or die "?";
-        return;
-    }
-    print "depbuild:  up to date in $build\n";
-}
-
-sub depBuildFindOld {
+sub dbpFindOld {
     my ($src) = @_; 
     confess "?? $src" unless defined $src && -d $src && -f ".deptool.build_stamp";
 
@@ -901,7 +830,7 @@ sub depBuildFindOld {
     return @newer;
 }
 
-sub depBuildMake {
+sub dbpBuildMake {
     my($src, $build) = @_;
 
     if (-f ".deptool.build_stamp") {
@@ -918,19 +847,6 @@ sub depBuildMake {
     my $make_parallelism = makeParallelism();
     runCommand("make", "-j", $make_parallelism);
     stamp("build");
-}
-
-sub depBuildTest {
-    my($build, $options) = @_;
-    return unless $options->{tests};
-
-    if (stampUpToDate("test")) {
-        print "depbuild: Tests are up to date in $build\n";
-    } else {
-        print "depbuild: Running tests in $build...\n";
-        runCommand("make","test");
-        stamp("test");
-    } 
 }
 
 sub stampUpToDate {
@@ -950,40 +866,6 @@ sub stampUpToDate {
     return ($which_stat->mtime() > $build_stat->mtime());
 }
 
-sub stamp {
-    my($which, $options) = @_;
-    
-    my $filename = ".deptool.${which}_stamp";
-    while(1) {
-        my $fh = new FileHandle("+>>$filename")
-            or die "Can't open $filename for append: $!";
-        close($fh);
-        utime undef, undef, $filename;
-        last if $which eq 'build' || stampUpToDate($which, $options);
-        print "deptool: sleep(1) to make sure ${which} timestamp is more recent than build\n";
-        sleep(1);
-    }
-}
-
-sub depBuildInstall {
-    my($build, $options) = @_;
-
-    if (stampUpToDate("install", $options)) {
-        print "depbuild: Install up to date in $build\n";
-    } else {
-        runCommand("make","install");
-        stamp("install", $options);
-    }
-}
-
-sub projectBuildPath {
-    my ($build_dir, $project, $sub_type) = @_;
-
-    my $dir = "$build_dir/$project";
-    $dir .= "-$sub_type" if $sub_type ne '';
-    return $dir;
-}
-
 sub stampTime {
     my ($build_path, $which) = @_;
 
@@ -991,6 +873,64 @@ sub stampTime {
     return 0 unless -f $file;
     my $stat = stat($file) or die "Can't stat $file: $!";
     return $stat->mtime();
+}
+
+sub stamp {
+    my($which, $options) = @_;
+    
+    my $filename = ".deptool.${which}_stamp";
+
+    my $fh = new FileHandle("+>>$filename")
+	or die "Can't open $filename for append: $!";
+    close($fh);
+
+    ++$Global::last_stamp_timestamp; # ensure uniqueness
+    while (1) {
+	utime undef, undef, $filename;
+	my $st = stampTime(".", $which);
+	if ($st >= $Global::last_stamp_timestamp) {
+	    $Global::last_stamp_timestamp = $st;
+	    last;
+	}
+        print "deptool: sleep(0.25) for unique .deptool.*_stamp file timestamps\n"
+	    if 0;
+	select(undef,undef,undef, 0.25);
+    }
+}
+
+sub projectBuildPath {
+    my ($build_dir, $project, $sub_type) = @_;
+
+    confess "internal" unless defined $build_dir;
+    my $dir = "$build_dir/$project";
+    $dir .= "-$sub_type" if $sub_type ne '';
+    return $dir;
+}
+
+sub dbpOutOfDate {
+    my ($build_path, $dependencies, $info) = @_;
+
+    my $build_stamp = stampTime($build_path, "build");
+    my $out_of_date = $build_stamp > 0 ? 0 : 1;
+    my $deps_done_all_installs = 1;
+
+    map { 
+	my $path = $_;
+	my $dep_info = $dependencies->{$path};
+
+	if ($dep_info->{src} eq $info->{src}) { 
+	    # ignore self dependencies
+	} else {
+	    if ($dep_info->{done_install}) {
+		my $them_install_stamp = stampTime($path, 'install');
+		$out_of_date = 1 if $build_stamp <= $them_install_stamp;
+	    } else {
+		$deps_done_all_installs = 0;
+	    }
+        }
+    } keys %{$info->{deps}};
+    
+    return ($build_stamp, $deps_done_all_installs, $out_of_date);
 }
 
 sub dbpStartBuild {
@@ -1006,34 +946,18 @@ sub dbpStartBuild {
 	aliasChdir($build_path);
 
 	my $info = $dependencies->{$build_path};
-	my $deps_done_install = 1;
-	my $build_stamp = stampTime($build_path, "build");
-	my $out_of_date = $build_stamp > 0 ? 0 : 1;
-	map { 
-	    my $path = $_;
-	    my $dep_info = $dependencies->{$path};
 
-	    if ($dep_info->{src} eq $info->{src}) { 
-		# ignore self dependencies
-	    } else {
-		if ($dep_info->{done_install}) {
-		    my $them_install_stamp = stampTime($path, 'install');
-		    $out_of_date = 1 if $build_stamp <= $them_install_stamp;
-		} else {
-		    # print "$build_path waiting on $_\n";
-		    $deps_done_install = 0;
-		}
-	    }
-	} keys %{$info->{deps}};
+	my ($build_stamp, $deps_done_all_installs, $out_of_date) 
+	    = dbpOutOfDate($build_path, $dependencies, $info);
 
-	next unless $deps_done_install;
+	next unless $deps_done_all_installs;
 
 	splice(@$pending, $i, 1);
 
 	aliasChdir($build_path);
 
 	if (!$out_of_date && $build_stamp > 0) {
-	    my @old = depBuildFindOld(projects() . "/$info->{src}");
+	    my @old = dbpFindOld(projects() . "/$info->{src}");
 	    if (@old > 0) {
 		print "Local rebuild of $build_path\n";
 		$out_of_date = 1;
@@ -1052,7 +976,7 @@ sub dbpStartBuild {
 		 cmd => sub {
 		     # builds are nice to be behind install/test
 		     POSIX::nice(10) or die "nice failed: $!";
-		     depBuildMake($info->{src}, $build_path);
+		     dbpBuildMake($info->{src}, $build_path);
 		 },
 		 exitfn => sub { $info->{running_build} = 0; $info->{status_build} = $_[1]; },
 		 stdout => 'deptool.build.out', stderr => 'deptool.build.err');
@@ -1356,6 +1280,12 @@ sub dbpFinishWhich {
 	stamp($which);
 	$info->{"done_$which"} = 1;
 	$running->{$which} = undef;
+
+	if ($which eq 'build') {
+	    my ($build_stamp, $deps_done_all_installs, $out_of_date) 
+		= dbpOutOfDate($dir, $dependencies, $info);
+	    die "Internal error, not up to date" if $out_of_date || ! $deps_done_all_installs;
+	}
     } else {
 	print "\n";
 	print "--------------------\n";
@@ -1368,6 +1298,16 @@ sub dbpFinishWhich {
 	}
 	exit(1);
     }
+}
+
+sub depBuildStandard {
+    my %options = @_;
+    $options{mode} = 'optimize';
+    $options{tests} = 1 unless defined $options{tests};
+    $options{builddir} = buildOpt();
+    $options{projects} = projects();
+
+    return depBuildParallel(\%options);
 }
 
 sub depBuildParallel {
@@ -1441,59 +1381,6 @@ sub depBuildParallel {
 
     return %$options;
 }
-
-## ##### Dependency clear
-## 
-## =pod
-## 
-## =head2 clear [I<-b|--build>] [I<-d|--debug>] I<project>...
-## 
-## This command will delete the B<source> directories for project and its
-## dependencies.  If -b is specified, the build (optimized) directory
-## will also be deleted.  If -d is specified, the debug directory will be
-## deleted.
-## 
-## =cut
-## 
-## sub depClear {
-##     my %options = @_;
-## 
-##     my $projects = projects();
-##     my @dirs;
-##     $options{build} = 0;
-##     $options{debug} = 0;
-##     my $ret = GetOptions("y!" => \$auto_yes_to_prompts,
-## 			 "quiet!" => \$quiet,
-## 			 "b|build!" => \$options{build},
-## 			 "d|debug!" => \$options{debug});
-## 
-##     usage("unknown option to clear") unless $ret;
-##     my @projects = @ARGV;
-## 
-##     my $build_debug = buildDebug();
-##     my $build_opt = buildOpt();
-##     foreach (@projects) {
-## 	aliasChdir("$projects/$_");
-## 	depWalk(sub{ my $wd = aliasGetCwd(); 
-## 		     # be paranoid, we're going to delete these directories
-## 		     die "internal" unless $wd =~ m!^$projects/!o;
-## 		     push (@dirs, $wd); });
-##     }
-## 
-##     push(@dirs, buildDebug())
-## 	if $options{debug};
-##     push(@dirs, buildOpt()) 
-## 	if $options{build};
-## 
-##     foreach my $dir (@{$options{dirs}}) {
-## 	if (-d $dir) {
-## 	    userPrompt("delete $dir");
-## 	    rmtree($dir, 0, 1);
-## 	    die "Unable to remove directory $dir"
-## 		if -d $dir;
-## 	}
-##     }
-## }
 
 ##### Set pin
 
@@ -1696,7 +1583,7 @@ Requiring you to commit first. Aborting.\n";
 
 =pod
 
-=head2 commit
+=head2 commit [--no-tests]
 
 If you have a set of changes that are sufficiently complete to pass
 all the tests, but not yet ready for publishing, then you can run
@@ -1707,7 +1594,11 @@ of the tests to verify that the changes are internally consistent.
 =cut
 
 sub depCommit {
-    my %options = depBuild(tests => 1);
+    my %options = ('tests' => 1);
+    my $ret = GetOptions("t|tests!" => \$options{tests});
+    usage("unknown option to commit") unless $ret;
+
+    %options = depBuildStandard(%options);
     depWalk(sub { }, sub { depCommitOne(%options); }, 0);
 }
 
@@ -1808,7 +1699,7 @@ sub depCommitDoCommit {
         print "depcommit: you have uncommitted differences in $cwd
 depcommit: will show differences after successful build\n";
         userPrompt("build");
-        depBuild(%options);
+        depBuildStandard(%options);
         print "\n" x 20;
         aliasChdir($cwd);
         runCommand("mtn","diff");
@@ -2011,7 +1902,7 @@ sub depPublish {
     while ($options{made_changes}) {
         $options{made_changes} = 0;
         print "deppublish: verifying current version passes regression tests\n";
-        depBuild('tests' => 1);
+        depBuildStandard();
         print "deppublish: pulling in any remote changes\n";
         depWalk(sub { }, sub { depPullOne(\%options); }, 0);
 
@@ -2027,18 +1918,6 @@ END
                 if $options{made_changes};
         }
     }
-
-##    if (defined $ENV{TESTHOST}) {
-##	my $src = rootSrcDir();
-##	my $project = basename($src);
-##	die "MAILADDR is not defined, and is needed with TESTHOST"
-##	    unless defined $ENV{MAILADDR};
-##	my $user = $ENV{MAILADDR};
-##	print "ssh -t $ENV{TESTHOST} testbuild $project $user background\n";
-##	system("ssh -t $ENV{TESTHOST} testbuild $project $user background");
-##	croak "Unable to ssh $ENV{TESTHOST} testbuild ($?)"
-##	    unless $? == 0;
-##    }
 }
 
 sub depSyncOne {
@@ -2903,8 +2782,7 @@ Needed to determine the central repository for public updates.
 =cut
 
 sub getEnv {
-    my $result = GetOptions("y!" => \$auto_yes_to_prompts,
-                            "quiet!" => \$quiet);
+    my $result = GetOptions("quiet!" => \$quiet);
                             
     usage("Unknown error") unless $result;
     usage("Missing requested env var") unless @ARGV == 1;
