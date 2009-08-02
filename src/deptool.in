@@ -1896,6 +1896,9 @@ available.  It performs the following steps:
 =cut
 
 sub depPublish {
+    my $ret = GetOptions(); # No valid options
+    usage("unknown option to publish") unless $ret;
+
     print "deppublish: committing any outstanding changes\n";
     depCommit();
     my %options = ('made_changes' => 1);
