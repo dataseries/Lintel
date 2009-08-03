@@ -377,7 +377,7 @@ int StatsQuantile::collapseFindFirstBuffer() {
 // lasted this long, then we're not having problems with the new
 // binary search version.
 double StatsQuantile::getQuantileByIndex(uint64_t target_index) const {
-    int64_t cur_index = 0;
+    uint64_t cur_index = 0;
 
     PriorityQueue<std::pair<double, int>, pairCmp> tmp_pq(nbuffers);
     for(int i=0; i < cur_buffer; ++i) {

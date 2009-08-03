@@ -43,8 +43,8 @@ std::string join(const std::string &joinstr, const std::vector<std::string> &par
 // quotemeta.
 
 /** escapes data for passing into MySQL; doesn't escape for string
-    comparison functions (e.g. the LIKE operator).  Produces \0 \' \"
-    \b \n \r \t \Z (ASCII 26) and \\ 
+    comparison functions (e.g. the LIKE operator).  Produces \verbatim \0 \' \"
+    \b \n \r \t \Z (ASCII 26) and \\  \endverbatim
 
     See http://dev.mysql.com/doc/refman/5.0/en/string-syntax.html for
     further details on MySQL's string escaping requirements.

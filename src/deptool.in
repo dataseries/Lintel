@@ -44,16 +44,12 @@ use Lintel::ProcessManager;
 # may have changed.  Test case is revision in tla that switched the
 # dependencies around.
 
-# TODO: builds have to be serialized, but tests should be runnable in parallel.
-
 # TODO: check for make file left overs in source directory (these should only
 # be in build, or debug, or etc. directories). Jay at least seems to futz up
 # and make crap in src every so often those breaking depbuild (or at least
 # misleading it as to what has been created and what should be recreated).
 
 # TODO: think about how to check for rebuild after make clean
-
-# TODO: separate between short and long tests
 
 # TODO: add ability to have hooks for pre-commit checks, this allows
 # for mechanical verification of common errors.
@@ -468,7 +464,7 @@ sub addTimeLog {
 	warn "Skipping time logging; unable to lock $time_log\n";
     }
 
-    # TODO: add code that parses the time logs writes out SQL for mercury.
+    # TODO: add code that parses the time logs and writes out SQL for mercury.
 }
 
 sub help {
@@ -1142,7 +1138,9 @@ sub dbpDoParallelTest {
     print "Running parallel tests:\n";
     for (my $i = @testlist; $i >= 1; --$i) {
 	next if $sequential_tests{$i};
-	print "Start test $i\n";
+	my $running = $children->nChildren() + 1; # add the one we're about to start
+	my $remain = $i - 1;
+	print "Start test $i; $running running, $remain remain\n";
 	&$starttest($i);
 	while ($children->nChildren() >= $parallelism) {
 	    $children->wait();
@@ -1276,7 +1274,19 @@ sub dbpFinishWhich {
     die "internal" unless defined $info->{"status_$which"};
     aliasChdir($dir);
     if ($info->{"status_$which"} == 0) {
-	print "Finish $which of $dir\n";
+	print "Finish $which of $dir.";
+	my $errors = "$dir/deptool.$which.err";
+	if (-s $errors == 0) {
+	    print " No error output.\n";
+	} else {
+	    print " Error output:\n";
+	    my $fh = new FileHandle($errors)
+		or die "Can't open $errors for read: $!";
+	    while (<$fh>) {
+		print "  $_";
+	    }
+	    close($fh);
+	}
 	stamp($which);
 	$info->{"done_$which"} = 1;
 	$running->{$which} = undef;
@@ -1370,10 +1380,27 @@ sub depBuildParallel {
 	    # only wait if we couldn't get anything removed
 	    die "? $pending[0]->[1] $pending[0]->[0]" unless $children->nChildren() > 0;
 
-	    $children->wait();
+	    my %finished = $children->wait(10);
 
-	    foreach my $which (qw/build install test/) {
-		dbpFinishWhich($which, \%running, \%dependencies);
+	    if (scalar keys %finished == 0) {
+		print "Waiting on:\n";
+		foreach my $which (qw/build install test/) {
+		    next unless defined $running{$which};
+		    my $dir = $running{$which};
+		    my $fh = new FileHandle "$dir/deptool.$which.out"
+			or die "Can't open $dir/deptool.$which.out for read: $!";
+		    $dir =~ s!^.*/!!o;
+		    my $lastline = '';
+		    while (<$fh>) {
+			$lastline = $_;
+		    }
+		    chomp $lastline;
+		    print "  $which in $dir: $lastline\n";
+		}
+	    } else {
+		foreach my $which (qw/build install test/) {
+		    dbpFinishWhich($which, \%running, \%dependencies);
+		}
 	    }
 	}
 	$prev_pending_size = @pending;
