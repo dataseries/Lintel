@@ -4,19 +4,35 @@
    See the file named COPYING for license details
 */
 
+
+#include <boost/format.hpp>
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Double.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/Stats.hpp>
+#include <Lintel/ProgramOptions.hpp>
+
+using boost::format;
+
+lintel::ProgramOption<int> po_extra_reps
+("extra-reps", 
+ "number of extra repetitions of testStatsMerging() to call", 
+ 1);
 
 void
 checkEqual(Stats &a, Stats &b)
 {
-    INVARIANT(a.count() == b.count(), "count mismatch");
-    INVARIANT(a.min() == b.min(), "min mismatch");
-    INVARIANT(a.max() == b.max(), "max mismatch");
-    INVARIANT(Double::eq(a.mean(), b.mean()), "mean mismatch");
-    INVARIANT(Double::eq(a.variance(), b.variance()), "variance mismatch");
+    INVARIANT(a.count() == b.count(), 
+	      format("count mismatch %d!=%d") % a.count() % b.count());
+    INVARIANT(a.min() == b.min(), 
+	      format("min mismatch %f!=%f") % a.min() % b.min());
+    INVARIANT(a.max() == b.max(), 
+	      format("max mismatch %f!=%f") % a.max() % b.max());
+    INVARIANT(Double::eq(a.mean(), b.mean()), 
+	      format("mean mismatch %f!=%f") % a.mean() % b.mean());
+    INVARIANT(Double::eq(a.variance(), b.variance()), 
+	      format("variance mismatch %f!=%f, difference is %f")
+	      % a.variance() % b.variance() % (a.variance() - b.variance()));
 }
 
 void
@@ -62,7 +78,11 @@ testStatsMerging()
 int
 main(int argc, char *argv[])
 {
-    // TODO: more tests
-    testStatsMerging();
+    lintel::parseCommandLine(argc, argv);
+    
+    for(int i = 0; i<po_extra_reps.get(); ++i) {
+	// TODO: more tests
+	testStatsMerging();
+    }
     return 0;
 }
