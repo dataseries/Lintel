@@ -882,12 +882,21 @@ sub stamp {
 
     ++$Global::last_stamp_timestamp; # ensure uniqueness
     while (1) {
+	my $now = time();
 	utime undef, undef, $filename;
 	my $st = stampTime(".", $which);
+
+	if ($now < $st - 2 || $now > $st + 2) {
+	    my $delta = $now - $st;
+	    warn "Weird discrepancy in filesystem timestamp vs. machine timestamp.
+Machine is at $now, Filesystem at $st, machine - fs = $delta";
+	}
+
 	if ($st >= $Global::last_stamp_timestamp) {
 	    $Global::last_stamp_timestamp = $st;
 	    last;
 	}
+
         print "deptool: sleep(0.25) for unique .deptool.*_stamp file timestamps\n"
 	    if 0;
 	select(undef,undef,undef, 0.25);

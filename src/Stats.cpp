@@ -132,7 +132,7 @@ double Stats::mean() const {
 double Stats::variance() const {
     DEBUG_SINVARIANT(checkInvariants());
     if (number == 0) return 0.0;
-    double m = double(mean());
+    double m = mean();
     return double(sumsq)/double(number) - m*m;
 }
 
