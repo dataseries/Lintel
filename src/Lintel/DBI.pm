@@ -1,11 +1,13 @@
 package Lintel::DBI;
 use English;
 use DBI;
-use vars '$AUTOLOAD';
+use vars qw/$AUTOLOAD $VERSION/;
 use Carp;
 use FileHandle;
 use Data::Dumper;
 use strict;
+
+$VERSION = 1.0;
 
 # TODO: think about how we can safely write tests for this.  Perhaps
 # use one of the DBI against CSV or sqllite backends.
