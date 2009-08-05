@@ -799,11 +799,11 @@ sub oneRow {
 sub oneRowArray {
     my($sth) = @_;
 
-    my $ret = $sth->fetchrow_array();
-    confess "?? $sth" unless defined $ret;
-    my $tmp = $sth->fetchrow_array();
-    confess "?? $tmp" if defined $tmp;
-    return @$ret;
+    my @ret = $sth->fetchrow_array();
+    confess "?? $sth" unless @ret;
+    my @tmp = $sth->fetchrow_array();
+    confess "?? $sth" if @tmp > 0;
+    return @ret;
 }
 
 sub atMostOneRow {
