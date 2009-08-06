@@ -207,7 +207,7 @@ if (!defined $time_log) {
 
 =over 4
 
-=item -no-auto-yes 
+=item --no-auto-yes 
 
 Do not automatically answer 'yes' to all of the prompts that are
 provided if there is a sane default answer.  Default is true because
@@ -467,6 +467,41 @@ sub addTimeLog {
     # TODO: add code that parses the time logs and writes out SQL for mercury.
 }
 
+sub helpSection {
+    my ($section) = @_;
+
+    my $fn;
+
+    if ($PERL_VERSION ge v5.10) {
+	eval q! # checked on Debian Lenny, openSUSE 11.1
+	    use IO::String;
+            use Pod::Select
+	    use Pod::Text::Termcap;
+
+	    my $out = IO::String->new;
+	    
+	    podselect({-sections => [$section], -output => $out }, $0);
+	    
+	    my $to_text = new Pod::Text::Termcap;
+	    $out->setpos(0);
+	    $to_text->parse_from_filehandle($out);
+	!;
+    } else {
+	# RHEL4 (perl 5.8.5), Debian Etch (perl 5.8.8)
+	# -sections => ... works on Etch but not RHEL4
+	$fn = eval q!
+	    my $parser = new Pod::Usage(USAGE_OPTIONS => {-verbose => 99});
+	    
+	    $parser->select($section);
+	    $parser->parse_from_file($0);
+        !;
+    }
+
+    die "Eval failed: $@" if $@;
+
+    exit(0);
+}
+
 sub help {
     my ($what) = @_;
     $what ||= 'all';
@@ -475,11 +510,9 @@ sub help {
 	# stuff in the man page title by invoking perldoc ourselves.
 	pod2usage(-verbose => 2, -exitval => 0);
     } elsif ($what eq 'commands') {
-	pod2usage(-verbose => 99, -sections => 'COMMANDS', -exitval => 0);
+	helpSection("COMMANDS");
     } elsif (defined $commands{$what}) {
-	pod2usage(-verbose => 99, 
-		  -sections => "COMMAND DETAILS/^$what( .*)?\$", 
-		  -exitval => 0);
+	helpSection("COMMAND DETAILS/^$what( .*)?\$");
     } else {
 	usage("Unknown option to help '$what'");
     }
@@ -1928,6 +1961,10 @@ available.  It performs the following steps:
           # if we got changes here, print a warning before continuing
       }
   }
+
+Normally, before you can publish you will need to get authorization at the
+central server.  In order to do so, for monotone, you would run C<mtn pubkey>
+I<email-address> and send the result to the appropriate administrator.
 
 =cut
 
