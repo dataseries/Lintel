@@ -1,11 +1,13 @@
 package Lintel::DBI;
 use English;
 use DBI;
-use vars '$AUTOLOAD';
+use vars qw/$AUTOLOAD $VERSION/;
 use Carp;
 use FileHandle;
 use Data::Dumper;
 use strict;
+
+$VERSION = 1.0;
 
 # TODO: think about how we can safely write tests for this.  Perhaps
 # use one of the DBI against CSV or sqllite backends.
@@ -799,11 +801,11 @@ sub oneRow {
 sub oneRowArray {
     my($sth) = @_;
 
-    my $ret = $sth->fetchrow_array();
-    confess "?? $sth" unless defined $ret;
-    my $tmp = $sth->fetchrow_array();
-    confess "?? $tmp" if defined $tmp;
-    return @$ret;
+    my @ret = $sth->fetchrow_array();
+    confess "?? $sth" unless @ret;
+    my @tmp = $sth->fetchrow_array();
+    confess "?? $sth" if @tmp > 0;
+    return @ret;
 }
 
 sub atMostOneRow {
