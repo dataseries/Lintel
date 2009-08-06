@@ -7,12 +7,27 @@ use English;
 use File::Find;
 use File::Path;
 use FileHandle;
+use Getopt::Long;
+
+@PERL5_MODULES_INC_UNSHIFT@;
+use Lintel::ProcessManager;
 
 # TODO: redo file to conform with new coding convention
+# TODO: add pod documentation.
 
 my $config_path = "/etc/lintel-disktool.config";
 usage() unless @ARGV >= 1;
-usage("You need to be root") unless 0 == $EUID;
+
+unless ($EUID == 0) {
+    print "You need to be root, trying to re-run self under sudo.\n";
+    exec "sudo", "$0", @ARGV;
+    die "exec failed: $!";
+}
+
+$Global::debug = 0;
+
+my $success = GetOptions("debug!" => \$Global::debug);
+usage() unless $success;
 
 $|=1;
 
@@ -227,77 +242,82 @@ sub driveToPartition {
     die "Unable to convert $drive to partition";
 }
 
+sub formatOneDrive {
+    my ($drive, $fs) = @_;
+
+    my $ret = system("dd if=/dev/zero of=/dev/${drive}1 bs=1024k count=1 >/dev/null 2>&1");
+    die "\ndd failed for /dev/${drive}1" 
+	unless $ret == 0;
+    my $partition = driveToPartition($drive);
+    if ($fs eq 'ext2') {
+	$ret = system("mkfs.ext2 -m 0 -O sparse_super -T largefile4 $partition >/dev/null 2>&1");
+	die "\nmkfs.ext2 failed for $partition"
+	    unless $ret == 0;
+    } elsif ($fs eq 'xfs')  {
+	$ret = system("mkfs.xfs $partition >/dev/null 2>&1");
+	die "\nmkfs.xfs failed for $partition"
+	    unless $ret == 0;
+    } else {
+	die "huh $fs";
+    }
+    exit(0);
+}
+
 sub format_drives {
     my @drives = find_drives();
     my %ok = get_ok_partitions();
-    my %mounted = get_mounted();
+    my %mounted = getMounted(1);
 
     my $fs = 'ext2';
-    print "formatting as $fs (in parallel): ";
-    my $ok = 1;
-    my %children;
+
     foreach my $drive (@drives) {
-	print ", " unless $drive eq $drives[0]; 
-	print "$drive";
 	unless ($ok{$drive}) {
-	    warn "\n$drive isn't partitioned correctly, aborting...";
-	    $ok = 0;
-	    last;
+	    die "$drive isn't partitioned correctly, aborting...";
 	}
-	if ($mounted{$drive}) {
-	    warn "\n$drive is already mounted, aborting...";
-	    $ok = 0;
-	    last;
-	}
-	my $pid = fork();
-	unless (defined $pid && $pid >= 0) {
-	    warn "\nfork failed: $!";
-	    $ok = 0;
-	    last;
-	}
-	if ($pid == 0) {
-	    my $ret = system("dd if=/dev/zero of=/dev/${drive}1 bs=1024k count=1 >/dev/null 2>&1");
-	    die "\ndd failed for /dev/${drive}1" 
-		unless $ret == 0;
-	    my $partition = driveToPartition($drive);
-	    if ($fs eq 'ext2') {
-		$ret = system("mkfs.ext2 -m 0 -O sparse_super -T largefile4 $partition >/dev/null 2>&1");
-		die "\nmkfs.ext2 failed for $partition"
-		    unless $ret == 0;
-	    } elsif ($fs eq 'xfs')  {
-		$ret = system("mkfs.xfs $partition >/dev/null 2>&1");
-		die "\nmkfs.xfs failed for $partition"
-		    unless $ret == 0;
-	    } else {
-		die "huh $fs";
-	    }
-	    exit(0);
-	}
-	$children{$pid} = $drive;
-	select(undef,undef,undef,0.1);
+	my $partition = driveToPartition($drive);
+	print "($partition)" if $Global::debug;
+	if ($mounted{$partition}) {
+	    die "$partition is already mounted, aborting...";
+	} 
+    }
+
+    my $process_manager = new Lintel::ProcessManager();
+
+    my @failed;
+    print "formatting as $fs (in parallel): ";
+    foreach my $drive (@drives) {
+	print "$drive ";
+	$process_manager->fork(cmd => sub { formatOneDrive($drive, $fs); },
+			       exitfn => sub { my ($pid, $status) = @_;
+					       
+					       if ($status == 0) {
+						   print "$drive ";
+					       } else {
+						   print "$drive(not-ok) ";
+						   push(@failed, $drive);
+					       }
+					   });
+
+	# slight delay between starting formats eliminates big lockup
+	# experience with many (50+) drives
+	select(undef,undef,undef,0.05); 
     }
     print "\n";
     print "waiting: ";
-    my $first = 1;
-    my %success;
-    while((my $pid = wait) > 0) {
-	print ", " unless $first;
-	$first = 0;
-	$children{$pid} ||= "UNKNOWN";
-	print "$children{$pid}";
-	$success{$children{$pid}} = 1;
-	delete $children{$pid};
+
+    while($process_manager->nChildren() > 0) {
+	$process_manager->wait();
     }
     print "\n";
-    foreach my $drive (@drives) {
-	die "Failed to format $drive" unless $success{$drive};
+    if (@failed > 0) {
+	print "Failed to format: ", join(" ", @failed), "\n";
+	exit(1);
     }
-    die "Something wasn't ok" unless $ok;
 }
     
 sub mount_drives {
     my @drives = find_drives();
-    my %mounted = get_mounted();
+    my %mounted = getMounted();
     
     die "Unable to mount drives, $config_path doesn't define mount_path"
 	unless defined $Global::mount_path;
@@ -305,10 +325,6 @@ sub mount_drives {
 	unless defined $Global::drive_to_dir_expr;
     unless (-d $Global::mount_path) {
 	mkpath($Global::mount_path);
-    }
-    if (defined $Global::chmod_as) {
-	system("chmod --reference=$Global::chmod_as $Global::mount_path") == 0 
-	    or die "unable to chmod $Global::mount_path as $Global::chmod_as";
     }
 
     if (defined $Global::clean_mounts_pattern) {
@@ -327,9 +343,6 @@ sub mount_drives {
     my $count = 0;
     print "Mounting...";
     foreach my $drive (@drives) {
-	next if $mounted{$drive};
-	print ", " unless $count == 0; 
-	print $drive;
 	my $dir = eval $Global::drive_to_dir_expr;
 	die "drive_to_dir_expr error: $@" if $@;
 	die "$drive -> $dir (/ disallowed)" if $dir =~ m!/!o;
@@ -339,6 +352,9 @@ sub mount_drives {
 	    mkdir($path, 0777) or die "unable to mkdir($path): $!";
 	}
 	my $partition = driveToPartition($drive);
+	next if $mounted{$dir};
+	print ", " unless $count == 0; 
+	print $drive;
 	my $ret = system("mount $partition $path");
 	die "mount failed" unless $ret == 0;
 	if (defined $Global::chmod_as) {
@@ -352,7 +368,7 @@ sub mount_drives {
 }
 
 sub umount_drives {
-    my %mounted = get_mounted();
+    my %mounted = getMounted();
 
     print "Unmounting...";
     my $first = 1;
@@ -383,7 +399,7 @@ sub zero_drives {
     my @drives = find_drives();
     die "no drives??" unless @drives > 0;
 
-    my %mounted = get_mounted();
+    my %mounted = getMounted();
 
     die "some drives are still mounted"
 	if keys %mounted > 0;
@@ -439,7 +455,11 @@ sub zero_drives {
     die "Something wasn't ok" unless $ok;
 }
 
-sub get_mounted {
+# Returns map of directory under Global::mount_path to device path under /dev;
+# or the reverse if $dev_to_mount_path is set
+sub getMounted {
+    my ($dev_to_mount_path) = @_;
+
     readConfig();
 
     die "Can't get mounted, $config_path does not define mount_path"
@@ -447,11 +467,24 @@ sub get_mounted {
     my %mounted;
     open(MOUNT, "mount |") or die "??";
     while(<MOUNT>) {
-	next unless m!^/dev/\S+1 on $Global::mount_path/([^/ ]+) type \S+ \S+$!o;
-	$mounted{$1} = 1;
+	if (m!^(/dev/\S+1) on $Global::mount_path/([^/ ]+) type \S+ \S+$!o) {
+	    $mounted{$2} = $1;
+	    print "Found mounted $1 -> $2\n" if $Global::debug;
+	} else {
+	    print "Not mounted pattern ($Global::mount_path): $_" if $Global::debug;
+	}
     }
     close(MOUNT);
-    return %mounted;
+    if ($dev_to_mount_path) {
+	my %ret;
+	while (my ($k,$v) = each %mounted) {
+	    die "Internal" if defined $ret{$v};
+	    $ret{$v} = $k;
+	}
+	return %ret;
+    } else {
+	return %mounted;
+    }
 }
 
 
