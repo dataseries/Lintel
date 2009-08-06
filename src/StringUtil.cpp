@@ -158,6 +158,17 @@ string hexstring(const void *_data, unsigned datasize) {
     return ret;
 }
 
+string maybehexstring(const void *_data, unsigned datasize) {
+    const unsigned char *data = reinterpret_cast<const unsigned char *>(_data);
+    for(unsigned int i=0;i<datasize;i++) {
+	if (!isprint(data[i])) {
+	    return hexstring(data, datasize);
+	}
+    }
+    string ret((const char *)_data, datasize);
+    return ret;
+}
+
 string maybehexstring(const string &a) {
     for(unsigned int i=0;i<a.size();++i) {
 	if (!isprint(a[i])) {
