@@ -80,20 +80,14 @@ void rdtscll(uint64_t &val) {
 /// cycle counter.  2) functions for converting between various clock
 /// representations.  3) functions for configuring how it operates. 4)
 /// utility functions either for external or internal use.
-///
-/// TODO-2009-06-01: deprecate Tdbl; it's just not safe, there is just barely
-/// enough precision to represent us with doubles, and when you
-/// subtract them, you get things like .934us for the minimum
-/// separation.  Probably switch entirely to the use of Tfrac, change
-/// it to an int64 so substraction works sanely, and rename it T.
-/// Stage 1 deprecation begun, see functions marked as deprecated.
-/// Functions to be removed 2009-06-01 or later.
 
 class Clock {
 public:
+    // TODO: consider making a structure version of Tfrac that has all the
+    // operators and converters on it; same space/efficiency, easier to use.
+
     // for both of the versions, the units are micro-seconds
     typedef long long Tll; ///< units of micro-seconds
-    typedef double Tdbl; ///< units of micro-seconds
 
     /// Tfrac units are seconds * 2^-32, such that Tfrac >> 32 == time
     /// in seconds, and (Tfrac & 0xFFFFFFFF) / 4294967296.0 = fractional
@@ -136,31 +130,20 @@ public:
 	return ret;
     }
 
-    // TODO-2009-06-01: remove now, getCycleCounter()
-    FUNC_DEPRECATED_PREFIX static uint64_t now() FUNC_DEPRECATED {
-	return cycleCounter();
-    }
-
-    FUNC_DEPRECATED_PREFIX static uint64_t getCycleCounter() FUNC_DEPRECATED {
-	return cycleCounter();
-    }
-  
     /////////////////////////////////////////
     // Time of day routines...
 
+    // TODO: deprecate this
+    static double tod() {
+	return TfracToDouble(todTfrac());
+    }
+
+    // TODO: deprecate this
     static Tll todll() {
 	struct timeval t;
 	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
 	return (Tll)t.tv_sec * (Tll)1000000 + (Tll)t.tv_usec;
     }
-
-    // Might want to switch to using clock_gettime() instead of
-    // gettimeofday() for more accuracy; measurements indicate there
-    // is no more precision the clock_gettime at least on linux
-    /// Will be deprecated, but used in header, so deprecating in stages
-    static Tdbl tod() { 
-	return tod_epoch_internal(0);
-    }	
 
     static Tfrac todTfrac() {
 	struct timeval t;
@@ -168,37 +151,7 @@ public:
 	return secMicroToTfrac(t.tv_sec,t.tv_usec);
     }	
 
-    Tdbl tod_epoch() {
-	return tod_epoch_internal(epoch_offset);
-    }	
-
-    Tdbl todcc_recalibrate();
     Tfrac todccTfrac_recalibrate();
-
-    // Not a good idea to use the todcc from multiple threads; have a separate
-    // Clock object for each of them, for example via Clock::perThread()
-
-    inline Tdbl todcc_direct() {
-	uint64_t cur_cc = cycleCounter();
-	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
-	if (cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles) {
-	    return todcc_recalibrate();
-	} else {
-	    last_cc = cur_cc;
-	    return (double)cur_cc * inverse_clock_rate + cycle_count_offset;
-	}
-    }
-
-    inline Tdbl todcc_incremental() {
-	uint64_t cur_cc = cycleCounter();
-	uint64_t delta_cc = cur_cc - last_recalibrate_cc;
-	if (UNLIKELY(cur_cc <= last_cc || delta_cc > recalibrate_interval_cycles)) {
-	    return todcc_recalibrate();
-	} else {
-	    double delta_us = (int32_t)delta_cc * inverse_clock_rate;
-	    return last_calibrate_tod + delta_us;
-	}
-    }
 
     // Unfortunately, at least on 32bit core2 duo (T2600), this is
     // 1.25x slower than todcc_incremental, but that's life, doubles
@@ -216,21 +169,10 @@ public:
 	}
     }
     
-    FUNC_DEPRECATED_PREFIX inline Tdbl todcc() FUNC_DEPRECATED {
-	// PIII based machines (all I have to test) are faster in 
-	// incremental mode.  Tested an opteron 2.8GhZ, also faster
-	// in incremental mode
-	// HPPA 2 based machines are all faster in direct mode, 
-	// probably because they can use the fused multiply-add
-#if LINTEL_CLOCK_CYCLECOUNTER == 0
-	return todcc_recalibrate(); // generates warning
-#elif defined(__i386__) || defined(i386) || defined(__i386) || defined(__x86_64__)
-	return todcc_incremental();
-#else
-	return todcc_direct();
-#endif
-    }
-    
+    /// Calculate the time in Tfrac units using the cycle counter so the
+    /// calculation runs quickly. If you want to use this from multiple 
+    /// threads, you should have a separate Clock object for each of them,
+    /// for examply by using Clock::perThread()
     inline Tfrac todccTfrac() {
 #if LINTEL_CLOCK_CYCLECOUNTER == 0
 	return todTfrac();
@@ -241,29 +183,8 @@ public:
 #endif
     }
 
-    /// How many micro seconds should elapse between recalibrations;
-    /// default is 500us.  TODO: measure and figure out a smarter way
-    /// to set this.
-    FUNC_DEPRECATED_PREFIX void setRecalibrateInterval(Tdbl interval_us) FUNC_DEPRECATED;
-
     /// How many seconds should elapse between recalibrations?  Default is 1ms
     void setRecalibrateIntervalSeconds(double seconds = 1e-3); 
-
-    /// What epoch (in seconds since 1970) should be used for the
-    /// return value from todcc{,_direct,_incremental}(); this is
-    /// needed to get precision back in Tdbl as on modern (e.g. 2.8GhZ
-    /// opteron) the time to call todcc() is less than the precision
-    /// available in a Tdbl.
-    void setTodccEpoch(unsigned seconds);
-
-    FUNC_DEPRECATED_PREFIX void setTodccEpoch() FUNC_DEPRECATED {
-	// An hour ago
-	setTodccEpoch(static_cast<unsigned>(Clock::tod() * 1e-6) - 3600);
-    }
-
-    FUNC_DEPRECATED_PREFIX Tdbl getTodccEpochTdbl() FUNC_DEPRECATED { 
-	return static_cast<Tdbl>(epoch_offset) * 1.0e6;
-    }
 
     //////////////////////////////////////////
     /// Tfrac conversion routines...
@@ -346,7 +267,7 @@ public:
 	AUFSO_Yes, ///< silently allow fast but wrong results
 	AUFSO_WarnFast, ///< like Yes but print out a warning to cerr
 	AUFSO_WarnSlow, ///< like Slow but print out a warning to cerr
-	AUFSO_Slow, ///< substitute tod() when frequency scaling is possible
+	AUFSO_Slow, ///< substitute todTfrac() when frequency scaling is possible
 	AUFSO_No ///< fail when frequency scaling is possible
     };
     /// \brief How should we deal with frequency scaling?
@@ -387,7 +308,6 @@ public:
     
 public:
     static double clock_rate; // MhZ, assume SMP processors run at same rate.
-    static double inverse_clock_rate; // us/cycle
     static double inverse_clock_rate_tfrac; // tfrac/cycle
 
     // Set in initialMeasurements()
@@ -396,7 +316,6 @@ public:
     static uint64_t estimated_cycles_per_quanta;
 
     // Cycle counter calibration variables
-    Tdbl last_calibrate_tod, cycle_count_offset, recalibrate_interval;
     Tfrac last_calibrate_tod_tfrac;
     uint64_t last_cc, last_recalibrate_cc, recalibrate_interval_cycles;
 private:
@@ -404,14 +323,6 @@ private:
     static void setClockRate(double estimated_mhz);
 
     static pthread_key_t per_thread_clock;
-
-    unsigned epoch_offset;
-    
-    static Tdbl tod_epoch_internal(unsigned epoch) {
-	struct timeval t;
-	CHECKED(gettimeofday(&t,NULL)==0,"how did gettimeofday fail?");
-	return (Tdbl)(t.tv_sec - epoch) * (Tdbl)1000000 + (Tdbl)t.tv_usec;
-    }	
 };
 
 #endif

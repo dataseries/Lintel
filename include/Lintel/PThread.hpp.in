@@ -283,13 +283,38 @@ public:
 	int ret = pthread_cond_wait(&c,&m.m);
 	INVARIANT(ret == 0,boost::format("fatal, ret=%d: %s") % ret % strerror(ret));
     }
-    bool timedwait(PThreadMutex &m, Clock::Tll us) { // true on timeout
+
+    /// @return true on timeout
+    // TODO: deprecate this
+    bool timedwait(PThreadMutex &m, Clock::Tll us) { 
         struct timespec abstime;
+
         Clock::Tll timeout = Clock::todll() + us;
         abstime.tv_sec = (time_t)(timeout / 1000000);
         abstime.tv_nsec = (time_t)((timeout % 1000000) * 1000);
         int ret = pthread_cond_timedwait(&c,&m.m,&abstime);
         INVARIANT(ret == 0 || ret == ETIMEDOUT,"fatal");
+        return ret == ETIMEDOUT ? true : false;
+    }
+
+    /// @return true on timeout
+    bool timedWait(PThreadMutex &m, double seconds) { 
+        struct timespec abstime;
+
+	SINVARIANT(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
+	SINVARIANT(seconds >= 0);
+
+	abstime.tv_sec += floor(seconds);
+	abstime.tv_nsec += round(1.0e9 * (seconds - floor(seconds)));
+
+	if (abstime.tv_nsec > 1000 * 1000 * 1000) {
+	    abstime.tv_sec += 1;
+	    abstime.tv_nsec -= 1000 * 1000 * 1000;
+	    SINVARIANT(abstime.tv_nsec < 1000 * 1000 * 1000);
+	}
+	
+        int ret = pthread_cond_timedwait(&c, &m.m, &abstime);
+        SINVARIANT(ret == 0 || ret == ETIMEDOUT);
         return ret == ETIMEDOUT ? true : false;
     }
 private:
