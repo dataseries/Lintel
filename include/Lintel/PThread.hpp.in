@@ -284,9 +284,9 @@ public:
 	INVARIANT(ret == 0,boost::format("fatal, ret=%d: %s") % ret % strerror(ret));
     }
 
+    // TODO-2009-10-01: remove deprecated function
     /// @return true on timeout
-    // TODO: deprecate this
-    bool timedwait(PThreadMutex &m, Clock::Tll us) { 
+    FUNC_DEPRECATED_PREFIX bool timedwait(PThreadMutex &m, Clock::Tll us) FUNC_DEPRECATED { 
         struct timespec abstime;
 
         Clock::Tll timeout = Clock::todll() + us;
