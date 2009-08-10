@@ -120,6 +120,35 @@ namespace lintel {
     std::vector<std::string> parseCommandLine(const std::vector<std::string> &args,
 					      bool allow_unrecognized = false);
 
+    class ProgramArguments {
+    public:
+	ProgramArguments() { }
+
+	ProgramArguments(const std::string &arg) {
+	    args.push_back(arg);
+	}
+
+	ProgramArguments(const boost::format &f) {
+	    args.push_back(f.str());
+	}
+
+	ProgramArguments &operator <<(const std::string &arg) {
+	    args.push_back(arg);
+	    return *this;
+	}
+
+	ProgramArguments &operator <<(const boost::format &f) {
+	    args.push_back(f.str());
+	    return *this;
+	}
+
+	std::vector<std::string> args;
+    };
+
+    inline void parseCommandLine(const ProgramArguments &pa) {
+	parseCommandLine(pa.args);
+    }
+    
     /// Generic template program option, you can use ProgramOption<
     /// vector<int> > to allow for multiple values to be specified, or
     /// just ProgramOption<int> for one value.
