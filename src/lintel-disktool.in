@@ -34,23 +34,29 @@ usage() unless $success;
 $|=1;
 
 if ($ARGV[0] eq 'partition') {
-    partition_drives();
-# } elsif ($ARGV[0] eq 'add-serial') {
+    partitionDrives();
+# TODO: figure out how to support these in the new config file format
+# Removed until we figure out how to add support in the new config file format
+ } elsif ($ARGV[0] eq 'add-serial') {
+     print "add-serial temporarily disabled; see code";
+     exit(1);
 #     shift @ARGV;
 #     addSerial(@ARGV);
-# } elsif ($ARGV[0] eq 'add-sysfs-id') {
+ } elsif ($ARGV[0] eq 'add-sysfs-id') {
+     print "add-sysfs-id temporarily disabled; see code";
+     exit(1);
 #     shift @ARGV;
 #     addSysfsId(@ARGV);
 } elsif ($ARGV[0] eq 'format') {
     formatDrives();
 } elsif ($ARGV[0] eq 'mount') {
-    mount_drives();
+    mountDrives();
 } elsif ($ARGV[0] eq 'umount') {
-    umount_drives();
+    umountDrives();
 } elsif ($ARGV[0] eq 'list') {
     list();
 } elsif ($ARGV[0] eq 'zero') {
-    zero_drives($ARGV[1]);
+    zeroDrives($ARGV[1]);
 } elsif ($ARGV[0] eq 'fail') {
     shift @ARGV;
     failDrives(@ARGV);
@@ -249,6 +255,7 @@ sub list {
     exit(0);
 }
 
+# TODO: figure out how to support these in the new config file format
 #sub addSerial {
 #    my(@drives) = @_;
 #
@@ -280,7 +287,7 @@ sub list {
 # }
 	
 
-sub partition_drives {
+sub partitionDrives {
     my @drives = find_drives();
 
     my %ok = get_ok_partitions();
@@ -457,7 +464,7 @@ sub formatDrives {
     }
 }
     
-sub mount_drives {
+sub mountDrives {
     my @drives = find_drives();
     my %mounted = getMounted(1);
     my %revmounted = reverse %mounted;
@@ -469,6 +476,8 @@ sub mount_drives {
 	mkpath($config{mount_path});
     }
 
+    # TODO-eric: will this actually do anything useful (or does rmdir
+    # recursively take care of files?
     if (defined $config{clean_mounts_pattern}) {
 	print "Cleaning...";
 
@@ -520,7 +529,7 @@ sub mount_drives {
     print "done.\n";
 }
 
-sub umount_drives {
+sub umountDrives {
     my %mounted = getMounted();
 
     print "Unmounting...";
@@ -541,7 +550,7 @@ sub umount_drives {
     print "done.\n";
 }    
 
-sub zero_drives {
+sub zeroDrives {
     die "Untested";
     my ($regex) = @_;
 
