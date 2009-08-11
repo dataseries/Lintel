@@ -15,7 +15,7 @@ use Safe;
 use Lintel::ProcessManager;
 
 # TODO: redo file to conform with new coding convention
-# TODO: add pod documentation.
+# TODO: add pod documentation.  Fix up the usage...
 
 my %config = ( debug => 0 );
 
@@ -35,18 +35,8 @@ $|=1;
 
 if ($ARGV[0] eq 'partition') {
     partitionDrives();
-# TODO: figure out how to support these in the new config file format
-# Removed until we figure out how to add support in the new config file format
- } elsif ($ARGV[0] eq 'add-serial') {
-     print "add-serial temporarily disabled; see code";
-     exit(1);
-#     shift @ARGV;
-#     addSerial(@ARGV);
- } elsif ($ARGV[0] eq 'add-sysfs-id') {
-     print "add-sysfs-id temporarily disabled; see code";
-     exit(1);
-#     shift @ARGV;
-#     addSysfsId(@ARGV);
+# TODO: add a "add-serial" replacement that will list the needed serials
+# to make it easier for a human to put it into the config file
 } elsif ($ARGV[0] eq 'format') {
     formatDrives();
 } elsif ($ARGV[0] eq 'mount') {
@@ -74,9 +64,8 @@ exit(0);
 
 sub usage {
     my($msg) = @_;
-
     print STDERR "Error: @_\n" if @_;
-    die "Usage: $0 (list)|(add-serial)|(add-sysfs-id)|(partition)|(format)|(mount)|(umount)";
+    die "Usage: $0 (list)|(partition)|(format)|(mount)|(umount)|(fail path)|(scan)";
 }
 	
 sub bydriveorder {
@@ -253,39 +242,7 @@ sub list {
 	print "Unused drives: ", join(", ", @{$config{not_used_drives}}), "\n";
     }
     exit(0);
-}
-
-# TODO: figure out how to support these in the new config file format
-#sub addSerial {
-#    my(@drives) = @_;
-#
-#    open(CONFIG, ">>$config_path");
-#    foreach my $drive (@drives) {
-#	is_drive($drive);
-#	my $serial = serial_number($drive);
-#	die "Unable to get serial number from $drive"
-#	    unless defined $serial;
-#	print CONFIG "serial $serial\n";
-#    }
-#    close(CONFIG);
-# }
-# 
-# sub addSysfsId {
-#     my(@drives) = @_;
-# 
-#     my $config = new FileHandle ">>$config_path"
-# 	or die "Can't open $config_path for append: $!";
-# 
-#     foreach my $drive (@drives) {
-# 	is_drive($drive);
-# 	my $sysfs_id = sysfs_idNumber($drive);
-# 	die "Unable to get sysfs id number from $drive"
-# 	    unless defined $sysfs_id;
-# 	print $config "sysfsid $sysfs_id\n";
-#     }
-#     close($config);
-# }
-	
+}	
 
 sub partitionDrives {
     my @drives = find_drives();
@@ -411,7 +368,7 @@ sub formatDrives {
 	die "partition_to_label fn failed: $@"
 	    if $@;
 
-	# 12 maximum for XFS
+	# 12 character label length maximum for XFS
 	die "No valid label for $partition"
 	    unless defined $label && $label =~ /^\w{1,12}$/o;
 	
@@ -476,8 +433,6 @@ sub mountDrives {
 	mkpath($config{mount_path});
     }
 
-    # TODO-eric: will this actually do anything useful (or does rmdir
-    # recursively take care of files?
     if (defined $config{clean_mounts_pattern}) {
 	print "Cleaning...";
 
