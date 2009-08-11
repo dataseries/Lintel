@@ -55,7 +55,8 @@ public:
 int main () {
     // For this test, running on more than # cores doesn't have any
     // benefit since our races are entirely from running threads.
-    int32_t num_threads = PThreadMisc::getNCpus(true);
+    // on very few cpus, having one extra thread increases our chance of a race
+    int32_t num_threads = PThreadMisc::getNCpus(true) + 1;
     if (num_threads == -1) {
         num_threads = 32; // guess -- highish for circa 2009
     }
