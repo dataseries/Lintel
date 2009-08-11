@@ -64,8 +64,11 @@ inline std::string hexstring(const std::string &instr) {
     return hexstring(instr.data(), instr.size());
 }
 
+/** even though it is a void *, maybe it is completely printable... */
+std::string maybehexstring(const void *data, unsigned datasize);
+
 /** convert instr into a hex string if it contains non-printing characters */
-std::string maybehexstring(const std::string &instr); 
+std::string maybehexstring(const std::string &instr);
 
 /** convert instr into a CSV form as accepted by Excel */
 std::string toCSVform(const std::string &instr); 

@@ -66,13 +66,12 @@ void fifth(int argc, char *argv[]) {
     cmdline2.set(77);
     SINVARIANT(cmdline2.get() == 77);
 
+    lintel::ProgramArguments pargs;
+    
+    pargs << "--inline1" << "--inline2=5";
+
     // Process additional program options.
-    vector<string> more_args;
-    more_args.push_back("--inline1");
-    more_args.push_back("--inline2=5");
-    more_args.push_back("--inline3=9");
-    more_args.push_back("--inline3=9");
-    lintel::parseCommandLine(more_args);
+    lintel::parseCommandLine(pargs << "--inline3=9" << "--inline3=9");
 
     // Make sure the "more_args" program options are set correctly, and confirm
     // previously set program options are still the same.
