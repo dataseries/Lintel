@@ -174,7 +174,7 @@ template <> struct HashMap_hash<const foo> {
 	// 2001 is an arbitrary constant; could also use the return
 	// from hashbytes, which will make up a start hash if one
 	// isn't provided.
-	uint32_t partial_hash = BobJenkinsHashMix3(a.x, a.y, 2001);
+	uint32_t partial_hash = lintel::BobJenkinsHashMix3(a.x, a.y, 2001);
 	return lintel::hashBytes(a.str.data(), a.str.size(), partial_hash);
     }
 };

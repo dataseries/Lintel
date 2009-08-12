@@ -133,12 +133,11 @@ public:
     /////////////////////////////////////////
     // Time of day routines...
 
-    // TODO: deprecate this
-    static double tod() {
+    FUNC_DEPRECATED_PREFIX static double tod() FUNC_DEPRECATED {
 	return TfracToDouble(todTfrac());
     }
 
-    // TODO: deprecate this
+    // TODO-2009-10-01: deprecate this
     static Tll todll() {
 	struct timeval t;
 	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");

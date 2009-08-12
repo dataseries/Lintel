@@ -21,26 +21,24 @@
 #include <Lintel/HashFns.hpp>
 #include <Lintel/Stats.hpp>
 
-// these used to be in the global namespace; preserve that for now.
-// TODO-2009-06-01: remove deprecated functions
-FUNC_DEPRECATED_PREFIX inline uint32_t 
-BobJenkinsHash(const uint32_t prev_hash, const void *bytes, const size_t size) FUNC_DEPRECATED;
-
-inline uint32_t BobJenkinsHash(const uint32_t prev_hash,
-			       const void *bytes, const size_t size) {
-    return lintel::bobJenkinsHash(prev_hash, bytes, size);
-}
-FUNC_DEPRECATED_PREFIX inline uint32_t 
-HashTable_hashbytes(const void *bytes, const size_t size, 
-		    const uint32_t prev_hash) FUNC_DEPRECATED;
-
-inline uint32_t HashTable_hashbytes(const void *bytes, const size_t size,
-				    const uint32_t prev_hash = 1972) { 
-    return lintel::hashBytes(bytes, size, prev_hash);
-}
-using lintel::BobJenkinsHashMix3;
-using lintel::BobJenkinsHashMixULL;
+// TODO-2009-10-01: deprecate macro and functions 
 #define BobJenkinsHashMix lintel_BobJenkinsHashMix
+
+FUNC_DEPRECATED_PREFIX inline uint32_t 
+BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) FUNC_DEPRECATED;
+
+inline uint32_t 
+BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) {
+    return lintel::BobJenkinsHashMix3(a,b,c);
+}
+
+FUNC_DEPRECATED_PREFIX inline uint32_t 
+BobJenkinsHashMixULL(uint64_t v, uint32_t partial = 1972) FUNC_DEPRECATED;
+
+inline uint32_t 
+BobJenkinsHashMixULL(uint64_t v, uint32_t partial) {
+    return lintel::BobJenkinsHashMixULL(v, partial);
+}
 
 extern uint32_t HashTable_prime_list[];
 

@@ -18,7 +18,7 @@
 #     to project-root/src/example
 #   - DOXYGEN_EXTRA_INPUTS: where should additional inputs be found?
 #     Default list is project-root/include and build-root/include
-#   - DOXYGEN_EXTRA_DOTFILE_DIRS: additional .dot file directories
+#   - DOXYGEN_DOTFILE_DIRS: .dot file directories
 #     Default is project-root/doc/doxygen-figures
 
 # If you need to customize the doxygen config, copy
@@ -49,11 +49,18 @@ MACRO(LINTEL_DOCS_CONFIG in_package_name)
     ENDIF(BUILD_DOCUMENTATION)
 ENDMACRO(LINTEL_DOCS_CONFIG)
 
+MACRO(LDB_SETVAR_IFDIR var dir)
+    IF(IS_DIRECTORY ${dir})
+        SET(${var} ${dir})
+    ELSE(IS_DIRECTORY ${dir})
+        SET(${var} "")
+    ENDIF(IS_DIRECTORY ${dir})
+ENDMACRO(LDB_SETVAR_IFDIR)
+
 MACRO(LINTEL_DOCS_BUILD)
     IF(DOCUMENTATION_ENABLED)
-	IF(NOT DEFINED DOXYGEN_EXAMPLE_PATH)
-	    SET(DOXYGEN_EXAMPLE_PATH ${${PACKAGE_NAME}_SOURCE_DIR}/src/example)
-	ENDIF(NOT DEFINED DOXYGEN_EXAMPLE_PATH)
+        LDB_SETVAR_IFDIR(DOXYGEN_DOTFILE_DIRS ${${PACKAGE_NAME}_SOURCE_DIR}/doc/doxygen-figures)
+	LDB_SETVAR_IFDIR(DOXYGEN_EXAMPLE_PATH ${${PACKAGE_NAME}_SOURCE_DIR}/src/example)
 
         FIND_FILE(DOXYGEN_CONFIG_IN
 	    	  doxygen.config.in
@@ -74,6 +81,7 @@ MACRO(LINTEL_DOCS_BUILD)
 		      COMMAND [ ! -d ${CMAKE_CURRENT_BINARY_DIR}/doxygen ] 
 		              || mv ${CMAKE_CURRENT_BINARY_DIR}/doxygen
 	                         ${CMAKE_CURRENT_BINARY_DIR}/doxygen.bak
+		      COMMAND mkdir ${CMAKE_CURRENT_BINARY_DIR}/doxygen
      	              COMMAND ${DOXYGEN_EXECUTABLE} 
      		   	      ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
       		      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
