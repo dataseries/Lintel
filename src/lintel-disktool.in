@@ -15,7 +15,7 @@ use Safe;
 use Lintel::ProcessManager;
 
 # TODO: redo file to conform with new coding convention
-# TODO: add pod documentation.
+# TODO: add pod documentation.  Fix up the usage...
 
 my %config = ( debug => 0 );
 
@@ -34,23 +34,19 @@ usage() unless $success;
 $|=1;
 
 if ($ARGV[0] eq 'partition') {
-    partition_drives();
-# } elsif ($ARGV[0] eq 'add-serial') {
-#     shift @ARGV;
-#     addSerial(@ARGV);
-# } elsif ($ARGV[0] eq 'add-sysfs-id') {
-#     shift @ARGV;
-#     addSysfsId(@ARGV);
+    partitionDrives();
+# TODO: add a "add-serial" replacement that will list the needed serials
+# to make it easier for a human to put it into the config file
 } elsif ($ARGV[0] eq 'format') {
     formatDrives();
 } elsif ($ARGV[0] eq 'mount') {
-    mount_drives();
+    mountDrives();
 } elsif ($ARGV[0] eq 'umount') {
-    umount_drives();
+    umountDrives();
 } elsif ($ARGV[0] eq 'list') {
     list();
 } elsif ($ARGV[0] eq 'zero') {
-    zero_drives($ARGV[1]);
+    zeroDrives($ARGV[1]);
 } elsif ($ARGV[0] eq 'fail') {
     shift @ARGV;
     failDrives(@ARGV);
@@ -68,9 +64,8 @@ exit(0);
 
 sub usage {
     my($msg) = @_;
-
     print STDERR "Error: @_\n" if @_;
-    die "Usage: $0 (list)|(add-serial)|(add-sysfs-id)|(partition)|(format)|(mount)|(umount)";
+    die "Usage: $0 (list)|(partition)|(format)|(mount)|(umount)|(fail path)|(scan)";
 }
 	
 sub bydriveorder {
@@ -247,40 +242,9 @@ sub list {
 	print "Unused drives: ", join(", ", @{$config{not_used_drives}}), "\n";
     }
     exit(0);
-}
+}	
 
-#sub addSerial {
-#    my(@drives) = @_;
-#
-#    open(CONFIG, ">>$config_path");
-#    foreach my $drive (@drives) {
-#	is_drive($drive);
-#	my $serial = serial_number($drive);
-#	die "Unable to get serial number from $drive"
-#	    unless defined $serial;
-#	print CONFIG "serial $serial\n";
-#    }
-#    close(CONFIG);
-# }
-# 
-# sub addSysfsId {
-#     my(@drives) = @_;
-# 
-#     my $config = new FileHandle ">>$config_path"
-# 	or die "Can't open $config_path for append: $!";
-# 
-#     foreach my $drive (@drives) {
-# 	is_drive($drive);
-# 	my $sysfs_id = sysfs_idNumber($drive);
-# 	die "Unable to get sysfs id number from $drive"
-# 	    unless defined $sysfs_id;
-# 	print $config "sysfsid $sysfs_id\n";
-#     }
-#     close($config);
-# }
-	
-
-sub partition_drives {
+sub partitionDrives {
     my @drives = find_drives();
 
     my %ok = get_ok_partitions();
@@ -404,7 +368,7 @@ sub formatDrives {
 	die "partition_to_label fn failed: $@"
 	    if $@;
 
-	# 12 maximum for XFS
+	# 12 character label length maximum for XFS
 	die "No valid label for $partition"
 	    unless defined $label && $label =~ /^\w{1,12}$/o;
 	
@@ -457,7 +421,7 @@ sub formatDrives {
     }
 }
     
-sub mount_drives {
+sub mountDrives {
     my @drives = find_drives();
     my %mounted = getMounted(1);
     my %revmounted = reverse %mounted;
@@ -520,7 +484,7 @@ sub mount_drives {
     print "done.\n";
 }
 
-sub umount_drives {
+sub umountDrives {
     my %mounted = getMounted();
 
     print "Unmounting...";
@@ -541,7 +505,7 @@ sub umount_drives {
     print "done.\n";
 }    
 
-sub zero_drives {
+sub zeroDrives {
     die "Untested";
     my ($regex) = @_;
 
