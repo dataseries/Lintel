@@ -129,45 +129,6 @@ T stringToInteger(const std::string &str, int base = 10) {
     return ret;
 }
 
-// TODO-2009-06-01: deprecate *all*the stringToX functions in favor of stringToInteger
-FUNC_DEPRECATED_PREFIX inline long stringToLong(const std::string &str, int base) FUNC_DEPRECATED;
-FUNC_DEPRECATED_PREFIX inline long long stringToLongLong(const std::string &str, int base) FUNC_DEPRECATED;
-FUNC_DEPRECATED_PREFIX inline int32_t stringToInt32(const std::string &str, int base) FUNC_DEPRECATED;
-FUNC_DEPRECATED_PREFIX inline uint32_t stringToUInt32(const std::string &str, int base) FUNC_DEPRECATED;
-FUNC_DEPRECATED_PREFIX inline int64_t stringToInt64(const std::string &str, int base) FUNC_DEPRECATED;
-FUNC_DEPRECATED_PREFIX inline uint64_t stringToUInt64(const std::string &str, int base) FUNC_DEPRECATED;
-
-
-/** same as strtol, but bails out if the string isn't valid */
-inline long stringToLong(const std::string &str, int base = 10) {
-    return stringToInteger<long>(str, base);
-}
-
-/** same as strtoll, but bails out if the string isn't valid */
-inline long long stringToLongLong(const std::string &str, int base = 10) {
-    return stringToInteger<long long>(str, base);
-}
-
-/// Converts a string to an int32, INVARIANT if not a valid string
-inline int32_t stringToInt32(const std::string &str, int base = 10) {
-    return stringToInteger<int32_t>(str, base);
-}
-
-/// Converts a string to an uint32, INVARIANT if not a valid string
-inline uint32_t stringToUInt32(const std::string &str, int base = 10) {
-    return stringToInteger<uint32_t>(str, base);
-}
-
-/// Converts a string to an int32, INVARIANT if not a valid string
-inline int64_t stringToInt64(const std::string &str, int base = 10) {
-    return stringToInteger<int64_t>(str, base);
-}
-
-/// Converts a string to an uint32, INVARIANT if not a valid string
-inline uint64_t stringToUInt64(const std::string &str, int base = 10) {
-    return stringToInteger<uint64_t>(str, base);
-}
-
 /** returns true if the string is all blanks according to isblank(3) */
 bool stringIsBlank(const std::string &);
 
