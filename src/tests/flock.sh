@@ -30,15 +30,17 @@ export srcdir builddir installdir LOCKFILE PERL5LIB
 verify_unlocked() {
     V=`$builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=0`
     if [ $? != 0 ]; then
-	echo "$LOCKFILE unexpectedly locked"
+	echo "$LOCKFILE unexpectedly locked; got '$V'"
 	exit 1
     fi
 }
 
 verify_locked() {
-    V=`$builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=0`
+    wait_time=$1
+    [ -z "$wait_time" ] && wait_time=0
+    V=`$builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=$wait_time`
     if [ $? = 0 ]; then
-	echo "$LOCKFILE unexpectedly unlocked"
+	echo "$LOCKFILE unexpectedly unlocked: got '$V'"
 	exit 1
     fi
     if [ "$V" != "Unable to get lock, not running command" ]; then
@@ -51,11 +53,10 @@ verify_locked() {
 
 verify_unlocked
 echo "Starting sleep..."
-$builddir/lintel-flock --filename=$LOCKFILE --command='sleep 10' &
+$builddir/lintel-flock --filename=$LOCKFILE --command='sleep 30' &
 SLEEP_PID=$!
 echo "Starting lock timeout..."
-V=`$builddir/lintel-flock --filename=$LOCKFILE --command=false --waittime=2`
-verify_locked
+verify_locked 2
 echo "lock timeout succeeded"
 kill $SLEEP_PID
 wait
