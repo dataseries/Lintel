@@ -304,8 +304,8 @@ public:
 	SINVARIANT(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
 	SINVARIANT(seconds >= 0);
 
-	abstime.tv_sec += floor(seconds);
-	abstime.tv_nsec += round(1.0e9 * (seconds - floor(seconds)));
+	abstime.tv_sec += static_cast<time_t>(floor(seconds));
+	abstime.tv_nsec += static_cast<time_t>(round(1.0e9 * (seconds - floor(seconds))));
 
 	if (abstime.tv_nsec > 1000 * 1000 * 1000) {
 	    abstime.tv_sec += 1;

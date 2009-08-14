@@ -40,7 +40,8 @@ verify_locked() {
     [ -z "$wait_time" ] && wait_time=0
     V=`$builddir/lintel-flock --filename=$LOCKFILE --command=true --waittime=$wait_time`
     if [ $? = 0 ]; then
-	echo "$LOCKFILE unexpectedly unlocked: got '$V'"
+	ps -efl | grep lintel-flock
+	echo "$LOCKFILE unexpectedly unlocked, wait $wait_time at `date`: got '$V'"
 	exit 1
     fi
     if [ "$V" != "Unable to get lock, not running command" ]; then
@@ -52,17 +53,17 @@ verify_locked() {
 ### Blocked lock test
 
 verify_unlocked
-echo "Starting sleep..."
+echo "Starting sleep `date`..."
 $builddir/lintel-flock --filename=$LOCKFILE --command='sleep 30' &
 SLEEP_PID=$!
-echo "Starting lock timeout..."
+sleep 2
+echo "Starting lock timeout at `date`..."
 verify_locked 2
 echo "lock timeout succeeded"
 kill $SLEEP_PID
 wait
 echo "Done with blocked lock test"
 
-ps -efl | grep lintel-flock
 ### Parallel test
 
 verify_unlocked
