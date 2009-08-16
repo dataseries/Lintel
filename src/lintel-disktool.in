@@ -33,33 +33,33 @@ usage() unless $success;
 
 $|=1;
 
-if ($ARGV[0] eq 'partition') {
+my $cmd = shift @ARGV;
+if ($cmd eq 'partition') {
     partitionDrives();
 # TODO: add a "add-serial" replacement that will list the needed serials
 # to make it easier for a human to put it into the config file
-} elsif ($ARGV[0] eq 'format') {
+} elsif ($cmd eq 'format') {
     formatDrives();
-} elsif ($ARGV[0] eq 'fsck') {
+} elsif ($cmd eq 'fsck') {
     fsckDrives();
-} elsif ($ARGV[0] eq 'mount') {
+} elsif ($cmd eq 'mount') {
     mountDrives();
-} elsif ($ARGV[0] eq 'umount') {
-    umountDrives();
-} elsif ($ARGV[0] eq 'list') {
+} elsif ($cmd eq 'umount') {
+    umountDrives(@ARGV);
+} elsif ($cmd eq 'list') {
     list();
-} elsif ($ARGV[0] eq 'zero') {
+} elsif ($cmd eq 'zero') {
     zeroDrives($ARGV[1]);
-} elsif ($ARGV[0] eq 'fail') {
-    shift @ARGV;
+} elsif ($cmd eq 'fail') {
     failDrives(@ARGV);
-} elsif ($ARGV[0] eq 'scan') {
+} elsif ($cmd eq 'scan') {
     system("scsiadd -s") == 0 || die "scsiadd -s failed";
-} elsif ($ARGV[0] eq 'debug-sfdisk') {
+} elsif ($cmd eq 'debug-sfdisk') {
     $config{debug} = 1;
     my @ret = getSpecificSfdiskInfo($ARGV[1]);
     print Dumper(@ret);
 } else {
-    usage("Unknown command '$ARGV[0]'");
+    usage("Unknown command '$cmd'");
 }
 
 exit(0);
@@ -540,7 +540,19 @@ sub mountDrives {
 }
 
 sub umountDrives {
+    my (@to_umount) = @_;
     my %mounted = getMounted();
+
+    if (@to_umount > 0) {
+	grep(s!^$config{mount_path}/!!o, @to_umount);
+	my %tmp = %mounted;
+	%mounted = ();
+	map { if (defined $tmp{$_}) {
+	    $mounted{$_} = $tmp{$_}
+	} else {
+	    print "ignore $_, not mounted\n";
+	} } @to_umount;
+    }
 
     print "Unmounting...";
     my $first = 1;
