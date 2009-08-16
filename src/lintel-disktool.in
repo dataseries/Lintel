@@ -39,6 +39,8 @@ if ($ARGV[0] eq 'partition') {
 # to make it easier for a human to put it into the config file
 } elsif ($ARGV[0] eq 'format') {
     formatDrives();
+} elsif ($ARGV[0] eq 'fsck') {
+    fsckDrives();
 } elsif ($ARGV[0] eq 'mount') {
     mountDrives();
 } elsif ($ARGV[0] eq 'umount') {
@@ -65,7 +67,7 @@ exit(0);
 sub usage {
     my($msg) = @_;
     print STDERR "Error: @_\n" if @_;
-    die "Usage: $0 (list)|(partition)|(format)|(mount)|(umount)|(fail path)|(scan)";
+    die "Usage: $0 (list)|(partition)|(format)|(mount)|(fsck)|(umount)|(fail path)|(scan)";
 }
 	
 sub bydriveorder {
@@ -292,7 +294,11 @@ sub formatOneDrive {
 	unless $ret == 0;
     my $partition = driveToPartition($drive);
     if ($fs eq 'ext2') {
-	$ret = system("mkfs.ext2 -m 0 -O sparse_super -T largefile4 -L $label $partition >/dev/null 2>&1");
+	$ret = system("mkfs.ext2 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
+	die "\nmkfs.ext2 failed for $partition"
+	    unless $ret == 0;
+    } elsif ($fs eq 'ext3') {
+	$ret = system("mkfs.ext3 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
 	die "\nmkfs.ext2 failed for $partition"
 	    unless $ret == 0;
     } elsif ($fs eq 'xfs')  {
@@ -335,7 +341,7 @@ sub formatDrives {
     my %ok = get_ok_partitions();
     my %mounted = getMounted(1);
 
-    my $fs = $config{fs} || 'ext2';
+    my $fs = $config{fs} || 'ext3';
 
     my %label_to_partition;
     my %drive_to_label;
@@ -420,6 +426,55 @@ sub formatDrives {
 	exit(1);
     }
 }
+
+sub fsckDrives {
+    my @drives = find_drives();
+
+    my %mounted = getMounted(1);
+
+    my $process_manager = new Lintel::ProcessManager();
+
+    my @failed;
+    print "fscking in parallel: ";
+    foreach my $drive (@drives) {
+	my $partition = driveToPartition($drive);
+	if ($mounted{$partition}) {
+	    print "(mounted-$drive) ";
+	    next;
+	}
+	print "$drive ";
+	my $xpart = $partition;
+	$xpart =~ s!/dev!!o;
+	$xpart =~ s!/!_!o;
+	$process_manager->fork
+	    (cmd => "fsck $partition -- -y",
+	     exitfn => sub { my ($pid, $status) = @_;
+			     
+			     if ($status == 0 || ($status >> 8) == 1) {
+				 # latter condition is errors corrected.
+				 print "$drive ";
+			     } else {
+				 print "$drive(not-ok-$status) ";
+				push(@failed, $drive);
+			     }
+			 },
+	     stdout => "/tmp/fsck.$xpart",
+	     stderr => 'STDOUT');
+    }
+    print "\n";
+    print "waiting: ";
+
+    while ($process_manager->nChildren() > 0) {
+	$process_manager->wait();
+    }
+    print "\n";
+
+    if (@failed > 0) {
+	print "Failed to fsck (log as /tmp/fsck.partition): ", join(" ", @failed), "\n";
+	exit(1);
+    }
+}
+
     
 sub mountDrives {
     my @drives = find_drives();

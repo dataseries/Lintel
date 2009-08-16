@@ -487,7 +487,7 @@ void Clock::timingTest() {
     // Test as if we could just magically use the cycle counter
     {
 	nreps = 0;
-	uint64_t elapsed_cycles = clock_rate * 1000 * 1000;
+	uint64_t elapsed_cycles = static_cast<uint64_t>(clock_rate * 1000 * 1000);
 	Tfrac start = myclock.todTfrac();
 	uint64_t start_cc = Clock::cycleCounter();
 	while(1) {
