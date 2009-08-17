@@ -444,7 +444,7 @@ sub fsckDrives {
 	}
 	print "$drive ";
 	my $xpart = $partition;
-	$xpart =~ s!/dev!!o;
+	$xpart =~ s!/dev/!!o;
 	$xpart =~ s!/!_!o;
 	$process_manager->fork
 	    (cmd => "fsck $partition -- -y",
