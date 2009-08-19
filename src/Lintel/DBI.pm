@@ -7,7 +7,7 @@ use FileHandle;
 use Data::Dumper;
 use strict;
 
-$VERSION = 1.0;
+$VERSION = 1.01;
 
 # TODO: think about how we can safely write tests for this.  Perhaps
 # use one of the DBI against CSV or sqllite backends.
@@ -68,7 +68,8 @@ Lintel::DBI - Front end to DBI that makes common cases easier
     my $dbh = new Lintel::DBI(dsn => 'DBI:mysql:test:localhost',
 			      username => 'fred',
 			      password => 'random',
-			      application => 'myapplication');
+			      application => 'myapplication',
+			      trace_errors => 0|1);
 
 The DSN is a database connection string as used in DBI. It defaults
 to 'DBI:mysql:test:localhost'.
@@ -88,16 +89,17 @@ sub new {
     my($class, %arglist) = @_;
 
     my $dbh = Lintel::DBI->connect($arglist{dsn}, $arglist{username}, 
-		                   $arglist{password}, $arglist{application});
+		                   $arglist{password}, $arglist{application},
+				   $arglist{trace_errors});
     return $dbh;
 }
 
 =pod
 
-=head2 Lintel::DBI->connect($dsn, $db_username, $db_password, $application);
+=head2 Lintel::DBI->connect($dsn, $db_username, $db_password, $application, $trace_errors);
 
     my $dbh = Lintel::DBI->connect();
-    my $dbh = Lintel::DBI->connect($dsn, $db_username, $db_password, $application);
+    my $dbh = Lintel::DBI->connect($dsn, $db_username, $db_password, $application, $trace_errors);
 
 The parameters have the same meaning and default values as the new() 
 constructor, but here they are positional rather than tagged.
@@ -105,7 +107,8 @@ constructor, but here they are positional rather than tagged.
 =cut
 
 sub connect {
-    my($class, $dsn, $db_username, $db_password, $application) = @_;
+    my($class, $dsn, $db_username, $db_password, $application, 
+       $trace_errors) = @_;
 
     die "Don't call connect as an object, it won't do what you expect."
 	if ref $class;
@@ -146,6 +149,7 @@ sub connect {
     my $sth = bless { }, 'Lintel::DBI::sth';
     return bless { 'dbh' => $dbh, 
 		   'sth' => $sth, 
+		   'trace_errors' => $trace_errors,
 		   'application' => $application }, $class;
 }
 
@@ -287,7 +291,11 @@ sub transaction {
     };
     if ($@) {
         $self->rollbackTxn();
-	confess("Transaction aborted.  Error: $@");
+	if ($self->{trace_errors}) {
+	    confess("Transaction aborted.  Error: $@");
+	} else {
+	    die $@;
+	}
     }
 }
 
