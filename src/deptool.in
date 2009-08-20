@@ -75,7 +75,7 @@ sub usage {
    init [--server=<hostname>] [branch-prefix...]
    checkout <branch-substring...> # checkout branch and dependencies
    pull # pull branch and dependencies
-   build [-t (and test)] [-d (debug build)] [-b (optimize build)]
+   build [-t (and test)] [-d (debug build)] [-o (optimize build)]
    commit [--no-tests] # commit branch after dependencies
    publish # publish branch and dependencies
    cmake # run cmake with special options for current branch
@@ -338,13 +338,13 @@ Select the current branch based on the current directory.  Pull the
 current branch and all it's dependencies from the server specified in
 the _MTN directory.
 
-=item build [I<-t>] [I<-d>] [I<-b>]
+=item build [I<-t>] [I<-d>] [I<-o>]
 
 Build and install the current branch after building and installing its
 dependencies.  Select the type of build (debug or optimized) based on
 the current directory or the options.  
 
-=item commit [I<--no-tests>] [I<-d>] [I<-b>]
+=item commit [I<--no-tests>] [I<-d>] [I<-o>]
 
 Commit the current branch after committing its dependencies.  If there
 are unknown files, prompt for them to be either added or ignored.  If
@@ -787,12 +787,12 @@ END
 
 =pod
 
-=head2 build [I<-t>] [I<-d>] [I<-b>] [I<-p>]
+=head2 build [I<-t>] [I<-d>] [I<-o>] [I<-p>]
 
 This command will build the current project directory after building
 and installing all of the dependencies.  The type of build is
 determined by the current directory and the options.  If either -d or
--b are specified, then we perform a debug or an optimized build
+-o are specified, then we perform a debug or an optimized build
 respectively.  If we are in the projects directory or an optimized
 build directory, we perform an optimized build.  If we are in a debug
 build directory, we perform a debug build.  If -t is specified, tests
