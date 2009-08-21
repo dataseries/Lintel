@@ -330,23 +330,23 @@ namespace lintel {
 	/// Increases buffer size to consume the @param amount bytes.
 	///  If @param amount == -1 increases size exponentially to consume stream.
 	/// @param max_size is the largest the buffer will get. Default @param
-	/// max_size is 100MB.
+	/// max_size is 128MiB
+
 	
 	size_t appendFromStream(std::istream &sin, int32_t amount = -1,
-				size_t max_size = 1024*1024*1024) {
+				size_t max_size = 128*1024*1024) {
 
 	    size_t bytes_read = 0;
 
 	    SINVARIANT((amount >= -1) && (static_cast<size_t>(amount) < max_size));
 	    
-	    if (bufferSize() == 0) {
-		resizeBuffer(1);
-	    }
-		       
 	    if ((amount != -1) && (writeAvailable() <
 				   static_cast<size_t>(amount))) {
 		resizeBuffer( bufferSize() + amount - writeAvailable() );
+	    } else if (bufferSize() == 0) {
+		resizeBuffer(1024);
 	    }
+	    
 
 	    while ((!(sin.eof() || sin.fail() || sin.bad())) &&
 		   ((amount == -1) || (bytes_read <
