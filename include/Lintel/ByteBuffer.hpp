@@ -323,6 +323,54 @@ namespace lintel {
 	    memcpy(writeStart(size), buf, size);
 	}
 
+	/// appends data from @param sin until @param amount bytes read.
+	///   If @param amount == -1, reads until eof.
+	/// returns bytes read and -1 if error.
+	///
+	/// Increases buffer size to consume the @param amount bytes.
+	///  If @param amount == -1 increases size exponentially to consume stream.
+	/// @param max_size is the largest the buffer will get. Default @param
+	/// max_size is 100MB.
+	
+	size_t appendFromStream(std::istream &sin, int32_t amount = -1,
+				size_t max_size = 1024*1024*1024) {
+
+	    size_t bytes_read = 0;
+
+	    SINVARIANT((amount >= -1) && (static_cast<size_t>(amount) < max_size));
+	    
+	    if (bufferSize() == 0) {
+		resizeBuffer(1);
+	    }
+		       
+	    if ((amount != -1) && (writeAvailable() <
+				   static_cast<size_t>(amount))) {
+		resizeBuffer( bufferSize() + amount - writeAvailable() );
+	    }
+
+	    while ((!(sin.eof() || sin.fail() || sin.bad())) &&
+		   ((amount == -1) || (bytes_read <
+				       static_cast<size_t>(amount)))) {
+		
+		size_t to_read =
+		    ((amount == -1) ||
+		     (amount - bytes_read) > writeAvailable()) ?
+		    writeAvailable() : (amount - bytes_read);
+
+		if (to_read > 0) {
+		    sin.read(writeStartAs<char>(0), to_read);
+		    bytes_read += sin.gcount();
+		    extend(sin.gcount());
+		} else if ((bufferSize()* 2) < max_size) {
+		    resizeBuffer(bufferSize()*2);
+		}
+	    }
+
+	    if (sin.bad()) return (-1);
+
+	    return bytes_read;
+	}
+	
 	/// replace part of ByteBuffer contents starting at @param
 	/// offset with @param src for @param length bytes.  
 	/// Otherwise, offset + length must be < readAvailable().
