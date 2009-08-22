@@ -69,7 +69,9 @@ namespace lintel {
 	  ProgramOptionFnT;
 	typedef std::pair<std::string, ProgramOptionFnT> ProgramOptionPair;
 
-	boost::program_options::options_description &programOptionsDesc();
+	boost::program_options::options_description &programOptionsDesc
+	(bool is_hidden = false);
+	
 	std::vector<ProgramOptionPair> &programOptionsActions();
 
         // Helper to "pretty" print the default value in description message.
@@ -194,13 +196,25 @@ namespace lintel {
 	void set(const T &val) {
             saved = boost::program_options::variable_value(val, false);
 	}
+
+    protected:
+	ProgramOption(const std::string &name, const std::string &desc,
+		      const T &in_default_val, bool do_description)
+	    : default_val(in_default_val)
+	{
+	    init(name, desc, boost::bind(&ProgramOption<T>::save, this, _1),
+		 do_description);	    
+	}
+
     private:
 	void init(const std::string &name, const std::string &desc, 
-		  detail::ProgramOptionFnT f) {
-            std::string def_desc = str(boost::format("%s (Default value %s.)")
-                % desc % detail::defaultValueString(default_val));
-	    detail::programOptionsDesc().add_options()
-		(name.c_str(), boost::program_options::value<T>(), def_desc.c_str());
+		  detail::ProgramOptionFnT f, bool do_help=true) {
+	    std::string def_desc = 
+		str(boost::format("%s (Default value %s.)")
+		    % desc % detail::defaultValueString(default_val));
+	    detail::programOptionsDesc(!do_help).add_options()
+		(name.c_str(), boost::program_options::value<T>(), 
+		 def_desc.c_str());
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
@@ -214,15 +228,44 @@ namespace lintel {
 	const T default_val;
     };
 
+
+    /// Program option which won't appear in the usage unless in debug mode
+    template<typename T> class TestingOption : public ProgramOption<T> {
+    public:	
+	TestingOption(const std::string &name, const std::string &desc, 
+		      const T &in_default_val = T())
+	    : ProgramOption<T>(name, desc, in_default_val, 
+#if LINTEL_ASSERT_BOOST_DEBUG
+			       true
+#else
+			       false
+#endif
+			       ) { }
+    };
+
     /// Special case for program options without values, e.g.,
     /// "--help", which doesn't carry a value like "--seed=100"
-    // TODO: allow for --no-<opt> also.
+    // TODO-done: allow for --no-<opt> also.
+    //
+    // the no- prefix only makes sense as an override (e.g. as we have
+    // multiple ways of feeding in options); suppose I by default had
+    // fire on, then I can do
+    //
+    //    ProgramOption<bool> disable_fire("no-fire", "turn off fire");
+    //    if(disable_fire.get()){
+    //       //skip the fire
+    //    }
+    //
+    // And this requires no special code.  The special code added is a way
+    // to specify false for a boolean program option which has already been
+    // set true by existing.
     template<> class ProgramOption<bool> {
     public:
 	ProgramOption(const std::string &name, const std::string &desc) 
 	    : val(false)
 	{
 	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1));
+	    init(std::string("no-").append(name), desc, boost::bind(&ProgramOption<bool>::un_save, this, _1), false);
 	}
 
 	ProgramOption(const std::string &name, const std::string &desc, detail::ProgramOptionFnT f) 
@@ -231,7 +274,7 @@ namespace lintel {
 	    INVARIANT(!!f, boost::format("option %s needs a function") % name);
 	    init(name, desc, f);
 	}
-	    
+
 	bool used() {
 	    return val;
 	}
@@ -243,9 +286,20 @@ namespace lintel {
 	void set(const bool &_val) {
             val = _val;
 	}
+
+    protected:
+	ProgramOption(const std::string &name, const std::string &desc,
+		      bool do_description)
+	    : val(false)
+	{
+	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1),
+		 do_description);	    
+	}
+	
     private:
-	void init(const std::string &name, const std::string &desc, detail::ProgramOptionFnT f) {
-	    detail::programOptionsDesc().add_options() (name.c_str(), desc.c_str());
+	void init(const std::string &name, const std::string &desc, 
+		  detail::ProgramOptionFnT f, bool do_help=true) {
+	    detail::programOptionsDesc(!do_help).add_options() (name.c_str(), desc.c_str());
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
@@ -254,9 +308,29 @@ namespace lintel {
 		val = true;
 	    }
 	}
+
+	void un_save(const boost::program_options::variable_value &opt) {
+	    if (!opt.empty()) {
+		val = false;
+	    }
+	}
 	
 	bool val;
     };
+
+    /// Hidden option which also doesn't take an argument
+    template<> class TestingOption<bool> : public ProgramOption<bool> {
+    public:	
+	TestingOption(const std::string &name, const std::string &desc)
+	    : ProgramOption<bool>(name, desc, 
+#if LINTEL_ASSERT_BOOST_DEBUG
+			       true
+#else
+			       false
+#endif
+			       ) { }
+    };
+
 }
 
 #endif

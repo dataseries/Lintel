@@ -84,9 +84,10 @@ namespace {
 
 namespace lintel {
     namespace detail {
-	po::options_description &programOptionsDesc() {
+	po::options_description &programOptionsDesc(bool is_hidden) {
 	    static po::options_description desc("Allowed options");
-	    return desc;
+	    static po::options_description hidden("Allowed options (hidden)");
+	    return is_hidden ? hidden : desc;
 	}
 
 	vector<ProgramOptionPair> &programOptionsActions() {
@@ -118,6 +119,10 @@ namespace lintel {
             vector<string> unrecognized;
 
             basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
+	    
+	    po::command_line_parser hidden(unrecognized);
+	    basicParseCommandLine(hidden, detail::programOptionsDesc(true), var_map, unrecognized);
+
             INVARIANT(allow_unrecognized || unrecognized.empty(), boost::format
                       ("Unexpected option '%s'; try %s -h for help")
                       % unrecognized[0] % argv0); 
