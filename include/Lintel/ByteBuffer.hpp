@@ -299,11 +299,13 @@ namespace lintel {
 
 
 	/// append contents of @param buf to this buffer, resizing if necessary.
+	/// @param buf source buffer for append into this buffer
 	void append(const ByteBuffer &buf) {
 	    append(buf.readStart(), buf.readAvailable());
 	}
 
 	/// append contents of @param str to this buffer, resizing if necessary.
+	/// @param str source string for append into this buffer
 	void append(const std::string &str) {
 	    append(str.data(), str.size());
 	}
@@ -331,31 +333,27 @@ namespace lintel {
 	///  If @param amount == -1 increases size exponentially to consume stream.
 	/// @param max_size is the largest the buffer will get. Default @param
 	/// max_size is 128MiB
-
-	
-	size_t appendFromStream(std::istream &sin, int32_t amount = -1,
-				size_t max_size = 128*1024*1024) {
-
+	// TODO-mehul: split this function into one that reads until
+	// EOF and bounds by max_size and one that reads a fixed
+	// amount of data in.  This change will reduce the weird
+	// inter-twining of the two implementations here.  It should also
+	// reduce the signedness issues.  
+	int64_t appendFromStream(std::istream &sin, int64_t amount = -1,
+				 size_t max_size = 128*1024*1024) {
 	    size_t bytes_read = 0;
 
-	    SINVARIANT((amount >= -1) && (static_cast<size_t>(amount) < max_size));
+	    SINVARIANT((amount >= -1) && (static_cast<size_t>(amount) <= max_size));
 	    
-	    if ((amount != -1) && (writeAvailable() <
-				   static_cast<size_t>(amount))) {
+	    if ((amount != -1) && (writeAvailable() < static_cast<size_t>(amount))) {
 		resizeBuffer( bufferSize() + amount - writeAvailable() );
 	    } else if (bufferSize() == 0) {
 		resizeBuffer(1024);
 	    }
-	    
 
 	    while ((!(sin.eof() || sin.fail() || sin.bad())) &&
-		   ((amount == -1) || (bytes_read <
-				       static_cast<size_t>(amount)))) {
-		
-		size_t to_read =
-		    ((amount == -1) ||
-		     (amount - bytes_read) > writeAvailable()) ?
-		    writeAvailable() : (amount - bytes_read);
+		   ((amount == -1) || (bytes_read < static_cast<size_t>(amount)))) {
+		size_t to_read = ((amount == -1) || (amount - bytes_read) > writeAvailable()) 
+		    ? writeAvailable() : (amount - bytes_read);
 
 		if (to_read > 0) {
 		    sin.read(writeStartAs<char>(0), to_read);
@@ -366,7 +364,9 @@ namespace lintel {
 		}
 	    }
 
-	    if (sin.bad()) return (-1);
+	    if (sin.bad()) {
+		return -1;
+	    }
 
 	    return bytes_read;
 	}

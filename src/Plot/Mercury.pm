@@ -1,5 +1,13 @@
 package Plot::Mercury;
 
+#
+#  (c) Copyright 2004-2006, Hewlett-Packard Development Company, LP
+#
+#  See the file named COPYING for license details
+#
+# Module for use by mercury-plot; provides various functions for use
+# in the Safe evaluation env.
+
 use strict;
 use vars qw($VERSION @ISA @EXPORT @EXPORT_OK $Default_DSN $dbh);
 

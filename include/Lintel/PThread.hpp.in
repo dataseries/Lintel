@@ -285,7 +285,6 @@ public:
     }
 
     // TODO-2009-10-01: remove deprecated function
-    /// @return true on timeout
     FUNC_DEPRECATED_PREFIX bool timedwait(PThreadMutex &m, Clock::Tll us) FUNC_DEPRECATED { 
         struct timespec abstime;
 
@@ -297,6 +296,9 @@ public:
         return ret == ETIMEDOUT ? true : false;
     }
 
+    /// Wait to get the mutex @param m for at most @param seconds seconds.
+    /// @param m mutex to try to lock
+    /// @param seconds maximum time to spend waiting to acquire the lock
     /// @return true on timeout
     bool timedWait(PThreadMutex &m, double seconds) { 
         struct timespec abstime;
