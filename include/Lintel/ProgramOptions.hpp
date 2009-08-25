@@ -69,8 +69,9 @@ namespace lintel {
 	  ProgramOptionFnT;
 	typedef std::pair<std::string, ProgramOptionFnT> ProgramOptionPair;
 
-	boost::program_options::options_description &programOptionsDesc
-	(bool is_hidden = false);
+	// TODO-joe: we need to talk this through, I'm not convinced it's
+	// sufficiently future-proofed.
+	boost::program_options::options_description &programOptionsDesc(bool is_hidden = false);
 	
 	std::vector<ProgramOptionPair> &programOptionsActions();
 
@@ -209,12 +210,11 @@ namespace lintel {
     private:
 	void init(const std::string &name, const std::string &desc, 
 		  detail::ProgramOptionFnT f, bool do_help=true) {
-	    std::string def_desc = 
-		str(boost::format("%s (Default value %s.)")
+	    // TODO-joe: Lintel uses 100 column width. 
+	    std::string def_desc = str(boost::format("%s (Default value %s.)")
 		    % desc % detail::defaultValueString(default_val));
 	    detail::programOptionsDesc(!do_help).add_options()
-		(name.c_str(), boost::program_options::value<T>(), 
-		 def_desc.c_str());
+		(name.c_str(), boost::program_options::value<T>(), def_desc.c_str());
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
@@ -232,28 +232,30 @@ namespace lintel {
     /// Program option which won't appear in the usage unless in debug mode
     template<typename T> class TestingOption : public ProgramOption<T> {
     public:	
+#if LINTEL_ASSERT_BOOST_DEBUG
+	static const bool show_description = true;
+#else
+	static const bool show_description = false;
+#endif
+	
 	TestingOption(const std::string &name, const std::string &desc, 
 		      const T &in_default_val = T())
-	    : ProgramOption<T>(name, desc, in_default_val, 
-#if LINTEL_ASSERT_BOOST_DEBUG
-			       true
-#else
-			       false
-#endif
-			       ) { }
+	    : ProgramOption<T>(name, desc, in_default_val, show_description) { }
     };
 
     /// Special case for program options without values, e.g.,
     /// "--help", which doesn't carry a value like "--seed=100"
-    // TODO-done: allow for --no-<opt> also.
+    // TODO-joe: need to discuss below, documentation doesn't make sense to me -- Eric
+    // Also seems like we want a default option to boolean arguments here now. or else
+    // --no seems kinda useless.
     //
     // the no- prefix only makes sense as an override (e.g. as we have
     // multiple ways of feeding in options); suppose I by default had
     // fire on, then I can do
     //
     //    ProgramOption<bool> disable_fire("no-fire", "turn off fire");
-    //    if(disable_fire.get()){
-    //       //skip the fire
+    //    if(disable_fire.get()) {
+    //       // skip the fire
     //    }
     //
     // And this requires no special code.  The special code added is a way
@@ -265,7 +267,8 @@ namespace lintel {
 	    : val(false)
 	{
 	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1));
-	    init(std::string("no-").append(name), desc, boost::bind(&ProgramOption<bool>::un_save, this, _1), false);
+	    init(std::string("no-").append(name), desc, 
+		 boost::bind(&ProgramOption<bool>::un_save, this, _1), false);
 	}
 
 	ProgramOption(const std::string &name, const std::string &desc, detail::ProgramOptionFnT f) 
@@ -288,12 +291,10 @@ namespace lintel {
 	}
 
     protected:
-	ProgramOption(const std::string &name, const std::string &desc,
-		      bool do_description)
+	ProgramOption(const std::string &name, const std::string &desc, bool do_description)
 	    : val(false)
 	{
-	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1),
-		 do_description);	    
+	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1), do_description);
 	}
 	
     private:
@@ -321,14 +322,10 @@ namespace lintel {
     /// Hidden option which also doesn't take an argument
     template<> class TestingOption<bool> : public ProgramOption<bool> {
     public:	
+	static const bool show_description = TestingOption<int>::show_description;
+
 	TestingOption(const std::string &name, const std::string &desc)
-	    : ProgramOption<bool>(name, desc, 
-#if LINTEL_ASSERT_BOOST_DEBUG
-			       true
-#else
-			       false
-#endif
-			       ) { }
+	    : ProgramOption<bool>(name, desc, show_description) { }
     };
 
 }
