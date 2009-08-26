@@ -325,19 +325,14 @@ namespace lintel {
 	    memcpy(writeStart(size), buf, size);
 	}
 
-	/// appends data from @param sin until eof or error in the stream.
+	/// appends data from @param sin until eof or error in the stream, or
+	/// bufferSize() == max_size.
 	///  Returns bytes read or (-1) if error.
 	///
 	/// Increases buffer size (exponentially) to consume the stream.
 	/// Resulting buffer size is in the range
 	///   [min(1024, max_size) ... max(max_size, bufferSize())].
 	/// Default @param max_size is 128MiB.
-	
-	// TODO-mehul-done: split this function into one that reads until
-	// EOF and bounds by max_size and one that reads a fixed
-	// amount of data in.  This change will reduce the weird
-	// inter-twining of the two implementations here.  It should also
-	// reduce the signedness issues.
 	int64_t appendEntireStream(std::istream &sin,
 				   size_t max_size = 128*1024*1024) {
 	    size_t bytes_read = 0;
@@ -356,6 +351,7 @@ namespace lintel {
 		} else if (bufferSize() < max_size) {
 		    resizeBuffer(std::min(bufferSize()*2, max_size));
 		} else {
+                    SINVARIANT(bufferSize() == max_size);
 		    break;
 		}
 	    }

@@ -259,7 +259,10 @@ void appendStreamTests(int argc, char *argv[]) {
 	       "Its as complete as its going to get for now.\n",
 	       buf.asString());
 
-    // Read in more than the buffer size, make sure it automatically resizes.
+    // Read in more than the buffer size, make sure it automatically
+    // resizes. The buffer ends up being 1024 bytes, after the first read. We
+    // have read the file in twice. Reading it in 12 more times will force the
+    // buffer to resize again up to 2048.
     for (int i = 0; i < 12; i++) {
 	sin.clear();
 	sin.seekg(0, ios::beg);
@@ -267,8 +270,9 @@ void appendStreamTests(int argc, char *argv[]) {
 	buf.appendEntireStream(sin);
 	SINVARIANT(sin.eof());
     }
-    
     SINVARIANT(buf.bufferSize() == 2048);
+    
+    // file = 108 bytes. We've appended a total of 14 times: 14*108=1512.
     INVARIANT(buf.readAvailable() == 1512,
 	      format("Read available %d, expected 1512") % buf.readAvailable());
 
