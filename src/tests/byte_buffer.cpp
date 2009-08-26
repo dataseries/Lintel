@@ -11,6 +11,7 @@
 */
 
 #include <iostream>
+#include <fstream>
 
 #include <Lintel/ByteBuffer.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
@@ -222,7 +223,115 @@ void appendReplaceAssignTests() {
     cout << "passed append/replace/assign checks\n";
 }
 
-int main() {
+void appendStreamTests(int argc, char *argv[]) {
+
+    SINVARIANT(argc == 2);
+    char *filename = argv[1];
+
+    ByteBuffer buf;
+
+    int64_t bread;
+    
+    ifstream sin(filename, ios_base::in);
+    SINVARIANT(!sin.fail());
+    bread = buf.appendEntireStream(sin);
+    SINVARIANT(sin.eof());
+    INVARIANT(bread == 108, format("Read on %d bytes, expected 108") % bread);
+
+    // Read in the file a couple of times, make sure it appends.
+    SINVARIANT(buf.bufferSize() == 1024);
+    INVARIANT(buf.asString() ==
+	      "This is a test of the Lintel ByteBuffer append stream methods.\n"
+	      "Its as complete as its going to get for now.\n",
+	      buf.asString());
+
+    sin.clear();
+    sin.seekg(0, ios::beg);
+    SINVARIANT(!(sin.eof() || sin.fail() || sin.bad()));
+    bread = buf.appendEntireStream(sin);
+    SINVARIANT(sin.eof());
+    INVARIANT(bread == 108, format("Read on %d bytes, expected 108") % bread);
+    
+    INVARIANT(buf.asString() ==
+	      "This is a test of the Lintel ByteBuffer append stream methods.\n"
+	      "Its as complete as its going to get for now.\n"
+	      "This is a test of the Lintel ByteBuffer append stream methods.\n"
+	       "Its as complete as its going to get for now.\n",
+	       buf.asString());
+
+    // Read in more than the buffer size, make sure it automatically resizes.
+    for (int i = 0; i < 12; i++) {
+	sin.clear();
+	sin.seekg(0, ios::beg);
+	SINVARIANT(!(sin.eof() || sin.fail() || sin.bad()));
+	buf.appendEntireStream(sin);
+	SINVARIANT(sin.eof());
+    }
+    
+    SINVARIANT(buf.bufferSize() == 2048);
+    INVARIANT(buf.readAvailable() == 1512,
+	      format("Read available %d, expected 1512") % buf.readAvailable());
+
+    // Exercise the max_size argument, first with something in between doubling
+    // and more than what's read ...
+    
+    buf.reset();
+    buf.resizeBuffer(0);
+    
+    for (int i = 0; i < 14; i++) {
+	sin.clear();
+	sin.seekg(0, ios::beg);
+	SINVARIANT(!(sin.eof() || sin.fail() || sin.bad()));
+	buf.appendEntireStream(sin, 1600);
+	SINVARIANT(sin.eof());
+    }
+
+    SINVARIANT(buf.bufferSize() == 1600);
+    INVARIANT(buf.readAvailable() == 1512,
+	      format("Read available %d, expected 1512") % buf.readAvailable());
+
+    buf.reset();
+    buf.resizeBuffer(0);
+
+    // then with something between doubling the size and less than what's read.
+    for (int i = 0; i < 14; i++) {
+	sin.clear();
+	sin.seekg(0, ios::beg);
+	SINVARIANT(!(sin.eof() || sin.fail() || sin.bad()));
+	buf.appendEntireStream(sin, 1500);
+    }
+    
+    SINVARIANT(!sin.eof());
+    SINVARIANT(buf.bufferSize() == 1500);
+    INVARIANT(buf.readAvailable() == 1500,
+	      format("Read available %d, expected 1512") % buf.readAvailable());
+    
+    buf.reset();
+    buf.resizeBuffer(0);
+
+    // Read in partial/fixed amounts and check edge conditions near EOF.
+    sin.seekg(0, ios::beg);
+    sin.clear();
+    SINVARIANT(!(sin.eof() || sin.fail() || sin.bad()));
+    buf.appendFromStream(sin, 8);
+    SINVARIANT(!sin.eof());
+    SINVARIANT(buf.asString() == "This is ");
+    buf.resizeBuffer(108);
+    buf.appendFromStream(sin, 99);
+    SINVARIANT(!sin.eof());
+    buf.appendFromStream(sin, 1);
+    SINVARIANT(!sin.eof());
+    buf.appendFromStream(sin, 1);
+    SINVARIANT(sin.eof());
+    SINVARIANT(buf.bufferSize() == 109);
+    INVARIANT(buf.asString() ==
+	      "This is a test of the Lintel ByteBuffer append stream methods.\n"
+	      "Its as complete as its going to get for now.\n",
+	      buf.asString());
+    sin.close();
+}
+
+int main(int argc, char *argv[]) {
     ByteBuffer buf(true);
 
     basicChecks(buf);
@@ -230,6 +339,7 @@ int main() {
     copyChecks(buf);
     constructorTests();
     appendReplaceAssignTests();
-
+    appendStreamTests(argc, argv);
+    
     return 0;
 }

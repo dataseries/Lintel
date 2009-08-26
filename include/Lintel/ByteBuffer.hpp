@@ -16,10 +16,10 @@
     copies.
 */
 
+#include <iostream>
 #include <sys/types.h>
 
 #include <string>
-#include <iostream>
 
 #include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
@@ -325,42 +325,38 @@ namespace lintel {
 	    memcpy(writeStart(size), buf, size);
 	}
 
-	/// appends data from @param sin until @param amount bytes read.
-	///   If @param amount == -1, reads until eof.
-	/// returns bytes read and -1 if error.
+	/// appends data from @param sin until eof or error in the stream.
+	///  Returns bytes read or (-1) if error.
 	///
-	/// Increases buffer size to consume the @param amount bytes.
-	///  If @param amount == -1 increases size exponentially to consume stream.
-	/// @param max_size is the largest the buffer will get. Default @param
-	/// max_size is 128MiB
-	// TODO-mehul: split this function into one that reads until
+	/// Increases buffer size (exponentially) to consume the stream.
+	/// Resulting buffer size is in the range
+	///   [min(1024, max_size) ... max(max_size, bufferSize())].
+	/// Default @param max_size is 128MiB.
+	
+	// TODO-mehul-done: split this function into one that reads until
 	// EOF and bounds by max_size and one that reads a fixed
 	// amount of data in.  This change will reduce the weird
 	// inter-twining of the two implementations here.  It should also
-	// reduce the signedness issues.  
-	int64_t appendFromStream(std::istream &sin, int64_t amount = -1,
-				 size_t max_size = 128*1024*1024) {
+	// reduce the signedness issues.
+	int64_t appendEntireStream(std::istream &sin,
+				   size_t max_size = 128*1024*1024) {
 	    size_t bytes_read = 0;
 
-	    SINVARIANT((amount >= -1) && (static_cast<size_t>(amount) <= max_size));
-	    
-	    if ((amount != -1) && (writeAvailable() < static_cast<size_t>(amount))) {
-		resizeBuffer( bufferSize() + amount - writeAvailable() );
-	    } else if (bufferSize() == 0) {
-		resizeBuffer(1024);
+	    if (bufferSize() == 0) {
+		resizeBuffer(std::min(static_cast<size_t>(1024), max_size));
 	    }
-
-	    while ((!(sin.eof() || sin.fail() || sin.bad())) &&
-		   ((amount == -1) || (bytes_read < static_cast<size_t>(amount)))) {
-		size_t to_read = ((amount == -1) || (amount - bytes_read) > writeAvailable()) 
-		    ? writeAvailable() : (amount - bytes_read);
-
-		if (to_read > 0) {
-		    sin.read(writeStartAs<char>(0), to_read);
+	    
+	    max_size = std::max(bufferSize(), max_size);
+	    
+	    while(!(sin.eof() || sin.fail() || sin.bad())) {
+		if (writeAvailable() > 0) {
+		    sin.read(writeStartAs<char>(0), writeAvailable());
 		    bytes_read += sin.gcount();
 		    extend(sin.gcount());
-		} else if ((bufferSize()* 2) < max_size) {
-		    resizeBuffer(bufferSize()*2);
+		} else if (bufferSize() < max_size) {
+		    resizeBuffer(std::min(bufferSize()*2, max_size));
+		} else {
+		    break;
 		}
 	    }
 
@@ -370,7 +366,37 @@ namespace lintel {
 
 	    return bytes_read;
 	}
-	
+
+	/// appends data from @param sin until @param amount bytes read or
+	///   we hit eof or error in the stream.
+	///  Returns bytes read or (-1) if error.
+	///
+	/// If writeAvailable() < @param amount
+	///  then it increases buffer size to
+	///  accommodate @param amount additional data.
+	int64_t appendFromStream(std::istream &sin, size_t amount) {
+	    size_t bytes_read = 0;
+
+	    if (writeAvailable() < amount) {
+		resizeBuffer(bufferSize() - writeAvailable() + amount);
+	    }
+
+	    SINVARIANT(writeAvailable() >= amount);
+	    
+	    while((!(sin.eof() || sin.fail() || sin.bad())) &&
+		  (bytes_read < amount)) {
+		sin.read(writeStartAs<char>(0), amount - bytes_read);
+		bytes_read += sin.gcount();
+		extend(sin.gcount());
+	    }
+	    
+	    if (sin.bad()) {
+		return -1;
+	    }
+
+	    return bytes_read;
+	}
+
 	/// replace part of ByteBuffer contents starting at @param
 	/// offset with @param src for @param length bytes.  
 	/// Otherwise, offset + length must be < readAvailable().
