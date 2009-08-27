@@ -13,8 +13,15 @@
 
 #include <Lintel/BoyerMooreHorspool.hpp>
 
-// TODO-tomer: put in reference to textbook describing this algorithm.
+// TODO-done: put in reference to textbook describing this algorithm.
+//
+// See wikipedia article for description of algorithm
+// http://en.wikipedia.org/wiki/Boyer%E2%80%93Moore%E2%80%93Horspool_algorithm
+//
+// May want to consider ordinary Boyer-Moore or a variant that consumes 2 bytes
+// at a time
 
+namespace lintel {
 namespace {
     uint8_t *memDup(const void *in, size_t len) {
 	uint8_t *ret = new uint8_t[len];
@@ -43,21 +50,22 @@ BoyerMooreHorspool::~BoyerMooreHorspool() {
     delete [] needle;
 }
 
-bool BoyerMooreHorspool::matches(const void *haystack_v, size_t haystack_length) {
-    const uint8_t *haystack = reinterpret_cast<const uint8_t *>(haystack_v);
 
-    while (haystack_length >= needle_length) {
-        size_t i;
-        for (i = last; haystack[i] == needle[i]; --i) {
+ssize_t BoyerMooreHorspool::find(const void *hay_v, size_t hay_len) const {
+    const uint8_t *haystack = reinterpret_cast<const uint8_t *>(hay_v);
+
+    while (hay_len >= needle_length) {
+        for (size_t i = last; haystack[i] == needle[i]; --i) {
             if (i == 0) { // first char matches so it's a match!
-                return true;
+                return (haystack - reinterpret_cast<const uint8_t *>(hay_v));
             }
         }
-
-        ssize_t skip = bad_char_shift[haystack[last]];
-	DEBUG_SINVARIANT(haystack_length >= static_cast<size_t>(skip));
-        haystack_length -= skip;
+	
+        size_t skip = bad_char_shift[haystack[last]];
+	//TODO-code-review: invariant was wrong.
+        hay_len -= skip;
         haystack += skip;
     }
-    return false;
+    return -1;
+}
 }

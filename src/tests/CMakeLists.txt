@@ -38,6 +38,8 @@ LINTEL_SIMPLE_TEST(tuples)
 LINTEL_SIMPLE_TEST(hashtuplestats)
 LINTEL_SIMPLE_TEST(statscube)
 LINTEL_SIMPLE_TEST(priority_queue)
+LINTEL_SIMPLE_TEST(byte_buffer)
+LINTEL_SIMPLE_TEST(boyer_moore_horspool)
 
 ################################## SPECIAL TEST PROGRAMS
 
