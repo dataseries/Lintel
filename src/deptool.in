@@ -1060,7 +1060,20 @@ sub dbpGetTestStatus {
     chomp;
     my $tnum_line = $_;
     die "internal $tnum $num" unless $tnum == $num;
-    $_ = <$fh>; die "?" unless m!^\s*\d+ Testing (.*?)\s+(\S+)\s*$!o;
+    $_ = <$fh>; 
+# TODO: handle file like:
+#Test project /.home-bill-h/anderse/build/opt-debian-4.0-i686/KeyValue
+#
+#110/
+#158 Testing fs-disk-converge-retrieve-fail***Exception: 
+#SegFault
+#
+#0% tests passed, 1 tests failed out of 1
+#
+#        110 - fs-disk-converge-retrieve-fail (SEGFAULT)
+
+    die "$file missing test status?" 
+	unless m!^\s*\d+ Testing (.*?)\s+(\S+)\s*$!o;
     my ($test_name, $status) = ($1, $2, $3);
     return ("${tnum_line}$_", $test_name, $status);
 }
