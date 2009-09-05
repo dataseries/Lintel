@@ -122,6 +122,8 @@ int main(int argc, char *argv[]) {
     } else if (mode == "sixth") {
 	sixth(argc, argv);
     }
+    // TODO: add test for duplicate program option, should probably abort
+    // if the user tries to do that.
 
     FATAL_ERROR("?");
 }
