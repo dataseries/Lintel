@@ -475,7 +475,7 @@ sub helpSection {
     if ($PERL_VERSION ge v5.10) {
 	eval q! # checked on Debian Lenny, openSUSE 11.1
 	    use IO::String;
-            use Pod::Select
+            use Pod::Select;
 	    use Pod::Text::Termcap;
 
 	    my $out = IO::String->new;
@@ -597,7 +597,10 @@ sub initMtnKeysRc {
 
 The key will be generated with an empty password.  You can change it
 by running mtn chkeypass or mtn passphrase depending on your monotone
-version.
+version. 
+
+Run 'deptool help publish' to learn where you have to send your public key
+so tha tyou can publish.
 
 WARNING: if you already have a monotone key, you should ctrl-c now, and copy
 WARNING: your key file over.  Monotone deals poorly with multiple keys with
