@@ -504,6 +504,11 @@ namespace lintel {
 	boost::shared_ptr<NoCopyByteBuffer> rep;
 	bool allow_copy_on_write;
     };
+
+    inline std::ostream &operator<<(std::ostream &out, const ByteBuffer &buf) {	
+	return out << buf.asString();
+    }
+
 }
 
 #endif
