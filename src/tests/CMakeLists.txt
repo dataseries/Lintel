@@ -57,7 +57,6 @@ IF(PERL_ENABLED)
     ADD_TEST(test_lintel_dbi ${PERL_PATH} -I${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../perl/test_lintel_dbi.pl)
 ENDIF(PERL_ENABLED)
 
-LINTEL_SIMPLE_PROGRAM(byte_buffer)
 ADD_TEST(byte_buffer byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
 
 ################################## CONDITIONAL BITS
