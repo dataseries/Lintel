@@ -35,6 +35,7 @@ SET(BIB_FILES
     sigmod.bib
     sosp.bib
     supercomputing-review.bib
+    tr.bib
     vldb.bib
     web-sites.bib
 )
