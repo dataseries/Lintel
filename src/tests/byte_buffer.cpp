@@ -12,7 +12,7 @@
 
 #include <iostream>
 #include <fstream>
-
+#include <sstream>
 #include <Lintel/ByteBuffer.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 
@@ -335,6 +335,13 @@ void appendStreamTests(int argc, char *argv[]) {
     sin.close();
 }
 
+void overloadOutOperatorTests() {
+    const ByteBuffer buff(string("Hello, World."));
+    ostringstream osstream;
+    osstream << buff;
+    SINVARIANT(osstream.str() == buff.asString());
+}
+
 int main(int argc, char *argv[]) {
     ByteBuffer buf(true);
 
@@ -344,6 +351,7 @@ int main(int argc, char *argv[]) {
     constructorTests();
     appendReplaceAssignTests();
     appendStreamTests(argc, argv);
+    overloadOutOperatorTests();
     
     return 0;
 }

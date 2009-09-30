@@ -506,7 +506,7 @@ namespace lintel {
     };
 
     inline std::ostream &operator<<(std::ostream &out, const ByteBuffer &buf) {	
-	return out << buf.asString();
+	return out.write(buf.readStartAs<const char>(), buf.readAvailable());
     }
 
 }
