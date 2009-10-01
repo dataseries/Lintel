@@ -320,7 +320,7 @@ namespace lintel {
 	    SINVARIANT(size >= 0);
 	    if (writeAvailable() < size) {
 	        int needed = size - writeAvailable();
-		resizeBuffer( bufferSize() + needed);
+		resizeBuffer(bufferSize() + needed);
 	    }
 	    memcpy(writeStart(size), buf, size);
 	}
