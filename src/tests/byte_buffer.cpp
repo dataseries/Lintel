@@ -336,10 +336,11 @@ void appendStreamTests(int argc, char *argv[]) {
 }
 
 void overloadOutOperatorTests() {
-    const ByteBuffer buff(string("Hello, World."));
+    string test_str("Hello, World.");
+    const ByteBuffer buff(test_str);
     ostringstream osstream;
     osstream << buff;
-    SINVARIANT(osstream.str() == buff.asString());
+    SINVARIANT(osstream.str() == test_str);
 }
 
 int main(int argc, char *argv[]) {
