@@ -610,7 +610,7 @@ EOF
         print "Enter e-mail address for identifying monotone key: ";
         my $email = <STDIN>;
         chomp $email;
-        die "?? $email" unless $email =~ /^\S+\@\w+\.\w+$/o;
+        die "?? $email" unless $email =~ /^\S+\@\S+\.\w+$/o;
 
         runCommand("yes default-password | mtn genkey $email");
 
