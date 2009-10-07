@@ -92,10 +92,17 @@ IF(PERL_ENABLED)
     	Text/ExpandInt.pm
     	Lintel/Net/SSH/KnownHostsFile.pm
     	Lintel/File/Lock.pm
-	Lintel/DBI.pm
 	Lintel/ProcessManager.pm
     )
+
 ENDIF(PERL_ENABLED)
+
+IF(LINTEL_DBI_ENABLED)
+    LINTEL_INSTALL_FILE_PATH(${CMAKE_INSTALL_PREFIX}/share/perl5
+        Lintel/DBI.pm
+    )
+ENDIF(LINTEL_DBI_ENABLED)
+
 
 IF(MERCURY_PLOT_ENABLED)
     LINTEL_INSTALL_FILE_PATH(${CMAKE_INSTALL_PREFIX}/share/perl5
