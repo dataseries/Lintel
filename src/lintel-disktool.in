@@ -17,7 +17,7 @@ use Lintel::ProcessManager;
 # TODO: redo file to conform with new coding convention
 # TODO: add pod documentation.  Fix up the usage...
 
-my %config = ( debug => 0 );
+my %config;
 
 my $config_path = "/etc/lintel-disktool.config";
 usage() unless @ARGV >= 1;
@@ -28,7 +28,7 @@ unless ($EUID == 0) {
     die "exec failed: $!";
 }
 
-my $success = GetOptions("debug!" => \$config{debug});
+my $success = GetOptions("debug!" => \$Global::debug);
 usage() unless $success;
 
 $|=1;
@@ -107,7 +107,12 @@ sub oldConfigRead {
 }
 
 =pod
-
+    debug: turn on debugging messages.
+    drivepatterns: which patterns to look for in /dev for drives.
+    mount_path: where to mount the drive.
+    fs: which file system to format them with.
+    sysfs_ids, serials: fsids or serial numbers of drives in play.
+    mount
 	{
 	    debug => 0|1,
 	    drivepatterns => [ qw/sd[a-z] sd[a-z][a-z]/ ],
@@ -171,6 +176,7 @@ sub readConfig {
 	die "$config_path should return a hash ref"
 	    unless ref $result eq 'HASH';
 	%config = %$result;
+	$config{debug} ||= $Global::debug;
 	$config{serials} = toMap($config{serials}, 'serials');
 	$config{sysfsids} = toMap($config{sysfsids});
     }
@@ -225,7 +231,7 @@ sub find_drives {
 	    push(@Global::drives, $drive);
 	    print "$drive";
 	} else {
-	    print "$drive(serial='$serial', $sysfs_id='$sysfs_id')\n" if $config{debug};
+	    print "\n$drive(serial='$serial', $sysfs_id='$sysfs_id')\n" if $config{debug};
 	    push(@{$config{not_used_drives}}, $drive);
 	}
     }
