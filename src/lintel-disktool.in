@@ -136,7 +136,12 @@ sub oldConfigRead {
 	               '9QJ41YBN            ',
 	               '9QJ41A79            ',
 	               '9QJ43ES6            '
-	              ]
+	              ],
+	    partition_to_label => sub {
+		my ($partition, $existing_label_to_partition, $info) = @_;
+
+		# $info = {}
+	    }
 	}
 
 =cut

@@ -320,7 +320,7 @@ namespace lintel {
 	    SINVARIANT(size >= 0);
 	    if (writeAvailable() < size) {
 	        int needed = size - writeAvailable();
-		resizeBuffer( bufferSize() + needed);
+		resizeBuffer(bufferSize() + needed);
 	    }
 	    memcpy(writeStart(size), buf, size);
 	}
@@ -504,6 +504,11 @@ namespace lintel {
 	boost::shared_ptr<NoCopyByteBuffer> rep;
 	bool allow_copy_on_write;
     };
+
+    inline std::ostream &operator<<(std::ostream &out, const ByteBuffer &buf) {	
+	return out.write(buf.readStartAs<const char>(), buf.readAvailable());
+    }
+
 }
 
 #endif
