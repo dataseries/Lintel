@@ -475,6 +475,9 @@ sub helpSection {
     my $fn;
 
     if ($PERL_VERSION ge v5.10) {
+	# TODO: IO::String isn't standard so we can't do termcap prettified
+	# printing of pod chunks on machines that are missing it.  If the
+	# eval fails, try again without nice colors.
 	eval q! # checked on Debian Lenny, openSUSE 11.1
 	    use IO::String;
             use Pod::Select;
