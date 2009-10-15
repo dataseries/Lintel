@@ -170,18 +170,9 @@ namespace lintel {
 		      const T &in_default_val = T())
 	    : default_val(in_default_val)
 	{
-	    init(name, desc, boost::bind(&ProgramOption<T>::save, this, _1));
+	    init(name, desc);
 	}
 	
-	/// Traditional ProgramOptionsFn will look like:
-        ProgramOption(const std::string &name, const std::string &desc, 
-		      detail::ProgramOptionFnT f)
-	    : default_val(T()) 
-	{
-	    INVARIANT(!!f, boost::format("option %s needs a function") % name);
-	    init(name, desc, f);
-	}
-
 	bool used() {
 	    return !saved.empty();
 	}
@@ -203,18 +194,17 @@ namespace lintel {
 		      const T &in_default_val, bool do_description)
 	    : default_val(in_default_val)
 	{
-	    init(name, desc, boost::bind(&ProgramOption<T>::save, this, _1),
-		 do_description);	    
+	    init(name, desc, do_description);	    
 	}
 
     private:
 	void init(const std::string &name, const std::string &desc, 
-		  detail::ProgramOptionFnT f, bool do_help=true) {
-	    // TODO-joe: Lintel uses 100 column width. 
+		  bool do_help=true) {
 	    std::string def_desc = str(boost::format("%s (Default value %s.)")
 		    % desc % detail::defaultValueString(default_val));
 	    detail::programOptionsDesc(!do_help).add_options()
 		(name.c_str(), boost::program_options::value<T>(), def_desc.c_str());
+	    detail::ProgramOptionFnT f = boost::bind(&ProgramOption<T>::save, this, _1);
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
@@ -245,37 +235,12 @@ namespace lintel {
 
     /// Special case for program options without values, e.g.,
     /// "--help", which doesn't carry a value like "--seed=100"
-    // TODO-joe: need to discuss below, documentation doesn't make sense to me -- Eric
-    // Also seems like we want a default option to boolean arguments here now. or else
-    // --no seems kinda useless.
-    //
-    // the no- prefix only makes sense as an override (e.g. as we have
-    // multiple ways of feeding in options); suppose I by default had
-    // fire on, then I can do
-    //
-    //    ProgramOption<bool> disable_fire("no-fire", "turn off fire");
-    //    if(disable_fire.get()) {
-    //       // skip the fire
-    //    }
-    //
-    // And this requires no special code.  The special code added is a way
-    // to specify false for a boolean program option which has already been
-    // set true by existing.
     template<> class ProgramOption<bool> {
     public:
 	ProgramOption(const std::string &name, const std::string &desc) 
 	    : val(false)
 	{
-	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1));
-	    init(std::string("no-").append(name), desc, 
-		 boost::bind(&ProgramOption<bool>::un_save, this, _1), false);
-	}
-
-	ProgramOption(const std::string &name, const std::string &desc, detail::ProgramOptionFnT f) 
-	    : val(false)
-	{
-	    INVARIANT(!!f, boost::format("option %s needs a function") % name);
-	    init(name, desc, f);
+	    init(name, desc);
 	}
 
 	bool used() {
@@ -294,13 +259,14 @@ namespace lintel {
 	ProgramOption(const std::string &name, const std::string &desc, bool do_description)
 	    : val(false)
 	{
-	    init(name, desc, boost::bind(&ProgramOption<bool>::save, this, _1), do_description);
+	    init(name, desc, do_description);
 	}
 	
     private:
 	void init(const std::string &name, const std::string &desc, 
-		  detail::ProgramOptionFnT f, bool do_help=true) {
+		  bool do_help=true) {
 	    detail::programOptionsDesc(!do_help).add_options() (name.c_str(), desc.c_str());
+	    detail::ProgramOptionFnT f = boost::bind(&ProgramOption<bool>::save, this, _1);
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
 	}
 
@@ -310,12 +276,6 @@ namespace lintel {
 	    }
 	}
 
-	void un_save(const boost::program_options::variable_value &opt) {
-	    if (!opt.empty()) {
-		val = false;
-	    }
-	}
-	
 	bool val;
     };
 

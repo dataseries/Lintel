@@ -23,6 +23,8 @@ Lintel::ProcessManager - library for dealing with sub-processes
 
     my %pid_to_status = $process_manager->wait([timeout]);
 
+    my %pid_to_status = $process_manager->waitAll();
+
     $process_manager->enableSignals([sub { my ($pm) = @_; 'should-call-wait' }]);
 
     my @pids = $process_manager->children();
@@ -256,6 +258,26 @@ sub wait {
     }
 
     return %exited;
+}
+
+=pod
+
+=head2 my %pid_to_status = $mgr->waitAll()
+
+Wait for all children to exit, return their status.
+
+=cut
+
+sub waitAll {
+    my ($this) = @_;
+
+    my %ret;
+    while ($this->nChildren() > 0) {
+	my %some = $this->wait();
+	map { $ret{$_} = $some{$_} } keys %some;
+    }
+
+    return %ret;
 }
 
 =pod

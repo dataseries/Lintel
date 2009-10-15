@@ -85,7 +85,7 @@ void fifth(int argc, char *argv[]) {
 }
 
 void sixth(int argc, char *argv[]) {
-    // --po-1 --test-opt-1 --po-2=5 --test-opt-4=5 --no-po-1
+    // --po-1 --test-opt-1 --po-2=5 --test-opt-4=5 
     lintel::ProgramOption<bool> po_1("po-1", "Thing");
     lintel::TestingOption<bool> test_opt_1("test-opt-1", "SHOULD NOT SEE");
     lintel::TestingOption<bool> test_opt_2("test-opt-2", "SHOULD NOT SEE");
@@ -96,7 +96,7 @@ void sixth(int argc, char *argv[]) {
     
     lintel::parseCommandLine(argc, argv);
 
-    SINVARIANT(!po_1.get() && test_opt_1.get() && (!test_opt_2.get()));
+    SINVARIANT(po_1.get() && test_opt_1.get() && (!test_opt_2.get()));
     SINVARIANT(po_2.get()==5);
     SINVARIANT(test_opt_3.get()==5);
     SINVARIANT(test_opt_4.get()==5);
