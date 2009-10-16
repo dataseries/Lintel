@@ -343,6 +343,16 @@ void overloadOutOperatorTests() {
     SINVARIANT(osstream.str() == test_str);
 }
 
+void unextendTest() {
+    ByteBuffer buff("0123456789");
+    SINVARIANT(buff.readAvailable() == 10);
+    SINVARIANT(buff.writeAvailable() == 0);
+    buff.unextend(5);
+    SINVARIANT(buff.readAvailable() == 5);
+    SINVARIANT(buff.writeAvailable() == 5);
+    SINVARIANT(buff.asString() == "01234");
+}
+
 int main(int argc, char *argv[]) {
     ByteBuffer buf(true);
 
@@ -353,6 +363,7 @@ int main(int argc, char *argv[]) {
     appendReplaceAssignTests();
     appendStreamTests(argc, argv);
     overloadOutOperatorTests();
+    unextendTest();
     
     return 0;
 }

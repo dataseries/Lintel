@@ -90,6 +90,11 @@ namespace lintel {
 	    back += amt;
 	}
 
+	void unextend(size_t amt) {
+            SINVARIANT(amt <= readAvailable());
+            back -= amt;
+        }
+
 	void resizeBuffer(uint32_t new_size) {
 	    uint8_t *new_data = new uint8_t[new_size];
 		
@@ -290,6 +295,11 @@ namespace lintel {
 	    uniqueify();
 	    rep->extend(amt);
 	}
+
+	void unextend(size_t amt) {
+            uniqueify();
+            rep->unextend(amt);
+        }
 
 	/// The same as extend except it counts in units of elements
 	/// rather than bytes.
