@@ -14,10 +14,12 @@
 
 namespace lintel {
 
-#if defined ( __GNUC__) && ( __GNUC__ * 100 + __GNUC_MINOR__ >= 401 ) && !defined(__hppa ) && ( !defined( __INTEL_COMPILER ) || defined ( __ia64__ )  )
+#if defined(LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH)
+    // pre-defined by user
+#elif defined ( __GNUC__) && ( __GNUC__ * 100 + __GNUC_MINOR__ >= 401 ) && !defined(__hppa ) && ( !defined( __INTEL_COMPILER ) || defined ( __ia64__ )  )
 
     // GCC 4.1 and up
-#define _ATOMIC_COUNTER_ADD_AND_FETCH(var, amount)      \
+#define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(var, amount) \
     __sync_add_and_fetch( &(var), (amount) )
 
 #elif defined( __GLIBCPP__ ) || defined(__GLIBCXX__)
@@ -28,7 +30,7 @@ namespace lintel {
     using __gnu_cxx::__exchange_and_add;
 #endif
 
-#define _ATOMIC_COUNTER_ADD_AND_FETCH(var, amount)      \
+#define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(var, amount) \
     __exchange_and_add( &(var),(amount) );
 
 #else
@@ -36,7 +38,6 @@ namespace lintel {
 #error AtomicCounter does not have primitives for the detected platform
 
 #endif
-
 
     /// Encapsulates an atomic counter.  Be wary when using it so as
     /// to not inadvertently introduce a race--the value may change at
@@ -50,18 +51,18 @@ namespace lintel {
         explicit AtomicCounter(int32_t _counter=0) : counter(_counter) { }
 
         /// Returns the value of counter, and then adds one
-        int32_t fetchThenInc() {
-            return _ATOMIC_COUNTER_ADD_AND_FETCH(counter, 1);
+        int32_t incThenFetch() {
+            return LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, 1);
         }
     
         /// Returns the value of the counter, and then adds amount
-        int32_t fetchThenAdd(int32_t amount) {
-            return _ATOMIC_COUNTER_ADD_AND_FETCH(counter, amount);
+        int32_t addThenFetch(int32_t amount) {
+            return LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, amount);
         }
 
         /// Returns true if the counter is zero
-        int32_t isZero(){
-            return 0 == _ATOMIC_COUNTER_ADD_AND_FETCH(counter, 0);
+        bool isZero() {
+            return 0 == LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, 0);
         }
 
     private:
@@ -71,7 +72,7 @@ namespace lintel {
         /// Assignment is forbidden too.
         AtomicCounter & operator=(AtomicCounter const &);
 
-        /// Various code elsewhere depends on the counter being 32 bits.
+        /// 32 bit counter works on both 32bit and 64bit machines.
         int32_t counter;
     };
 
