@@ -88,6 +88,7 @@ sub waitForFile {
     my ($this, $path) = @_;
 
     return unless defined $path;
+    print "Wait for file $path to be created\n" if $this->{debug};
     for(my $start = time; ! -f $path; ) {
 	my $delay = time - $start;
 	die "Waited too long ($delay seconds) for fork to make $path" 
@@ -164,6 +165,7 @@ sub fork {
     }
     my $pid = fork;
     confess "fork failed: $!" unless defined $pid && $pid >= 0;
+    print "Lintel::ProcessManager: post-fork $pid $$\n" if $this->{debug};
 
     if ($pid == 0) { 
 	print "Child $$\n" if $this->{debug};
@@ -202,6 +204,7 @@ sub fork {
 	confess "exec($cmd) failed: $!";
     }
 
+    print "Lintel::ProcessManager: Parent ($pid)\n" if $this->{debug};
     $this->waitForFile($opts{stdout});
     $this->waitForFile($opts{stderr}) unless defined $opts{stderr} && $opts{stderr} eq 'STDOUT';
 
