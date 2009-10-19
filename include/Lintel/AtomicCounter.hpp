@@ -50,19 +50,24 @@ namespace lintel {
     public:
         explicit AtomicCounter(int32_t _counter=0) : counter(_counter) { }
 
-        /// Returns the value of counter, and then adds one
+        /// Increments the counter and then returns the value
         int32_t incThenFetch() {
-            return LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, 1);
+            return addThenFetch(1);
         }
-    
-        /// Returns the value of the counter, and then adds amount
+
+	/// Decrements the counter and then returns the value
+	int32_t decThenFetch() {
+	    return addThenFetch(-1);
+	}
+
+        /// Adds amount to the counter and then returns the value
         int32_t addThenFetch(int32_t amount) {
             return LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, amount);
         }
 
         /// Returns true if the counter is zero
         bool isZero() {
-            return 0 == LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, 0);
+            return 0 == addThenFetch(0);
         }
 
     private:
