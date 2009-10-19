@@ -33,13 +33,13 @@ public:
             // Excercise both increment interfaces: fetchThenAdd and
             // fetchThenInc
 	    if (thread_num == 1) {
-		correct_count.fetchThenInc();
+		correct_count.incThenFetch();
 		incorrect_count++;
 	    } else {
 		// Split up the increment operation to vastly increase the
 		// odds of a data race.
 		int32_t val = incorrect_count;
-		correct_count.fetchThenAdd(thread_num);
+		correct_count.addThenFetch(thread_num);
 		val += thread_num;
 		incorrect_count = val;
 	    }
@@ -52,7 +52,24 @@ public:
     int32_t num_iters, num_threads, thread_num, final_sum;
 };
 
+void simpleTest() {
+    lintel::AtomicCounter foo;
+
+    SINVARIANT(foo.addThenFetch(0) == 0);
+    int32_t x = foo.incThenFetch();
+    INVARIANT(x == 1, boost::format("%d") % x);
+    foo.addThenFetch(-1);
+    SINVARIANT(foo.isZero());
+    SINVARIANT(foo.incThenFetch() == 1);
+    SINVARIANT(!foo.isZero());
+    SINVARIANT(foo.addThenFetch(-1) == 0);
+    SINVARIANT(foo.isZero());
+    std::cout << "simple test ok\n";
+}
+
 int main () {
+    simpleTest();
+
     // For this test, running on more than # cores doesn't have any
     // benefit since our races are entirely from running threads.
     // on very few cpus, having one extra thread increases our chance of a race
@@ -86,7 +103,7 @@ int main () {
 	thread_list[i]->join();
     }
 
-    SINVARIANT(correct_count.fetchThenAdd(0) == final_sum);
+    SINVARIANT(correct_count.addThenFetch(0) == final_sum);
 
     // Theoretically, this could fail, but with such vanishingly low
     // probability (especially with the summation split the way it is)
