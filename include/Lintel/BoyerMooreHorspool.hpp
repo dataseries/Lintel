@@ -33,7 +33,8 @@ namespace lintel {
 	    @param needle the search data for this class
 	    @param needle_length the length of the search data
 	*/
-	BoyerMooreHorspool(const void *needle, size_t needle_length);
+	BoyerMooreHorspool(const std::string &needle);
+        BoyerMooreHorspool(const char *needle);
 	~BoyerMooreHorspool();
 	
 	/** Returns true if and only if needle is a substring of @param haystack\. 
@@ -55,6 +56,7 @@ namespace lintel {
 	ssize_t find(const void *haystack, size_t hay_len) const;
 	
     private:
+	void init();
 	static const uint32_t uint8_max = 255;
 	// TODO-done: can this actually be negative?  I don't think so.
 	//

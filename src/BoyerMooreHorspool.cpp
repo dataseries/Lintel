@@ -12,7 +12,7 @@
 #include <Lintel/AssertBoost.hpp>
 
 #include <Lintel/BoyerMooreHorspool.hpp>
-
+#include <iostream>
 // TODO-done: put in reference to textbook describing this algorithm.
 //
 // See wikipedia article for description of algorithm
@@ -30,26 +30,38 @@ namespace lintel {
 	}
     }
 
-    BoyerMooreHorspool::BoyerMooreHorspool(const void *needle_v, size_t needle_length) 
-	: needle(memDup(needle_v, needle_length)), needle_length(needle_length), 
-	  last(needle_length - 1) 
+    BoyerMooreHorspool::BoyerMooreHorspool(const char *needle_v)
+        : needle(memDup(needle_v, strlen(needle_v)))
     {
-	INVARIANT(needle_length > 0, "invalid to search for zero length string");
+        needle_length = strlen(needle_v);
+        last = needle_length - 1;
+        init();
+    }
 
-	// initialize the bad character shift array
-	for (uint32_t i = 0; i <= uint8_max; ++i) {
-	    bad_char_shift[i] = needle_length;
-	}
-
-	for (size_t i = 0; i < last; ++i) {
-	    bad_char_shift[needle[i]] = last - i;
-	}
+    BoyerMooreHorspool::BoyerMooreHorspool(const std::string &needle_v)
+        : needle(memDup(needle_v.c_str(), needle_v.size()))
+    {
+        needle_length = needle_v.size();
+        last = needle_length - 1;
+        init();
     }
 
     BoyerMooreHorspool::~BoyerMooreHorspool() {
 	delete [] needle;
     }
 
+    void BoyerMooreHorspool::init() {
+	INVARIANT(needle_length > 0, "invalid to search for zero length string");
+
+        // initialize the bad character shift array
+        for (uint32_t i = 0; i <= uint8_max; ++i) {
+            bad_char_shift[i] = needle_length;
+        }
+
+        for (size_t i = 0; i < last; ++i) {
+            bad_char_shift[needle[i]] = last - i;
+        }
+    }
 
     ssize_t BoyerMooreHorspool::find(const void *hay_v, size_t hay_len) const {
 	const uint8_t *haystack = reinterpret_cast<const uint8_t *>(hay_v);
