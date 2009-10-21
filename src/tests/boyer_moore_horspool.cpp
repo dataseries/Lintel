@@ -51,10 +51,10 @@ void simple_random(MersenneTwisterRandom & rgen) {
     size_t haylen = rgen.randInt(1000000);
     size_t nlen = rgen.randInt(1000000);
 
-    char * hay = new char[haylen+1];
-    char * needle = new char[nlen+1];
-    memset(hay, '\0', haylen+1);
-    memset(needle, '\0', nlen+1);
+    char * hay = new char[haylen];
+    char * needle = new char[nlen];
+    memset(hay, '\0', haylen);
+    memset(needle, '\0', nlen);
     
     for(uint32_t i = 0; i<haylen; ++i) {
 	hay[i] = rgen.randInt('~' - ' ') + ' '; //Only printables.
@@ -64,7 +64,7 @@ void simple_random(MersenneTwisterRandom & rgen) {
 	needle[i] = rgen.randInt('~' - ' ') + ' '; //Only printables.
     }
     
-    BoyerMooreHorspool bmh(needle);
+    BoyerMooreHorspool bmh(needle, nlen);
     SINVARIANT(other_impl(hay, haylen, needle, nlen) ==
 	       bmh.find(hay, haylen));
 
@@ -72,7 +72,7 @@ void simple_random(MersenneTwisterRandom & rgen) {
     char * other_n = hay + offset;
     size_t other_len = rgen.randInt(haylen-offset-1)+1;
     
-    BoyerMooreHorspool bmh2(std::string(other_n).substr(0,other_len));
+    BoyerMooreHorspool bmh2(other_n, other_len);
     SINVARIANT(other_impl(hay, haylen, other_n, other_len) ==
 	       bmh2.find(hay, haylen));
 
@@ -80,24 +80,23 @@ void simple_random(MersenneTwisterRandom & rgen) {
     delete [] needle;
 }
 
+// Verify we can work on binary
 void hard_random(MersenneTwisterRandom & rgen) {
     size_t haylen = rgen.randInt(1000000);
     size_t nlen = rgen.randInt(1000000);
 
-    char * hay = new char[haylen+1];
-    char * needle = new char[nlen+1];
-    memset(hay, '\0', haylen+1);
-    memset(needle, '\0', nlen+1);
+    char * hay = new char[haylen];
+    char * needle = new char[nlen];
 
     for(uint32_t i = 0; i<haylen; ++i) {
-	hay[i] = rgen.randInt(255)+1;
+	hay[i] = rgen.randInt(256);
     }
 
     for(uint32_t i = 0; i<nlen; ++i) {
-	needle[i] = rgen.randInt(255)+1;
+	needle[i] = rgen.randInt(256);
     }
 
-    BoyerMooreHorspool bmh(needle);
+    BoyerMooreHorspool bmh(needle, nlen);
     SINVARIANT(other_impl(hay, haylen, needle, nlen) ==
 	       bmh.find(hay, haylen));
 
@@ -105,7 +104,7 @@ void hard_random(MersenneTwisterRandom & rgen) {
     char * other_n = hay + offset;
     size_t other_len = rgen.randInt(haylen-offset-1)+1;
     
-    BoyerMooreHorspool bmh2(std::string(other_n).substr(0,other_len));
+    BoyerMooreHorspool bmh2(other_n, other_len);
     SINVARIANT(other_impl(hay, haylen, other_n, other_len) ==
 	       bmh2.find(hay, haylen));
 
