@@ -12,9 +12,7 @@
 #include <Lintel/AssertBoost.hpp>
 
 #include <Lintel/BoyerMooreHorspool.hpp>
-#include <iostream>
-// TODO-done: put in reference to textbook describing this algorithm.
-//
+
 // See wikipedia article for description of algorithm
 // http://en.wikipedia.org/wiki/Boyer%E2%80%93Moore%E2%80%93Horspool_algorithm
 //
@@ -30,27 +28,25 @@ namespace lintel {
 	}
     }
 
-    BoyerMooreHorspool::BoyerMooreHorspool(const char *needle_v)
-        : needle(memDup(needle_v, strlen(needle_v)))
+    BoyerMooreHorspool::BoyerMooreHorspool(const void *needle_v, size_t needle_len)
+        : needle(memDup(needle_v, needle_len))
     {
-        needle_length = strlen(needle_v);
-        last = needle_length - 1;
-        init();
+	init(needle_len);
     }
 
     BoyerMooreHorspool::BoyerMooreHorspool(const std::string &needle_v)
         : needle(memDup(needle_v.c_str(), needle_v.size()))
     {
-        needle_length = needle_v.size();
-        last = needle_length - 1;
-        init();
+	init(needle_v.size());
     }
 
     BoyerMooreHorspool::~BoyerMooreHorspool() {
 	delete [] needle;
     }
 
-    void BoyerMooreHorspool::init() {
+    void BoyerMooreHorspool::init(size_t in_len) {
+	needle_length = in_len;
+	last = needle_length - 1;
 	INVARIANT(needle_length > 0, "invalid to search for zero length string");
 
         // initialize the bad character shift array
