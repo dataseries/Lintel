@@ -21,7 +21,8 @@ enum rangeComparator {
     FirstRangeNull
 };
 
-void prepareVectors(rangeComparator comparison_type, bool &expected_result, string &str_output) {
+void prepareVectors(rangeComparator comparison_type, bool &expected_result, 
+            string &str_output) {
     if (comparison_type == EqualRangeComparator) {
         first_range.push_back("10");   
         first_range.push_back("20");   
@@ -99,15 +100,15 @@ void clearRanges() {
 }
 
 int main() {    	
-    bool retValue;
-    string comparisonType;
+    bool return_value;
+    string comparison_type;
 
     cout << "Range comparison tests begin \n";
 
     for (uint32_t i = EqualRangeComparator; i <= FirstRangeNull; i++) {
-        prepareVectors((rangeComparator)i, retValue, comparisonType);
-        INVARIANT(retValue == iteratorRangeEqual(first_range.begin(), first_range.end(), second_range.begin(),
-                second_range.end()), format("Comparison type = %s failed.") % comparisonType);		
+        prepareVectors((rangeComparator)i, return_value, comparison_type);
+        INVARIANT(return_value == iteratorRangeEqual(first_range.begin(), first_range.end(), second_range.begin(),
+                second_range.end()), format("Comparison type = %s failed.") % comparison_type);		
         clearRanges();
     }    
     cout << "Range comparison tests success!";
