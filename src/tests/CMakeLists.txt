@@ -40,6 +40,7 @@ LINTEL_SIMPLE_TEST(statscube)
 LINTEL_SIMPLE_TEST(priority_queue)
 LINTEL_SIMPLE_TEST(byte_buffer)
 LINTEL_SIMPLE_TEST(boyer_moore_horspool)
+LINTEL_SIMPLE_TEST(stlutility)
 
 ################################## SPECIAL TEST PROGRAMS
 

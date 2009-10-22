@@ -46,6 +46,7 @@ SET(INCLUDE_FILES
 	TestUtil.hpp
 	Tuples.hpp
 	BoyerMooreHorspool.hpp
+	STLUtility.hpp
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
