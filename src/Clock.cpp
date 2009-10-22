@@ -482,6 +482,21 @@ void Clock::timingTest() {
 	    % (ns_per_todtfrac * clock_rate / 1000.0) % (ns_per_todtfrac/ns_per_todtfrac);
     }
 
+    {
+	Clock::Tfrac start = myclock.todTfrac();
+	Clock::Tfrac end_target = start + measurement_time_tfrac;
+	do {
+	    nreps += 1;
+	} while (myclock.todccTfrac() < end_target);
+	Clock::Tfrac end = myclock.todTfrac();
+	SINVARIANT(end > start && end - start >= measurement_time_tfrac);
+	double elapsed_ns = Clock::TfracToDouble(end - start) * 1.0e9;
+	ns_per_todtfrac = elapsed_ns / static_cast<double>(nreps);
+	cout << format("todccTfrac            %9d   %8.0f   %7.4g   %7.4g     %5.3g\n")
+	    % nreps % (elapsed_ns * 1e-3) % ns_per_todtfrac
+	    % (ns_per_todtfrac * clock_rate / 1000.0) % (ns_per_todtfrac/ns_per_todtfrac);
+    }
+
     unsigned clock_reps = nreps;
 
     // Test as if we could just magically use the cycle counter
