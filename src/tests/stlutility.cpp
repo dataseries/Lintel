@@ -9,108 +9,88 @@ using namespace std;
 using boost::format;
 using lintel::iteratorRangeEqual;
 
-vector<string> first_range;
-vector<string> second_range;
-
-enum rangeComparator {
-    InvalidEnumConstant = 0,
-    EqualRangeComparator,
-    UnEqualRangeComparator,
-    FirstRangeLargerComparator,
-    SecondRangeLargerComparator,
-    FirstRangeNull
-};
-
-void prepareVectors(rangeComparator comparison_type, bool &expected_result, 
-            string &str_output) {
-    if (comparison_type == EqualRangeComparator) {
-        first_range.push_back("10");   
-        first_range.push_back("20");   
-        first_range.push_back("30"); 
-
-        second_range.push_back("10");   
-        second_range.push_back("20");   
-        second_range.push_back("30");	
-
-        expected_result = true;
-        str_output = "Ranges with exact values and length";    
-    }
-
-    if (comparison_type == UnEqualRangeComparator) {
-        first_range.push_back("10");   
-        first_range.push_back("20");   
-        first_range.push_back("30"); 
-	
-        second_range.push_back("10");   
-        second_range.push_back("20");   
-        second_range.push_back("20");
-	
-        expected_result = false;
-        str_output = "Ranges with different values but same length";	    
-    }
-
-    if (comparison_type == FirstRangeLargerComparator) {
-        first_range.push_back("10");   
-        first_range.push_back("20");   
-        first_range.push_back("30"); 
-        first_range.push_back("40"); 
-        first_range.push_back("50"); 
-	
-        second_range.push_back("20");   
-        second_range.push_back("30");   
-        second_range.push_back("40");
-        second_range.push_back("50");
-	
-        expected_result = false;
-        str_output = "Ranges with different values and lengths (second range subset of first range)";
-    }
-    
-    if (comparison_type == SecondRangeLargerComparator) {	
-        first_range.push_back("10");   
-        first_range.push_back("20"); 
-        first_range.push_back("30"); 
-        first_range.push_back("40"); 
-	
-        second_range.push_back("10");   
-        second_range.push_back("20");   
-        second_range.push_back("30");   
-        second_range.push_back("40");
-        second_range.push_back("50");
-	
-        expected_result = false;	
-        str_output = "Ranges with different values and lengths (first range subset of second range)";
-    } 
-
-    if (comparison_type == FirstRangeNull) {	
-        second_range.push_back("10");   
-        second_range.push_back("20");   
-        second_range.push_back("30");   
-        second_range.push_back("40");
-        second_range.push_back("50");
-	
-        expected_result = false;	
-        str_output = "First range empty and second range populated";
-    } 
-   
+vector<string> &operator<<(vector<string> &lhs, const string &rhs) {
+    lhs.push_back(rhs);
+    return lhs;
 }
 
-void clearRanges() {
-    first_range.clear();
-    second_range.clear();
+void check(const vector<string> &first, const vector<string> &second,
+	   const std::string &test_name, bool expected) {
+    INVARIANT(expected == 
+	      iteratorRangeEqual(first.begin(), first.end(), second.begin(), second.end()),
+	      format("%s test failed") % test_name);
+    cout << format("%s test passed\n") % test_name;
+}
+	      
+void testIdentical() {
+    vector<string> first, second;
+
+    first  << "10" << "20" << "30";
+    second << "10" << "20" << "30";
+
+    check(first, second, "Identical ranges", true);
+}
+
+void testUnequal() {
+    vector<string> first, second;
+    
+    first  << "10" << "20" << "30";
+    second << "10" << "20" << "20";
+
+    check(first, second, "Unequal values", false);
+}
+
+void testFirstLarger() {
+    vector<string> first, second;
+    
+    first  << "10" << "20" << "30" << "40" << "50";
+    second << "10" << "20" << "30" << "40";
+
+    check(first, second, "First range larger", false);
+}
+
+void testSecondLarger() {
+    vector<string> first, second;
+    
+    first  << "10" << "20" << "30" << "40";
+    second << "10" << "20" << "30" << "40" << "50";
+
+    check(first, second, "Second range larger", false);
+}
+    
+void testFirstNull() {
+    vector<string> first, second;
+    
+    second << "10";
+
+    check(first, second, "First range null", false);
+}
+
+void testSecondNull() {
+    vector<string> first, second;
+    
+    first << "10";
+
+    check(first, second, "Second range null", false);
+}
+
+void testBothNull() {
+    vector<string> first, second;
+    
+    check(first, second, "Both range null", true);
 }
 
 int main() {    	
-    bool return_value;
-    string comparison_type;
-
     cout << "Range comparison tests begin \n";
 
-    for (uint32_t i = EqualRangeComparator; i <= FirstRangeNull; i++) {
-        prepareVectors((rangeComparator)i, return_value, comparison_type);
-        INVARIANT(return_value == iteratorRangeEqual(first_range.begin(), first_range.end(), second_range.begin(),
-                second_range.end()), format("Comparison type = %s failed.") % comparison_type);		
-        clearRanges();
-    }    
+    testIdentical();
+    testUnequal();
+    testFirstLarger();
+    testSecondLarger();
+    testFirstNull();
+    testSecondNull();
+    testBothNull();
+
     cout << "Range comparison tests success!";
 	
 }
