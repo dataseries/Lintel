@@ -1015,7 +1015,7 @@ sub dbpStartBuild {
 	    unlink(".deptool.build_stamp");
 	    $info->{running_build} = 1;
 
-	    # TODO : This hides compiler warnings; it would be good to
+	    # TODO: This hides compiler warnings; it would be good to
 	    # extract them out so we see them.
 
 	    $children->fork(

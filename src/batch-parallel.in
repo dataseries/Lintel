@@ -733,7 +733,7 @@ print out the command.
 This function will determine if $file is older than any of @inputs.
 If $file doesn't exist, it is considered older.
 
-=head1 TODO
+=head1 TO FIX
 
 Ought to have a function that lets rebuild_thing_fail decide to stop
 rebuilding on failure, but not have other processes continue in the
