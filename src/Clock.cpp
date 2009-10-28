@@ -218,9 +218,10 @@ void Clock::setClockRate(double estimated_mhz) {
     // could fire; might want to warn, on a really
     // slow recalibrate, we could introduce a lot of
     // error.
-    INVARIANT(max_recalibrate_measure_time < 30 * clock_rate,
+    // 2009-10-27: updated bound to 100us so we can run strace on this.
+    INVARIANT(max_recalibrate_measure_time < 100 * clock_rate,
 	      format("Internal sanity check failed, tod() takes too long, %d > %.2f\n")
-	      % max_recalibrate_measure_time % (30 * clock_rate));
+	      % max_recalibrate_measure_time % (100 * clock_rate));
     clockRateMutex().unlock();
 }
 
