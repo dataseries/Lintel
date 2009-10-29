@@ -284,18 +284,6 @@ public:
 	INVARIANT(ret == 0,boost::format("fatal, ret=%d: %s") % ret % strerror(ret));
     }
 
-    // TODO-2009-10-01: remove deprecated function
-    FUNC_DEPRECATED_PREFIX bool timedwait(PThreadMutex &m, Clock::Tll us) FUNC_DEPRECATED { 
-        struct timespec abstime;
-
-        Clock::Tll timeout = Clock::todll() + us;
-        abstime.tv_sec = (time_t)(timeout / 1000000);
-        abstime.tv_nsec = (time_t)((timeout % 1000000) * 1000);
-        int ret = pthread_cond_timedwait(&c,&m.m,&abstime);
-        INVARIANT(ret == 0 || ret == ETIMEDOUT,"fatal");
-        return ret == ETIMEDOUT ? true : false;
-    }
-
     /// Wait to get the mutex @param m for at most @param seconds seconds.
     /// @param m mutex to try to lock
     /// @param seconds maximum time to spend waiting to acquire the lock

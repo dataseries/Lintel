@@ -35,6 +35,7 @@ template <class K> struct HashMap_hash : lintel::Hash<K> {
 template<typename T> struct PointerHashMapHash : lintel::PointerHash<T> { };
 template<typename T> struct PointerHashMapEqual : lintel::PointerEqual<T> { };
 
+// TODO: add test for proper destruction of things in the hash map.
 /// HashMap class; in our testing almost as fast as the google dense
 /// map, but uses almost as little memory as the sparse map.  Note
 /// that class K can't be const, see src/tests/hashmap.cpp for

@@ -337,7 +337,7 @@ void Clock::calibrateClock(bool print_calibration_information,
 }
 
 Clock::Clock(bool allow_calibration)
-    : nrecalibrate(0), nbadgettod(0), bad_get_tod_cycle_gap(NULL), 
+    : nrecalibrate(0), bad_get_tod_cycle_gap(NULL), 
       last_calibrate_tod_tfrac(0),
       last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0)
 {
@@ -416,7 +416,6 @@ Clock::Tfrac Clock::todccTfrac_recalibrate() {
 	    bad_get_tod_cycle_gap = new Stats;
 	}
 	bad_get_tod_cycle_gap->add(end_cycle - start_cycle);
-	++nbadgettod;
 	// next line guarantees recalibration next time assuming the
 	// cycle counter isn't reset and booting takes a little time
 	last_recalibrate_cc = 0; 

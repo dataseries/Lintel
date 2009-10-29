@@ -21,25 +21,6 @@
 #include <Lintel/HashFns.hpp>
 #include <Lintel/Stats.hpp>
 
-// TODO-2009-10-01: deprecate macro and functions 
-#define BobJenkinsHashMix lintel_BobJenkinsHashMix
-
-FUNC_DEPRECATED_PREFIX inline uint32_t 
-BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) FUNC_DEPRECATED;
-
-inline uint32_t 
-BobJenkinsHashMix3(uint32_t a, uint32_t b, uint32_t c) {
-    return lintel::BobJenkinsHashMix3(a,b,c);
-}
-
-FUNC_DEPRECATED_PREFIX inline uint32_t 
-BobJenkinsHashMixULL(uint64_t v, uint32_t partial = 1972) FUNC_DEPRECATED;
-
-inline uint32_t 
-BobJenkinsHashMixULL(uint64_t v, uint32_t partial) {
-    return lintel::BobJenkinsHashMixULL(v, partial);
-}
-
 extern uint32_t HashTable_prime_list[];
 
 /// This is out here because C++ templates are sub-optimal.  All
@@ -382,14 +363,11 @@ private:
 		findNonemptyChain();
 	    }
 	}
-        // TODO: make this a reference.
-	t_hashtable_type *mytable;
+	t_hashtable_type *mytable; // Must be pointer for operator =
 	int32_t cur_chain;
 	int32_t chain_loc;
     };
 public:
-    // TODO: finish making this satisfy all the bits from
-    // /usr/include/boost/concept_archetype
     class iterator : public iterator_base<D, HashTable> {
     public:
 	iterator(const iterator &from) 

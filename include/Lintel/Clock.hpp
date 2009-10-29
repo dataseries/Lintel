@@ -133,12 +133,12 @@ public:
     /////////////////////////////////////////
     // Time of day routines...
 
+    // TODO-2010-04-01: remove deprecated functions
     FUNC_DEPRECATED_PREFIX static double tod() FUNC_DEPRECATED {
 	return TfracToDouble(todTfrac());
     }
 
-    // TODO-2009-10-01: deprecate this
-    static Tll todll() {
+    FUNC_DEPRECATED_PREFIX static Tll todll() FUNC_DEPRECATED {
 	struct timeval t;
 	CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
 	return (Tll)t.tv_sec * (Tll)1000000 + (Tll)t.tv_usec;
@@ -288,11 +288,8 @@ public:
     static void bindToProcessor(unsigned proc = 0); 
     static void unbindFromProcessor();
 
-    // nbadgettod counts the number of times we got the time of day, but
-    // switched CPUs or took forever to do it, thereby invalidating the
-    // effort to calibrate the cycle counter to the time of day.
-    // TODO: deprecate nbadgettod, bad_get_tod_cycle_gap.count() == nbadgettod
-    int nrecalibrate, nbadgettod;
+    /// how many times have we recalibrated?
+    size_t nrecalibrate;
     
     /// How many cycles did it take when we got the tod, but found
     /// that either the cycle counter had gone backwards, or that it

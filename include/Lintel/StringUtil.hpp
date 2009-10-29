@@ -38,10 +38,6 @@ split(const std::string &instr, const std::string &splitstr) {
 /** join parts, each entry separated by joinstr */
 std::string join(const std::string &joinstr, const std::vector<std::string> &parts);
 
-// TODO-joe: document what is escaped; for example, it doesn't escape
-// spaces; one possibility would be to make it equivalent to perl
-// quotemeta.
-
 /** escapes data for passing into MySQL; doesn't escape for string
     comparison functions (e.g. the LIKE operator).  Produces \verbatim \0 \' \"
     \b \n \r \t \Z (ASCII 26) and \\  \endverbatim
@@ -49,7 +45,6 @@ std::string join(const std::string &joinstr, const std::vector<std::string> &par
     See http://dev.mysql.com/doc/refman/5.0/en/string-syntax.html for
     further details on MySQL's string escaping requirements.
 */
-
 std::string mysqlEscape(const void * data, unsigned datasize);
 
 inline std::string mysqlEscape(const std::string &instr) {

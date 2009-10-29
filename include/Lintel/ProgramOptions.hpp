@@ -69,8 +69,7 @@ namespace lintel {
 	  ProgramOptionFnT;
 	typedef std::pair<std::string, ProgramOptionFnT> ProgramOptionPair;
 
-	// TODO-joe: we need to talk this through, I'm not convinced it's
-	// sufficiently future-proofed.
+	// TODO: Use the boost support for multiple option groups rather than what we do here.
 	boost::program_options::options_description &programOptionsDesc(bool is_hidden = false);
 	
 	std::vector<ProgramOptionPair> &programOptionsActions();

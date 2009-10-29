@@ -22,6 +22,8 @@
 #include <stdint.h>
 
 #include <cstddef>
+#include <limits>
+
 namespace lintel {
     class BoyerMooreHorspool {
     public:
@@ -50,29 +52,24 @@ namespace lintel {
 	@param hay_len the length of the data to match against
 	*/
 	bool matches(const void *haystack, size_t hay_len) const{
-	    return find(haystack, hay_len) != -1;
+	    return find(haystack, hay_len) != npos;
 	}
 	
 	/** Returns offset in haystack where needle can be found in @param haystack
-	    and -1 if the needle cannot be found.
+	    and npos if the needle cannot be found.
 	    
 	    @param haystack the data to match against
 	    @param hay_len the length of the data to match against
 	*/
-	// TODO-joe: make unsigend, define NPOS (which will happen to be -1 (numeric limits))
-	ssize_t find(const void *haystack, size_t hay_len) const;
+
+	size_t find(const void *haystack, size_t hay_len) const;
 	
+	/// value returned for no match, same as for string::find
+	static const size_t npos = static_cast<size_t>(-1);
     private:
 	void init(size_t needle_len);
 	static const uint32_t uint8_max = 255;
-	// TODO-done: can this actually be negative?  I don't think so.
-	//
-	// No it cannot be negative.
-	//
-	// TODO-done: add regression tests, in particular ones with
-	// characters above 128.
-	//
-	// See new tests, in particular hard_random.
+
 	size_t bad_char_shift[uint8_max + 1];
 	const uint8_t * const needle;
 	size_t needle_length;

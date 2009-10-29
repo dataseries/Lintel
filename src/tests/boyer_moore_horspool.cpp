@@ -9,13 +9,13 @@
 #include <string>
 using namespace lintel;
 
-ssize_t other_impl(const void * hay, size_t hay_len,
+size_t other_impl(const void * hay, size_t hay_len,
 		  const void * needle, size_t needle_len) {
     void * res = memmem(hay, hay_len, needle, needle_len);
     char * res_c = reinterpret_cast<char *>(res);
     const char * hay_c = reinterpret_cast<const char *>(hay);
     if (res_c == 0) {
-	return -1;
+	return BoyerMooreHorspool::npos;
     } else {
 	return res_c - hay_c; //Convert to offset
     }

@@ -59,7 +59,7 @@ namespace lintel {
         }
     }
 
-    ssize_t BoyerMooreHorspool::find(const void *hay_v, size_t hay_len) const {
+    size_t BoyerMooreHorspool::find(const void *hay_v, size_t hay_len) const {
 	const uint8_t *haystack = reinterpret_cast<const uint8_t *>(hay_v);
 
 	while (hay_len >= needle_length) {
@@ -70,11 +70,10 @@ namespace lintel {
 	    }
 	    
 	    size_t skip = bad_char_shift[haystack[last]];
-	    //TODO-code-review: invariant was wrong.
 	    if (hay_len < skip) break;
 	    hay_len -= skip;
 	    haystack += skip;
 	}
-	return -1;
+	return npos;
     }
 }

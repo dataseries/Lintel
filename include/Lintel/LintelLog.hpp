@@ -76,14 +76,20 @@ do { \
 /// no support for turning those levels on or off.
 class LintelLog {
 public:
-    // TODO-future: Please document the various levels.
     /// Similar to the logging levels from http://www.slf4j.org/ we
     /// skip the trace level of debugging (you'd want to log directly
     /// to DataSeries if you're going to write that much out), and add
     /// the Report level, which doesn't really match up with the
     /// standard hierarchy as it's intended for a different class of
     /// output, and is expected to be multi-line whereas the other
-    /// levels should stay on a single line.
+    /// levels should stay on a single line. 
+    ///
+    /// Report level logging is for writing out multi-line reports.  Debug
+    /// level logging is for detailed debugging information.  Info level
+    /// logging is for expected, but normal operation.  Warn level logging is
+    /// for unexpected problems tha the logger can automatically handle.  Error
+    /// level logging is for unexpected problems that the logger can not
+    /// automatically handle.
     enum LogType { Report, Debug, Info, Warn, Error, MaxLogType };
 
     typedef boost::function<void (const std::string &, const LogType)> 

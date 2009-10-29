@@ -148,8 +148,6 @@ public:
 	return iterator(*this, q_back);
     }
 
-    // TODO: add tests that check for proper destruction of items in
-    // the queue.  Do the same thing for hashmap.
     void clear() {
 	if (!empty()) {
 	    size_t max = q_back > q_front ? q_back : q_size;
