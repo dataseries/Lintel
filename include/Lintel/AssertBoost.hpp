@@ -14,7 +14,9 @@
 
 #include <boost/format.hpp>
 #include <boost/function.hpp>
+
 #include <Lintel/CompilerMarkup.hpp>
+#include <Lintel/DebugFlag.hpp>
 
 class AssertBoostException : public std::exception {
 public:
@@ -107,14 +109,7 @@ extern std::string global_assertboost_no_details;
 /// Simple Invariant, lets us stop writing additional bits that mean nothing
 #define SINVARIANT(ExpressioN) INVARIANT(ExpressioN, global_assertboost_no_details);
 
-// allow for -DDEBUG=0
-#ifdef DEBUG
-#    if DEBUG
-#        define LINTEL_ASSERT_BOOST_DEBUG 1
-#    endif
-#endif
-
-#if LINTEL_ASSERT_BOOST_DEBUG
+#if LINTEL_DEBUG
 #    define DEBUG_INVARIANT(ExpressioN, MessagE) INVARIANT(ExpressioN, MessagE)
 #    define DEBUG_SINVARIANT(ExpressioN) INVARIANT(ExpressioN, global_assertboost_no_details);
 #else

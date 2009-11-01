@@ -389,14 +389,14 @@ double StatsQuantile::getQuantileByIndex(uint64_t target_index) const {
 	tmp_pq.push(make_pair(collapseVal(cur_buffer), cur_buffer));
     }
 
-#if LINTEL_ASSERT_BOOST_DEBUG
+#if LINTEL_DEBUG
     double prev_val = -Double::Inf;
 #endif
     while(!tmp_pq.empty()) {
 	double min_val = tmp_pq.top().first;
 	int min_buffer = tmp_pq.top().second;
 
-#if LINTEL_ASSERT_BOOST_DEBUG
+#if LINTEL_DEBUG
 	SINVARIANT(collapse_pos[min_buffer] < buffer_size && 
 		   (min_buffer < cur_buffer || collapse_pos[min_buffer] < cur_buffer_pos));
 	INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");

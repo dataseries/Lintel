@@ -221,7 +221,7 @@ namespace lintel {
     /// Program option which won't appear in the usage unless in debug mode
     template<typename T> class TestingOption : public ProgramOption<T> {
     public:	
-#if LINTEL_ASSERT_BOOST_DEBUG
+#if LINTEL_DEBUG
 	static const bool show_description = true;
 #else
 	static const bool show_description = false;

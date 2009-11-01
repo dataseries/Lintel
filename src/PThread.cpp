@@ -192,7 +192,7 @@ PThreadScopedOnlyMutex::~PThreadScopedOnlyMutex() {
     int ret = pthread_mutex_destroy(&m);
     INVARIANT(ret == 0,
 	      format("unable to destroy mutex: %s") % strerror(ret));
-#if DEBUG
+#if LINTEL_DEBUG
     memset(&m, 0x55, sizeof(m));
 #endif
 }

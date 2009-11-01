@@ -9,6 +9,8 @@
     enhanced assert functionality
 */
 
+// TODO-2010-04-01: remove
+#warning "Lintel Assert will be removed after 2010-04-01"
 /*
 *******************************************************************************
 * Usage:

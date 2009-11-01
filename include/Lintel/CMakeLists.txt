@@ -12,6 +12,7 @@ SET(INCLUDE_FILES
 	Clock.hpp
 	CompilerMarkup.hpp
 	ConstantString.hpp
+	DebugFlag.hpp
 	Deque.hpp
 	Double.hpp
 	HashFns.hpp

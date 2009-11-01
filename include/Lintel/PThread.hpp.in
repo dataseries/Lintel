@@ -84,7 +84,7 @@ public:
 
 class PThreadScopedOnlyMutex : boost::noncopyable {
 public:
-#if DEBUG
+#if LINTEL_DEBUG
 #define LINTEL_PTHREAD_DEFAULT_ERRORCHECK true
 #else
 #define LINTEL_PTHREAD_DEFAULT_ERRORCHECK false

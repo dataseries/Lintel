@@ -19,6 +19,7 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Clock.hpp>
 #include <Lintel/Double.hpp>
+#include <Lintel/HashFns.hpp>
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/StatsQuantile.hpp>
@@ -72,8 +73,8 @@ public:
 	checkQuantile(tmp, "duplicate-backward-interleave");
 	tmp.reset();
 
-	uint32_t seed = getpid() ^ (Clock::cycleCounter() & 0xFFFFFFFF)
-	    ^ (Clock::todll() & 0xFFFFFFFF);
+	uint32_t seed = lintel::BobJenkinsHashMix3(getpid(), Clock::cycleCounter() & 0xFFFFFFFF,
+						   Clock::todTfrac() >> 32);
 	cout << format("quantile-check seeding with %d\n") % seed;
 	MersenneTwisterRandom mt(seed);
 
