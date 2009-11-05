@@ -72,7 +72,7 @@ sub DESTROY {
 
     if ($this->nChildren() > 0) {
 	unless (defined $this->{auto_kill_on_destroy}) {
-	    warn "deleting process manager with children still present, auto-kill\n ";
+	    warn "Lintel::ProcessManager($$): deleting process manager with children still present, auto-kill\n ";
 	    $this->{auto_kill_on_destroy} = 1;
 	}
 	if ($this->{auto_kill_on_destroy}) {
@@ -88,7 +88,7 @@ sub waitForFile {
     my ($this, $path) = @_;
 
     return unless defined $path;
-    print "Wait for file $path to be created\n" if $this->{debug};
+    print "Lintel::ProcessManager($$): Wait for file $path to be created\n" if $this->{debug};
     for(my $start = time; ! -f $path; ) {
 	my $delay = time - $start;
 	die "Waited too long ($delay seconds) for fork to make $path" 
@@ -154,7 +154,7 @@ sub fork {
     if ($this->{debug}) {
 	my $stdout = $opts{stdout} || 'STDOUT';
 	my $stderr = $opts{stdout} || 'STDERR';
-	print "Running '$cmd', stdout=$stdout, stderr=$stderr\n";
+	print "Lintel::ProcessManager($$): Running '$cmd', stdout=$stdout, stderr=$stderr\n";
     }
 
     if (defined $opts{stdout} && -f $opts{stdout}) {
@@ -165,10 +165,10 @@ sub fork {
     }
     my $pid = fork;
     confess "fork failed: $!" unless defined $pid && $pid >= 0;
-    print "Lintel::ProcessManager: post-fork $pid $$\n" if $this->{debug};
+    print "Lintel::ProcessManager($$): post-fork $pid\n" if $this->{debug};
 
     if ($pid == 0) { 
-	print "Child $$\n" if $this->{debug};
+	print "Lintel::ProcessManager($$): Child\n" if $this->{debug};
 	$this->{children} = {};
 	if ($opts{setpgid}) {
 	    print "setpgid -- $$\n" if $this->{debug};
@@ -189,7 +189,7 @@ sub fork {
 		    or die "Can't write to $opts{stderr}: $!";
 	    }
 	}
-	print STDERR "exec $cmd -- $$\n" if $this->{debug};
+	print STDERR "Lintel::ProcessManager($$): exec $cmd\n" if $this->{debug};
 
 	if (ref $opts{cmd} eq 'ARRAY') {
 	    exec @{$opts{cmd}};
@@ -204,7 +204,7 @@ sub fork {
 	confess "exec($cmd) failed: $!";
     }
 
-    print "Lintel::ProcessManager: Parent ($pid)\n" if $this->{debug};
+    print "Lintel::ProcessManager($$): Parent ($pid)\n" if $this->{debug};
     $this->waitForFile($opts{stdout});
     $this->waitForFile($opts{stderr}) unless defined $opts{stderr} && $opts{stderr} eq 'STDOUT';
 
@@ -231,15 +231,15 @@ sub wait {
     confess "Can't call wait from inside signal handler -- race condition"
 	if $this->{in_signal_handler};
 
-    confess "Can't call wait without any children" 
-	unless $this->nChildren() > 0;
     my %exited;
     my $exit_count = 0;
     my $started = time;
     while (1) {
+	confess "Can't call wait without any children" 
+	    unless $this->nChildren() > 0;
 	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
 	    my $status = $?;
-	    print "exit($child) -> $status\n" if $this->{debug};
+	    print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
 	    
 	    $exited{$child} = $status;
 	    ++$exit_count;
@@ -253,6 +253,26 @@ sub wait {
 	    }
 	}
 	if ($exit_count == 0) {
+	    if ($! eq 'No child processes') {
+
+		# Added this check in because in at least one case, we got
+		# stuck in an infinite loop waiting for a child to exit when
+		# there was no sub-process .  Second check about can-signal was
+		# added because we had cases (debian etch 32bit user, 64bit
+		# kernel) where 'no child processes' was returned and yet,
+		# there were children as per the pstree
+
+		my @can_signal;
+
+		foreach my $child ($this->children()) {
+		    push(@can_signal, $child) if kill 0, $child;
+		}
+		
+		if (@can_signal == 0) {
+		    # system("pstree -p $$");
+		    confess "Lintel::ProcessManager($$): Internal error, wait returned 'no children', can not signal any children, yet child list is still: (" . join(", ", $this->children()) . "), and exit count is 0";
+		}
+	    }
 	    last if defined $timeout && time >= $started + $timeout;
 	    select(undef, undef, undef, 0.1);
 	} else {

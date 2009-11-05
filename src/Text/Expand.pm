@@ -86,7 +86,7 @@ my @list = expandString("foo[1,7,11]-[1-5%2,9-13%2]");
 # entries.  Each entry is either a single integer (#), a range of
 # integers (#-#), or a range of integers with a step (#-#%#).
 
-=head1 TODO
+=head1 TO FIX
 
 It would be nice if we could specify non-integer constructs for ,
 separated expansion, and possibly for constructs like a-z for -
