@@ -10,17 +10,20 @@
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include <Lintel/PriorityQueue.hpp>
 
+using namespace std;
+
 template<class T, class U>
 void check(const T &queue_1, const U &queue_2) {
     if (queue_1.empty()) {
 	SINVARIANT(queue_2.empty());
     } else {
-	SINVARIANT(queue_1.size() == queue_2.size() && queue_1.top() == queue_2.top());
+	SINVARIANT(queue_1.size() == queue_2.size());
+	SINVARIANT(queue_1.top() == queue_2.top());
     }
 }
 	   
 void test_basic() {
-    MersenneTwisterRandom mt;
+    MersenneTwisterRandom mt(1933);
 
     std::priority_queue<int> stl_queue;
     PriorityQueue<int> lintel_queue;
@@ -30,14 +33,17 @@ void test_basic() {
 	stl_queue.push(v);
 	lintel_queue.push(v);
 	check(stl_queue, lintel_queue);
+	lintel_queue.selfVerify();
     }
 
     while(!lintel_queue.empty()) {
 	check(stl_queue, lintel_queue);
 	stl_queue.pop();
 	lintel_queue.pop();
+	lintel_queue.selfVerify();
     }
     check(stl_queue, lintel_queue);
+    cout << "Basic test passed.\n";
 }
 
 // interleave pushes and pops

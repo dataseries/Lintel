@@ -46,7 +46,7 @@
 // The net effect of the above will be to return the data from smallest
 // key value to largest key value from the priority queue.
 
-template<class T, class LessImportant = std::less<T> >
+template<class T, class LessImportant = std::less_equal<T> >
 class PriorityQueue : boost::noncopyable {
 public:
     PriorityQueue(int initial_size = 1024/sizeof(T)) 
@@ -92,6 +92,45 @@ public:
 	    }
 	    pq[cur_pos] = pq[pq_size];
 	}
+    }
+
+    // TODO: look at http://www.mpi-inf.mpg.de/~sanders/papers/spqjea.ps.gz see
+    // if the bottom up heuristic can be adapted when we don't have a supremum
+    // (which we don't for example, for strings); problem is that this
+    // implementation is slower than the one above, and the one they have.  Some
+    // possibilities: 1) it's the 2*n + 1 calculation and we should index the
+    // priority queue starting at 1.  2) It's the extra size check on the way
+    // down.
+    void pop_bottom_up_heuristic() {
+	DEBUG_SINVARIANT(pq_size > 0);
+	uint32_t hole = 0;
+	uint32_t down = 1;
+
+	while(down < pq_size) {
+	    if (down + 1 == pq_size || lessimportant(pq[down+1], pq[down])) { 
+		// one child, or rhs < lhs, so pick lhs
+	    } else { // rhs bubbles up
+		++down;
+	    } 
+	    pq[hole] = pq[down];
+	    hole = down; 
+	    down = 2*down + 1;
+	}
+
+	T &back(pq[pq_size - 1]);
+	if (hole > 0) {
+	    SINVARIANT(lessimportant(back, back)); // make sure loop below will terminate
+
+	    uint32_t up = (hole - 1) / 2;
+	    while (!lessimportant(back, pq[up])) { // back more important, move hole up
+		pq[hole] = pq[up];
+		hole = up;
+		up = (hole - 1) / 2;
+	    }
+	}
+
+	pq[hole] = back;
+	--pq_size;
     }
 
     void push(const T &val) {
@@ -160,6 +199,17 @@ public:
 	}
     }
 	
+    void selfVerify() {
+	for(uint32_t i = 0; i < pq_size; ++i) {
+	    uint32_t down_left = 2 * i + 1;
+	    if (down_left >= pq_size) break;
+	    SINVARIANT(!lessimportant(pq[i], pq[down_left]));
+	    uint32_t down_right = down_left + 1;
+	    if (down_right >= pq_size) break;
+	    SINVARIANT(!lessimportant(pq[i], pq[down_right]));
+	}
+    }
+
     // Think hard before using these.
     T *PQ_Begin() { return pq; };
     T *PQ_End() { return pq + pq_size; }
