@@ -1,5 +1,5 @@
 #!@PERL_PATH@ -w
-# -*- Perl -*-
+# vim: set filetype=perl: # -*- Perl -*-
 use strict;
 use Carp;
 use Data::Dumper;
@@ -11,7 +11,7 @@ use FileHandle;
 use Getopt::Long;
 use Safe;
 
-@PERL5_MODULES_INC_UNSHIFT@;
+@PERL5_MODULES_INC_UNSHIFT@
 use Lintel::ProcessManager;
 
 # TODO: redo file to conform with new coding convention
@@ -197,7 +197,7 @@ sub find_drives {
     my @devices;
 
     find(sub { return unless $File::Find::name =~ m!^/dev/[a-z]!o && -b $_;
-	       #print "Hi $File::Find::name\n"; 
+#	       print "Hi $File::Find::name\n"; 
 	       push(@devices, $File::Find::name); }, 
 	 "/dev");
 
@@ -225,6 +225,13 @@ sub find_drives {
 
 	my $serial = serialNumber($drive);
 	my $sysfs_id = sysfsIdNumber($drive);
+	$config{all_drives}->{$drive} = {
+	    serial => $serial,
+	    sysfs_id => $sysfs_id
+	} if defined($serial) || defined($sysfs_id);
+	$config{all_serials}->{$serial} = $drive if defined ($serial);
+	$config{all_sysfs_ids}->{$sysfs_id} = $drive if defined ($sysfs_id);
+
 	if (! defined $serial && ! defined $sysfs_id) {
 	    push(@no_id_info, $drive);
 	} elsif (defined $serial && $config{serials}{$serial}) {
