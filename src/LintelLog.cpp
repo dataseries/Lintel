@@ -188,6 +188,13 @@ void LintelLog::consoleTimeAppender(const std::string &msg, LogType logtype)
 void LintelLog::log(const string &msg, const LogType log_type)
 {
     maybeInitInstance();
+    // TODO: the next lock statement can deadlock because we were called
+    // recursively.  Unfortunately, one (large) case where this can happen
+    // is people trying to use logging to output error from segmentation
+    // faults that happen while logging.  The obvious thing to do is to use
+    // timedLock, but that doesn't work becuase the instance mutex is a 
+    // simple mutex so that it works without being linked with libpthread.
+    // Not clear what the right solution is.
     instance->mutex.lock();
     if (instance->appenders.empty()) {
 	consoleAppender(msg, log_type);
