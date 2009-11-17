@@ -166,6 +166,14 @@ namespace lintel {
 	///             should be a static string
 	/// @param in_default_val default value for the option
 	ProgramOption(const std::string &name, const std::string &desc, 
+		      // TODO: This should be removed, and we should
+		      // force people to specify a default Make a
+		      // 2-arg and a 3 arg, and put
+		      // FUNC_DEPRECATED_PREFIX before the 2 valued
+		      // and FUNC_DEPRICATED after it, the fix a bunch of them.
+		      // 
+		      // May want to check downstream packages if a
+		      // similar todo is in there.
 		      const T &in_default_val = T())
 	    : default_val(in_default_val)
 	{
