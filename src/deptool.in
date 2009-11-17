@@ -983,7 +983,7 @@ sub dbpStartBuild {
 	next unless $type eq 'build';
 
 	unless (-d $build_path) {
-	    mkdir($build_path, 0777) or die "Can not mkdir($build_path): $!";
+	    mkpath($build_path) or die "Can not mkdir($build_path): $!";
 	}
 	aliasChdir($build_path);
 
