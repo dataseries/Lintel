@@ -94,6 +94,7 @@ public:
 	}
     }
 
+    // TODO: look at http://www.diku.dk/~jyrki/Paper/CATS98.ps; 
     // TODO: look at http://www.mpi-inf.mpg.de/~sanders/papers/spqjea.ps.gz see
     // if the bottom up heuristic can be adapted when we don't have a supremum
     // (which we don't for example, for strings); problem is that this
