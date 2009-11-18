@@ -152,6 +152,7 @@ sub toMap {
     return $in unless defined $in;
     return $in if ref $in eq 'HASH';
 
+    return { $in => 1 } unless ref $in;
     confess "$in from $what not an array" unless ref $in eq 'ARRAY';
     
     my %ret;
@@ -183,14 +184,20 @@ sub readConfig {
 	%config = %$result;
 	$config{debug} ||= $Global::debug;
 	$config{serials} = toMap($config{serials}, 'serials');
-	$config{sysfsids} = toMap($config{sysfsids});
+	print "Hi-sysfs_ids $config{sysfs_ids}\n" if $Global::debug;
+	$config{sysfs_ids} = toMap($config{sysfs_ids}, 'sysfs_ids');
+	print "Hi-sysfs_ids ", join(", ", keys %{$config{sysfs_ids}}), "\n" if $Global::debug;
+
+
+	# TODO: it would be nice to know all the possible valid config names and
+	# check that there aren't any unknown ones.
     }
 
     die "No drivepattern's found in $config_path"
 	unless defined $config{drivepatterns} && @{$config{drivepatterns}} > 0;
 }
 
-sub find_drives {
+sub findDrives {
     return @Global::drives if @Global::drives > 0;
     
     readConfig();
@@ -210,11 +217,17 @@ sub find_drives {
 
 	foreach my $pat (@{$config{drivepatterns}}) {
 	    if (/^$pat$/) {
+		print "$_ matches $pat\n" if $Global::debug;
 		push(@drives, $_);
 		last;
+	    } else {
+		print "$_ does not match $pat\n" if $Global::debug;
 	    }
 	}
     }
+
+    print "Allowed serial numbers: ", join(", ", sort keys %{$config{serials}}), "\n";
+    print "Allowed sysfs ids: ", join(", ", sort keys %{$config{sysfs_ids}}), "\n";
 
     @drives = sort bydriveorder @drives;
     my $count = @drives;
@@ -223,8 +236,8 @@ sub find_drives {
     foreach my $drive (@drives) {
 	is_drive($drive);
 
-	my $serial = serialNumber($drive);
-	my $sysfs_id = sysfsIdNumber($drive);
+	my $serial = serialNumber($drive) || '';
+	my $sysfs_id = sysfsIdNumber($drive) || '';
 	$config{all_drives}->{$drive} = {
 	    serial => $serial,
 	    sysfs_id => $sysfs_id
@@ -243,7 +256,7 @@ sub find_drives {
 	    push(@Global::drives, $drive);
 	    print "$drive";
 	} else {
-	    print "\n$drive(serial='$serial', $sysfs_id='$sysfs_id')\n" if $config{debug};
+	    print "\nno match $drive(serial='$serial', sysfs_id='$sysfs_id')\n" if $config{debug};
 	    push(@{$config{not_used_drives}}, $drive);
 	}
     }
@@ -257,29 +270,41 @@ sub find_drives {
 }
 
 sub list {
-    my @drives = find_drives();
-    if (@{$config{not_used_drives}}) {
+    my @drives = findDrives();
+    if (defined $config{not_used_drives} && @{$config{not_used_drives}}) {
 	print "Unused drives: ", join(", ", @{$config{not_used_drives}}), "\n";
     }
     exit(0);
 }	
 
+sub removeMeta {
+    local ($_) = @_;
+
+    s/\W/_/go;
+    return $_;
+}
+
 sub partitionDrives {
-    my @drives = find_drives();
+    my @drives = findDrives();
 
     my %ok = get_ok_partitions();
 
     print "drives partitioned correctly: ";
     my @ok = sort bydriveorder keys %ok;
     print join(", ", @ok), "\n";
+    my @logs;
     print "partitioning: ";
     my $first = 1;
     foreach my $drive (@drives) {
-	next if $ok{$drive};
+	my $log = removeMeta($drive);
+	if ($ok{$drive}) {
+	    unlink("/tmp/lintel-disktool.partition.$log");
+	    next;
+	}
 	print ", " unless $first;
 	$first = 0;
 	print "$drive";
-	open(SFDISK, "| sfdisk /dev/$drive >/dev/null 2>&1")
+	open(SFDISK, "| sfdisk /dev/$drive >/tmp/lintel-disktool.partition.$log 2>&1")
 	    or die "??";
 	print SFDISK "0,\n";
 	close(SFDISK);
@@ -290,7 +315,10 @@ sub partitionDrives {
 	print "checking...";
 	my %new_ok = get_ok_partitions();
 	foreach my $drive (@drives) {
-	    die "$drive isn't ok??" unless $new_ok{$drive};
+	    my $log = removeMeta($drive);
+	    die "$drive isn't ok, examine /tmp/lintel-disktool.partition.$log??" 
+		unless $new_ok{$drive};
+	    unlink("/tmp/lintel-disktool.partition.$log");
 	}
 	print "all correct.\n";
     }
@@ -355,7 +383,7 @@ sub nextUnique {
 }
 
 sub formatDrives {
-    my @drives = find_drives();
+    my @drives = findDrives();
     my %ok = get_ok_partitions();
     my %mounted = getMounted(1);
 
@@ -446,7 +474,7 @@ sub formatDrives {
 }
 
 sub fsckDrives {
-    my @drives = find_drives();
+    my @drives = findDrives();
 
     my %mounted = getMounted(1);
 
@@ -495,7 +523,7 @@ sub fsckDrives {
 
     
 sub mountDrives {
-    my @drives = find_drives();
+    my @drives = findDrives();
     my %mounted = getMounted(1);
     my %revmounted = reverse %mounted;
     
@@ -599,7 +627,7 @@ sub zeroDrives {
     } else {
 	$regex = qr/./;
     }
-    my @drives = find_drives();
+    my @drives = findDrives();
     die "no drives??" unless @drives > 0;
 
     my %mounted = getMounted();
@@ -824,7 +852,7 @@ sub get_sfdisk_info {
     # drives, we'll still choke on a broken drive, and instead try to
     # probe only those drives listed as OK to poke.
 
-    my @drives = find_drives();
+    my @drives = findDrives();
     my %ok;
     my %sizes;
 
