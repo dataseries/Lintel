@@ -31,11 +31,25 @@ my $ret = GetOptions('waittime=i' => \$waittime,
 		     'command=s' => \$command,
 		     'man!' => \$print_manpage);
 
+my @command;
+@command = ($command) if defined $command;
+
+if (@ARGV > 0) {
+    die "Can't specify command and have left over arguments (@ARGV)"
+        if defined $command;
+    die "Can't specify unlock and have left over arguments (@ARGV)"
+        if defined $unlock;
+    die "Can't specify calling pid and have left over arguments (@ARGV)"
+        if defined $callpid;
+    @command = @ARGV;
+} 
+
+
 if ($print_manpage) {
     pod2usage(-verbose => 2, -exitval => 0);
 }
 
-pod2usage() unless $ret && @ARGV == 0;
+pod2usage() unless $ret;
 
 if (defined $unlock) {
     if (unlock($unlock)) {
@@ -51,11 +65,11 @@ die "Invalid waittime $waittime, should be >= 0"
 die "missing filename for lock"
     unless defined $filename;
 
-if (defined $command) {
+if (@command > 0) {
     my $fh = Lintel::File::Lock::getLock($filename, $waittime, $verbose);
 
     if (defined $fh) {
-	my $ret = system($command);
+	my $ret = system(@command);
 	my $exit = $ret >> 8;
 	$exit = 233 if $exit == 0 && $ret != 0;
 	exit($exit);
@@ -156,9 +170,10 @@ lintel-flock - a program for running exclusive operations
  % lintel-flock [--verbose] [--man]
   Lock mode options:
     --filename=<lock filename> [--waittime=<seconds>] 
-    either of next two lines: 
+    either of next three lines: 
       --command='...', runs command under a lock, releases lock on completiong
       --callpid=<pid>
+      [--] command..., same as --command but doesn't require quoting.
   Unlock mode options:
     --unlock=<string from lock command with callpid>
   Note: filename should be on the local filesystem.  Shared filesystems
@@ -174,7 +189,10 @@ In command execution mode, you just specify a lock filename and a
 command.  C<lintel-flock> will wait for the lock to be available, and
 then run the command.  You can optionally specify a maximum time to
 wait for the lock to become available, if the lock remains held until
-that time, C<lintel-flock> will exit with an error.
+that time, C<lintel-flock> will exit with an error.  If your command has
+'-' arguments in it, you either need to include the -- to indicate the
+end of arguments to lintel-flock, or use the --command='...' variant
+to specify the command.
 
 In script mode, you specify a lock filename and a calling pid.
 C<lintel-flock> will wait for the lock to become available or the

@@ -54,7 +54,7 @@ verify_locked() {
 
 verify_unlocked
 echo "Starting sleep `date`..."
-$builddir/lintel-flock --filename=$LOCKFILE --command='sleep 30' &
+$builddir/lintel-flock --filename=$LOCKFILE --command="sleep 30" &
 SLEEP_PID=$!
 sleep 2
 echo "Starting lock timeout at `date`..."
@@ -70,7 +70,7 @@ verify_unlocked
 echo "Starting parallel test ($0)"
 echo 0 >$LOCKFILE-count
 for i in 1 2 3 4 5 6 7 8 9 10; do
-    $builddir/lintel-flock --filename=$LOCKFILE --command="$0 -count $LOCKFILE-count" &
+    $builddir/lintel-flock --filename=$LOCKFILE -- $0 -count $LOCKFILE-count &
 done
 wait
 if [ "`cat $LOCKFILE-count`" = "10" ]; then
