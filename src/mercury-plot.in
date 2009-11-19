@@ -785,7 +785,6 @@ sub barplot {
 
     gnuplot('set ticscale 0');
     gnuplot("set xtics ($xtics_vals)");
-    print "VEEB $xtics_vals\n";
 }
 
 sub start_gnuplot {
