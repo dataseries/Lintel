@@ -23,3 +23,18 @@
   isbn      = {978-1-60558-406-5},
   bibsource = {DBLP, http://dblp.uni-trier.de}
 }
+
+
+@inproceedings{saito:fab:asplos2004,
+ author = {Saito, Yasushi and Fr{\o}lund, Svend and Veitch, Alistair and Merchant, Arif and Spence, Susan},
+ title = {FAB: building distributed enterprise disk arrays from commodity components},
+ booktitle = {ASPLOS-XI: Proceedings of the 11th international conference on Architectural support for programming languages and operating systems},
+ year = {2004},
+ isbn = {1-58113-804-0},
+ pages = {48--58},
+ location = {Boston, MA, USA},
+ doi = {http://doi.acm.org/10.1145/1024393.1024400},
+ publisher = {ACM},
+ address = {New York, NY, USA},
+ abstract = {This paper describes the design, implementation, and evaluation of a Federated Array of Bricks (FAB), a distributed disk array that provides the reliability of traditional enterprise arrays with lower cost and better scalability. FAB is built from a collection of bricks, small storage appliances containing commodity disks, CPU, NVRAM, and network interface cards. FAB deploys a new majority-voting-based algorithm to replicate or erasure-code logical blocks across bricks and a reconfiguration algorithm to move data in the background when bricks are added or decommissioned. We argue that voting is practical and necessary for reliable, high-throughput storage systems such as FAB. We have implemented a FAB prototype on a 22-node Linux cluster. This prototype sustains 85MB/second of throughput for a database workload, and 270MB/second for a bulk-read workload. In addition, it can outperform traditional master-slave replication through performance decoupling and can handle brick failures and recoveries smoothly without disturbing client requests.}
+}

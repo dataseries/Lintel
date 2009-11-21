@@ -1,0 +1,21 @@
+@inproceedings{baldoni:unconscious-eventual-consistency-with-gossips:sss2007,
+    author = {Roberto Baldoni and Rachid Guerraoui and Ron R. Levy and Vivien Quéma and Sara Tucci Piergiovanni},
+    title = {Unconscious eventual consistency with gossips},
+    booktitle = {In Proceedings of the Eight International Symposium on Stabilization, Safety and Security of Distributed Systems},
+    year = {2007},
+    publisher = {Springer},
+    abstract = {This paper presents a replication protocol that ensures even-
+tual consistency in large-scale distributed systems subject to network
+partitions and asynchrony. A simulation study shows that the resulting
+protocol is scalable and achieves high throughput under load.
+Our protocol does not rely on any form of consensus, which would lead
+to block the replicas in case of partitions and asynchrony. Our protocol
+instead ensures that (1) updates are continuously applied to the replicas
+and (2) no two updates are ever performed in a different order. Gaps
+might occur during periods of unreliable communication. They are filled
+whenever connectivity is provided, and consistency is then eventually en-
+sured, but without any conscious commitment. That is, there is no point
+in the computation when replicas know that consistency is achieved. This
+unconsciousness is the key to tolerating perpetual asynchrony with no
+consensus support.}
+}

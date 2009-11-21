@@ -10,3 +10,15 @@
   year = "2006",
   note = "Available at \url{http://www.usenix.org/events/nsdi06/tech/full_papers/reynolds/reynolds.pdf} Accessed June 2009"
 }
+
+@inproceedings{stribling:wheelfs:nsdi2009,
+ author = {Stribling, Jeremy and Sovran, Yair and Zhang, Irene and Pretzer, Xavid and Li, Jinyang and Kaashoek, M. Frans and Morris, Robert},
+ title = {Flexible, wide-area storage for distributed systems with WheelFS},
+ booktitle = {NSDI'09: Proceedings of the 6th USENIX symposium on Networked systems design and implementation},
+ year = {2009},
+ pages = {43--58},
+ location = {Boston, Massachusetts},
+ publisher = {USENIX Association},
+ address = {Berkeley, CA, USA},
+ abstract = { WheelFS is a wide-area distributed storage system intended to help multi-site applications share data and gain fault tolerance. WheelFS takes the form of a distributed file system with a familiar POSIX interface. Its design allows applications to adjust the tradeoff between prompt visibility of updates from other sites and the ability for sites to operate independently despite failures and long delays. WheelFS allows these adjustments via semantic cues, which provide application control over consistency, failure handling, and file and replica placement. WheelFS is implemented as a user-level file system and is deployed on PlanetLab and Emulab. Three applications (a distributed Web cache, an email service and large file distribution) demonstrate that WheelFS's file system interface simplifies construction of distributed applications by allowing reuse of existing software. These applications would perform poorly with the strict semantics implied by a traditional file system interface, but by providing cues to WheelFS they are able to achieve good performance. Measurements show that applications built on WheelFS deliver comparable performance to services such as CoralCDN and BitTorrent that use specialized wide-area storage systems.}
+}
