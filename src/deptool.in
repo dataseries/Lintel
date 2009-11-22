@@ -130,42 +130,15 @@ to force reconfiguration, you may need commands like:
     % deptool cmake # rebuild the cmake configuration
     % make -j $MAKE_PARALLELISM # rebuild in parallel using the deptool env
 
-If you need to add a dependency, then you need to edit the file
-.version_control_deps so that it lists the dependencies.  The file
-simply contains one line that lists branch substrings that should be
-built and installed before the current source directory is built.  If
-you want special builds, then you can list them as
-'I<dependency>;I<sub-build-type>' (without the '').  This input has the
-same effect as creating a dependency where you run b I<sub-build-type> and
-then build in that directory.
+To use deptool, you need to have at least a minimal deptool.config file 'C<{
+}>'.  This file is described in detail in the deptool.config section.  A more
+normal configuration file would list the dependencies and enable parallel
+testing.  Such a configuration might look like the following:
 
-To control parallel builds, you need to edit the file deptool.config
-(note this will eventually replace .version_control_deps).
-deptool.config should be a file that returns a hash reference.  The
-hash reference has a series of options inside it that control how
-deptool will operate.  Options include:
-
-=over 4
-
-=item parallel_test => [0|1]
-
-Should deptool execute the tests for this directory in parallel.  The
-default is 0 (no).
-
-=item parallel_test_path => sub { my ($build_path) = @_; return 0|1; }
-
-Given the current build path, should deptool execute tests in
-parallel?  This function allows you to have parallel tests for some
-build modes and not for others.
-
-=item sequential_tests => [qr/test-name-re/,...]
-
-Specify a list of regex's for tests that have to be run sequentially.  All of
-the sequential tests will be executed before any of the parallel tests.  It is
-an error for a regexp to match multiple tests or no tests.  This option has no
-effect if parallel tests are not enabled.
-
-=back
+    {
+	dependencies => [qw/Lintel OtherPackage/],
+	parallel_test => 1,
+    }
 
 =cut
 
@@ -178,7 +151,6 @@ my $monotone_dir = $ENV{MONOTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
 $Global::last_stamp_timestamp = time();
-
 
 my @original_arguments = @ARGV;
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
@@ -283,8 +255,6 @@ Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
 help("all") if $print_manpage;
 
 usage("Missing argument") if @ARGV == 0;
-
-readConfigFile();
 
 my %commands = ('checkout' => \&depCheckout,
 		'co' => \&depCheckout,
@@ -757,7 +727,8 @@ will use latter."
         my $branch = shift @possibles;
         foreach $_ (@possibles) {
             die "multiple non-prefixed matches for $branch_regex:
-$branch $_\nYou need to provide more specificity in the .version_control_deps file\n " 
+$branch $_
+You need to provide more specificity in the dependencies in deptool.config\n " 
 		unless /^$branch/;
         }
         
@@ -783,10 +754,10 @@ END
         
             runCommand("mtn -d $db co -b $branch $path");
         }
-        my @vcdeps = readVCDeps("$path/.version_control_deps");
-        if (@vcdeps > 0) {
-            print "Adding VC dependencies: ", join(" ", @vcdeps), "\n";
-            push(@branch_regexes, @vcdeps);
+	my $config = readConfig($path);
+        if (defined $config->{dependencies} && @{$config->{dependencies}} > 0) {
+            print "Adding VC dependencies: ", join(" ", @{$config->{dependencies}}), "\n";
+            push(@branch_regexes, @{$config->{dependencies}});
         }
     }        
 }
@@ -1248,28 +1219,6 @@ sub dbpStartParallelTest {
     return $build_path;
 }
 
-# TODO: drop .version_control_deps, and move into deptool.config
-sub readConfig {
-    my ($cfg_path) = @_;
-
-    unless (-r $cfg_path) {
-	print "Warning, missing $cfg_path\n";
-	return {};
-    }
-
-    my $fh = new FileHandle($cfg_path)
-	or die "Can not open $cfg_path for read: $!";
-    # slurp mode
-    local $/; 
-    my $file = <$fh>;
-
-    my $compartment = new Safe;
-    my $result = $compartment->reval($file);
-    die "Unable to evaluate $cfg_path: $@" if $@;
-    die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
-    return $result;
-}
-
 sub dbpStartWhich {
     my ($which, $children, $pending, $dependencies) = @_;
 
@@ -1289,7 +1238,7 @@ sub dbpStartWhich {
 	if ($which_stamp <= $build_stamp) {
 	    aliasChdir($build_path);
 	    if ($which eq 'test') {
-		my $config = readConfig(projects() . "/$info->{src}/deptool.config");
+		my $config = readConfig(projects() . "/$info->{src}");
 		if ($config->{parallel_test} 
 		    || (defined $config->{parallel_test_path} 
 			&& &{$config->{parallel_test_path}}($build_path))) {
@@ -1391,7 +1340,6 @@ sub depBuildParallel {
 	my $build_path = projectBuildPath($options->{builddir}, $src, $sub_build_type);
 	next if defined $dependencies{$build_path};
 	aliasChdir("$projects/$src");
-	my @vcdeps = readVCDeps(".version_control_deps");
 
 	my $info = $dependencies{$build_path} = { 
 	    src => $src,
@@ -1399,6 +1347,7 @@ sub depBuildParallel {
 	};
 	
 	next if $options->{local_only};
+	my @vcdeps = getVCDeps(aliasGetCwd());
 	foreach my $dep (@vcdeps) {
 	    my ($dep_project, $dep_sub_type) = parseDependency($dep);
 
@@ -1861,8 +1810,8 @@ sub runCMakeConfig {
     my $debug = buildDebug();
     my $opt = buildOpt();
 
-    die "Unable to find expected _MTN directory in $src"
-        unless -d "$src/_MTN";
+    die "Unable to find expected deptool.config file in $src"
+        unless -f "$src/deptool.config";
 
     my @cmakecmd = ('cmake');
     if ($cwd =~ /^$debug/o) {
@@ -2681,7 +2630,8 @@ sub depWalkRecurse ($$$$$$) {
 
     aliasChdir($src);
     &$pre_fn($build_type);
-    my @vcdeps = readVCDeps(".version_control_deps");
+    my @vcdeps = getVCDeps($src);
+
     if (@vcdeps > 0) {
         my $projects = projects();
         foreach my $dep (@vcdeps) {
@@ -2790,9 +2740,9 @@ sub srcDir {
 sub rootSrcDir {
     my $start = srcDir();
     local $_ = $start;
-    while (! -d "$_/_MTN") {
+    while (! -f "$_/deptool.config") {
         s!/[^/]+$!!o;
-        die "Unable to find _MTN directory anywhere under $start"
+        die "Unable to find deptool.config file anywhere under $start"
             if $_ eq '';
     }
     return $_;
@@ -2808,7 +2758,7 @@ The getenv command allows you to get the environment variables that
 are needed for deptool to work without prompting.  This command has
 two forms, one that gets a specific environment variable and prints it
 out, and one that prints out a string that can be evaluated to set all
-the environment variables in the shell.  Therefore what can have a
+the environment variables in the shell.  Therefore I<what> can have a
 number of values:
 
 =over
@@ -3064,42 +3014,154 @@ sub mtnServer {
 
 ##### Common functions
 
-sub readConfigFile {
-    my $cfile = "$ENV{HOME}/.deptoolrc";
-    if (! $noconfig && -f $cfile && -r $cfile) {
-	my $config = new FileHandle($cfile)
-	    or die "Can't open $cfile for read: $!";
-	while (<$config>) {
-	    chomp;
-	    next if /^\s*(#.*)?$/;   # Ignore comments and empty lines
-	    if (/^([A-Z_]+)=(.+)$/o) {
-		$ENV{$1} = $2;
-	    } elsif (/^([A-Z_]+)=$/o) {
-		delete $ENV{$1};
-	    } else {
-		warn "Ignoring invalid line '$_' in $cfile";
-	    }
-	}
-	close($config);
+# TODO-sprint: add in support for rc file, allow user to specify config name as argument
+# add documentation.  Put call to readDeptoolRc back in before my %commands
+#
+# sub readDeptoolRc {
+#     my $cfile = "$ENV{HOME}/.deptoolrc";
+#     if (! $noconfig && -f $cfile && -r $cfile) {
+# 	my $config = new FileHandle($cfile)
+# 	    or die "Can't open $cfile for read: $!";
+# 	while (<$config>) {
+# 	    chomp;
+# 	    next if /^\s*(#.*)?$/;   # Ignore comments and empty lines
+# 	    if (/^([A-Z_]+)=(.+)$/o) {
+# 		$ENV{$1} = $2;
+# 	    } elsif (/^([A-Z_]+)=$/o) {
+# 		delete $ENV{$1};
+# 	    } else {
+# 		warn "Ignoring invalid line '$_' in $cfile";
+# 	    }
+# 	}
+# 	close($config);
+#     }
+# }
+
+=pod
+
+=head1 deptool.config
+
+The deptool.config file at the root of the source directory for each project.
+It is a perl expression that is evaluated in order to determine how to build
+the project, and is used to identify the root source directory.  It includes
+descriptions of dependencies, and enables control over parallel testing.  The
+file is expect to return a hash reference, for example:
+
+    {
+	dependencies => [qw/Lintel DataSeries SomethingElse/],
+        parallel_test => 0, # default value, disable parallel testing in general
+        parallel_test_path => sub {
+            # build in parallel if the build path ends in /Lintel
+    	return $_[0] =~ m!/Lintel$/o; 
+        }
     }
+
+Valid options in a deptool.config file include the following.  Unknown options will
+result in a warning being printed out.
+
+=over 4
+
+=item dependencies => [qw/project list/]
+
+List of projects that this project depends on.  Deptool will use this to make
+sure those projects are built and installed first.  It will also automatically
+check them out if you are using version control.
+
+If you want special builds in different modes, then you can list them as
+'I<dependency>;I<sub-build-type>' (without the '').  This input has the same
+effect as creating a dependency where you run b I<sub-build-type> and then
+build in that directory.
+
+=item parallel_test => [0|1]
+
+Should deptool execute the tests for this directory in parallel.  The
+default is 0 (no).
+
+=item parallel_test_path => sub { my ($build_path) = @_; return 0|1; }
+
+Given the current build path, should deptool execute tests in
+parallel?  This function allows you to have parallel tests for some
+build modes and not for others.
+
+=item sequential_tests => [qr/test-name-re/,...]
+
+Specify a list of regex's for tests that have to be run sequentially.  All of
+the sequential tests will be executed before any of the parallel tests.  It is
+an error for a regexp to match multiple tests or no tests.  This option has no
+effect if parallel tests are not enabled.
+
+=back
+
+=cut
+
+# Pass in the directory, it knows the filename.
+sub readConfig {
+    my ($cfg_dir) = @_;
+
+    confess "internal $cfg_dir" unless -d $cfg_dir;
+
+    my $cfg_path = "$cfg_dir/deptool.config";
+    confess "Error: missing $cfg_path\n"
+	unless -r $cfg_path;
+
+    my $fh = new FileHandle($cfg_path)
+	or die "Can not open $cfg_path for read: $!";
+    # slurp mode
+    local $/; 
+    my $file = <$fh>;
+
+    my $compartment = new Safe;
+    my $result = $compartment->reval($file);
+    die "Unable to evaluate $cfg_path: $@" if $@;
+    die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
+
+    die "Invalid parallel_test value in $cfg_path, expected 0|1, not '$result->{parallel_test}'"
+	if defined $result->{parallel_test} && $result->{parallel_test} !~ /^[01]$/o;
+    die "Invalid parallel_test_path value in $cfg_path\n"
+	. " expected sub { }, not '$result->{parallel_test}'"
+	if defined $result->{parallel_test_path} && ref $result->{parallel_test_path} ne 'CODE';
+    if (defined $result->{sequential_tests}) {
+	die "Invalid sequential_tests value in $cfg_path\n"
+	    . " expected [...], not '$result->{sequential_tests}'"
+	    unless ref $result->{sequential_tests} eq 'ARRAY';
+	foreach my $elem (@{$result->{sequential_tests}}) {
+	    die "Invalid sequential_tests array element in $cfg_path\n"
+		. " expected qr/.../, not '$elem'"
+		unless ref $elem eq 'Regexp';
+	}
+    }
+
+    if (defined $result->{dependencies}) {
+	die "Invalid dependencies value in $cfg_path\n"
+	    . " expected [ ... ], not '$result->{dependencies}'"
+	    unless ref $result->{dependencies} eq 'ARRAY';
+	foreach my $elem (@{$result->{dependencies}}) {
+	    die "Invalid dependencies array element in $cfg_path\n"
+		. " expected .+(;\\w+)?, not '$elem'"
+		unless $elem =~ /^.+(;\w+)?$/o;
+	}
+    }
+
+    my %expect = map { $_ => 1 } qw/dependencies parallel_test parallel_test_path 
+	                            sequential_tests/;
+    
+    foreach my $key (keys %$result) {
+	warn "Unrecognized option '$key' in $cfg_path" unless $expect{$key};
+    }
+
+    return $result;
 }
 
-sub readVCDeps {
-    my ($filename) = @_;
+sub getVCDeps {
+    my ($config_or_path) = @_;
 
-    return () unless -r $filename;
-
-    my $vcdeps = new FileHandle("$filename")
-        or die "Can't read $filename: $!";
-    my @ret;
-    while(<$vcdeps>) {
-        chomp;
-        s/^\s+//o; s/\s+$//o;
-        next unless /\w/o;
-        push(@ret, split(/\s+/o));
+    unless (ref $config_or_path) {
+	$config_or_path = readConfig($config_or_path);
     }
-    close($vcdeps);
-    return @ret;
+
+    return () unless defined $config_or_path->{dependencies};
+
+    return @{$config_or_path->{dependencies}};
 }
 
 sub userPrompt {
