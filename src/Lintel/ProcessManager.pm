@@ -1,5 +1,7 @@
 package Lintel::ProcessManager;
 
+# TODO: write tests for this module.
+
 =pod
 
 =head1 NAME
@@ -24,6 +26,8 @@ Lintel::ProcessManager - library for dealing with sub-processes
     my %pid_to_status = $process_manager->wait([timeout]);
 
     my %pid_to_status = $process_manager->waitAll();
+
+    my $status = $process_manager->waitPid($pid);
 
     $process_manager->enableSignals([sub { my ($pm) = @_; 'should-call-wait' }]);
 
@@ -168,7 +172,7 @@ sub fork {
     print "Lintel::ProcessManager($$): post-fork $pid\n" if $this->{debug};
 
     if ($pid == 0) { 
-	print "Lintel::ProcessManager($$): Child\n" if $this->{debug};
+	print "Lintel::ProcessManager($$): Child -- $cmd\n" if $this->{debug};
 	$this->{children} = {};
 	if ($opts{setpgid}) {
 	    print "setpgid -- $$\n" if $this->{debug};
@@ -224,7 +228,7 @@ error to call this from within the process manager signal handler, or
 without any children.
 
 =cut
-    
+
 sub wait {
     my ($this, $timeout) = @_;
 
@@ -232,15 +236,15 @@ sub wait {
 	if $this->{in_signal_handler};
 
     my %exited;
-    my $exit_count = 0;
     my $started = time;
     while (1) {
+	my $exit_count = 0;
 	confess "Can't call wait without any children" 
 	    unless $this->nChildren() > 0;
 	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
 	    my $status = $?;
 	    print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
-	    
+
 	    $exited{$child} = $status;
 	    ++$exit_count;
 
@@ -248,8 +252,8 @@ sub wait {
 		warn "Unexpected pid $child exited with status $status";
 	    } else {
 		my $fn = $this->{children}->{$child};
+		delete $this->{children}->{$child}; # in case fn calls wait
 		&$fn($child, $status) if defined $fn;
-		delete $this->{children}->{$child};
 	    }
 	}
 	if ($exit_count == 0) {
@@ -267,9 +271,14 @@ sub wait {
 		foreach my $child ($this->children()) {
 		    push(@can_signal, $child) if kill 0, $child;
 		}
-		
+
 		if (@can_signal == 0) {
-		    # system("pstree -p $$");
+		    if ($this->{debug}) {
+			print "Lintel::ProcessManager($$): pstree-begin\n";
+			system("/usr/bin/pstree -p $$");
+			print "Lintel::ProcessManager($$): pstree-end\n";
+		    }
+
 		    confess "Lintel::ProcessManager($$): Internal error, wait returned 'no children', can not signal any children, yet child list is still: (" . join(", ", $this->children()) . "), and exit count is 0";
 		}
 	    }
@@ -305,6 +314,33 @@ sub waitAll {
 
 =pod
 
+=head2 my $status = $mgr->waitPid($pid)
+
+Wait for a specific process to exit, return its status.  Note: any other
+process may exit while waiting for this pid, and the exit functions will be
+called.  Similarly, if you specify an exit function when creating $pid, it will
+be called before this function exits.  Will return undef if $pid isn't
+currently a child.
+
+=cut
+
+sub waitPid {
+    my ($this, $pid) = @_;
+
+    unless (exists $this->{children}->{$pid}) {
+	print "Missing child $pid; children: ", join(", ", $this->children()), "\n" if $this->{debug};
+	return undef;
+    }
+
+    while (exists $this->{children}->{$pid}) {
+	my %pid_to_status = $this->wait();
+	return $pid_to_status{$pid} if defined $pid_to_status{$pid};
+    }
+    die "Internal error: had child $pid at start, but vanished without getting status.";
+}
+
+=pod
+
 =head2 $mgr->enableSignals(sub { my ($mgr) = @_; ... })
 
 Specify a function to call when a child exits.  This notifies the
@@ -325,7 +361,7 @@ sub enableSignals {
 	++$this->{in_signal_handler};
 
 	&$fn if defined $fn;
-	
+
 	--$this->{in_signal_handler};
 	$SIG{CHLD} = $this->{signal_handler_fn};
     };
