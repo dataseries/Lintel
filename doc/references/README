@@ -8,7 +8,6 @@
         "\bibliography{sosp,asplos,fast}"
     (2) Simply include everything: "\bibliography{lintel-latex-all}"
 
-
   To pass options through to Lintel, include a command such as the following in
   the appropriate CMakeLists.txt file:
     SET(foo_LINTEL_LATEX_ARGS  --papr a4  --error-on-warnings)
