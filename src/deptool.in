@@ -265,6 +265,7 @@ my %commands = ('checkout' => \&depCheckout,
                 'publish' => \&depPublish,
                 # below commands don't run in all dep dirs.
                 'init' => \&depInit,
+		'tarinit' => \&depTarInit,
                 'cmake' => \&runCMake,
                 'pin' => \&setPin,
                 'code-review' => \&codeReview,
@@ -514,7 +515,7 @@ branch prefix.  If you do not have the environment variables set up by
 using the getenv command, deptool will ask a number of questions about
 where the files should be placed.  It is usually safe to run the init
 command with the -y option so that these questions will be
-automatically answered.  
+automatically answered.
 
 After you have run init, you will have a key file.  To be able to sync
 to a particular server, you need to send the public key to the
@@ -581,7 +582,7 @@ WARNING: if you already have a monotone key, you should ctrl-c now, and copy
 WARNING: your key file over.  Monotone deals poorly with multiple keys with
 WARNING: the same e-mail address.
 EOF
-        
+
         print "Enter e-mail address for identifying monotone key: ";
         my $email = <STDIN>;
         chomp $email;
@@ -653,6 +654,144 @@ sub initDbs {
         userPrompt("pull $branch_prefix* from $server (can take a while)");
         my $qm = quotemeta $branch_prefix;
         runCommand("mtn -d $monotone_dir/${db}.db pull $server $qm\\*");
+    }
+}
+
+sub depTarInit {
+    my (@files) = @ARGV;
+
+    @files = "http://tesla.hpl.hp.com/opensource/latest-release"
+	if @files == 0;
+    my $startdir = aliasGetCwd();
+
+    mkpath(projects());
+    aliasChdir(projects());
+
+    print "DepTarInit @ARGV\n";
+    foreach my $file (@files) {
+	if (-f $file && -r $file) {
+	    unpackProjectsTar($file);
+	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
+	    unpackProjectsTar("$startdir/$file");
+	} elsif ($file =~ m!^http:.*latest-release!o) {
+	    httpFetchLatestRelease($file);
+	} elsif ($file =~ m!^http:!o) {
+	    httpFetchUnpackTar($file);
+	} else {
+	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
+	}
+    }
+}
+
+sub maybeBackupOldProjectDir {
+    my ($project, $date, $source) = @_;
+
+    my $projects = projects();
+
+    if (-e "$projects/$project") {
+	if (! -r "$projects/$project/Release.info") {
+	    backupUntarDir("$projects/$project", "Missing Release.info file");
+	} else {
+	    my $fh = new FileHandle "$projects/$project/Release.info"
+		or die "Can't open $projects/$project/Release.info for read: $!";
+	    my $creation_date;
+	    while (<$fh>) {
+		$creation_date = $1 if /^Creation-Date: (\S+)$/o;
+	    }
+	    close($fh);
+
+	    if (! defined $creation_date) {
+		backupUntarDir("$projects/$project", "No creation date in Release.info file");
+	    } elsif ($creation_date ne $date) {
+		backupUntarDir("$projects/$project", 
+			       "Creation date in Release.info file different from one in tar file");
+	    } else {
+		print "$projects/$project is already the same as in $source\n";
+		return 1;
+	    }
+	}
+    }
+    die "$projects/$project exists?"
+	if -e "$projects/$project";
+    return 0;
+}
+
+sub unpackProjectsTar {
+    my ($file) = @_;
+
+    die "Expected $file to end in .bz2"
+	unless $file =~ /\.bz2$/o;
+
+    my $fh = new FileHandle "tar tvvfj $file |"
+	or die "Can't run tar tvvfj $file: $!";
+    local $_ = <$fh>;
+    close($fh);
+    chomp;
+    die "Unable to handle '$_'" 
+	unless m!^d.+ (\w+)-(\d{4}-\d{2}-\d{2})/!o;
+    my ($project, $date) = ($1,$2);
+
+    return if maybeBackupOldProjectDir($project, $date, $file);
+
+    my $projects = projects();
+    if (-d "$project-$date") {
+	userPrompt("Delete $projects/$project-$date");
+	rmtree("$project-$date");
+    }
+
+    userPrompt("Untar $file into $projects");
+    system("tar xvvfj $file");
+    die "Did not get expected directory $project-$date"
+	unless -d "$project-$date";
+    rename("$project-$date","$project")
+	or die "Unable to rename $project-$date to $project";
+}
+
+sub backupUntarDir {
+    my ($dir, $reason) = @_;
+
+    print "Backing up $dir.\n$reason\n";
+    if (-d "$dir.old") {
+	userPrompt("Delete old backup directory $dir.old");
+	rmtree("$dir.old");
+    }
+    userPrompt("Rename $dir to $dir.old");
+
+    rename($dir, "$dir.old")
+	or die "rename($dir, $dir.old) failed: $!";
+}
+
+sub httpFetchUnpackTar {
+    my ($url) = @_;
+
+    die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
+	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
+    my ($project, $date) = ($1, $2);
+
+    return if maybeBackupOldProjectDir($project, $date, $url);
+
+    if (! -e "$project-$date.tar.bz2") {
+	userPrompt("wget $url");
+	my $ret = system("wget $url");
+
+	die "wget $url failed" unless $ret == 0 && -r "$project-$date.tar.bz2";
+    }
+    unpackProjectsTar(projects() . "/$project-$date.tar.bz2");
+}
+
+sub httpFetchLatestRelease {
+    my ($url) = @_;
+
+    userPrompt("download $url");
+    my $fh = new FileHandle("wget -O - $url |")
+	or die "Can't run wget -O - $url: $!";
+    my @suburls = <$fh>;
+    close($fh);
+
+    foreach my $suburl (@suburls) {
+	my $tmp = $url;
+	$tmp =~ s/latest-release$/$suburl/o;
+	httpFetchUnpackTar($tmp);
     }
 }
 
@@ -1174,6 +1313,8 @@ sub dbpDoParallelTest {
 	}
     }
     while ($children->nChildren() > 0) {
+	my $running = $children->nChildren();
+	print "$running running, 0 remain\n";
 	$children->wait();
     }
     print "All tests finished.\n";
@@ -3126,8 +3267,8 @@ sub readConfig {
 	    unless ref $result->{sequential_tests} eq 'ARRAY';
 	foreach my $elem (@{$result->{sequential_tests}}) {
 	    die "Invalid sequential_tests array element in $cfg_path\n"
-		. " expected qr/.../, not '$elem'"
-		unless ref $elem eq 'Regexp';
+		. " expected qr/.../, not '$elem' --> '" . (ref $elem) . "'"
+		unless (ref $elem) =~ /\bRegexp$/o;
 	}
     }
 
