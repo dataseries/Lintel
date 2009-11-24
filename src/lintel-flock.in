@@ -22,6 +22,7 @@ my $verbose;
 my $callpid;
 my $command;
 my $print_manpage;
+my $debug;
 
 my $ret = GetOptions('waittime=i' => \$waittime,
 		     'unlock=s' => \$unlock,
@@ -29,6 +30,7 @@ my $ret = GetOptions('waittime=i' => \$waittime,
 		     'verbose!' => \$verbose,
 		     'callpid=i' => \$callpid,
 		     'command=s' => \$command,
+		     'debug!' => \$debug,
 		     'man!' => \$print_manpage);
 
 my @command;
@@ -42,7 +44,8 @@ if (@ARGV > 0) {
     die "Can't specify calling pid and have left over arguments (@ARGV)"
         if defined $callpid;
     @command = @ARGV;
-} 
+    print "lintel-flock-$$: Using argv command" if $debug;
+}
 
 
 if ($print_manpage) {
@@ -66,10 +69,14 @@ die "missing filename for lock"
     unless defined $filename;
 
 if (@command > 0) {
+    print "lintel-flock-$$: Getting lock on $filename\n" if $debug;
     my $fh = Lintel::File::Lock::getLock($filename, $waittime, $verbose);
+    print "lintel-flock-$$: Post get-lock on $filename\n" if $debug;
 
     if (defined $fh) {
+	print "lintel-flock-$$: Got lock on $filename\n" if $debug;
 	my $ret = system(@command);
+	print "lintel-flock-$$: Command (@command) returned $ret\n" if $debug;
 	my $exit = $ret >> 8;
 	$exit = 233 if $exit == 0 && $ret != 0;
 	exit($exit);

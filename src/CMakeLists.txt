@@ -143,8 +143,8 @@ IF(PERL_ENABLED)
 ENDIF(PERL_ENABLED)
 
 # Built, but intentionally not installed.
-ADD_CUSTOM_TARGET(deptool-noexternal ALL 
-                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-noexternal.sh
+ADD_CUSTOM_TARGET(deptool-bootstrap ALL 
+                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-bootstrap.sh
 		          ${CMAKE_CURRENT_SOURCE_DIR} 
 		  DEPENDS deptool.in Lintel/File/Lock.pm Lintel/ProcessManager.pm)
 

@@ -13,6 +13,7 @@ use Data::ShowTable;
 use DBI;
 use English;
 use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
+use File::Basename;
 use FileHandle;
 use Getopt::Long;
 use IO::Select;
@@ -50,11 +51,13 @@ my $user;
 my $password;
 my $db;
 my $print_manpage;
+my $debug = 0;
 my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "db=s" => \$db,
 			 "user=s" => \$user,
 			 "password=s" => \$password,
 			 "history=s" => \$history_file,
+			 "debug!" => \$debug,
 			 "man!" => \$print_manpage);
 pod2usage(-verbose => 2) if $print_manpage;
 eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
@@ -68,7 +71,7 @@ die "Usage: $0
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
     [--history=<history-filename, default $history_file>]
-    [--help] [--man] [input-file ...]\n"
+    [--help] [--man] [--debug] [input-file ...]\n"
     unless $success;
 
 if (defined $db) {
@@ -82,24 +85,13 @@ if (defined $db) {
 }
 
 if (defined $user) {
-  Plot::Mercury->connectToDB($Plot::Mercury::Default_DSN,$user,$password);
+    Plot::Mercury->connectToDB($Plot::Mercury::Default_DSN,$user,$password);
 }
 
 my $plotfiles = 0;
 my $command_error = 0; # Set this if there is an error evaluating a command
 		       # so that we can stop a 'history do' or other 
 		       # multi-part command; ** not completed as of 3Jan01 ** 
-
-
-unless (-t STDIN) {
-    # skip reading history, don't update it when done
-    while(<STDIN>) {
-	chomp;
-      	&docmd($_);
-	exit(1) if $command_error;
-    }
-    exit(0);
-}
 
 my @history;
 if (-f $history_file) {
@@ -137,13 +129,15 @@ sub default;
 sub fncmds;
 sub import_data;
 
+$Global::source_dir = dirname($0);
 my $define_mode = 0;
 my @define;
 my $markerre;
 my $prompt = ">> ";
 
 map { die "command line input file $_ is not readable" unless -f $_ && -r $_; } @ARGV;
-map { history("run $_") } @ARGV;
+map { print "Reading from $_\n" if $debug;
+      history("run $_"); exit(1) if $command_error; } @ARGV;
 
 while (defined ($_ = $term->readline($prompt))) {
     $command_error = 0;
@@ -312,6 +306,14 @@ sub history {
 	}
     } elsif (/^run\s+(.+)$/o) {
 	my $filename = $1;
+	my $save_source_dir = $Global::source_dir;
+
+	if (! -r $filename && -r "$Global::source_dir/$filename") {
+	    print "Automatically adding $Global::source_dir to $filename\n";
+	    $filename = "$Global::source_dir/$filename";
+	}
+	$Global::source_dir = dirname($filename);
+	
 	my $fh = new FileHandle $filename;
 	if (defined $fh) {
 	    print "Running history from $filename\n";
@@ -342,6 +344,7 @@ sub history {
 	}
 	close($fh);
 	syncToGnuplot() if defined $gnuplot_fifo;
+	$Global::source_dir = $save_source_dir;
     } elsif (/^marker\s+(\w+)$/o) {
 	# marker; from probably commented out skipto.
     } else {
@@ -702,7 +705,7 @@ sub barplot {
 	push(@major_value_list, $major) # preserve order from query
 	    unless defined $majors{$major};
 	$majors{$major} = 1;
-	
+
 	my $y = $href->{y};
 	die "Missing y column, or got null value from '$select'"
 	    unless defined $y;
@@ -740,6 +743,7 @@ sub barplot {
     foreach my $major (@major_value_list) {
 	if (@minor_value_list) {
 	    foreach my $minor (@minor_value_list) {
+		# $data{$major}->{$minor} ||= { y => 0 }; # TODO-eric: fix
 		die "Missing data for $major / $minor from '$select'"
 		    unless defined $data{$major}->{$minor}->{y};
 	    }
@@ -748,7 +752,7 @@ sub barplot {
 		unless defined $data{$major}->{y};
 	}
     }
-    
+
     # Make the plots...
 
     my $have_minor = @minor_value_list;
@@ -769,7 +773,7 @@ sub barplot {
 	    } else {
 		$t = $data{$major};
 	    }
-	    print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n"; 
+	    print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n";
 	    $major_x += $minor_length + $group_separation;
 	}
 	close(OUT);
@@ -779,7 +783,7 @@ sub barplot {
 	$minor_index++;
     }
     refresh_plot;
-    my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation); 
+    my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation);
 
     my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; "'$_' $major_xtic" } @major_value_list);
 
@@ -857,7 +861,6 @@ sub fastReplyFromGnuplot {
     my ($select) = @_;
     confess "gnuplot isn't running" unless defined $gnuplot_fifo;
 
-    my $debug = 0;
     print "FRFG\n" if $debug;
     print $gnuplot_fifo "\n";
     my $max_reply_time = time + 0.05;
