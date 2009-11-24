@@ -739,17 +739,25 @@ sub barplot {
 	}
     }
 
+    my $warned_zero;
     # Make sure we got everything before starting to make plots
     foreach my $major (@major_value_list) {
 	if (@minor_value_list) {
 	    foreach my $minor (@minor_value_list) {
-		# $data{$major}->{$minor} ||= { y => 0 }; # TODO-eric: fix
-		die "Missing data for $major / $minor from '$select'"
-		    unless defined $data{$major}->{$minor}->{y};
+		unless (defined $data{$major}->{$minor}) {
+		    warn "Missing data for major=$major, minor=$minor; no further warnings"
+			unless $warned_zero;
+		    $warned_zero = 1;
+		    $data{$major}->{$minor} = { y => 0, ylow => 0, yhi => 0};
+		}
 	    }
 	} else {
-	    die "Missing data for $major from '$select'"
-		unless defined $data{$major}->{y};
+	    unless (defined $data{$major}->{y}) {
+		warn "Missing data for major=$major; no further warnings"
+		    unless $warned_zero;
+		$warned_zero = 1;
+		$data{$major} = { y => 0, ylow => 0, yhi => 0};
+	    }
 	}
     }
 
