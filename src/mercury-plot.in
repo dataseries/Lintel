@@ -139,7 +139,7 @@ map { die "command line input file $_ is not readable" unless -f $_ && -r $_; } 
 map { print "Reading from $_\n" if $debug;
       history("run $_"); exit(1) if $command_error; } @ARGV;
 
-while (defined ($_ = $term->readline($prompt))) {
+while (defined ($_ = $term->readline("$prompt"))) {
     $command_error = 0;
     eval { &docmd($_) };
     print "Error executing command: $@\n" if $@;
@@ -566,8 +566,9 @@ sub refresh_plot {
     my @foo = map { $t = qq!$_->{data} ! if defined $_->{data};
 		    $t = qq!$_->{function} ! if defined $_->{function};
 		    $t .= " axes $_->{axes} " if defined $_->{axes}; 
-		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle"; 
-		    $t .= " with $_->{with}" if defined $_->{with}; 
+		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle";
+		    $t .= " with $_->{with}" if defined $_->{with};
+		    $t = $_->{explicit} if defined $_->{explicit};
 		    $t; } @plots;
     &start_gnuplot;
     if (@foo == 0) {
@@ -578,6 +579,7 @@ sub refresh_plot {
     syncToGnuplot();
 }
 
+# TODO: make plot able to handle barplot plots also.
 sub sqlplot {
     my $cmd = shift;
 
@@ -722,8 +724,8 @@ sub barplot {
 	    ($ylow,$yhi) = ($y,$y);
 	}
 
-	if (defined $href->{minor}) {
-	    my $minor = $href->{minor};
+	if (defined $href->{minor} || defined $href->{stacked_minor}) {
+	    my $minor = $href->{minor} || $href->{stacked_minor};
 	    die "got null value in minor column from '$select'"
 		unless defined $minor;
 	    die "duplicate value for $major / $minor from '$select'?"
@@ -763,40 +765,73 @@ sub barplot {
 
     # Make the plots...
 
-    my $have_minor = @minor_value_list;
-    @minor_value_list = ("data") 
-	unless @minor_value_list;
-    my $minor_index = 1;
-    my $minor_length = scalar @minor_value_list;
-    foreach my $minor (@minor_value_list) {
+    if (defined $sth->{NAME_hash}->{stacked_minor}) {
 	my $filename = "/tmp/.plot.data.$$-$plotfiles";
-	die "Unable to open $filename for write: $!"
-	    unless open(OUT,">$filename");
+	my $fh = new FileHandle(">$filename")
+	    or die "Unable to open $filename for write: $!";
 
-	my $major_x = $minor_index;
+	# TODO: print warning on whitespace?
+	print $fh join("\t", "MAJOR_AXIS", removeWhitespace(@minor_value_list)), "\n";
 	foreach my $major (@major_value_list) {
-	    my $t;
-	    if ($have_minor) {
-		$t = $data{$major}->{$minor};
-	    } else {
-		$t = $data{$major};
-	    }
-	    print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n";
-	    $major_x += $minor_length + $group_separation;
+	    print $fh join("\t", removeWhitespace($major), 
+			   map { $data{$major}->{$_}->{y} } @minor_value_list), "\n";
 	}
-	close(OUT);
-	my $newp = plotboxes($filename,$minor,$select);
-	push(@plots,$newp);
+
+	my $p = default_plotinfo($filename, $select);
+	$p->{explicit} = join(", ", "'$filename' using 2:xtic(1)",
+			      map { "'' using $_" } 3..(@minor_value_list + 1));
+	push(@plots, $p);
 	++$plotfiles;
-	$minor_index++;
+	# Lots of magic foo to feed to gnuplot to make it do the right thing.
+	gnuplot("set key autotitle columnheader");
+	gnuplot("set style data histogram");
+	gnuplot("set style histogram rowstacked");
+	gnuplot("set style fill solid border -1");
+	gnuplot("set boxwidth 0.75");
+    } else {
+	my $have_minor = @minor_value_list;
+	@minor_value_list = ("data") 
+	    unless @minor_value_list;
+	my $minor_index = 1;
+	my $minor_length = scalar @minor_value_list;
+	foreach my $minor (@minor_value_list) {
+	    my $filename = "/tmp/.plot.data.$$-$plotfiles";
+	    die "Unable to open $filename for write: $!"
+		unless open(OUT,">$filename");
+
+	    my $major_x = $minor_index;
+	    foreach my $major (@major_value_list) {
+		my $t;
+		if ($have_minor) {
+		    $t = $data{$major}->{$minor};
+		} else {
+		    $t = $data{$major};
+		}
+		print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n";
+		$major_x += $minor_length + $group_separation;
+	    }
+	    close(OUT);
+	    my $newp = plotboxes($filename,$minor,$select);
+	    push(@plots,$newp);
+	    ++$plotfiles;
+	    ++$minor_index;
+	}
+	my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation);
+
+	my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; 
+					  "'$_' $major_xtic" } @major_value_list);
+
+	gnuplot('set ticscale 0');
+	gnuplot("set xtics ($xtics_vals)");
     }
     refresh_plot;
-    my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation);
+}
 
-    my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; "'$_' $major_xtic" } @major_value_list);
+sub removeWhitespace {
+    my @ret = @_;
 
-    gnuplot('set ticscale 0');
-    gnuplot("set xtics ($xtics_vals)");
+    map { s/\s+/_/go; } @ret;
+    return @ret;
 }
 
 sub start_gnuplot {
@@ -829,6 +864,9 @@ sub start_gnuplot {
     fcntl($pty, F_SETFL, $flags | O_NONBLOCK) or die;
     $gnuplot_fifo = $pty;
     $gnuplot_fifo->autoflush(1);
+    # TODO: auto-detect if there is the wxt terminal and use that if possible;
+    # also need to fix other uses of set terminal x11
+    print $gnuplot_fifo "set terminal x11\n";
 }
 
 # The idea here is that we keep reading from gnuplot until we are able
@@ -1009,7 +1047,7 @@ sub pngplot {
 	print "pnmscale error; psplot-$$.001s.ppm too small\n";
 	return 0;
     }
-    
+
     print "pnmtopng... ";
     $cmd = "@PNMTOPNG_PATH@ -compression 9 psplot-$$.001s.ppm >$png_filename";
     $ret = system($cmd);
@@ -1047,6 +1085,7 @@ sub replot {
     refresh_plot;
 }
 
+# See refresh_plot for valid bits in here.
 sub default_plotinfo {
     my($filename, $sql_cmd) = @_;
 
