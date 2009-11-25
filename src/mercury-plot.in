@@ -765,6 +765,9 @@ sub barplot {
 
     # Make the plots...
 
+    # TODO: figure out how to detect the gnuplot version so that we can give an
+    # error if we try to do stacked charts with old gnuplot versions.
+
     if (defined $sth->{NAME_hash}->{stacked_minor}) {
 	my $filename = "/tmp/.plot.data.$$-$plotfiles";
 	my $fh = new FileHandle(">$filename")
@@ -783,7 +786,7 @@ sub barplot {
 	push(@plots, $p);
 	++$plotfiles;
 	# Lots of magic foo to feed to gnuplot to make it do the right thing.
-	gnuplot("set key autotitle columnheader");
+	gnuplot("set key autotitle columnheader invert");
 	gnuplot("set style data histogram");
 	gnuplot("set style histogram rowstacked");
 	gnuplot("set style fill solid border -1");
@@ -1469,7 +1472,8 @@ mercury-plot - plot data out of an SQL database
     listplot
     unplot [<plotnum>] 
     fnplot <function>
-    barplot <sql select arguments>, with columns named major, [minor], y, [yerr, (ylo,yhi)]
+    barplot <sql select arguments>, with columns named major,
+            [minor|stacked_minor], y, [yerr, (ylo,yhi)]
     plotwith <plotnum|_ for latest,* for default> <with...>
     plottitle <plotnum|_ for latest> <title | notitle>
     axplusb <plotnum> 
@@ -1510,19 +1514,25 @@ distribution function plot from a single plot value.
 
 =head2 barplot I<sql select arguments>
 
-C<barplot> is the command that generates bar-style plots for
-C<mercury-plot>.  It takes as an argument the part of an sql statement
-after the select.  Two columns are required, major and y.  There are a
-number of optional columns: minor, yerr, and ylo/yhi.  The major
-columns are separated and the minor columns are grouped together.  The
-barplot actually generates a series of plots, one for each of the
-minor variables, or 1 if there is no minor variable.  The bars are
-ordered in the same way that they come back from the sql query, so
-sql's order by can be used to control the order.
+C<barplot> is the command that generates bar-style plots for C<mercury-plot>.
+It takes as an argument the part of an sql statement after the select.  Two
+columns are required, major and y.  There are a number of optional columns:
+minor or stacked_minor, yerr, and ylo/yhi.  The major columns are separated and
+the minor columns are grouped or stacked together.  The barplot actually
+generates a series of plots, one for each of the minor variables, or 1 if there
+is no minor variable or the plot is stacked.  The bars are ordered in the same
+way that they come back from the sql query, so sql's C<order by> can be used to
+control the order.  For stacked charts the yerr, ylo and yhi columns will be
+ignored.  Mercury-plot will automatically set important gnuplot options like
+the key to 'autotitle columnheader invert', and the style options to histogram
+and rowstacked.  Note that stacked bar charts were added to gnuplot 4.2, so
+will not work with earlier versions.  Mercury will not protect you against this
+issue.
 
 =head3 a few examples
 
-	barplot time as y, timestddev as yerr, querygroup as major,engine as minor from tmp_ds_barplot where position > 0 order by position
+	barplot time as y, timestddev as yerr, querygroup as major, engine as minor from tmp_ds_barplot where position > 0 order by position
+	barplot time as y, timestddev as yerr, querygroup as major, engine as stacked_minor from tmp_ds_barplot where position > 0 order by position
 	barplot time as y, timestddev as yerr, engine as major from tmp_ds_barplot order by position
 
 =head2 plottitle I<which> I<title>
