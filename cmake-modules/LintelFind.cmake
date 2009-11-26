@@ -329,9 +329,9 @@ MACRO(LINTEL_BOOST_EXTRA variable header libname)
         ENDIF(${variable}_FIND_REQUIRED)
     ENDIF(${libname} STREQUAL "None")
 
-    IF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+    IF(${variable}_ENABLED AND NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
         MESSAGE(FATAL_ERROR "Huh? different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
-    ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+    ENDIF(${variable}_ENABLED AND NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
 ENDMACRO(LINTEL_BOOST_EXTRA variable header libname)
 
 # This macro searches for the perl module ${module_name}. It sets
