@@ -71,6 +71,7 @@ wait
 
 echo "schroot builds..."
 for i in etch-32bit lenny-32bit; do
+    echo "$i..."
     schroot -c $i -- /tmp/make-dist/make-dist.sh --test $NOW $i >/tmp/make-dist/log/$i 2>&1
 done
 

@@ -60,6 +60,8 @@
 # included FindBoost; it searches for header and libname and checks
 # that the directories are compatible.  If ${variable}_FIND_REQUIRED
 # is set, it uses LINTEL_FIND_LIBRARY, otherwise LINTEL_WITH_LIBRARY.
+# You can specify the special value None for libname if the boost library
+# is header only.
 
 # LINTEL_FIND_PERL_MODULE(module_name variable) searches for a
 # particular perl module, and sets ${variable}_ENABLED 
@@ -305,14 +307,28 @@ ENDMACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE)
 ### LINTEL_BOOST_EXTRA
 
 MACRO(LINTEL_BOOST_EXTRA variable header libname)
+    IF("${Boost_INCLUDE_DIRS}" STREQUAL "")
+        MESSAGE("WARNING: Did not include FindBoost")
+	INCLUDE(FindBoost)
+    ENDIF("${Boost_INCLUDE_DIRS}" STREQUAL "")
+
     SET(${variable}_EXTRA_INCLUDE_PATHS ${Boost_INCLUDE_DIRS})
-    SET(${variable}_EXTRA_LIBRARY_PATHS ${Boost_LIBRARY_DIRS})
-    IF(${variable}_FIND_REQUIRED)
-	LINTEL_FIND_LIBRARY(${variable} ${header} ${libname})
-    ELSE(${variable}_FIND_REQUIRED)
-	LINTEL_WITH_LIBRARY(${variable} ${header} ${libname})
-    ENDIF(${variable}_FIND_REQUIRED)
-    
+
+    IF(${libname} STREQUAL "None")
+        IF(${variable}_FIND_REQUIRED)
+            LINTEL_FIND_HEADER(${variable} ${header})
+        ELSE(${variable}_FIND_REQUIRED)
+    	    LINTEL_WITH_HEADER(${variable} ${header})
+        ENDIF(${variable}_FIND_REQUIRED)
+    ELSE(${libname} STREQUAL "None")
+        SET(${variable}_EXTRA_LIBRARY_PATHS ${Boost_LIBRARY_DIRS})
+        IF(${variable}_FIND_REQUIRED)
+            LINTEL_FIND_LIBRARY(${variable} ${header} ${libname})
+        ELSE(${variable}_FIND_REQUIRED)
+    	    LINTEL_WITH_LIBRARY(${variable} ${header} ${libname})
+        ENDIF(${variable}_FIND_REQUIRED)
+    ENDIF(${libname} STREQUAL "None")
+
     IF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
         MESSAGE(FATAL_ERROR "Huh? different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
     ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 

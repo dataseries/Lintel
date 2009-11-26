@@ -3,7 +3,9 @@
 #
 #  See the file named COPYING for license details
 #
-# Macros for dealing with doxygen.
+# Macros for dealing with documentation, both doxygen and latex
+
+## Doxygen
 
 # Put INCLUDE(LintelDocs), LINTEL_DOCS_CONFIG("your-package-name") in
 # your CMakeConfig.txt or wherever you have all the optional bits of
@@ -25,6 +27,32 @@
 # .../share/Lintel/doxygen.config.in to docs/doxygen.config.in, and
 # edit as appropriate.  Otherwise the standard input config will be
 # used from the Lintel project.
+
+## Latex
+
+# In your main CMakeLists.txt (or CMakeConfig.txt) file, call the macro
+# LINTEL_LATEX_CONFIG.  You can set the option LINTEL_LATEX_REBUILD_REQUIRED in
+# order to require that the lintel-latex-rebuild script is found.
+
+# For each document, call LINTEL_LATEX(basename).  This will automatically set
+# up to build basename.{dvi,ps,pdf} from basename.tex using the complicated
+# pattern that has been found to make latex work.  It will also set up the
+# environment variables to that the common bibliography (lintel-latex-all.bib,
+# and others in doc/references) can be found.  You can set the variable
+# basename_EXTRA_DEPENDS to identify extra dependencies, *.tex, *.bib and *.eps
+# will be automatically treated as dependencies.  You can set the variable
+# basename_LINTEL_LATEX_ARGS to specify extra arguments to
+# lintel-latex-rebuild, such as [--tex <path>] [--bib <path>] to specify extra
+# paths for latex to use, or include [--paper <paper-size>] to specify a
+# non-letter paper size.
+
+# If you require non-standard files, you can call
+# LINTEL_LATEX_REQUIRES(variable document_name file...)  to use kpsewhich in
+# order to find all of the required files.  If they are all found, and
+# lintel-latex-rebuild is present, the variable will be set to TRUE, otherwise
+# it will be set to FALSE.  If lintel-latex-rebuild is present and one of the
+# files is not, it will print out a message explaining that document_name
+# will not be built.
 
 MACRO(LINTEL_DOCS_CONFIG in_package_name)
     SET(PACKAGE_NAME ${in_package_name})
@@ -135,4 +163,72 @@ IF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
     EXEC_PROGRAM(cp ARGS -rp "${BUILDDOC}/doxygen/man/man3/*" 
 	                 "$ENV{DESTDIR}${TARGET}/share/man/man3")
 ENDIF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
+
+
+# Set LINTEL_LATEX_REBUILD_REQUIRED to force this to be found
+MACRO(LINTEL_LATEX_CONFIG)
+    INCLUDE(LintelFind)
+    LINTEL_WITH_PROGRAM(LINTEL_LATEX_REBUILD lintel-latex-rebuild)
+    IF(LINTEL_LATEX_REBUILD_PATH) 
+        EXECUTE_PROCESS(COMMAND ${LINTEL_LATEX_REBUILD_PATH} --selfcheck
+	                RESULT_VARIABLE LINTEL_LATEX_REBUILD_SELFCHECK)
+	IF(NOT "${LINTEL_LATEX_REBUILD_SELFCHECK}" STREQUAL "0") 
+	    IF(LINTEL_LATEX_REBUILD_REQUIRED)
+	        MESSAGE(FATAL_ERROR "${LINTEL_LATEX_REBUILD_PATH} --selfcheck failed")
+	    ELSE(LINTEL_LATEX_REBUILD_REQUIRED)
+	        MESSAGE("${LINTEL_LATEX_REBUILD_PATH} --selfcheck failed (${LINTEL_LATEX_REBUILD_SELFCHECK}); disabling")
+	        SET(LINTEL_LATEX_REBUILD_ENABLED)
+	    ENDIF(LINTEL_LATEX_REBUILD_REQUIRED)
+	ENDIF(NOT "${LINTEL_LATEX_REBUILD_SELFCHECK}" STREQUAL "0") 
+    ENDIF(LINTEL_LATEX_REBUILD_PATH)     
+ENDMACRO(LINTEL_LATEX_CONFIG)
+
+MACRO(LINTEL_LATEX basename)
+    IF(LINTEL_LATEX_REBUILD_ENABLED)
+	FILE(GLOB_RECURSE ${basename}_TEX_DEPENDS
+	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.tex)
+	FILE(GLOB_RECURSE ${basename}_BIB_DEPENDS
+	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.bib)
+	FILE(GLOB_RECURSE ${basename}_EPS_DEPENDS
+	                  ${CMAKE_CURRENT_SOURCE_DIR}/*.eps)
+	SET(${basename}_REBUILD_OUTPUTS
+	    ${CMAKE_CURRENT_BINARY_DIR}/${basename}.dvi
+	    ${CMAKE_CURRENT_BINARY_DIR}/${basename}.ps
+            ${CMAKE_CURRENT_BINARY_DIR}/${basename}.pdf)
+
+	ADD_CUSTOM_COMMAND(
+	    OUTPUT ${${basename}_REBUILD_OUTPUTS}
+            COMMAND ${LINTEL_LATEX_REBUILD_PATH}
+	    ARGS
+	        ${${basename}_LINTEL_LATEX_ARGS}
+                ${CMAKE_CURRENT_SOURCE_DIR} ${basename}
+            DEPENDS
+		${${basename}_TEX_DEPENDS}
+		${${basename}_BIB_DEPENDS}
+		${${basename}_EPS_DEPENDS}
+	        ${${basename}_EXTRA_DEPENDS}
+        )
+	ADD_CUSTOM_TARGET(latex_${basename} ALL
+	                  DEPENDS ${${basename}_REBUILD_OUTPUTS})
+    ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
+ENDMACRO(LINTEL_LATEX)
+
+MACRO(LINTEL_LATEX_REQUIRES variable doc_name)
+    SET(${variable} ${LINTEL_LATEX_REBUILD_ENABLED})
+    IF(LINTEL_LATEX_REBUILD_ENABLED)
+        FOREACH(llr_filename ${ARGN})
+            EXECUTE_PROCESS(COMMAND kpsewhich ARGS ${llr_filename}
+                            RESULT_VARIABLE llr_result
+                            OUTPUT_VARIABLE llr_output
+                            OUTPUT_STRIP_TRAILING_WHITESPACE)
+            IF("${llr_output}" STREQUAL "")
+                MESSAGE("Unable to find latex file ${llr_filename} for ${doc_name}")
+                SET(${variable} FALSE)
+            ELSEIF(NOT EXISTS "${llr_output}")
+                MESSAGE("Found ${llr_output} for ${doc_name} but it does not exist?")
+                SET(${variable} FALSE)
+            ENDIF("${llr_output}" STREQUAL "")
+        ENDFOREACH(llr_filename)
+    ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
+ENDMACRO(LINTEL_LATEX_REQUIRES)            
 
