@@ -4,11 +4,9 @@ TEST_HOSTS="batch-fe-2.u.hpl.hp.com keyvalue-debian-x86-2.u.hpl.hp.com ch-x86-de
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 set -e
-if [ "$1" = "--test" -a "$2" != "" -a "$3" != "" ]; then
+if [ "$1" = "--test-local" -a "$2" != "" -a "$3" != "" ]; then
     PATH=/tmp/make-dist/bin:$PATH
     cd /tmp/make-dist
-    [ ! -d projects ] || rm -rf projects
-    [ ! -d build ] || rm -rf build
     export PROJECTS=/tmp/make-dist/projects
     export BUILD_OPT=/tmp/make-dist/build
     perl /tmp/make-dist/deptool-bootstrap tarinit Lintel-$2.tar.bz2 /tmp/make-dist/DataSeries-$2.tar.bz2
@@ -17,6 +15,28 @@ if [ "$1" = "--test" -a "$2" != "" -a "$3" != "" ]; then
     echo "MAKE-DIST: EVERYTHING OK!"
     echo $2 >ok-$3
     exit 0
+fi
+
+if [ "$1" = "--test-wget" -a "$2" != "" -a "$3" != "" ]; then
+    PATH=/tmp/make-dist/bin:$PATH
+    cd /tmp/make-dist
+    export PROJECTS=/tmp/make-dist/projects
+    export BUILD_OPT=/tmp/make-dist/build
+    case $3 in
+	*) http_proxy=http://web-proxy.corp.hp.com:8088/;
+	   export http_proxy ;;
+    esac
+    perl /tmp/make-dist/deptool-bootstrap tarinit http://tesla.hpl.hp.com/opensource/tmp/latest-release
+    cd $PROJECTS/DataSeries
+    perl /tmp/make-dist/deptool-bootstrap build -t
+    echo "MAKE-DIST: EVERYTHING OK!"
+    echo $2 >ok-$3
+    exit 0
+fi
+
+if [ "$1" != "" ]; then
+    echo "Usage: ./make-dist"
+    exit 1
 fi
 
 [ ! -d /tmp/make-dist ] || rm -rf /tmp/make-dist
@@ -67,13 +87,15 @@ rsync -av --progress /tmp/make-dist/Lintel-$NOW.tar.bz2 /tmp/make-dist/DataSerie
 echo "Local build..."
 /tmp/make-dist/make-dist.sh --test $NOW localhost >/tmp/make-dist/log/build.localhost 2>&1
 
+cp /tmp/make-dist/build/Lintel/src/deptool-bootstrap /tmp/make-dist
+
 wait
 
-echo "schroot builds..."
-for i in etch-32bit lenny-32bit; do
-    echo "$i..."
-    schroot -c $i -- /tmp/make-dist/make-dist.sh --test $NOW $i >/tmp/make-dist/log/$i 2>&1
-done
+# echo "schroot builds..."
+# for i in etch-32bit lenny-32bit; do
+#     echo "$i..."
+#     schroot -c $i -- /tmp/make-dist/make-dist.sh --test $NOW $i >/tmp/make-dist/log/$i 2>&1
+# done
 
 exit 0
 
@@ -81,8 +103,9 @@ for host in $TEST_HOSTS; do
     echo "Testing on $host; logging everything to /tmp/make-dist/$host.log:"
     ssh $host rm -rf /tmp/make-dist >$host.log 2>&1
     ssh $host mkdir /tmp/make-dist >>$host.log 2>&1
-    scp $0 $host:/tmp/make-dist
-    
+    scp $0 $host:/tmp/make-dist >>$host.log 2>&1
+    scp /tmp/make-dist/deptool-bootstrap $host:/tmp/make-dist >>$host.log 2>&1
+
     for package in $PACKAGES; do
 	echo "   copy $package..."
 	scp $package-$NOW.tar.bz2 $host:/tmp/make-dist/$package-$NOW.tar.bz2 >>$host.log 2>&1

@@ -13,18 +13,20 @@
 # after verifying that this interacts properly with job arrays.
 
 use strict;
-use English;
-use Getopt::Long;
-use Data::Dumper;
 use Carp;
-use POSIX;
 use Cwd ();
+use Data::Dumper;
+use DirHandle;
+use English;
+use Fcntl ':mode';
+use File::stat;
+use File::Path;
+use Getopt::Long;
+use POSIX 'ceil';
 use Pod::Usage;
 use Sys::Hostname;
-use File::stat;
-use Fcntl ':mode';
-use DirHandle;
-use File::Path;
+use Time::HiRes 'time';
+
 @PERL5_MODULES_INC_UNSHIFT@
 BEGIN { $Global::BP_ModulePath = "@CMAKE_INSTALL_PREFIX@/share/bp_modules";
         unshift(@INC, $Global::BP_ModulePath); }
@@ -323,10 +325,13 @@ sub write_joblist {
 	$workdir = $batch_workdir;
     } else {
 	my $hostname = hostname();
-	my @time = localtime(time);
-	my $time = sprintf("%d-%02d-%02dT%02d:%02d:%02d",
+	my $now = time;
+	my $us = sprintf("%.6f", $now);
+	$us =~ s/^\d+//;
+	my @time = localtime($now);
+	my $time = sprintf("%d-%02d-%02dT%02d:%02d:%02d%s",
 			   $time[5]+1900, $time[4]+1, $time[3],
-			   $time[2], $time[1], $time[0]);
+			   $time[2], $time[1], $time[0], $us);
 	$workdir = "$default_baseworkdir/$hostname--$time";
 	cleanup_workdir(); # Only clean if we are using the default
     }

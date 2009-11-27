@@ -178,8 +178,7 @@ ENDIF(WITH_LIBXML2 AND NOT LIBXML2_ENABLED)
 INCLUDE(FindLATEX)
 FIND_PROGRAM(PS2PDF14_CONVERTER
   NAMES ps2pdf14
-  PATHS ${MIKTEX_BINARY_PATH} 
-        /usr/bin
+  PATHS ${MIKTEX_BINARY_PATH} /usr/bin
 )
 
 OPTION(WITH_LATEX "Include the latex rebuild script (requires latex, bibtex, dvips, ps2pdf14)" On)
@@ -200,5 +199,10 @@ ENDIF(WITH_LATEX)
 
 ## Boost optional bits
 
+# TODO: figure out how to extend this to also do versioning,
+# boost 1.32 doesn't have enough of program options for us to work.
 LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp boost_program_options)
+IF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
+    MESSAGE("Unable to find boost/program_options.hpp; will not build Lintel/ProgramOptions")
+ENDIF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
 
