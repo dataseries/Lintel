@@ -5,6 +5,14 @@ TEST_HOSTS="keyvalue-debian-x86-2.u.hpl.hp.com pds-big-1.u.hpl.hp.com hplxc.hpl.
 
 set -e
 
+if [ "$1" = "--endpin-mtn" ]; then
+    cd ~/projects/Lintel
+    mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/Lintel\*
+    cd ../DataSeries
+    mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/DataSeries\*
+    exit 0
+fi
+
 if [ "$1" = "--prepare" -a "$0" = "/tmp/make-dist.sh" ]; then
     [ ! -d /tmp/make-dist ] || mv /tmp/make-dist /tmp/make-dist.rm 
     [ ! -d /tmp/make-dist.rm ] || rm -rf /tmp/make-dist.rm 
@@ -41,7 +49,7 @@ if [ "$1" = "--test-wget" -a "$2" != "" -a "$3" != "" ]; then
     cd $PROJECTS/DataSeries
     perl /tmp/make-dist/deptool-bootstrap build -t
     echo "MAKE-DIST: EVERYTHING OK!"
-    echo $2 >result-$3
+    echo $2 >/tmp/make-dist/result-$3
     exit 0
 fi
 
