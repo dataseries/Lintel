@@ -146,10 +146,11 @@ for host in $TEST_HOSTS; do
     echo -n "$host: fetch..."
     echo "No-File-Copied" >$LOG/result-$host
     scp $host:/tmp/make-dist/result-$host $LOG/result-$host >>$LOG/$host.log 2>&1 || true
-    if [ "`head -1 $LOG/result-$host`" = "$NOW" ]; then
+    GOT="`head -1 $LOG/result-$host`"
+    if [ "$GOT" = "$NOW" ]; then
 	echo "ok"
     else
-	echo "failed, ok-$host doesn't contain $NOW, but '`head -1 $LOG/result-$HOST`'"
+	echo "failed, ok-$host doesn't contain $NOW, but '$GOT'"
 	exit 1
     fi
 done
