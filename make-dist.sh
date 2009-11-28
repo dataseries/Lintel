@@ -37,6 +37,7 @@ if [ "$1" = "--test-local" -a "$2" != "" -a "$3" != "" ]; then
     cd /tmp/make-dist
     export PROJECTS=/tmp/make-dist/projects
     export BUILD_OPT=/tmp/make-dist/build
+    rm -rf $PROJECTS $BUILD_OPT
     perl /tmp/make-dist/deptool-bootstrap tarinit Lintel-$2.tar.bz2 /tmp/make-dist/DataSeries-$2.tar.bz2
     cd $PROJECTS/DataSeries
     perl /tmp/make-dist/deptool-bootstrap build -t
@@ -61,7 +62,10 @@ if [ "$1" = "--test-wget" -a "$2" != "" -a "$3" != "" ]; then
 	hplxc.hpl.hp.com) PATH=$PATH:/hpl/home/anderse/.depot/rhel4-x86_64/bin ;;
 	ts-rhel5.hpl.hp.com) PATH=$PATH:/home/anderse/.depot/rhel5-x86_64/bin ;;
     esac
-    perl /tmp/make-dist/deptool-bootstrap --debug tarinit http://tesla.hpl.hp.com/opensource/tmp/latest-release
+    perl /tmp/make-dist/deptool-bootstrap --debug tarinit --no-cache http://tesla.hpl.hp.com/opensource/tmp/latest-release
+    # Make sure we downloaded the right files
+    [ -f $PROJECTS/Lintel-$2.tar.bz2 ]
+    [ -f $PROJECTS/DataSeries-$2.tar.bz2 ]
     cd $PROJECTS/DataSeries
     perl /tmp/make-dist/deptool-bootstrap build -t
     echo "MAKE-DIST: EVERYTHING OK!"
@@ -78,6 +82,7 @@ fi
 LOG=/tmp/make-dist/log
 NOW=`date +%Y-%m-%d`
 
+echo "Current date: $NOW"
 [ ! -d /tmp/make-dist ] || rm -rf /tmp/make-dist
 mkdir /tmp/make-dist /tmp/make-dist/tar /tmp/make-dist/log
 cp $0 /tmp/make-dist
@@ -136,7 +141,7 @@ wait
 echo "starting test-host builds..."
 
 for host in $TEST_HOSTS; do
-    echo "Starting on $host; log to $LOG/$host.log"
+    echo "$LOG/$host.log"
     echo -n "  copy..."
     scp /tmp/make-dist/make-dist.sh $host:/tmp/make-dist.sh >$LOG/$host.log 2>&1
     echo -n "  prepare..."
@@ -144,7 +149,7 @@ for host in $TEST_HOSTS; do
     echo -n "  copy..."
     scp /tmp/make-dist/deptool-bootstrap $host:/tmp/make-dist/deptool-bootstrap >>$LOG/$host.log 2>&1
 
-    echo "start build."
+    echo "  start build."
 
     ssh $host /tmp/make-dist/make-dist.sh --test-wget $NOW $host >>$LOG/$host.log 2>&1 &
 done

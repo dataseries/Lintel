@@ -511,7 +511,7 @@ sub helpSection {
         !;
     }
 
-    die "Eval failed: $@" if $@;
+    die "Eval-for-docs failed: $@" if $@;
 
     exit(0);
 }
@@ -697,12 +697,14 @@ sub initDbs {
 
 =pod
 
-=head2 tarinit [I</path/file.tar.bz2>...] [I<http://...>] [I<http://.../latest-release>]
+=head2 tarinit [--no-cache] [I<download-specification>]
 
 The tarinit command will initialize the software packages based on tar files.
-It has three possible types of arguments.  If no arguments are specified, then
-it defaults to http://tesla.hpl.hp.com/opensource/latest-release; which will
-download the open-source packages available on tesla and unpack then.
+It has three possible types of download specifications, listed below.  If no
+arguments are specified, then it defaults to
+http://tesla.hpl.hp.com/opensource/latest-release; which will download the
+open-source packages available on tesla and unpack then.  If the --no-cache
+option is specified, tarinit will provide --no-cache as an option to wget.
 
 =over 4
 
@@ -731,6 +733,12 @@ then download all of the packages specified in the latest-release file.
 =cut
 
 sub depTarInit {
+    my $no_cache = 0;
+
+    my $result = GetOptions("no-cache!" => \$no_cache);
+
+    usage("Unknown error") unless $result;
+
     my (@files) = @ARGV;
 
     @files = "http://tesla.hpl.hp.com/opensource/latest-release"
@@ -740,15 +748,16 @@ sub depTarInit {
     mkpath(projects());
     aliasChdir(projects());
 
+    my $cache = $no_cache ? "--no-cache" : "";
     foreach my $file (@files) {
 	if (-f $file && -r $file) {
 	    unpackProjectsTar($file);
 	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
 	    unpackProjectsTar("$startdir/$file");
 	} elsif ($file =~ m!^http:.*latest-release!o) {
-	    httpFetchLatestRelease($file);
+	    httpFetchLatestRelease($file, $cache);
 	} elsif ($file =~ m!^http:!o) {
-	    httpFetchUnpackTar($file);
+	    httpFetchUnpackTar($file, $cache);
 	} else {
 	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
 	}
@@ -834,7 +843,7 @@ sub backupUntarDir {
 }
 
 sub httpFetchUnpackTar {
-    my ($url) = @_;
+    my ($url, $no_cache) = @_;
 
     die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
 	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
@@ -842,32 +851,39 @@ sub httpFetchUnpackTar {
 
     return if maybeBackupOldProjectDir($project, $date, $url);
 
-    if (! -e "$project-$date.tar.bz2") {
-	userPrompt("wget $url");
-	my $ret = system("wget -O $project-$date.tar.bz2.tmp $url");
-
-	die "wget $url failed" unless $ret == 0 && -r "$project-$date.tar.bz2.tmp";
-	rename("$project-$date.tar.bz2.tmp", "$project-$date.tar.bz2")
-	    or die "Unable to rename $project-$date.tar.bz2.tmp to $project-$date.tar.bz2: $!";
+    my $output = "$project-$date.tar.bz2";
+    if ($no_cache ne '') {
+	unlink($output);
+	die "Unable to rm $output: $!" if -e $output;
+	rmtree("$project-$date") if -d "$project-$date";
     }
-    unpackProjectsTar(projects() . "/$project-$date.tar.bz2");
+
+    if (! -e $output) {
+	userPrompt("wget $no_cache $url");
+	my $ret = system("wget -O $output.tmp $url");
+
+	die "wget $url failed" unless $ret == 0 && -r "$output.tmp";
+	rename("$output.tmp", $output)
+	    or die "Unable to rename $output.tmp to $output: $!";
+    }
+    unpackProjectsTar(projects() . "/$output");
 }
 
 sub httpFetchLatestRelease {
-    my ($url) = @_;
+    my ($url, $no_cache) = @_;
 
     userPrompt("download $url");
     print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
 	if $debug;
-    my $fh = new FileHandle("wget -O - $url |")
-	or die "Can't run wget -O - $url: $!";
+    my $fh = new FileHandle("wget $no_cache -O - $url |")
+	or die "Can't run wget $no_cache -O - $url: $!";
     my @suburls = <$fh>;
     close($fh);
 
     foreach my $suburl (@suburls) {
 	my $tmp = $url;
 	$tmp =~ s/latest-release$/$suburl/o;
-	httpFetchUnpackTar($tmp);
+	httpFetchUnpackTar($tmp, $no_cache);
     }
 }
 
