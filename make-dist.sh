@@ -1,6 +1,6 @@
 #!/bin/sh
 PACKAGES="Lintel DataSeries"
-TEST_HOSTS="batch-fe-2.u.hpl.hp.com keyvalue-debian-x86-2.u.hpl.hp.com ch-x86-debian-01.u.hpl.hp.com"
+TEST_HOSTS="keyvalue-debian-x86-2.u.hpl.hp.com pds-big-1.u.hpl.hp.com hplxc.hpl.hp.com ts-rhel5.hpl.hp.com endpin.cs.hmc.edu"
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 set -e
@@ -82,37 +82,46 @@ cp Lintel-$NOW.tar.bz2 /tmp/make-dist
 cp DataSeries-$NOW.tar.bz2 /tmp/make-dist
 
 echo "Copy to tesla (bg)..."
-rsync -av --progress /tmp/make-dist/Lintel-$NOW.tar.bz2 /tmp/make-dist/DataSeries-$NOW.tar.bz2 tesla.hpl.hp.com:opensource/tmp >/tmp/make-dist/log/rsync 2>&1 &
+echo "Lintel-$NOW.tar.bz2" >/tmp/make-dist/latest-release
+echo "DataSeries-$NOW.tar.bz2" >>/tmp/make-dist/latest-release
+
+rsync -av --progress /tmp/make-dist/Lintel-$NOW.tar.bz2 /tmp/make-dist/DataSeries-$NOW.tar.bz2 /tmp/make-dist/latest-release tesla.hpl.hp.com:opensource/tmp >/tmp/make-dist/log/rsync 2>&1 &
 
 echo "Local build..."
-/tmp/make-dist/make-dist.sh --test $NOW localhost >/tmp/make-dist/log/build.localhost 2>&1
+/tmp/make-dist/make-dist.sh --test-local $NOW localhost >/tmp/make-dist/log/build.localhost 2>&1
 
 cp /tmp/make-dist/build/Lintel/src/deptool-bootstrap /tmp/make-dist
+
+echo "Waiting for copy to finish..."
+wait
+
+echo "starting test-host builds..."
+
+for host in $TEST_HOSTS; do
+    echo "Starting on $host; log to /tmp/make-dist/$host.log"
+    echo -n "  prepare..."
+    ssh $host mv /tmp/make-dist /tmp/make-dist.rm >$host.log 2>&1
+    ssh $host rm -rf /tmp/make-dist.rm >$host.log 2>&1
+    ssh $host mkdir /tmp/make-dist >>$host.log 2>&1
+    scp $0 $host:/tmp/make-dist >>$host.log 2>&1
+    scp /tmp/make-dist/deptool-bootstrap $host:/tmp/make-dist >>$host.log 2>&1
+
+    echo "start build."
+
+    ssh $host /tmp/make-dist/make-dist.sh --test-wget $NOW $host >>$host.log 2>&1 &
+done
 
 wait
 
 # echo "schroot builds..."
 # for i in etch-32bit lenny-32bit; do
 #     echo "$i..."
-#     schroot -c $i -- /tmp/make-dist/make-dist.sh --test $NOW $i >/tmp/make-dist/log/$i 2>&1
+#     schroot -c $i -- /tmp/make-dist/make-dist.sh --test-local $NOW $i >/tmp/make-dist/log/$i 2>&1
 # done
 
-exit 0
-
+echo "verifying test-host builds succeeded."
 for host in $TEST_HOSTS; do
-    echo "Testing on $host; logging everything to /tmp/make-dist/$host.log:"
-    ssh $host rm -rf /tmp/make-dist >$host.log 2>&1
-    ssh $host mkdir /tmp/make-dist >>$host.log 2>&1
-    scp $0 $host:/tmp/make-dist >>$host.log 2>&1
-    scp /tmp/make-dist/deptool-bootstrap $host:/tmp/make-dist >>$host.log 2>&1
-
-    for package in $PACKAGES; do
-	echo "   copy $package..."
-	scp $package-$NOW.tar.bz2 $host:/tmp/make-dist/$package-$NOW.tar.bz2 >>$host.log 2>&1
-    done
-    echo "   test build/check/install..."
-    ssh $host /tmp/make-dist/make-dist.sh --test $NOW $host >>$host.log 2>&1
-    echo -n "   verify completed correctly: "
+    echo -n "$host: fetch..."
     scp $host:/tmp/make-dist/ok-$host ok-$host >>$host.log 2>&1
     if [ "`cat ok-$host`" = "$NOW" ]; then
 	echo "ok"
@@ -121,4 +130,8 @@ for host in $TEST_HOSTS; do
 	exit 1
     fi
 done
+
+
+
+exit 0
 
