@@ -17,7 +17,6 @@ use strict;
 use Carp;
 use Cwd;
 use Data::Dumper;
-use Digest::SHA1 'sha1_hex';
 use English;
 use Fcntl;
 use File::Basename;
@@ -34,6 +33,23 @@ use Pod::Usage;
 use Safe;
 use Sys::Hostname;
 use Time::HiRes 'time';
+
+BEGIN {
+    # RHEL5 doesn't have Digest::SHA1 by default, only MD5
+    eval "use Digest::SHA1 'sha1_hex';";
+    if ($@) {
+	die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
+	eval "use Digest::MD5 'md5_hex';";
+	die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
+	eval 'sub hexDigest { return md5_hex($_[0]); };';
+	warn "Using Digest::MD5 instead of Digest::SHA1.
+Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
+	    unless defined $ENV{DEPTOOL_NOWARN_MD5};
+    } else{
+	eval 'sub hexDigest { return sha1_hex($_[0]); };';
+    }
+    die $@ if $@;
+}
 
 @PERL5_MODULES_INC_UNSHIFT@
 use Lintel::File::Lock;
@@ -436,7 +452,7 @@ sub addTimeLog {
     if (my $lock = Lintel::File::Lock::getLockEx($time_log, waittime => 5, 
 						 flags => O_WRONLY | O_CREAT | O_APPEND)) {
 	my $doc = encode_base64(Dumper($timelog_entry), '');
-	my $sha1 = sha1_hex($doc);
+	my $sha1 = hexDigest($doc);
 	print $lock "$doc $sha1\n" or die "print failed: $!";
 	close $lock or die "close failed: $!";
     } else {
@@ -1861,7 +1877,7 @@ sub depCommitUnknown {
         $_ = <STDIN>; 
         chomp;
         if ($_ eq 'ignore') {
-            my $sha1 = sha1_hex(join('',@unknown));
+            my $sha1 = hexDigest(join('',@unknown));
             my $ignores_name = ignoresFileName();
             my $fh = new FileHandle ">>$ignores_name"
                 or die "Can't open $ignores_name: $!";
@@ -1885,7 +1901,7 @@ sub depCommitHaveUnknown {
     my $fh = new FileHandle ignoresFileName();
     if ($fh) {
         my $cwd = aliasGetCwd();
-        my $sha1 = sha1_hex(join('', @unknown));
+        my $sha1 = hexDigest(join('', @unknown));
         while(<$fh>) {
             return 0 if $_ eq "$cwd $sha1\n";
         }
@@ -3440,12 +3456,12 @@ sub vcVersion {
 	my @output = getCmdOutput("mtn --version");
 
 	die "bad return from mtn --version" unless @output == 1;
-    
+
 	local $_ = $output[0];
 	die "can't parse '$output[0]'" unless /^monotone (\d+\.\d+\S*) /o;
 	$Cache::vc_version = { 'type' => 'monotone', 'version' => $1 };
     }
-    
+
     die "Internal" unless defined $Cache::vc_version;
     return $Cache::vc_version;
 }
@@ -3463,7 +3479,6 @@ sub vcLogRevision {
 	die "Don't know how to get revision log on $vcver";
     }
 }
-
 
 =pod
 
