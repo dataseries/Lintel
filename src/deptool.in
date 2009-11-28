@@ -147,6 +147,7 @@ my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
 my $time_log;
+my $debug = 0;
 my $monotone_dir = $ENV{MONOTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
@@ -165,7 +166,8 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage,
 	   "monotone-dir=s" => \$monotone_dir,
-	   "time-log=s" => \$time_log);
+	   "time-log=s" => \$time_log,
+	   "debug!" => \$debug);
 
 $time_log ||= $ENV{DEPTOOL_TIME_LOG};
 if (!defined $time_log) {
@@ -708,7 +710,6 @@ sub depTarInit {
     mkpath(projects());
     aliasChdir(projects());
 
-    print "DepTarInit @ARGV\n";
     foreach my $file (@files) {
 	if (-f $file && -r $file) {
 	    unpackProjectsTar($file);
@@ -813,7 +814,7 @@ sub httpFetchUnpackTar {
 
     if (! -e "$project-$date.tar.bz2") {
 	userPrompt("wget $url");
-	my $ret = system("wget $url -O $project-$date.tar.bz2.tmp");
+	my $ret = system("wget -O $project-$date.tar.bz2.tmp $url");
 
 	die "wget $url failed" unless $ret == 0 && -r "$project-$date.tar.bz2.tmp";
 	rename("$project-$date.tar.bz2.tmp", "$project-$date.tar.bz2")
@@ -826,6 +827,8 @@ sub httpFetchLatestRelease {
     my ($url) = @_;
 
     userPrompt("download $url");
+    print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
+	if $debug;
     my $fh = new FileHandle("wget -O - $url |")
 	or die "Can't run wget -O - $url: $!";
     my @suburls = <$fh>;
