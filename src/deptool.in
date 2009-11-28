@@ -454,9 +454,6 @@ sub helpSection {
     my $fn;
 
     if ($PERL_VERSION ge v5.10) {
-	# TODO: IO::String isn't standard so we can't do termcap prettified
-	# printing of pod chunks on machines that are missing it.  If the
-	# eval fails, try again without nice colors.
 	eval q! # checked on Debian Lenny, openSUSE 11.1
 	    use IO::String;
             use Pod::Select;
@@ -470,6 +467,23 @@ sub helpSection {
 	    $out->setpos(0);
 	    $to_text->parse_from_filehandle($out);
 	!;
+	if ($@ && $@ =~ m!Can.t locate IO/String.pm in!o) {
+	    # Write out to a temporary file.
+	    eval q!
+                use Pod::Select;
+                use File::Temp;
+	        use Pod::Text::Termcap;
+
+                my $fh = new File::Temp();
+                # Couldn't figure out how to pass just the handle to podselect;
+                # the idiom suggested on the File::Temp page didn't work (wrote
+                # to the redirect as if it was a filename)
+	        podselect({-sections => [$section], -output => $fh->filename }, $0);
+	        my $to_text = new Pod::Text::Termcap;
+	        $to_text->parse_from_file($fh->filename);
+            !;
+        }
+
     } else {
 	# RHEL4 (perl 5.8.5), Debian Etch (perl 5.8.8)
 	# -sections => ... works on Etch but not RHEL4
