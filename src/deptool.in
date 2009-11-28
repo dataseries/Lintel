@@ -17,7 +17,6 @@ use strict;
 use Carp;
 use Cwd;
 use Data::Dumper;
-use Digest::SHA1 'sha1_hex';
 use English;
 use Fcntl;
 use File::Basename;
@@ -34,6 +33,20 @@ use Pod::Usage;
 use Safe;
 use Sys::Hostname;
 use Time::HiRes 'time';
+
+BEGIN {
+    # RHEL5 doesn't have Digest::SHA1 by default, only MD5
+    eval "use Digest::SHA1 'sha1_hex';";
+    if ($@) {
+	die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
+	eval "use Digest::MD5 'md5_hex';";
+	die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
+	eval 'sub hexDigest { return md5_hex($_[0]); };';
+    } else{
+	eval 'sub hexDigest { return sha1_hex($_[0]); };';
+    }
+    die $@ if $@;
+}
 
 @PERL5_MODULES_INC_UNSHIFT@
 use Lintel::File::Lock;
@@ -436,7 +449,7 @@ sub addTimeLog {
     if (my $lock = Lintel::File::Lock::getLockEx($time_log, waittime => 5, 
 						 flags => O_WRONLY | O_CREAT | O_APPEND)) {
 	my $doc = encode_base64(Dumper($timelog_entry), '');
-	my $sha1 = sha1_hex($doc);
+	my $sha1 = hexDigest($doc);
 	print $lock "$doc $sha1\n" or die "print failed: $!";
 	close $lock or die "close failed: $!";
     } else {
@@ -1847,7 +1860,7 @@ sub depCommitUnknown {
         $_ = <STDIN>; 
         chomp;
         if ($_ eq 'ignore') {
-            my $sha1 = sha1_hex(join('',@unknown));
+            my $sha1 = hexDigest(join('',@unknown));
             my $ignores_name = ignoresFileName();
             my $fh = new FileHandle ">>$ignores_name"
                 or die "Can't open $ignores_name: $!";
@@ -1871,7 +1884,7 @@ sub depCommitHaveUnknown {
     my $fh = new FileHandle ignoresFileName();
     if ($fh) {
         my $cwd = aliasGetCwd();
-        my $sha1 = sha1_hex(join('', @unknown));
+        my $sha1 = hexDigest(join('', @unknown));
         while(<$fh>) {
             return 0 if $_ eq "$cwd $sha1\n";
         }
@@ -3449,7 +3462,6 @@ sub vcLogRevision {
 	die "Don't know how to get revision log on $vcver";
     }
 }
-
 
 =pod
 
