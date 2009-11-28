@@ -44,8 +44,12 @@ my $missing_statistics_ols = $@;
 
 $|=1;
 my $gnuplot_fifo;
-my $term = new Term::ReadLine 'Experiment Plotter';
-$term->ornaments("0");
+my $term;
+
+if (-t STDIN) {
+    $term = new Term::ReadLine 'Experiment Plotter';
+    $term->ornaments("0");
+}
 my $history_file = ".plot.history";
 my $user;
 my $password;
@@ -59,7 +63,7 @@ my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "history=s" => \$history_file,
 			 "debug!" => \$debug,
 			 "man!" => \$print_manpage);
-pod2usage(-verbose => 2) if $print_manpage;
+pod2usage(-verbose => 2, -exitval => 0) if $print_manpage;
 eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
 
 die "Usage: $0 
@@ -71,7 +75,7 @@ die "Usage: $0
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
     [--history=<history-filename, default $history_file>]
-    [--help] [--man] [--debug] [input-file ...]\n"
+    [--help] [--man] [--debug] [input-file ...] [< input]\n"
     unless $success;
 
 if (defined $db) {
@@ -100,7 +104,7 @@ if (-f $history_file) {
     @history = <$fh>;
     foreach $_ (@history) {
 	chomp;
-	$term->addhistory($_);
+	$term->addhistory($_) if defined $term;
     }
     print "Loaded history from ${history_file}.\n";
     close($fh);
@@ -138,6 +142,14 @@ my $prompt = ">> ";
 map { die "command line input file $_ is not readable" unless -f $_ && -r $_; } @ARGV;
 map { print "Reading from $_\n" if $debug;
       history("run $_"); exit(1) if $command_error; } @ARGV;
+
+unless (defined $term) {
+    while(<STDIN>) {
+	docmd($_);
+	exit(1) if $command_error;
+    }
+    exit(0);
+}
 
 while (defined ($_ = $term->readline("$prompt"))) {
     $command_error = 0;
@@ -299,7 +311,7 @@ sub history {
 	    print "Loading history from $fn\n";
 	    while(<$fh>) {
 		chomp;
-		$term->addhistory($_);
+		$term->addhistory($_) if defined $term;
 	    }
 	} else {
 	    print "Unable to open $fn: $!\n";
@@ -1460,7 +1472,7 @@ mercury-plot - plot data out of an SQL database
 
 =head1 SYNOPSIS
 
-% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>] 
+% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>]
                [--user=<user>] [--password=<password>]
                [--history=<history filename>]
 
