@@ -1,42 +1,35 @@
 #ifndef LINTEL_ATOMIC_COUNTER_HPP
 #define LINTEL_ATOMIC_COUNTER_HPP
 
-// The tests for feature support are taken from boost 1.37
-
-// The primitive for non 4.1 compilers was also taken from boost 1.37
-
-// The primitive for 4.1 compilers is Joe's code, but happens to be the same
-// as boost 1.37 (it's kinda obvious given the knowledge of GCC's
-// primitives).
-
-// Note that boost code is tested on other architectures, this specific code
-// has only been tested on x86 with gcc4.1.
+#include <inttypes.h>
 
 namespace lintel {
 
 #if defined(LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH)
     // pre-defined by user
-#elif defined ( __GNUC__) && ( __GNUC__ * 100 + __GNUC_MINOR__ >= 401 ) && !defined(__hppa ) && ( !defined( __INTEL_COMPILER ) || defined ( __ia64__ )  )
+#elif defined (__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 401)
 
     // GCC 4.1 and up
-#define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(var, amount) \
-    __sync_add_and_fetch( &(var), (amount) )
+#    define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(var, amount) \
+            __sync_add_and_fetch(&(var), (amount))
 
-#elif defined( __GLIBCPP__ ) || defined(__GLIBCXX__)
+#elif defined (__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+    // Generates same assembly as __sync_add_and_fetch on lenny 64bit
+    // (Except for the #APP #NO_APP bits)
+    static inline int x86GccAddThenFetch(int *counter, int v) {
+	int save_v = v;
+	asm volatile("lock xaddl %1, %0; \n"
+		     : "+m" (*counter), "+r" (v)
+		     : // above specs list input+output
+		     : "memory" // clobber memory
+		     );
+	return v + save_v; // xaddl returns the pre-updated value
+    }
 
-    // Other compilers & poorly supported architectures, e.g. PA-RISC.. :-( 
-
-#if defined(__GLIBCXX__) // g++ 3.4+
-    using __gnu_cxx::__exchange_and_add;
-#endif
-
-#define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(var, amount) \
-    __exchange_and_add( &(var),(amount) );
-
+#    define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, amount) \
+            x86GccAddThenFetch(&(counter), (amount))
 #else
-
 #error AtomicCounter does not have primitives for the detected platform
-
 #endif
 
     /// Encapsulates an atomic counter.  Be wary when using it so as
@@ -48,7 +41,7 @@ namespace lintel {
     /// date!
     class AtomicCounter {
     public:
-        explicit AtomicCounter(int32_t _counter=0) : counter(_counter) { }
+        explicit AtomicCounter(int32_t counter = 0) : counter(counter) { }
 
         /// Increments the counter and then returns the value
         int32_t incThenFetch() {

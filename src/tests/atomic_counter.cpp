@@ -55,9 +55,10 @@ public:
 void simpleTest() {
     lintel::AtomicCounter foo;
 
-    SINVARIANT(foo.addThenFetch(0) == 0);
-    int32_t x = foo.incThenFetch();
-    INVARIANT(x == 1, boost::format("%d") % x);
+    int32_t x = foo.addThenFetch(0); 
+    INVARIANT(x == 0, boost::format("initial value is %d, not 0") % x);
+    x = foo.incThenFetch();
+    INVARIANT(x == 1, boost::format("inc-then-fetch -> %d ; cur -> %d") % x % foo.addThenFetch(0));
     foo.addThenFetch(-1);
     SINVARIANT(foo.isZero());
     SINVARIANT(foo.incThenFetch() == 1);
