@@ -42,6 +42,9 @@ BEGIN {
 	eval "use Digest::MD5 'md5_hex';";
 	die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
 	eval 'sub hexDigest { return md5_hex($_[0]); };';
+	warn "Using Digest::MD5 instead of Digest::SHA1.
+Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
+	    unless defined $ENV{DEPTOOL_NOWARN_MD5};
     } else{
 	eval 'sub hexDigest { return sha1_hex($_[0]); };';
     }
@@ -3439,12 +3442,12 @@ sub vcVersion {
 	my @output = getCmdOutput("mtn --version");
 
 	die "bad return from mtn --version" unless @output == 1;
-    
+
 	local $_ = $output[0];
 	die "can't parse '$output[0]'" unless /^monotone (\d+\.\d+\S*) /o;
 	$Cache::vc_version = { 'type' => 'monotone', 'version' => $1 };
     }
-    
+
     die "Internal" unless defined $Cache::vc_version;
     return $Cache::vc_version;
 }

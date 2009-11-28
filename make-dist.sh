@@ -1,6 +1,17 @@
 #!/bin/sh
 PACKAGES="Lintel DataSeries"
-TEST_HOSTS="keyvalue-debian-x86-2.u.hpl.hp.com pds-big-1.u.hpl.hp.com hplxc.hpl.hp.com ts-rhel5.hpl.hp.com endpin.cs.hmc.edu"
+# Add ts-rhel5 once it has cmake, Digest::SHA1
+test_hosts() {
+    awk '{print $1}' <<END_OF_HOST_LIST
+keyvalue-debian-x86-2.u.hpl.hp.com # Debian Etch 32bit
+pds-big-1.u.hpl.hp.com # Debian Lenny 64bit
+hplxc.hpl.hp.com # RHEL4.5
+ts-rhel5.hpl.hp.com # RHEL5.4
+endpin.cs.hmc.edu # OpenSuSE 11.1
+END_OF_HOST_LIST
+}
+TEST_HOSTS=`test_hosts`
+
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 set -e
@@ -43,7 +54,12 @@ if [ "$1" = "--test-wget" -a "$2" != "" -a "$3" != "" ]; then
     unset no_proxy
     case $3 in
 	*.hp.com) http_proxy=http://web-proxy.corp.hp.com:8088/;
-	   export http_proxy ;;
+	          export http_proxy ;;
+    esac
+    case $3 in
+	# cmake
+	hplxc.hpl.hp.com) PATH=$PATH:/hpl/home/anderse/.depot/rhel4-x86_64/bin ;;
+	ts-rhel5.hpl.hp.com) PATH=$PATH:/home/anderse/.depot/rhel5-x86_64/bin ;;
     esac
     perl /tmp/make-dist/deptool-bootstrap --debug tarinit http://tesla.hpl.hp.com/opensource/tmp/latest-release
     cd $PROJECTS/DataSeries
@@ -133,15 +149,24 @@ for host in $TEST_HOSTS; do
     ssh $host /tmp/make-dist/make-dist.sh --test-wget $NOW $host >>$LOG/$host.log 2>&1 &
 done
 
-# echo "schroot builds..."
-# for i in etch-32bit lenny-32bit; do
-#     echo "$i..."
-#     schroot -c $i -- /tmp/make-dist/make-dist.sh --test-local $NOW $i >$LOG/$i 2>&1
-# done
+echo "schroot builds..."
+SCHROOT_FAILED=
+for i in etch-32bit lenny-32bit; do
+    echo "$i..."
+    schroot -c $i -- /tmp/make-dist/make-dist.sh --test-local $NOW $i >$LOG/$i 2>&1 || SCHROOT_FAILED=$i
+    if [ ! -z "$SCHROOT_FAILED" ]; then
+	echo "Error: $i failed"
+    fi
+done
 
 wait
 
-echo "verifying test-host builds succeeded."
+echo "verifying test builds succeeded."
+if [ ! -z "$SCHROOT_FAILED" ]; then
+    echo "Schroot $i failed, consult $LOG/$SCHROOT_FAILED"
+    exit 1
+fi
+
 for host in $TEST_HOSTS; do
     echo -n "$host: fetch..."
     echo "No-File-Copied" >$LOG/result-$host
@@ -150,7 +175,7 @@ for host in $TEST_HOSTS; do
     if [ "$GOT" = "$NOW" ]; then
 	echo "ok"
     else
-	echo "failed, ok-$host doesn't contain $NOW, but '$GOT'"
+	echo "failed, $LOG/ok-$host doesn't contain $NOW, but '$GOT', consult $LOG/$host.log"
 	exit 1
     fi
 done

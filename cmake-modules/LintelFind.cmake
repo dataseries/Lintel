@@ -353,16 +353,18 @@ MACRO(LINTEL_BOOST_EXTRA variable header libname)
 	ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
 
 	IF(NOT ${libname} STREQUAL "None")
+	    GET_FILENAME_COMPONENT(LBE_TMP ${${variable}_LIBRARY} PATH)
 	    IF (0)
 	    ELSEIF("${Boost_LIBRARY_DIRS}" STREQUAL "/usr/lib"
 	           AND EXISTS "/usr/lib64/libboost_program_options.so"
-		   AND NOT EXISTS "/usr/lib/libboost_program_options.so")
-		# First seen on OpenSuSE 11 x86_64
+		   AND "${LBE_TMP}" STREQUAL "/usr/lib64")
+		# First seen on OpenSuSE 11 x86_64, RHEL5 has libraries
+   	        # in both /usr/lib and /usr/lib64, but cmake search
+                # prefers the lib64 versions
 	        MESSAGE("Warning: cmake determined the Boost library dir incorrectly. It should be /usr/lib64 not /usr/lib")
 		SET(Boost_LIBRARY_DIRS /usr/lib64)
 	    ENDIF(0)
 	        
-	    GET_FILENAME_COMPONENT(LBE_TMP ${${variable}_LIBRARY} PATH)
 	    IF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")
  	        MESSAGE(FATAL_ERROR "Error: different ${libname} / boost lib dirs ${${variable}_LIBRARY} -> '${LBE_TMP}' != '${Boost_LIBRARY_DIRS}' ")	
   	    ENDIF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")
