@@ -542,28 +542,26 @@ sub depWalk ($$$);
 
 =pod
 
-=head2 init [I<branch-prefix>...]
+=head2 init [--server=<hostname>] [I<branch-prefix>...]
 
-The init command will initialize the default setup for the monotone
-version control system.  It will also populate the initial database
-for checkouts, in particular, the one that would contain Lintel since
-deptool is in Lintel.  By default it assumes that usi.hpl.hp.com is
-the central version control server.  It will use ssd as the default
-branch prefix.  If you do not have the environment variables set up by
-using the getenv command, deptool will ask a number of questions about
-where the files should be placed.  It is usually safe to run the init
-command with the -y option so that these questions will be
-automatically answered.
+The init command will initialize the default setup for the monotone version
+control system.  It will also populate the initial database for checkouts, in
+particular, the one that would contain Lintel since deptool is in Lintel.  By
+default it assumes that usi.hpl.hp.com is the central version control server,
+but this can be overridden with the --server option.  It will use ssd as the default
+branch prefix.  If you do not have the environment variables set up by using
+the getenv command, deptool will ask a number of questions about where the
+files should be placed.  It is usually safe to run the init command with the -y
+option so that these questions will be automatically answered.
 
-After you have run init, you will have a key file.  To be able to sync
-to a particular server, you need to send the public key to the
-monotone administrator for that server.  For HPL, the administrator of
-usi.hpl.hp.com is anderse@hpl.hp.com.
+After you have run init, you will have a key file.  To be able to sync to a
+particular server, you need to send the public key to the monotone
+administrator for that server.  For HPL, the administrator of usi.hpl.hp.com is
+anderse@hpl.hp.com.
 
-B<Warning:> If you already have a key set up on one machine, you
-should just copy your keys directory to the new machine rather than
-creating a new key.  Monotone can get confused by multiple keys with
-the same email address.
+B<Warning:> If you already have a key set up on one machine, you should just
+copy your keys directory to the new machine rather than creating a new key.
+Monotone can get confused by multiple keys with the same email address.
 
 =cut
 

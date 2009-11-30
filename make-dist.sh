@@ -8,6 +8,7 @@ pds-big-1.u.hpl.hp.com # Debian Lenny 64bit
 hplxc.hpl.hp.com # RHEL4.5
 ts-rhel5.hpl.hp.com # RHEL5.4
 endpin.cs.hmc.edu # OpenSuSE 11.1
+martenot.hpl.hp.com # Debian Lenny/Sid
 END_OF_HOST_LIST
 }
 TEST_HOSTS=`test_hosts`
@@ -21,6 +22,16 @@ if [ "$1" = "--endpin-mtn" ]; then
     mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/Lintel\*
     cd ../DataSeries
     mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/DataSeries\*
+    exit 0
+fi
+
+WWW=/var/www/external/tesla.hpl.hp.com/opensource
+if [ "$1" = "--martenot-copy" -a "$2" != "" ]; then
+    PROJ=/tmp/make-dist/projects
+    cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
+    cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
+    cp $PROJ/Lintel-$2.tar.bz2 $WWW/Lintel-$2.tar.bz2
+    cp $PROJ/DataSeries-$2.tar.bz2 $WWW/DataSeries-$2.tar.bz2
     exit 0
 fi
 
@@ -108,7 +119,7 @@ for i in $PACKAGES; do
     [ ! -d $i-$NOW ] || rm -rf $i-$NOW
     mtn -d tmp.db co -b ssd.hpl.hp.com/$i $i-$NOW >../log/co.$i 2>&1
     cd $i-$NOW
-    mtn log >Changelog.mtn
+    mtn-log-sort >Changelog.mtn
     echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
     echo "Creation-Date: $NOW" >>Release.info
     echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}'`"
@@ -184,6 +195,11 @@ for host in $TEST_HOSTS; do
 	exit 1
     fi
 done
+
+ssh martenot.hpl.hp.com /tmp/make-dist/make-dist.sh --martenot-copy
+scp /tmp/make-dist/latest-release martenot:$WWW/latest-release
+
+echo "Update the html, and resync to tesla, and we're ready to go."
 
 exit 0
 
