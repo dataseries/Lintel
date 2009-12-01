@@ -63,7 +63,8 @@ namespace {
 	}
 	static const unsigned bufsize = 80; // long enough for how we are using it.
 	char buf[bufsize]; 
-	fgets(buf, bufsize, f);
+	char *rv = fgets(buf, bufsize, f);
+	SINVARIANT(rv != NULL);
 	unsigned len = strlen(buf);
 	SINVARIANT(len > 0 && buf[len-1] == '\n');
 	buf[len-1] = '\0';

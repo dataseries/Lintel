@@ -8,7 +8,8 @@
     Matrix functions
 */
 
-#include <stdarg.h>
+#include <cstdio>
+#include <cstdarg>
 
 #include <Lintel/Matrix.hpp>
 

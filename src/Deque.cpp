@@ -8,6 +8,8 @@
     Deque implementation
 */
 
+#include <cstdio>
+
 #include <Lintel/Deque.hpp>
 
 void
