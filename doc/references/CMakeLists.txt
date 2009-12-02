@@ -8,6 +8,7 @@
 # Unfortunately, FILE(GLOB *bib) doesn't do what we want, if a new
 # .bib file is added, the file isn't automatically regenerated.
 SET(BIB_FILES 
+    aadebug.bib
     acmtocs.bib
     acmtoplas.bib
     asplos.bib
@@ -17,10 +18,13 @@ SET(BIB_FILES
     datamation.bib
     disc.bib
     distributedcomputing.bib
+    dsn.bib
+    efts.bib
     hotdep.bib
     hotos.bib
     ics.bib
     ieee-computer.bib
+    ieee-icin.bib
     ieeetoc.bib
     isca.bib
     journal-high-perf-compute-apps.bib
@@ -28,6 +32,7 @@ SET(BIB_FILES
     nsdi.bib
     osdi.bib
     os-review.bib
+    pldi.bib
     scientific-programming.bib
     siam-parallel-scientific.bib
     sigact.bib
@@ -35,7 +40,10 @@ SET(BIB_FILES
     sigmod.bib
     sosp.bib
     supercomputing-review.bib
+    tcsc.bib
     tr.bib
+    tse.bib
+    usenix.bib
     vldb.bib
     web-sites.bib
 )
