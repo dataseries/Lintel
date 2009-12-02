@@ -3123,8 +3123,26 @@ sub buildRoot {
 sub operatingSystem {
     $Cache::operating_system ||= $ENV{OS};
     unless(defined $Cache::operating_system) {
-        if (-f "/etc/debian_version") {
-            my $debver = new FileHandle("/etc/debian_version") 
+	if (-f "/etc/lsb-release") { # need to check this first, Ubuntu has /etc/debian_version
+            my $lsbver = new FileHandle("/etc/lsb-release")
+                or die "Can't open /etc/debian_version for read: $!";
+	    my %info;
+	    while(<$lsbver>) {
+		chomp;
+		die "unknown line in /etc/lsb-release '$_'"
+		    unless /^([A-Z_]+)=(.+)$/o;
+		$info{$1} = $2;
+	    }
+	    if (defined $info{DISTRIB_ID} && defined $info{DISTRIB_RELEASE}
+		&& $info{DISTRIB_ID} eq 'Ubuntu' && $info{DISTRIB_RELEASE} =~ /^\d+\.\d+$/o) {
+		$Cache::operating_system = "ubuntu-$info{DISTRIB_RELEASE}";
+	    } elsif (defined $info{DISTRIB_ID}) {
+		$Cache::operating_system = "unknown-distrib-$info{DISTRIB_ID}";
+	    } else {
+		$Cache::operating_system = "unknown-lsb";
+	    }
+	} elsif (-f "/etc/debian_version") {
+            my $debver = new FileHandle("/etc/debian_version")
                 or die "Can't open /etc/debian_version for read: $!";
             $_ = <$debver>;
             close($debver);

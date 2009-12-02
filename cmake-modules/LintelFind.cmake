@@ -161,10 +161,7 @@ ENDMACRO(LINTEL_REQUIRED_HEADER variable header)
 # TODO: consider a check that the library and header share most of their
 # prefix and generate a warning if they don't.
 
-MACRO(LINTEL_FIND_LIBRARY variable header libname)
-    LINTEL_FIND_HEADER(${variable} ${header})
-
-    LINTEL_FIND_DEBUG("searching for library ${libname} --> ${variable}")
+MACRO(LINTEL_FIND_LIBRARY_ONE variable libname)
     LINTEL_FIND_DEBUG("  pre-find: ${${variable}_LIBRARY}")
     FIND_LIBRARY(${variable}_LIBRARY 
         NAMES ${libname} 
@@ -184,6 +181,21 @@ MACRO(LINTEL_FIND_LIBRARY variable header libname)
     LINTEL_FIND_DEBUG("  generic-search: ${${variable}_LIBRARY}")
 
     MARK_AS_ADVANCED(${variable}_LIBRARY)
+ENDMACRO(LINTEL_FIND_LIBRARY_ONE variable libname)
+
+MACRO(LINTEL_FIND_LIBRARY variable header liblist_str)
+    SET(liblist ${liblist_str}) # necessary to allow SEPARATE_ARGUMENTS to work
+    LINTEL_FIND_HEADER(${variable} ${header})
+
+    LINTEL_FIND_DEBUG("searching for library ${liblist} --> ${variable}")
+
+    SEPARATE_ARGUMENTS(liblist)
+
+    LINTEL_FIND_DEBUG("  post-separate ${liblist}")
+
+    FOREACH(libname ${liblist})
+        LINTEL_FIND_LIBRARY_ONE(${variable} ${libname})
+    ENDFOREACH(libname)
 
     IF (${variable}_INCLUDE_DIR AND ${variable}_LIBRARY)
         SET(${variable}_FOUND TRUE)

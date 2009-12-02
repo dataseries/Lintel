@@ -33,8 +33,9 @@ IF(NOT Boost_FOUND)
 ENDIF(NOT Boost_FOUND)
 
 INCLUDE(LintelFind)
+
 SET(BOOST_THREAD_FIND_REQUIRED ON)
-LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp boost_thread)
+LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp "boost_thread boost_thread-mt")
 
 IF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
     MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs '${BOOST_THREAD_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
@@ -201,8 +202,11 @@ ENDIF(WITH_LATEX)
 
 # TODO: figure out how to extend this to also do versioning,
 # boost 1.32 doesn't have enough of program options for us to work.
-LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp boost_program_options)
+LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
+                   "boost_program_options boost_program_options-mt")
 IF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
     MESSAGE("Unable to find boost/program_options.hpp; will not build Lintel/ProgramOptions")
 ENDIF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
 
+# TODO: if we are forced onto program_options-mt, then we should really be
+# putting that into LintelPThread since we just forced thread linking.
