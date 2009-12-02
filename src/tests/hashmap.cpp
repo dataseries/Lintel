@@ -249,21 +249,38 @@ void test_iterator() {
 }
     
 void test_pointermap() {
-    HashMap<Test *, int, PointerHashMapHash<Test>, PointerHashMapEqual<Test> > 
-	test_map;
+    {
+	HashMap<Test *, int, PointerHashMapHash<Test>, PointerHashMapEqual<Test> > test_map;
     
-    Test *a = new Test();
-    Test *b = new Test();
+	Test *a = new Test();
+	Test *b = new Test();
 
-    SINVARIANT(!test_map.exists(a));
-    test_map[a] = 1;
-    SINVARIANT(test_map.exists(a));
-    SINVARIANT(test_map[a] == 1);
+	SINVARIANT(!test_map.exists(a));
+	test_map[a] = 1;
+	SINVARIANT(test_map.exists(a));
+	SINVARIANT(test_map[a] == 1);
 
-    SINVARIANT(!test_map.exists(b));
-    test_map[b] = 2;
-    SINVARIANT(test_map.exists(b));
-    SINVARIANT(test_map[a] == 1 && test_map[b] == 2);
+	SINVARIANT(!test_map.exists(b));
+	test_map[b] = 2;
+	SINVARIANT(test_map.exists(b));
+	SINVARIANT(test_map[a] == 1 && test_map[b] == 2);
+    }
+    { 
+	HashMap<const Test *, int, PointerHashMapHash<const Test>, PointerHashMapEqual<const Test> > test_map;
+    
+	const Test *a = new Test();
+	const Test *b = new Test();
+	
+	SINVARIANT(!test_map.exists(a));
+	test_map[a] = 1;
+	SINVARIANT(test_map.exists(a));
+	SINVARIANT(test_map[a] == 1);
+	
+	SINVARIANT(!test_map.exists(b));
+	test_map[b] = 2;
+	SINVARIANT(test_map.exists(b));
+	SINVARIANT(test_map[a] == 1 && test_map[b] == 2);
+    }
 }
     
 void test_constA(const HashMap<int, int> &test_map,

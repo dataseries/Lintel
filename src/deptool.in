@@ -17,7 +17,6 @@ use strict;
 use Carp;
 use Cwd;
 use Data::Dumper;
-use Digest::SHA1 'sha1_hex';
 use English;
 use Fcntl;
 use File::Basename;
@@ -34,6 +33,23 @@ use Pod::Usage;
 use Safe;
 use Sys::Hostname;
 use Time::HiRes 'time';
+
+BEGIN {
+    # RHEL5 doesn't have Digest::SHA1 by default, only MD5
+    eval "use Digest::SHA1 'sha1_hex';";
+    if ($@) {
+	die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
+	eval "use Digest::MD5 'md5_hex';";
+	die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
+	eval 'sub hexDigest { return md5_hex($_[0]); };';
+	warn "Using Digest::MD5 instead of Digest::SHA1.
+Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
+	    unless defined $ENV{DEPTOOL_NOWARN_MD5};
+    } else{
+	eval 'sub hexDigest { return sha1_hex($_[0]); };';
+    }
+    die $@ if $@;
+}
 
 @PERL5_MODULES_INC_UNSHIFT@
 use Lintel::File::Lock;
@@ -130,42 +146,15 @@ to force reconfiguration, you may need commands like:
     % deptool cmake # rebuild the cmake configuration
     % make -j $MAKE_PARALLELISM # rebuild in parallel using the deptool env
 
-If you need to add a dependency, then you need to edit the file
-.version_control_deps so that it lists the dependencies.  The file
-simply contains one line that lists branch substrings that should be
-built and installed before the current source directory is built.  If
-you want special builds, then you can list them as
-'I<dependency>;I<sub-build-type>' (without the '').  This input has the
-same effect as creating a dependency where you run b I<sub-build-type> and
-then build in that directory.
+To use deptool, you need to have at least a minimal deptool.config file 'C<{
+}>'.  This file is described in detail in the deptool.config section.  A more
+normal configuration file would list the dependencies and enable parallel
+testing.  Such a configuration might look like the following:
 
-To control parallel builds, you need to edit the file deptool.config
-(note this will eventually replace .version_control_deps).
-deptool.config should be a file that returns a hash reference.  The
-hash reference has a series of options inside it that control how
-deptool will operate.  Options include:
-
-=over 4
-
-=item parallel_test => [0|1]
-
-Should deptool execute the tests for this directory in parallel.  The
-default is 0 (no).
-
-=item parallel_test_path => sub { my ($build_path) = @_; return 0|1; }
-
-Given the current build path, should deptool execute tests in
-parallel?  This function allows you to have parallel tests for some
-build modes and not for others.
-
-=item sequential_tests => [qr/test-name-re/,...]
-
-Specify a list of regex's for tests that have to be run sequentially.  All of
-the sequential tests will be executed before any of the parallel tests.  It is
-an error for a regexp to match multiple tests or no tests.  This option has no
-effect if parallel tests are not enabled.
-
-=back
+    {
+	dependencies => [qw/Lintel OtherPackage/],
+	parallel_test => 1,
+    }
 
 =cut
 
@@ -174,11 +163,11 @@ my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
 my $time_log;
+my $debug = 0;
 my $monotone_dir = $ENV{MONOTONE_DIR};
 $monotone_dir ||= "$ENV{HOME}/.monotone";
 
 $Global::last_stamp_timestamp = time();
-
 
 my @original_arguments = @ARGV;
 Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
@@ -193,7 +182,8 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage,
 	   "monotone-dir=s" => \$monotone_dir,
-	   "time-log=s" => \$time_log);
+	   "time-log=s" => \$time_log,
+	   "debug!" => \$debug);
 
 $time_log ||= $ENV{DEPTOOL_TIME_LOG};
 if (!defined $time_log) {
@@ -284,8 +274,6 @@ help("all") if $print_manpage;
 
 usage("Missing argument") if @ARGV == 0;
 
-readConfigFile();
-
 my %commands = ('checkout' => \&depCheckout,
 		'co' => \&depCheckout,
                 'pull' => \&depPull,
@@ -295,6 +283,7 @@ my %commands = ('checkout' => \&depCheckout,
                 'publish' => \&depPublish,
                 # below commands don't run in all dep dirs.
                 'init' => \&depInit,
+		'tarinit' => \&depTarInit,
                 'cmake' => \&runCMake,
                 'pin' => \&setPin,
                 'code-review' => \&codeReview,
@@ -324,7 +313,13 @@ help> I<command>
 =item init [I<--server=hostname>] [I<branch-prefix>]
 
 Initialize the system, this will create the appropriate version
-control files, and will pull the initial database(s). 
+control files, and will pull the initial database(s).
+
+=item tarinit [I</path/to/tar.bz2>...] [I<http://host/path/to/tar>] 
+      [I<http://host/path/to/latest-release]
+
+Initialize the system.  This will optionally download and unpack the
+specified source packages.
 
 =item checkout I<branch-substring>
 
@@ -457,7 +452,7 @@ sub addTimeLog {
     if (my $lock = Lintel::File::Lock::getLockEx($time_log, waittime => 5, 
 						 flags => O_WRONLY | O_CREAT | O_APPEND)) {
 	my $doc = encode_base64(Dumper($timelog_entry), '');
-	my $sha1 = sha1_hex($doc);
+	my $sha1 = hexDigest($doc);
 	print $lock "$doc $sha1\n" or die "print failed: $!";
 	close $lock or die "close failed: $!";
     } else {
@@ -475,34 +470,48 @@ sub helpSection {
     my $fn;
 
     if ($PERL_VERSION ge v5.10) {
-	# TODO: IO::String isn't standard so we can't do termcap prettified
-	# printing of pod chunks on machines that are missing it.  If the
-	# eval fails, try again without nice colors.
 	eval q! # checked on Debian Lenny, openSUSE 11.1
 	    use IO::String;
             use Pod::Select;
 	    use Pod::Text::Termcap;
 
 	    my $out = IO::String->new;
-	    
+
 	    podselect({-sections => [$section], -output => $out }, $0);
-	    
+
 	    my $to_text = new Pod::Text::Termcap;
 	    $out->setpos(0);
 	    $to_text->parse_from_filehandle($out);
 	!;
+	if ($@ && $@ =~ m!Can.t locate IO/String.pm in!o) {
+	    # Write out to a temporary file.
+	    eval q!
+                use Pod::Select;
+                use File::Temp;
+	        use Pod::Text::Termcap;
+
+                my $fh = new File::Temp();
+                # Couldn't figure out how to pass just the handle to podselect;
+                # the idiom suggested on the File::Temp page didn't work (wrote
+                # to the redirect as if it was a filename)
+	        podselect({-sections => [$section], -output => $fh->filename }, $0);
+	        my $to_text = new Pod::Text::Termcap;
+	        $to_text->parse_from_file($fh->filename);
+            !;
+        }
+
     } else {
 	# RHEL4 (perl 5.8.5), Debian Etch (perl 5.8.8)
 	# -sections => ... works on Etch but not RHEL4
 	$fn = eval q!
 	    my $parser = new Pod::Usage(USAGE_OPTIONS => {-verbose => 99});
-	    
+
 	    $parser->select($section);
 	    $parser->parse_from_file($0);
         !;
     }
 
-    die "Eval failed: $@" if $@;
+    die "Eval-for-docs failed: $@" if $@;
 
     exit(0);
 }
@@ -517,7 +526,7 @@ sub help {
     } elsif ($what eq 'commands') {
 	helpSection("COMMANDS");
     } elsif (defined $commands{$what}) {
-	helpSection("COMMAND DETAILS/^$what( .*)?\$");
+	helpSection("COMMAND DETAILS/^$what(\\s.*)?\$");
     } else {
 	usage("Unknown option to help '$what'");
     }
@@ -533,28 +542,26 @@ sub depWalk ($$$);
 
 =pod
 
-=head2 init [I<branch-prefix>...]
+=head2 init [--server=<hostname>] [I<branch-prefix>...]
 
-The init command will initialize the default setup for the monotone
-version control system.  It will also populate the initial database
-for checkouts, in particular, the one that would contain Lintel since
-deptool is in Lintel.  By default it assumes that usi.hpl.hp.com is
-the central version control server.  It will use ssd as the default
-branch prefix.  If you do not have the environment variables set up by
-using the getenv command, deptool will ask a number of questions about
-where the files should be placed.  It is usually safe to run the init
-command with the -y option so that these questions will be
-automatically answered.  
+The init command will initialize the default setup for the monotone version
+control system.  It will also populate the initial database for checkouts, in
+particular, the one that would contain Lintel since deptool is in Lintel.  By
+default it assumes that usi.hpl.hp.com is the central version control server,
+but this can be overridden with the --server option.  It will use ssd as the default
+branch prefix.  If you do not have the environment variables set up by using
+the getenv command, deptool will ask a number of questions about where the
+files should be placed.  It is usually safe to run the init command with the -y
+option so that these questions will be automatically answered.
 
-After you have run init, you will have a key file.  To be able to sync
-to a particular server, you need to send the public key to the
-monotone administrator for that server.  For HPL, the administrator of
-usi.hpl.hp.com is anderse@hpl.hp.com.
+After you have run init, you will have a key file.  To be able to sync to a
+particular server, you need to send the public key to the monotone
+administrator for that server.  For HPL, the administrator of usi.hpl.hp.com is
+anderse@hpl.hp.com.
 
-B<Warning:> If you already have a key set up on one machine, you
-should just copy your keys directory to the new machine rather than
-creating a new key.  Monotone can get confused by multiple keys with
-the same email address.
+B<Warning:> If you already have a key set up on one machine, you should just
+copy your keys directory to the new machine rather than creating a new key.
+Monotone can get confused by multiple keys with the same email address.
 
 =cut
 
@@ -611,7 +618,7 @@ WARNING: if you already have a monotone key, you should ctrl-c now, and copy
 WARNING: your key file over.  Monotone deals poorly with multiple keys with
 WARNING: the same e-mail address.
 EOF
-        
+
         print "Enter e-mail address for identifying monotone key: ";
         my $email = <STDIN>;
         chomp $email;
@@ -686,6 +693,198 @@ sub initDbs {
     }
 }
 
+=pod
+
+=head2 tarinit [--no-cache] [I<download-specification>]
+
+The tarinit command will initialize the software packages based on tar files.
+It has three possible types of download specifications, listed below.  If no
+arguments are specified, then it defaults to
+http://tesla.hpl.hp.com/opensource/latest-release; which will download the
+open-source packages available on tesla and unpack then.  If the --no-cache
+option is specified, tarinit will provide --no-cache as an option to wget.
+
+=over 4
+
+=item I</path/to/file.tar.bz2>
+
+This specifies that deptool should unpack the specified tar file into the
+projects directory.  The tar file will normally unpack into a directory names
+I<package>-I<date>, in which case the -I<date> portion will be removed.  If
+there is already a I<package> available in the projects directory, it will only
+be replaced if it has a different release date than the file.tar.bz2 one.
+
+=item I<http://host/path/to/tar>
+
+This specifies that deptool should first download the tar file into the
+projects directory and then unpack it as if the downloaded file had been
+specified to tarinit.  Deptool will use wget to download the file.  If the tar
+file has already been downloaded, it will just be used.
+
+=item I<http://host/path/to/latest-release>
+
+This specifies that deptool should download the specified text file, and should
+then download all of the packages specified in the latest-release file.
+
+=back
+
+=cut
+
+sub depTarInit {
+    my $no_cache = 0;
+
+    my $result = GetOptions("no-cache!" => \$no_cache);
+
+    usage("Unknown error") unless $result;
+
+    my (@files) = @ARGV;
+
+    @files = "http://tesla.hpl.hp.com/opensource/latest-release"
+	if @files == 0;
+    my $startdir = aliasGetCwd();
+
+    mkpath(projects());
+    aliasChdir(projects());
+
+    my $cache = $no_cache ? "--no-cache" : "";
+    foreach my $file (@files) {
+	if (-f $file && -r $file) {
+	    unpackProjectsTar($file);
+	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
+	    unpackProjectsTar("$startdir/$file");
+	} elsif ($file =~ m!^http:.*latest-release!o) {
+	    httpFetchLatestRelease($file, $cache);
+	} elsif ($file =~ m!^http:!o) {
+	    httpFetchUnpackTar($file, $cache);
+	} else {
+	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
+	}
+    }
+}
+
+sub maybeBackupOldProjectDir {
+    my ($project, $date, $source) = @_;
+
+    my $projects = projects();
+
+    if (-e "$projects/$project") {
+	if (! -r "$projects/$project/Release.info") {
+	    backupUntarDir("$projects/$project", "Missing Release.info file");
+	} else {
+	    my $fh = new FileHandle "$projects/$project/Release.info"
+		or die "Can't open $projects/$project/Release.info for read: $!";
+	    my $creation_date;
+	    while (<$fh>) {
+		$creation_date = $1 if /^Creation-Date: (\S+)$/o;
+	    }
+	    close($fh);
+
+	    if (! defined $creation_date) {
+		backupUntarDir("$projects/$project", "No creation date in Release.info file");
+	    } elsif ($creation_date ne $date) {
+		backupUntarDir("$projects/$project", 
+			       "Creation date in Release.info file different from one in tar file");
+	    } else {
+		print "$projects/$project is already the same as in $source\n";
+		return 1;
+	    }
+	}
+    }
+    die "$projects/$project exists?"
+	if -e "$projects/$project";
+    return 0;
+}
+
+sub unpackProjectsTar {
+    my ($file) = @_;
+
+    die "Expected $file to end in .bz2"
+	unless $file =~ /\.bz2$/o;
+
+    my $fh = new FileHandle "tar tvvfj $file |"
+	or die "Can't run tar tvvfj $file: $!";
+    local $_ = <$fh>;
+    close($fh);
+    chomp;
+    die "Unable to handle '$_'" 
+	unless m!^d.+ (\w+)-(\d{4}-\d{2}-\d{2})/!o;
+    my ($project, $date) = ($1,$2);
+
+    return if maybeBackupOldProjectDir($project, $date, $file);
+
+    my $projects = projects();
+    if (-d "$project-$date") {
+	userPrompt("Delete $projects/$project-$date");
+	rmtree("$project-$date");
+    }
+
+    userPrompt("Untar $file into $projects");
+    system("tar xvvfj $file");
+    die "Did not get expected directory $project-$date"
+	unless -d "$project-$date";
+    rename("$project-$date","$project")
+	or die "Unable to rename $project-$date to $project";
+}
+
+sub backupUntarDir {
+    my ($dir, $reason) = @_;
+
+    print "Backing up $dir.\n$reason\n";
+    if (-d "$dir.old") {
+	userPrompt("Delete old backup directory $dir.old");
+	rmtree("$dir.old");
+    }
+    userPrompt("Rename $dir to $dir.old");
+
+    rename($dir, "$dir.old")
+	or die "rename($dir, $dir.old) failed: $!";
+}
+
+sub httpFetchUnpackTar {
+    my ($url, $no_cache) = @_;
+
+    die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
+	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
+    my ($project, $date) = ($1, $2);
+
+    return if maybeBackupOldProjectDir($project, $date, $url);
+
+    my $output = "$project-$date.tar.bz2";
+    if ($no_cache ne '') {
+	unlink($output);
+	die "Unable to rm $output: $!" if -e $output;
+	rmtree("$project-$date") if -d "$project-$date";
+    }
+
+    if (! -e $output) {
+	userPrompt("wget $no_cache $url");
+	my $ret = system("wget -O $output.tmp $url");
+
+	die "wget $url failed" unless $ret == 0 && -r "$output.tmp";
+	rename("$output.tmp", $output)
+	    or die "Unable to rename $output.tmp to $output: $!";
+    }
+    unpackProjectsTar(projects() . "/$output");
+}
+
+sub httpFetchLatestRelease {
+    my ($url, $no_cache) = @_;
+
+    userPrompt("download $url");
+    print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
+	if $debug;
+    my $fh = new FileHandle("wget $no_cache -O - $url |")
+	or die "Can't run wget $no_cache -O - $url: $!";
+    my @suburls = <$fh>;
+    close($fh);
+
+    foreach my $suburl (@suburls) {
+	my $tmp = $url;
+	$tmp =~ s/latest-release$/$suburl/o;
+	httpFetchUnpackTar($tmp, $no_cache);
+    }
+}
+
 ##### Dependency Checkout
 
 =pod
@@ -757,7 +956,8 @@ will use latter."
         my $branch = shift @possibles;
         foreach $_ (@possibles) {
             die "multiple non-prefixed matches for $branch_regex:
-$branch $_\nYou need to provide more specificity in the .version_control_deps file\n " 
+$branch $_
+You need to provide more specificity in the dependencies in deptool.config\n " 
 		unless /^$branch/;
         }
         
@@ -783,10 +983,10 @@ END
         
             runCommand("mtn -d $db co -b $branch $path");
         }
-        my @vcdeps = readVCDeps("$path/.version_control_deps");
-        if (@vcdeps > 0) {
-            print "Adding VC dependencies: ", join(" ", @vcdeps), "\n";
-            push(@branch_regexes, @vcdeps);
+	my $config = readConfig($path);
+        if (defined $config->{dependencies} && @{$config->{dependencies}} > 0) {
+            print "Adding VC dependencies: ", join(" ", @{$config->{dependencies}}), "\n";
+            push(@branch_regexes, @{$config->{dependencies}});
         }
     }        
 }
@@ -1203,6 +1403,8 @@ sub dbpDoParallelTest {
 	}
     }
     while ($children->nChildren() > 0) {
+	my $running = $children->nChildren();
+	print "$running running, 0 remain\n";
 	$children->wait();
     }
     print "All tests finished.\n";
@@ -1248,28 +1450,6 @@ sub dbpStartParallelTest {
     return $build_path;
 }
 
-# TODO: drop .version_control_deps, and move into deptool.config
-sub readConfig {
-    my ($cfg_path) = @_;
-
-    unless (-r $cfg_path) {
-	print "Warning, missing $cfg_path\n";
-	return {};
-    }
-
-    my $fh = new FileHandle($cfg_path)
-	or die "Can not open $cfg_path for read: $!";
-    # slurp mode
-    local $/; 
-    my $file = <$fh>;
-
-    my $compartment = new Safe;
-    my $result = $compartment->reval($file);
-    die "Unable to evaluate $cfg_path: $@" if $@;
-    die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
-    return $result;
-}
-
 sub dbpStartWhich {
     my ($which, $children, $pending, $dependencies) = @_;
 
@@ -1289,7 +1469,7 @@ sub dbpStartWhich {
 	if ($which_stamp <= $build_stamp) {
 	    aliasChdir($build_path);
 	    if ($which eq 'test') {
-		my $config = readConfig(projects() . "/$info->{src}/deptool.config");
+		my $config = readConfig(projects() . "/$info->{src}");
 		if ($config->{parallel_test} 
 		    || (defined $config->{parallel_test_path} 
 			&& &{$config->{parallel_test_path}}($build_path))) {
@@ -1391,7 +1571,6 @@ sub depBuildParallel {
 	my $build_path = projectBuildPath($options->{builddir}, $src, $sub_build_type);
 	next if defined $dependencies{$build_path};
 	aliasChdir("$projects/$src");
-	my @vcdeps = readVCDeps(".version_control_deps");
 
 	my $info = $dependencies{$build_path} = { 
 	    src => $src,
@@ -1399,6 +1578,7 @@ sub depBuildParallel {
 	};
 	
 	next if $options->{local_only};
+	my @vcdeps = getVCDeps(aliasGetCwd());
 	foreach my $dep (@vcdeps) {
 	    my ($dep_project, $dep_sub_type) = parseDependency($dep);
 
@@ -1711,7 +1891,7 @@ sub depCommitUnknown {
         $_ = <STDIN>; 
         chomp;
         if ($_ eq 'ignore') {
-            my $sha1 = sha1_hex(join('',@unknown));
+            my $sha1 = hexDigest(join('',@unknown));
             my $ignores_name = ignoresFileName();
             my $fh = new FileHandle ">>$ignores_name"
                 or die "Can't open $ignores_name: $!";
@@ -1735,7 +1915,7 @@ sub depCommitHaveUnknown {
     my $fh = new FileHandle ignoresFileName();
     if ($fh) {
         my $cwd = aliasGetCwd();
-        my $sha1 = sha1_hex(join('', @unknown));
+        my $sha1 = hexDigest(join('', @unknown));
         while(<$fh>) {
             return 0 if $_ eq "$cwd $sha1\n";
         }
@@ -1803,14 +1983,15 @@ depcommit: will show differences after successful build\n";
 
 =head2 cmake
 
-This command has to be run in either the build or debug directory.  In
-the build directory, it will set the install prefix to $BUILD_OPT and
-the cmake build type to RelWithDebInfo.  In the debug directory, it
-will set the install prefix to $BUILD_DEBUG and the cmake build type
-to Debug.  If you are in a sub-type build directory (see cdopt), then
-the deptool cmake command will automatically add
--DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that the
-configuration can take into effect the sub-type.
+This command has to be run in either the build or debug directory.  In the
+build directory, it will set the install prefix to $BUILD_OPT and the cmake
+build type to RelWithDebInfo.  In the debug directory, it will set the install
+prefix to $BUILD_DEBUG and the cmake build type to Debug.  If you are in a
+sub-type build directory (see cdopt), then the deptool cmake command will
+automatically add -DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that
+the configuration can take into effect the sub-type.  You can set the
+environment variable DEPTOOL_CMAKE_FLAGS if there are additional flags that
+need to be passed to cmake.
 
 =cut
 
@@ -1840,7 +2021,7 @@ sub runCMakeClean {
         unless $cwd =~ m!^(($projects)|($debug)|($opt))/!o;
     print "Cleaning cmake files out of $cwd\n"
         unless $quiet;
-    my @files; 
+    my @files;
     my @dirs;
     find(sub { push(@files, $File::Find::name) if /^CMakeCache.txt$/o
                    || /^Makefile$/o;
@@ -1861,8 +2042,8 @@ sub runCMakeConfig {
     my $debug = buildDebug();
     my $opt = buildOpt();
 
-    die "Unable to find expected _MTN directory in $src"
-        unless -d "$src/_MTN";
+    die "Unable to find expected deptool.config file in $src"
+        unless -f "$src/deptool.config";
 
     my @cmakecmd = ('cmake');
     if ($cwd =~ /^$debug/o) {
@@ -1878,7 +2059,11 @@ sub runCMakeConfig {
     if (defined $build_subdir) {
         push(@cmakecmd, "-D", "BUILD_SUBDIR=$build_subdir");
     }
-    push(@cmakecmd, @extra_args, $src);
+    push(@cmakecmd, @extra_args);
+    if (defined $ENV{DEPTOOL_CMAKE_FLAGS}) {
+	push(@cmakecmd, split(/\s+/o, $ENV{DEPTOOL_CMAKE_FLAGS}));
+    }
+    push(@cmakecmd, $src);
     runCommand(@cmakecmd);
 }
 
@@ -2681,7 +2866,8 @@ sub depWalkRecurse ($$$$$$) {
 
     aliasChdir($src);
     &$pre_fn($build_type);
-    my @vcdeps = readVCDeps(".version_control_deps");
+    my @vcdeps = getVCDeps($src);
+
     if (@vcdeps > 0) {
         my $projects = projects();
         foreach my $dep (@vcdeps) {
@@ -2790,9 +2976,9 @@ sub srcDir {
 sub rootSrcDir {
     my $start = srcDir();
     local $_ = $start;
-    while (! -d "$_/_MTN") {
+    while (! -f "$_/deptool.config") {
         s!/[^/]+$!!o;
-        die "Unable to find _MTN directory anywhere under $start"
+        die "Unable to find deptool.config file anywhere under $start"
             if $_ eq '';
     }
     return $_;
@@ -2808,7 +2994,7 @@ The getenv command allows you to get the environment variables that
 are needed for deptool to work without prompting.  This command has
 two forms, one that gets a specific environment variable and prints it
 out, and one that prints out a string that can be evaluated to set all
-the environment variables in the shell.  Therefore what can have a
+the environment variables in the shell.  Therefore I<what> can have a
 number of values:
 
 =over
@@ -3064,42 +3250,154 @@ sub mtnServer {
 
 ##### Common functions
 
-sub readConfigFile {
-    my $cfile = "$ENV{HOME}/.deptoolrc";
-    if (! $noconfig && -f $cfile && -r $cfile) {
-	my $config = new FileHandle($cfile)
-	    or die "Can't open $cfile for read: $!";
-	while (<$config>) {
-	    chomp;
-	    next if /^\s*(#.*)?$/;   # Ignore comments and empty lines
-	    if (/^([A-Z_]+)=(.+)$/o) {
-		$ENV{$1} = $2;
-	    } elsif (/^([A-Z_]+)=$/o) {
-		delete $ENV{$1};
-	    } else {
-		warn "Ignoring invalid line '$_' in $cfile";
-	    }
-	}
-	close($config);
+# TODO-sprint: add in support for rc file, allow user to specify config name as argument
+# add documentation.  Put call to readDeptoolRc back in before my %commands
+#
+# sub readDeptoolRc {
+#     my $cfile = "$ENV{HOME}/.deptoolrc";
+#     if (! $noconfig && -f $cfile && -r $cfile) {
+# 	my $config = new FileHandle($cfile)
+# 	    or die "Can't open $cfile for read: $!";
+# 	while (<$config>) {
+# 	    chomp;
+# 	    next if /^\s*(#.*)?$/;   # Ignore comments and empty lines
+# 	    if (/^([A-Z_]+)=(.+)$/o) {
+# 		$ENV{$1} = $2;
+# 	    } elsif (/^([A-Z_]+)=$/o) {
+# 		delete $ENV{$1};
+# 	    } else {
+# 		warn "Ignoring invalid line '$_' in $cfile";
+# 	    }
+# 	}
+# 	close($config);
+#     }
+# }
+
+=pod
+
+=head1 deptool.config
+
+The deptool.config file at the root of the source directory for each project.
+It is a perl expression that is evaluated in order to determine how to build
+the project, and is used to identify the root source directory.  It includes
+descriptions of dependencies, and enables control over parallel testing.  The
+file is expect to return a hash reference, for example:
+
+    {
+	dependencies => [qw/Lintel DataSeries SomethingElse/],
+        parallel_test => 0, # default value, disable parallel testing in general
+        parallel_test_path => sub {
+            # build in parallel if the build path ends in /Lintel
+    	return $_[0] =~ m!/Lintel$/o; 
+        }
     }
+
+Valid options in a deptool.config file include the following.  Unknown options will
+result in a warning being printed out.
+
+=over 4
+
+=item dependencies => [qw/project list/]
+
+List of projects that this project depends on.  Deptool will use this to make
+sure those projects are built and installed first.  It will also automatically
+check them out if you are using version control.
+
+If you want special builds in different modes, then you can list them as
+'I<dependency>;I<sub-build-type>' (without the '').  This input has the same
+effect as creating a dependency where you run b I<sub-build-type> and then
+build in that directory.
+
+=item parallel_test => [0|1]
+
+Should deptool execute the tests for this directory in parallel.  The
+default is 0 (no).
+
+=item parallel_test_path => sub { my ($build_path) = @_; return 0|1; }
+
+Given the current build path, should deptool execute tests in
+parallel?  This function allows you to have parallel tests for some
+build modes and not for others.
+
+=item sequential_tests => [qr/test-name-re/,...]
+
+Specify a list of regex's for tests that have to be run sequentially.  All of
+the sequential tests will be executed before any of the parallel tests.  It is
+an error for a regexp to match multiple tests or no tests.  This option has no
+effect if parallel tests are not enabled.
+
+=back
+
+=cut
+
+# Pass in the directory, it knows the filename.
+sub readConfig {
+    my ($cfg_dir) = @_;
+
+    confess "internal $cfg_dir" unless -d $cfg_dir;
+
+    my $cfg_path = "$cfg_dir/deptool.config";
+    confess "Error: missing $cfg_path\n"
+	unless -r $cfg_path;
+
+    my $fh = new FileHandle($cfg_path)
+	or die "Can not open $cfg_path for read: $!";
+    # slurp mode
+    local $/; 
+    my $file = <$fh>;
+
+    my $compartment = new Safe;
+    my $result = $compartment->reval($file);
+    die "Unable to evaluate $cfg_path: $@" if $@;
+    die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
+
+    die "Invalid parallel_test value in $cfg_path, expected 0|1, not '$result->{parallel_test}'"
+	if defined $result->{parallel_test} && $result->{parallel_test} !~ /^[01]$/o;
+    die "Invalid parallel_test_path value in $cfg_path\n"
+	. " expected sub { }, not '$result->{parallel_test}'"
+	if defined $result->{parallel_test_path} && ref $result->{parallel_test_path} ne 'CODE';
+    if (defined $result->{sequential_tests}) {
+	die "Invalid sequential_tests value in $cfg_path\n"
+	    . " expected [...], not '$result->{sequential_tests}'"
+	    unless ref $result->{sequential_tests} eq 'ARRAY';
+	foreach my $elem (@{$result->{sequential_tests}}) {
+	    die "Invalid sequential_tests array element in $cfg_path\n"
+		. " expected qr/.../, not '$elem' --> '" . (ref $elem) . "'"
+		unless (ref $elem) =~ /\bRegexp$/o;
+	}
+    }
+
+    if (defined $result->{dependencies}) {
+	die "Invalid dependencies value in $cfg_path\n"
+	    . " expected [ ... ], not '$result->{dependencies}'"
+	    unless ref $result->{dependencies} eq 'ARRAY';
+	foreach my $elem (@{$result->{dependencies}}) {
+	    die "Invalid dependencies array element in $cfg_path\n"
+		. " expected .+(;\\w+)?, not '$elem'"
+		unless $elem =~ /^.+(;\w+)?$/o;
+	}
+    }
+
+    my %expect = map { $_ => 1 } qw/dependencies parallel_test parallel_test_path 
+	                            sequential_tests/;
+    
+    foreach my $key (keys %$result) {
+	warn "Unrecognized option '$key' in $cfg_path" unless $expect{$key};
+    }
+
+    return $result;
 }
 
-sub readVCDeps {
-    my ($filename) = @_;
+sub getVCDeps {
+    my ($config_or_path) = @_;
 
-    return () unless -r $filename;
-
-    my $vcdeps = new FileHandle("$filename")
-        or die "Can't read $filename: $!";
-    my @ret;
-    while(<$vcdeps>) {
-        chomp;
-        s/^\s+//o; s/\s+$//o;
-        next unless /\w/o;
-        push(@ret, split(/\s+/o));
+    unless (ref $config_or_path) {
+	$config_or_path = readConfig($config_or_path);
     }
-    close($vcdeps);
-    return @ret;
+
+    return () unless defined $config_or_path->{dependencies};
+
+    return @{$config_or_path->{dependencies}};
 }
 
 sub userPrompt {
@@ -3172,12 +3470,12 @@ sub vcVersion {
 	my @output = getCmdOutput("mtn --version");
 
 	die "bad return from mtn --version" unless @output == 1;
-    
+
 	local $_ = $output[0];
 	die "can't parse '$output[0]'" unless /^monotone (\d+\.\d+\S*) /o;
 	$Cache::vc_version = { 'type' => 'monotone', 'version' => $1 };
     }
-    
+
     die "Internal" unless defined $Cache::vc_version;
     return $Cache::vc_version;
 }
@@ -3195,7 +3493,6 @@ sub vcLogRevision {
 	die "Don't know how to get revision log on $vcver";
     }
 }
-
 
 =pod
 

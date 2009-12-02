@@ -201,7 +201,7 @@ void DebugMakeMessage(const char *format, ...)
   buffer[how_many_written+1] = 0;
 
   fflush(stdout); fflush(stderr);
-  fprintf(stderr, buffer);
+  fputs(buffer, stderr);
   fflush(stdout); fflush(stderr);
   
   va_end(ap);

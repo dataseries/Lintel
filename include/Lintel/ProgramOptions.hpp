@@ -7,6 +7,8 @@
 #ifndef LINTEL_PROGRAM_OPTIONS_HPP
 #define LINTEL_PROGRAM_OPTIONS_HPP
 
+#include <inttypes.h>
+
 #include <iostream>
 #include <utility>
 

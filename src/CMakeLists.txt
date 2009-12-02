@@ -12,12 +12,6 @@ INCLUDE_DIRECTORIES(
 	${Boost_INCLUDE_DIRS}
 	)
 
-IF(COMMAND CMAKE_POLICY)
-    CMAKE_POLICY(SET CMP0003 NEW) # don't warn about -lpthread, it's ok.
-    CMAKE_POLICY(SET CMP0005 OLD) # we escape a string definition below
-    # once we are cmake 2.6 and above only we can set this to new and remove the escaping
-ENDIF(COMMAND CMAKE_POLICY)
-
 ADD_DEFINITIONS(-DLIBLINTEL_VERSION="\\"${LINTEL_VERSION}\\"")
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     ADD_DEFINITIONS(-DDEBUG)
@@ -143,8 +137,8 @@ IF(PERL_ENABLED)
 ENDIF(PERL_ENABLED)
 
 # Built, but intentionally not installed.
-ADD_CUSTOM_TARGET(deptool-noexternal ALL 
-                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-noexternal.sh
+ADD_CUSTOM_TARGET(deptool-bootstrap ALL 
+                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-bootstrap.sh
 		          ${CMAKE_CURRENT_SOURCE_DIR} 
 		  DEPENDS deptool.in Lintel/File/Lock.pm Lintel/ProcessManager.pm)
 

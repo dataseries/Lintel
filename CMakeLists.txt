@@ -10,6 +10,12 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.4.4 FATAL_ERROR)
 
 PROJECT(Lintel)
 
+IF(COMMAND CMAKE_POLICY)
+    CMAKE_POLICY(SET CMP0003 NEW) # don't warn about -lpthread, it's ok.
+    CMAKE_POLICY(SET CMP0005 OLD) # we escape a string definition in src/CMakeLists.txt
+    # once we are cmake 2.6 and above only we can set this to new and remove the escaping
+ENDIF(COMMAND CMAKE_POLICY)
+
 SET(LINTEL_VERSION 0.0)
 SET(LINTEL_ABI_VERSION 0)
 

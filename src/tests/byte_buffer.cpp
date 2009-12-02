@@ -10,6 +10,7 @@
     Regression test.
 */
 
+#include <inttypes.h>
 #include <iostream>
 #include <fstream>
 #include <sstream>

@@ -10,6 +10,7 @@
 
 #include <sys/types.h>
 #include <signal.h>
+#include <stdio.h>
 #include <iostream>
 #include <cstdlib>
 

@@ -60,12 +60,22 @@
 # included FindBoost; it searches for header and libname and checks
 # that the directories are compatible.  If ${variable}_FIND_REQUIRED
 # is set, it uses LINTEL_FIND_LIBRARY, otherwise LINTEL_WITH_LIBRARY.
+# You can specify the special value None for libname if the boost library
+# is header only.
 
 # LINTEL_FIND_PERL_MODULE(module_name variable) searches for a
 # particular perl module, and sets ${variable}_ENABLED 
 
+# You can set the LINTEL_FIND_DEBUG variable to enable debugging
+
 # TODO: there is a bunch of duplicate code in the below macros,
 # eliminate it.
+
+MACRO(LINTEL_FIND_DEBUG message)
+    IF(LINTEL_FIND_DEBUG)
+        MESSAGE("lintel-find-debug: ${message}")
+    ENDIF(LINTEL_FIND_DEBUG)
+ENDMACRO(LINTEL_FIND_DEBUG)
 
 ### headers
 
@@ -73,7 +83,9 @@
 # still exists, and redo the search if it vanished.
 
 MACRO(LINTEL_FIND_HEADER variable header)
+    LINTEL_FIND_DEBUG("searching for ${header} --> ${variable}")
     IF(${variable}_INCLUDE_DIR)
+        LINTEL_FIND_DEBUG("  in cache: ${${variable}_INCLUDE_DIR}")
         # Already in cache, be silent
         SET(${variable}_FIND_QUIETLY ON)
     ENDIF(${variable}_INCLUDE_DIR)
@@ -85,13 +97,16 @@ MACRO(LINTEL_FIND_HEADER variable header)
         ${CMAKE_INSTALL_PREFIX}/include
         NO_DEFAULT_PATH
     )
+    LINTEL_FIND_DEBUG("  install_prefix --> ${${variable}_INCLUDE_DIR}")
 
     IF(${variable}_EXTRA_INCLUDE_PATHS)
 	FIND_PATH(${variable}_INCLUDE_DIR ${header}
 	          PATHS ${${variable}_EXTRA_INCLUDE_PATHS} NO_DEFAULT_PATH)
+        LINTEL_FIND_DEBUG("  extra-includes --> ${${variable}_INCLUDE_DIR}")
     ENDIF(${variable}_EXTRA_INCLUDE_PATHS)
 
     FIND_PATH(${variable}_INCLUDE_DIR ${header})
+    LINTEL_FIND_DEBUG("  generic-search --> ${${variable}_INCLUDE_DIR}")
 
     MARK_AS_ADVANCED(${variable}_INCLUDE_DIR)
 
@@ -99,7 +114,7 @@ MACRO(LINTEL_FIND_HEADER variable header)
         IF(NOT ${variable}_INCLUDE_DIR)
             MESSAGE(STATUS "Looked for header file ${header} in ${CMAKE_INSTALL_PREFIX}/include, system paths, and '${${variable}_EXTRA_INCLUDE_PATHS}' (if set)")
 	    IF(DEFINED ${variable}_MISSING_EXTRA)
-	        MESSAGE(STATUS "${${variable}_MISSING_EXTRA")
+	        MESSAGE(STATUS "${${variable}_MISSING_EXTRA}")
 	    ENDIF(DEFINED ${variable}_MISSING_EXTRA)
             MESSAGE(FATAL_ERROR "ERROR: Could NOT find header file ${header}")
         ENDIF(NOT ${variable}_INCLUDE_DIR)
@@ -149,10 +164,13 @@ ENDMACRO(LINTEL_REQUIRED_HEADER variable header)
 MACRO(LINTEL_FIND_LIBRARY variable header libname)
     LINTEL_FIND_HEADER(${variable} ${header})
 
+    LINTEL_FIND_DEBUG("searching for library ${libname} --> ${variable}")
+    LINTEL_FIND_DEBUG("  pre-find: ${${variable}_LIBRARY}")
     FIND_LIBRARY(${variable}_LIBRARY 
         NAMES ${libname} 
         PATHS ${CMAKE_INSTALL_PREFIX}/lib
         NO_DEFAULT_PATH)
+    LINTEL_FIND_DEBUG("  install-prefix: ${${variable}_LIBRARY}")
 
     IF(${variable}_EXTRA_LIBRARY_PATHS)
         FIND_LIBRARY(${variable}_LIBRARY
@@ -160,8 +178,10 @@ MACRO(LINTEL_FIND_LIBRARY variable header libname)
             PATHS ${${variable}_EXTRA_LIBRARY_PATHS} 
             NO_DEFAULT_PATH)
     ENDIF(${variable}_EXTRA_LIBRARY_PATHS)
+    LINTEL_FIND_DEBUG("  extra-paths: ${${variable}_LIBRARY}")
 
     FIND_LIBRARY(${variable}_LIBRARY NAMES ${libname})
+    LINTEL_FIND_DEBUG("  generic-search: ${${variable}_LIBRARY}")
 
     MARK_AS_ADVANCED(${variable}_LIBRARY)
 
@@ -305,17 +325,51 @@ ENDMACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE)
 ### LINTEL_BOOST_EXTRA
 
 MACRO(LINTEL_BOOST_EXTRA variable header libname)
+    IF("${Boost_INCLUDE_DIRS}" STREQUAL "")
+        MESSAGE("WARNING: Did not include FindBoost")
+	INCLUDE(FindBoost)
+    ENDIF("${Boost_INCLUDE_DIRS}" STREQUAL "")
+
     SET(${variable}_EXTRA_INCLUDE_PATHS ${Boost_INCLUDE_DIRS})
-    SET(${variable}_EXTRA_LIBRARY_PATHS ${Boost_LIBRARY_DIRS})
-    IF(${variable}_FIND_REQUIRED)
-	LINTEL_FIND_LIBRARY(${variable} ${header} ${libname})
-    ELSE(${variable}_FIND_REQUIRED)
-	LINTEL_WITH_LIBRARY(${variable} ${header} ${libname})
-    ENDIF(${variable}_FIND_REQUIRED)
-    
-    IF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
-        MESSAGE(FATAL_ERROR "Huh? different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
-    ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+
+    IF(${libname} STREQUAL "None")
+        IF(${variable}_FIND_REQUIRED)
+            LINTEL_FIND_HEADER(${variable} ${header})
+        ELSE(${variable}_FIND_REQUIRED)
+    	    LINTEL_WITH_HEADER(${variable} ${header})
+        ENDIF(${variable}_FIND_REQUIRED)
+    ELSE(${libname} STREQUAL "None")
+        SET(${variable}_EXTRA_LIBRARY_PATHS ${Boost_LIBRARY_DIRS})
+        IF(${variable}_FIND_REQUIRED)
+            LINTEL_FIND_LIBRARY(${variable} ${header} ${libname})
+        ELSE(${variable}_FIND_REQUIRED)
+    	    LINTEL_WITH_LIBRARY(${variable} ${header} ${libname})
+        ENDIF(${variable}_FIND_REQUIRED)
+    ENDIF(${libname} STREQUAL "None")
+
+    IF(${variable}_ENABLED)
+        IF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+            MESSAGE(FATAL_ERROR "Error: different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
+	ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+
+	IF(NOT ${libname} STREQUAL "None")
+	    GET_FILENAME_COMPONENT(LBE_TMP ${${variable}_LIBRARY} PATH)
+	    IF (0)
+	    ELSEIF("${Boost_LIBRARY_DIRS}" STREQUAL "/usr/lib"
+	           AND EXISTS "/usr/lib64/libboost_program_options.so"
+		   AND "${LBE_TMP}" STREQUAL "/usr/lib64")
+		# First seen on OpenSuSE 11 x86_64, RHEL5 has libraries
+   	        # in both /usr/lib and /usr/lib64, but cmake search
+                # prefers the lib64 versions
+	        MESSAGE("Warning: cmake determined the Boost library dir incorrectly. It should be /usr/lib64 not /usr/lib")
+		SET(Boost_LIBRARY_DIRS /usr/lib64)
+	    ENDIF(0)
+	        
+	    IF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")
+ 	        MESSAGE(FATAL_ERROR "Error: different ${libname} / boost lib dirs ${${variable}_LIBRARY} -> '${LBE_TMP}' != '${Boost_LIBRARY_DIRS}' ")	
+  	    ENDIF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")
+	ENDIF(NOT ${libname} STREQUAL "None")
+    ENDIF(${variable}_ENABLED)
 ENDMACRO(LINTEL_BOOST_EXTRA variable header libname)
 
 # This macro searches for the perl module ${module_name}. It sets

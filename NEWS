@@ -1,3 +1,97 @@
+This file lists major changes to Lintel.  The full reverse-chronological change
+log (without the merge revisions) can be found in the Changelog.mtn file in the
+tar releases, or by using mtn log if you got the sources via version control.
+
+2009-11-29:
+   * Release
+
+2009-11-27:
+   * Finish support for deptool to operate off of tar releases rather than just
+     version control
+
+2009-11-25:
+   * Add support to mercury-plot for stacked bar charts.
+
+2009-10-22:
+   * Add in STLUtility header file, currently with a single function for safely
+     comparing to iterator ranges for equality.
+
+2009-10-15:
+   * Remove support for having functions associated with program options
+     It turned out to be a bad idea because there is no control over execution order.
+
+2009-08-22:
+   * Add support for hidden options to ProgramOptions class.
+
+2009-08-08:
+   * Add support for failing drives to lintel-disktool.
+
+2009-08-02:
+   * Add support for parallel building and testing in deptool.  As part of this
+     change, we switched over to using deptool.config for a configuration file
+     rather than .version_control_deps.  The former is much more general and
+     supports adding additional features in easily.
+   
+2009-07-20:
+   * Add in lintel-disktool, a program for managing a large collection of disks
+     to be mounted in related directories.  We use it primarily during trace
+     collection.  It uses a configuration file /etc/lintel-disktool.config to
+     determine how to operate.
+
+2009-07-13:
+   * Add in deptool-bootstrap for bootstrapping with deptool before the various
+     needed modules are installed.
+
+2009-07-06:
+   * Add in Lintel::ProcessManager module, a perl module for managing children
+     and executing functions when they finish.
+
+2009-06-26:
+   * Add AtomicCounter class for handling a multi-threaded atomic counter without
+     locking.
+
+2009-06-25:
+   * Add in support for shared references using lintel-latex-rebuild
+
+2009-06-05:
+   * Rewrite handling of interaction with gnuplot -- we now talk
+     bi-directionally in order to identify when gnuplot has finished its
+     operations.  Unfortunately this adds a dependency on IO::Pty
+
+2009-05-28:
+   * Add ByteBuffer class that allows for efficient initialization of a
+     collection of bytes from a network or from a file.  Also handles consuming
+     data from the front and pushing more onto the back efficiently.
+
+2009-05-11:
+   * Substantial rewrite of the cycle-counter <-> clock calibration code.
+     New version is more robust to outliers caused, for example, by descheduling.
+
+2009-05-06:
+   * Add BoyerMoorHorspool string matching class for use in extremely fast
+     pattern matching.  Currently used for parallel grep in a dataseries branch.
+
+2009-04-29:
+   * Add support for schema migration to Lintel::DBI
+
+2009-04-26: 
+   * Use binary search for picking out quantiles in StatsQuantile.  Results in
+     a 5-10x speedup.
+
+2009-04-08:
+   * Add support for time logging to deptool, off by default.
+
+2009-03-11:
+   * Add support for printing out default values in program options.
+
+2009-01-02:
+   * Cache calculation of parameters for StatsQuantile.
+
+2008-12-07:
+   * Add replaceTop operation to priority queue that is roughly 2x as efficient
+     as a pop followed by a push.  Use it to optimize StatsQuantile to be ~1.5x
+     faster.
+
 2008-11-30:
    * Add support for generic program options to Lintel as
      ProgramOptions.hpp, allows you to just specify the options in
@@ -7,6 +101,9 @@
 2008-11-27:
    * Add a generic, templated cube operation as StatsCube.hpp,
      currently used in DataSeries for one of the analysis.
+
+2008-11-21:
+   * Add import-data command to mercury to import space separated data into SQL.
 
 2008-10-27: 
    * Add in HashTupleStats.hpp, a hash table over a tuple that

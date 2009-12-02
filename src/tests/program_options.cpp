@@ -4,6 +4,7 @@
    See the file named COPYING for license details
 */
 
+#include <inttypes.h>
 #include <Lintel/ProgramOptions.hpp>
 #include <Lintel/TestUtil.hpp>
 using namespace std;

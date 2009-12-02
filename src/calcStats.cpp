@@ -35,7 +35,8 @@ main(int argc, char *argv[])
     
     while(!feof(data_file)) {
 	double data = -1.0;
-	fscanf(data_file,"%lf", &data);
+	int rv = fscanf(data_file,"%lf", &data);
+	SINVARIANT(rv != EOF);
 	if (data!=-1.0)
 	    data_values.add(data);
     }

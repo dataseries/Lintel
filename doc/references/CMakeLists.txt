@@ -16,16 +16,20 @@ SET(BIB_FILES
     cacm.bib
     csur.bib
     datamation.bib
+    dcs.bib
     disc.bib
     distributedcomputing.bib
     dsn.bib
+    fast.bib
     efts.bib
     hotdep.bib
     hotos.bib
+    icpp.bib
     ics.bib
     ieee-computer.bib
     ieee-icin.bib
     ieeetoc.bib
+    ieeetpds.bib
     isca.bib
     journal-high-perf-compute-apps.bib
     mascots.bib
@@ -39,6 +43,7 @@ SET(BIB_FILES
     sigcomm.bib
     sigmod.bib
     sosp.bib
+    sss.bib
     supercomputing-review.bib
     tcsc.bib
     tr.bib
@@ -46,6 +51,7 @@ SET(BIB_FILES
     usenix.bib
     vldb.bib
     web-sites.bib
+    wmcsa.bib
 )
 
 ADD_CUSTOM_TARGET(all-bib ALL 

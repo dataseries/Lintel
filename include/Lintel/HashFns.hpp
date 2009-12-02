@@ -196,12 +196,13 @@ namespace lintel {
     /// structure on objects where each object instance is separate.
     /// Not a default implementation for pointers because that isn't
     /// safe.  People could reasonably expect the comparison to be
-    /// done as hash(*a) also.  Used by HashMap<K, V,
+    /// done as hash(*a) also.  Used by HashMap<K *, V,
     /// lintel::PointerHash<K>, lintel::PointerEqual<K> > the last bit
     /// can be left out if there are no operator == (const K *, const
-    /// K *) functions defined.
+    /// K *) functions defined.  Note you do not include the '*' in
+    /// the template type.
     template<typename T> struct PointerHash {
-	uint32_t operator()(const T *a) const {
+	uint32_t operator()(const T * a) const {
 	    BOOST_STATIC_ASSERT(sizeof(a) == 4 || sizeof(a) == 8);
 	    if (sizeof(a) == 4) {
 		// RHEL4 64bit requires two stage cast even though this

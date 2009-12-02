@@ -1,3 +1,20 @@
+---++ How to cite bibs in latex
+
+  The command LINTEL_LATEX(foo) in the CMakeLists.txt file for your document
+  foo will make sure that foo.tex is built.
+
+  To include bib entries from Lintel, there are two options. 
+    (1) List the various venues from which you cite, e.g.,
+        "\bibliography{sosp,asplos,fast}"
+    (2) Simply include everything: "\bibliography{lintel-latex-all}"
+
+  To pass options through to Lintel, include a command such as the following in
+  the appropriate CMakeLists.txt file:
+    SET(foo_LINTEL_LATEX_ARGS  --papr a4  --error-on-warnings)
+  Options such as "--tex path", "--bst path", and "--bib path" are useful for
+  documents with materials in multiple directories.
+
+
 ---++ Paper citation format:
 
   Currently (2009-Jun) recommended citation format for papers is:

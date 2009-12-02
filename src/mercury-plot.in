@@ -13,6 +13,7 @@ use Data::ShowTable;
 use DBI;
 use English;
 use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
+use File::Basename;
 use FileHandle;
 use Getopt::Long;
 use IO::Select;
@@ -43,20 +44,26 @@ my $missing_statistics_ols = $@;
 
 $|=1;
 my $gnuplot_fifo;
-my $term = new Term::ReadLine 'Experiment Plotter';
-$term->ornaments("0");
+my $term;
+
+if (-t STDIN) {
+    $term = new Term::ReadLine 'Experiment Plotter';
+    $term->ornaments("0");
+}
 my $history_file = ".plot.history";
 my $user;
 my $password;
 my $db;
 my $print_manpage;
+my $debug = 0;
 my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "db=s" => \$db,
 			 "user=s" => \$user,
 			 "password=s" => \$password,
 			 "history=s" => \$history_file,
+			 "debug!" => \$debug,
 			 "man!" => \$print_manpage);
-pod2usage(-verbose => 2) if $print_manpage;
+pod2usage(-verbose => 2, -exitval => 0) if $print_manpage;
 eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
 
 die "Usage: $0 
@@ -68,7 +75,7 @@ die "Usage: $0
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
     [--history=<history-filename, default $history_file>]
-    [--help] [--man] [input-file ...]\n"
+    [--help] [--man] [--debug] [input-file ...] [< input]\n"
     unless $success;
 
 if (defined $db) {
@@ -82,24 +89,13 @@ if (defined $db) {
 }
 
 if (defined $user) {
-  Plot::Mercury->connectToDB($Plot::Mercury::Default_DSN,$user,$password);
+    Plot::Mercury->connectToDB($Plot::Mercury::Default_DSN,$user,$password);
 }
 
 my $plotfiles = 0;
 my $command_error = 0; # Set this if there is an error evaluating a command
 		       # so that we can stop a 'history do' or other 
 		       # multi-part command; ** not completed as of 3Jan01 ** 
-
-
-unless (-t STDIN) {
-    # skip reading history, don't update it when done
-    while(<STDIN>) {
-	chomp;
-      	&docmd($_);
-	exit(1) if $command_error;
-    }
-    exit(0);
-}
 
 my @history;
 if (-f $history_file) {
@@ -108,7 +104,7 @@ if (-f $history_file) {
     @history = <$fh>;
     foreach $_ (@history) {
 	chomp;
-	$term->addhistory($_);
+	$term->addhistory($_) if defined $term;
     }
     print "Loaded history from ${history_file}.\n";
     close($fh);
@@ -137,15 +133,25 @@ sub default;
 sub fncmds;
 sub import_data;
 
+$Global::source_dir = dirname($0);
 my $define_mode = 0;
 my @define;
 my $markerre;
 my $prompt = ">> ";
 
 map { die "command line input file $_ is not readable" unless -f $_ && -r $_; } @ARGV;
-map { history("run $_") } @ARGV;
+map { print "Reading from $_\n" if $debug;
+      history("run $_"); exit(1) if $command_error; } @ARGV;
 
-while (defined ($_ = $term->readline($prompt))) {
+unless (defined $term) {
+    while(<STDIN>) {
+	docmd($_);
+	exit(1) if $command_error;
+    }
+    exit(0);
+}
+
+while (defined ($_ = $term->readline("$prompt"))) {
     $command_error = 0;
     eval { &docmd($_) };
     print "Error executing command: $@\n" if $@;
@@ -305,13 +311,21 @@ sub history {
 	    print "Loading history from $fn\n";
 	    while(<$fh>) {
 		chomp;
-		$term->addhistory($_);
+		$term->addhistory($_) if defined $term;
 	    }
 	} else {
 	    print "Unable to open $fn: $!\n";
 	}
     } elsif (/^run\s+(.+)$/o) {
 	my $filename = $1;
+	my $save_source_dir = $Global::source_dir;
+
+	if (! -r $filename && -r "$Global::source_dir/$filename") {
+	    print "Automatically adding $Global::source_dir to $filename\n";
+	    $filename = "$Global::source_dir/$filename";
+	}
+	$Global::source_dir = dirname($filename);
+	
 	my $fh = new FileHandle $filename;
 	if (defined $fh) {
 	    print "Running history from $filename\n";
@@ -342,6 +356,7 @@ sub history {
 	}
 	close($fh);
 	syncToGnuplot() if defined $gnuplot_fifo;
+	$Global::source_dir = $save_source_dir;
     } elsif (/^marker\s+(\w+)$/o) {
 	# marker; from probably commented out skipto.
     } else {
@@ -563,8 +578,9 @@ sub refresh_plot {
     my @foo = map { $t = qq!$_->{data} ! if defined $_->{data};
 		    $t = qq!$_->{function} ! if defined $_->{function};
 		    $t .= " axes $_->{axes} " if defined $_->{axes}; 
-		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle"; 
-		    $t .= " with $_->{with}" if defined $_->{with}; 
+		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle";
+		    $t .= " with $_->{with}" if defined $_->{with};
+		    $t = $_->{explicit} if defined $_->{explicit};
 		    $t; } @plots;
     &start_gnuplot;
     if (@foo == 0) {
@@ -575,6 +591,7 @@ sub refresh_plot {
     syncToGnuplot();
 }
 
+# TODO: make plot able to handle barplot plots also.
 sub sqlplot {
     my $cmd = shift;
 
@@ -702,7 +719,7 @@ sub barplot {
 	push(@major_value_list, $major) # preserve order from query
 	    unless defined $majors{$major};
 	$majors{$major} = 1;
-	
+
 	my $y = $href->{y};
 	die "Missing y column, or got null value from '$select'"
 	    unless defined $y;
@@ -719,8 +736,8 @@ sub barplot {
 	    ($ylow,$yhi) = ($y,$y);
 	}
 
-	if (defined $href->{minor}) {
-	    my $minor = $href->{minor};
+	if (defined $href->{minor} || defined $href->{stacked_minor}) {
+	    my $minor = $href->{minor} || $href->{stacked_minor};
 	    die "got null value in minor column from '$select'"
 		unless defined $minor;
 	    die "duplicate value for $major / $minor from '$select'?"
@@ -736,55 +753,100 @@ sub barplot {
 	}
     }
 
+    my $warned_zero;
     # Make sure we got everything before starting to make plots
     foreach my $major (@major_value_list) {
 	if (@minor_value_list) {
 	    foreach my $minor (@minor_value_list) {
-		die "Missing data for $major / $minor from '$select'"
-		    unless defined $data{$major}->{$minor}->{y};
+		unless (defined $data{$major}->{$minor}) {
+		    warn "Missing data for major=$major, minor=$minor; no further warnings"
+			unless $warned_zero;
+		    $warned_zero = 1;
+		    $data{$major}->{$minor} = { y => 0, ylow => 0, yhi => 0};
+		}
 	    }
 	} else {
-	    die "Missing data for $major from '$select'"
-		unless defined $data{$major}->{y};
+	    unless (defined $data{$major}->{y}) {
+		warn "Missing data for major=$major; no further warnings"
+		    unless $warned_zero;
+		$warned_zero = 1;
+		$data{$major} = { y => 0, ylow => 0, yhi => 0};
+	    }
 	}
     }
-    
+
     # Make the plots...
 
-    my $have_minor = @minor_value_list;
-    @minor_value_list = ("data") 
-	unless @minor_value_list;
-    my $minor_index = 1;
-    my $minor_length = scalar @minor_value_list;
-    foreach my $minor (@minor_value_list) {
-	my $filename = "/tmp/.plot.data.$$-$plotfiles";
-	die "Unable to open $filename for write: $!"
-	    unless open(OUT,">$filename");
+    # TODO: figure out how to detect the gnuplot version so that we can give an
+    # error if we try to do stacked charts with old gnuplot versions.
 
-	my $major_x = $minor_index;
+    if (defined $sth->{NAME_hash}->{stacked_minor}) {
+	my $filename = "/tmp/.plot.data.$$-$plotfiles";
+	my $fh = new FileHandle(">$filename")
+	    or die "Unable to open $filename for write: $!";
+
+	# TODO: print warning on whitespace?
+	print $fh join("\t", "MAJOR_AXIS", removeWhitespace(@minor_value_list)), "\n";
 	foreach my $major (@major_value_list) {
-	    my $t;
-	    if ($have_minor) {
-		$t = $data{$major}->{$minor};
-	    } else {
-		$t = $data{$major};
-	    }
-	    print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n"; 
-	    $major_x += $minor_length + $group_separation;
+	    print $fh join("\t", removeWhitespace($major), 
+			   map { $data{$major}->{$_}->{y} } @minor_value_list), "\n";
 	}
-	close(OUT);
-	my $newp = plotboxes($filename,$minor,$select);
-	push(@plots,$newp);
+
+	my $p = default_plotinfo($filename, $select);
+	$p->{explicit} = join(", ", "'$filename' using 2:xtic(1)",
+			      map { "'' using $_" } 3..(@minor_value_list + 1));
+	push(@plots, $p);
 	++$plotfiles;
-	$minor_index++;
+	# Lots of magic foo to feed to gnuplot to make it do the right thing.
+	gnuplot("set key autotitle columnheader invert");
+	gnuplot("set style data histogram");
+	gnuplot("set style histogram rowstacked");
+	gnuplot("set style fill solid border -1");
+	gnuplot("set boxwidth 0.75");
+    } else {
+	my $have_minor = @minor_value_list;
+	@minor_value_list = ("data") 
+	    unless @minor_value_list;
+	my $minor_index = 1;
+	my $minor_length = scalar @minor_value_list;
+	foreach my $minor (@minor_value_list) {
+	    my $filename = "/tmp/.plot.data.$$-$plotfiles";
+	    die "Unable to open $filename for write: $!"
+		unless open(OUT,">$filename");
+
+	    my $major_x = $minor_index;
+	    foreach my $major (@major_value_list) {
+		my $t;
+		if ($have_minor) {
+		    $t = $data{$major}->{$minor};
+		} else {
+		    $t = $data{$major};
+		}
+		print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n";
+		$major_x += $minor_length + $group_separation;
+	    }
+	    close(OUT);
+	    my $newp = plotboxes($filename,$minor,$select);
+	    push(@plots,$newp);
+	    ++$plotfiles;
+	    ++$minor_index;
+	}
+	my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation);
+
+	my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; 
+					  "'$_' $major_xtic" } @major_value_list);
+
+	gnuplot('set ticscale 0');
+	gnuplot("set xtics ($xtics_vals)");
     }
     refresh_plot;
-    my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation); 
+}
 
-    my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; "'$_' $major_xtic" } @major_value_list);
+sub removeWhitespace {
+    my @ret = @_;
 
-    gnuplot('set ticscale 0');
-    gnuplot("set xtics ($xtics_vals)");
+    map { s/\s+/_/go; } @ret;
+    return @ret;
 }
 
 sub start_gnuplot {
@@ -817,6 +879,9 @@ sub start_gnuplot {
     fcntl($pty, F_SETFL, $flags | O_NONBLOCK) or die;
     $gnuplot_fifo = $pty;
     $gnuplot_fifo->autoflush(1);
+    # TODO: auto-detect if there is the wxt terminal and use that if possible;
+    # also need to fix other uses of set terminal x11
+    print $gnuplot_fifo "set terminal x11\n";
 }
 
 # The idea here is that we keep reading from gnuplot until we are able
@@ -857,7 +922,6 @@ sub fastReplyFromGnuplot {
     my ($select) = @_;
     confess "gnuplot isn't running" unless defined $gnuplot_fifo;
 
-    my $debug = 0;
     print "FRFG\n" if $debug;
     print $gnuplot_fifo "\n";
     my $max_reply_time = time + 0.05;
@@ -998,7 +1062,7 @@ sub pngplot {
 	print "pnmscale error; psplot-$$.001s.ppm too small\n";
 	return 0;
     }
-    
+
     print "pnmtopng... ";
     $cmd = "@PNMTOPNG_PATH@ -compression 9 psplot-$$.001s.ppm >$png_filename";
     $ret = system($cmd);
@@ -1036,6 +1100,7 @@ sub replot {
     refresh_plot;
 }
 
+# See refresh_plot for valid bits in here.
 sub default_plotinfo {
     my($filename, $sql_cmd) = @_;
 
@@ -1407,7 +1472,7 @@ mercury-plot - plot data out of an SQL database
 
 =head1 SYNOPSIS
 
-% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>] 
+% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>]
                [--user=<user>] [--password=<password>]
                [--history=<history filename>]
 
@@ -1419,7 +1484,8 @@ mercury-plot - plot data out of an SQL database
     listplot
     unplot [<plotnum>] 
     fnplot <function>
-    barplot <sql select arguments>, with columns named major, [minor], y, [yerr, (ylo,yhi)]
+    barplot <sql select arguments>, with columns named major,
+            [minor|stacked_minor], y, [yerr, (ylo,yhi)]
     plotwith <plotnum|_ for latest,* for default> <with...>
     plottitle <plotnum|_ for latest> <title | notitle>
     axplusb <plotnum> 
@@ -1460,19 +1526,25 @@ distribution function plot from a single plot value.
 
 =head2 barplot I<sql select arguments>
 
-C<barplot> is the command that generates bar-style plots for
-C<mercury-plot>.  It takes as an argument the part of an sql statement
-after the select.  Two columns are required, major and y.  There are a
-number of optional columns: minor, yerr, and ylo/yhi.  The major
-columns are separated and the minor columns are grouped together.  The
-barplot actually generates a series of plots, one for each of the
-minor variables, or 1 if there is no minor variable.  The bars are
-ordered in the same way that they come back from the sql query, so
-sql's order by can be used to control the order.
+C<barplot> is the command that generates bar-style plots for C<mercury-plot>.
+It takes as an argument the part of an sql statement after the select.  Two
+columns are required, major and y.  There are a number of optional columns:
+minor or stacked_minor, yerr, and ylo/yhi.  The major columns are separated and
+the minor columns are grouped or stacked together.  The barplot actually
+generates a series of plots, one for each of the minor variables, or 1 if there
+is no minor variable or the plot is stacked.  The bars are ordered in the same
+way that they come back from the sql query, so sql's C<order by> can be used to
+control the order.  For stacked charts the yerr, ylo and yhi columns will be
+ignored.  Mercury-plot will automatically set important gnuplot options like
+the key to 'autotitle columnheader invert', and the style options to histogram
+and rowstacked.  Note that stacked bar charts were added to gnuplot 4.2, so
+will not work with earlier versions.  Mercury will not protect you against this
+issue.
 
 =head3 a few examples
 
-	barplot time as y, timestddev as yerr, querygroup as major,engine as minor from tmp_ds_barplot where position > 0 order by position
+	barplot time as y, timestddev as yerr, querygroup as major, engine as minor from tmp_ds_barplot where position > 0 order by position
+	barplot time as y, timestddev as yerr, querygroup as major, engine as stacked_minor from tmp_ds_barplot where position > 0 order by position
 	barplot time as y, timestddev as yerr, engine as major from tmp_ds_barplot order by position
 
 =head2 plottitle I<which> I<title>
