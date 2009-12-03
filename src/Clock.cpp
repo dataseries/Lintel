@@ -490,7 +490,7 @@ void Clock::timingTest() {
 	    nreps += 1;
 	} while (myclock.todccTfrac() < end_target);
 	Clock::Tfrac end = myclock.todTfrac();
-	SINVARIANT(end > start && end - start >= measurement_time_tfrac);
+	SINVARIANT(end > start && end - start >= measurement_time_tfrac * 0.99);
 	double elapsed_ns = Clock::TfracToDouble(end - start) * 1.0e9;
 	ns_per_todtfrac = elapsed_ns / static_cast<double>(nreps);
 	cout << format("todccTfrac            %9d   %8.0f   %7.4g   %7.4g     %5.3g\n")
