@@ -41,5 +41,41 @@
   year = "2007",
   month = "October",
   pages = "205--220",
-  note = "Available at \url{http://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}"
+  note = "Available at \url{http://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}",
+  abstract = {Reliability at massive scale is one of the biggest challenges we face at Amazon.com, one of the largest e-commerce operations in the world; even the slightest outage has significant financial consequences and impacts customer trust. The Amazon.com platform, which provides services for many web sites worldwide, is implemented on top of an infrastructure of tens of thousands of servers and network components located in many datacenters around the world. At this scale, small and large components fail continuously and the way persistent state is managed in the face of these failures drives the reliability and scalability of the software systems.
+This paper presents the design and implementation of Dynamo, a highly available key-value storage system that some of Amazons core services use to provide an aaaalways-onachieve this level of availability, Dynamo sacrifices consistency under certain failure scenarios. It makes extensive use of object versioning and application-assisted conflict resolution in a manner that provides a novel interface for developers to use.}
+}
+
+@InProceedings{rowstron:PAST:sosp2001,
+  title     = {Storage management and caching in {PAST}, a 
+                large-scale, persistent peer-to-peer storage utility},
+  author   = "Antony Rowstron and Peter Druschel",
+  year     = 2001,
+  booktitle = "18th ACM Symposium on Operating Systems Principles (SOSP'01)",
+  location = "Chateau Lake Louise, Banff, Canada",
+  moonth    = oct,
+  pages    = "188-201",
+  abstract = {This paper presents and evaluates the storage management
+and caching in PAST, a large-scale peer-to-peer persistent
+storage utility. PAST is based on a self-organizing, Internetbased
+overlay network of storage nodes that cooperatively
+route file queries, store multiple replicas of files, and cache
+additional copies of popular files.
+In the PAST system, storage nodes and files are each assigned
+uniformly distributed identifiers, and replicas of a file
+are stored at nodes whose identifier matches most closely the
+files identifier. This statistical assignment of files to storage
+nodes approximately balances the number of files stored on
+each node. However, non-uniform storage node capacities
+and file sizes require more explicit storage load balancing
+to permit graceful behavior under high global storage utilization;
+likewise, non-uniform popularity of files requires
+caching to minimize fetch distance and to balance the query
+load.
+We present and evaluate PAST, with an emphasis on its
+storage management and caching system. Extensive tracedriven
+experiments show that the system minimizes fetch
+distance, that it balances the query load for popular files,
+and that it displays graceful degradation of performance as
+the global storage utilization increases beyond 95%.}
 }
