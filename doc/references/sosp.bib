@@ -1,8 +1,17 @@
+@string{sosp1967 = "SOSP '67: Proceedings of the 1st ACM Symposium on Operating Systems Principles"}
 @string{sosp1995 = "SOSP '95: Proceedings of the 15th ACM Symposium on Operating Systems Principles"}
+@string{sosp1991 = "SOSP '91: Proceedings of the 13th ACM Symposium on Operating Systems Principles"}
+@string{sosp2001 = "SOSP '01: Proceedings of the 18th ACM Symposium on Operating Systems Principles"}
 @string{sosp2003 = "SOSP '03: Proceedings of the 19th ACM Symposium on Operating Systems Principles"}
 @string{sosp2007 = "SOSP '07: Proceedings of the 21st ACM Symposium on Operating Systems Principles"}
 
-
+@inproceedings{tucek:triage:sosp2007,
+author = "Joseph Tucek and Shan Lu and Chengdu Huang and Spiros Xanthos and Yuanyuan Zhou",
+title = "Triage: {D}iagnosing Production Run Failures at the User's Site",
+booktitle = sosp2007,
+month = "October",
+year = "2007"
+}
 @inproceedings{terry:bayou:sosp1995,
   author    = {Douglas B. Terry and
                Marvin Theimer and
@@ -14,10 +23,8 @@
   booktitle = sosp1995,
   year      = {1995},
   pages     = {172-183},
-  abstract  = {Bayou is a replicated, weakly consistent storage system designed for a mobile computing environment that includes portable machines with less than ideal network connectivity. To maximize availability, users can read and write any accessible replica.... Motivation, design, and initial experiences.},
   bibsource = {DBLP, http://dblp.uni-trier.de}
 }
-
 
 
 @inproceedings{ghemawat:google-fs:sosp2003,
@@ -42,8 +49,6 @@
   month = "October",
   pages = "205--220",
   note = "Available at \url{http://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}",
-  abstract = {Reliability at massive scale is one of the biggest challenges we face at Amazon.com, one of the largest e-commerce operations in the world; even the slightest outage has significant financial consequences and impacts customer trust. The Amazon.com platform, which provides services for many web sites worldwide, is implemented on top of an infrastructure of tens of thousands of servers and network components located in many datacenters around the world. At this scale, small and large components fail continuously and the way persistent state is managed in the face of these failures drives the reliability and scalability of the software systems.
-This paper presents the design and implementation of Dynamo, a highly available key-value storage system that some of Amazons core services use to provide an aaaalways-onachieve this level of availability, Dynamo sacrifices consistency under certain failure scenarios. It makes extensive use of object versioning and application-assisted conflict resolution in a manner that provides a novel interface for developers to use.}
 }
 
 @InProceedings{rowstron:PAST:sosp2001,
@@ -78,4 +83,38 @@ experiments show that the system minimizes fetch
 distance, that it balances the query load for popular files,
 and that it displays graceful degradation of performance as
 the global storage utilization increases beyond 95%.}
+@inproceedings{vanhorn:criteria:sosp1967,
+author = "Earl C. van Horn",
+title = "Three criteria for designing computing systems to facilitate debugging",
+booktitle = sosp1967,
+pages = "7.1--7.5",
+month = "October",
+year = "1967",
+}
+
+@inproceedings{draves+brd:continuations:sosp1991,
+author = "Richard P. Draves and Brian N. Bershad and Richard F. Rashid and Randall W. Dean",
+title = "Using continuations to implement thread management and communication in operating systems",
+booktitle = sosp1991,
+month = "October",
+year = "1991",
+pages = "122--136",
+}
+
+@inproceedings{welsh+cb:seda:sosp2001,
+author = "Matt Welsh and David Culler and Eric Brewer",
+title = "{SEDA}: {A}n architecture for well-conditioned, scalable {I}nternet services",
+booktitle = sosp2001,
+month = "October",
+year = "2001",
+pages = "230--243",
+}
+
+@inproceedings{vonbehren:capriccio:sosp2003,
+author = "Rob von Behrenm and Jeremy Condit and Feng Zhou and George C. Necula and Eric Brewer",
+title = "Capriccio: {S}calable threads for {I}nternet services",
+booktitle = sosp2003,
+month = "October",
+year = "2003",
+pages = "268--281",
 }

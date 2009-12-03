@@ -1,5 +1,11 @@
-@string{nsdi2006 = "NSDI06: roceedings of the Third Symposium on Networked Systems Design and Implementation (NSDI)"} %long
+@string{nsdi2006 = "NSDI06: Proceedings of the Third Symposium on Networked Systems Design and Implementation (NSDI)"} %long
 %short: @string{nsdi2006 = "Proc. 3rd NSDI"} 
+
+@string{nsdi2007 = "NSDI07: Proceedings of the Fourth Symposium on Networked Systems Design and Implementation (NSDI)"} %long
+%short: @string{nsdi2007 = "Proc. 4th NSDI"} 
+
+@string{nsdi2008 = "NSDI08: Proceedings of the Fifth Symposium on Networked Systems Design and Implementation (NSDI)"} %long
+%short: @string{nsdi2008 = "Proc. 5th NSDI"} 
 
 @inproceedings{reynolds:pip:nsdi2006,
   author = "Patrick Reynolds and Charles Killian and Janet L. Wiener and Jeffrey C. Mogul and Mehul A. Shah and Amin Vahdat",
@@ -20,5 +26,39 @@
  location = {Boston, Massachusetts},
  publisher = {USENIX Association},
  address = {Berkeley, CA, USA},
- abstract = { WheelFS is a wide-area distributed storage system intended to help multi-site applications share data and gain fault tolerance. WheelFS takes the form of a distributed file system with a familiar POSIX interface. Its design allows applications to adjust the tradeoff between prompt visibility of updates from other sites and the ability for sites to operate independently despite failures and long delays. WheelFS allows these adjustments via semantic cues, which provide application control over consistency, failure handling, and file and replica placement. WheelFS is implemented as a user-level file system and is deployed on PlanetLab and Emulab. Three applications (a distributed Web cache, an email service and large file distribution) demonstrate that WheelFS's file system interface simplifies construction of distributed applications by allowing reuse of existing software. These applications would perform poorly with the strict semantics implied by a traditional file system interface, but by providing cues to WheelFS they are able to achieve good performance. Measurements show that applications built on WheelFS deliver comparable performance to services such as CoralCDN and BitTorrent that use specialized wide-area storage systems.}
+}
+
+@inproceedings{gupta:diecast:nsdi2008,
+author = "Diwaker Gupta and Kashi V. Vishwanath and Amin Vahdat",
+title = "{DieCast}: {T}esting Distributed Systems with an Accurate Scale Model",
+booktitle = nsdi2008,
+year = "2008",
+}
+
+@inproceedings{liu:wids-checker:nsdi2007,
+  author = "Xuezheng Liu and  Wei Lin and Aimin Pan and Zheng Zhang",
+  title = "{WiDS} Checker: {Combating} Bugs in Distributed Systems",
+  booktitle = nsdi2007,
+  year = "2007",
+}
+
+@inproceedings {liu:d3s:nsdi2008,
+author = "Xuezheng Liu and Zhenyu Guo and Xi Wang and Feibo Chen and Xiaochen Lian and Jian Tang and Ming Wu and M. Frans Kaashoek and Zheng Zhang",
+title = "D$^3${S}: Debugging deployed distributed systems",
+booktitle = nsdi2008,
+year = "2008",
+month = "April",
+pages = "423--437",
+}
+
+@inproceedings{geels:friday:nsdi2007,
+  author    = {Dennis Geels and
+               Gautam Altekar and
+               Petros Maniatis and
+               Timothy Roscoe and
+               Ion Stoica},
+  title     = {Friday: {G}lobal Comprehension for Distributed Replay},
+  booktitle = nsdi2007,
+  year      = {2007},
+  ee        = {http://www.usenix.org/events/nsdi07/tech/geels.html},
 }
