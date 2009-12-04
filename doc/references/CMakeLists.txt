@@ -32,6 +32,7 @@ SET(BIB_FILES
     ieeetoc.bib
     ieeetpds.bib
     isca.bib
+		jacm.bib
     journal-high-perf-compute-apps.bib
     mascots.bib
     middleware.bib
