@@ -1,5 +1,5 @@
 @string{asplos2009 = "ASPLOS 2009: Proceedings of the 14th International Conference on Architectural Support for Programming Languages and Operating Systems"}
-
+@string{asplos1998 = "ASPLOS 1998: Proceedings of the 8th International Conference on Architectural Support for Programming Languages and Operating Systems"}
 @string{asplos2006 = "ASPLOS 2006: Proceedings of the 12th International Conference on Architectural Support for Programming Languages and Operating Systems"}
 
 @inproceedings{narayanasamy:strata:asplos06,
@@ -19,7 +19,7 @@
                clusters for data-intensive applications},
   booktitle = asplos2009,
   year      = {2009},
-  pages     = {217-228},
+  pages     = {217--228},
   ee        = {http://doi.acm.org/10.1145/1508244.1508270},
   crossref  = {conf/asplos/2009},
   note      = "Available at \url{http://www.cs.ucsd.edu/~swanson/papers/Asplos2009Gordon.pdf} Accessed June 2009",
@@ -51,6 +51,24 @@
  abstract = {This paper describes the design, implementation, and evaluation of a Federated Array of Bricks (FAB), a distributed disk array that provides the reliability of traditional enterprise arrays with lower cost and better scalability. FAB is built from a collection of bricks, small storage appliances containing commodity disks, CPU, NVRAM, and network interface cards. FAB deploys a new majority-voting-based algorithm to replicate or erasure-code logical blocks across bricks and a reconfiguration algorithm to move data in the background when bricks are added or decommissioned. We argue that voting is practical and necessary for reliable, high-throughput storage systems such as FAB. We have implemented a FAB prototype on a 22-node Linux cluster. This prototype sustains 85MB/second of throughput for a database workload, and 270MB/second for a bulk-read workload. In addition, it can outperform traditional master-slave replication through performance decoupling and can handle brick failures and recoveries smoothly without disturbing client requests.}
 }
 
+@inproceedings{gibson:nasd:asplos1998,
+  author    = {Garth A. Gibson and
+               David Nagle and
+               Khalil Amiri and
+               Jeff Butler and
+               Fay W. Chang and
+               Howard Gobioff and
+               Charles Hardin and
+               Erik Riedel and
+               David Rochberg and
+               Jim Zelenka},
+  title     = {A Cost-Effective, High-Bandwidth Storage Architecture},
+  booktitle = {asplos1998},
+  year      = {1998},
+  pages     = {92--103},
+  ee        = {http://doi.acm.org/10.1145/291069.291029},
+  bibsource = {DBLP, http://dblp.uni-trier.de}
+}
 
 @inproceedings{kubiatowicz:oceanstore:asplos2000,
   address = {Boston, MA},
@@ -66,3 +84,4 @@
   year = {2000},
   abstract = {OceanStore is a utility infrastructure designed to span the globe and provide continuous access to persistent information. Since this infrastructure is comprised of untrusted servers, data is protected through redundancy and cryptographic techniques. To improve performance, data is allowed to be cached anywhere, anytime. Additionally, monitoring of usage patterns allows adaptation to regional outages and denial of service attacks; monitoring also enhances performance through pro-active movement of data. A prototype implementation is currently under development.}
 }
+
