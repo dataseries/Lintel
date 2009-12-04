@@ -62,6 +62,10 @@ disables the killing.
 
 =cut
 
+# TODO: since you can't sanely have two process managers in a single process
+# (wait on one can finish children the other should process), we should have
+# this return a reference to a global and print out a warning that people
+# should just use the global.
 sub new {
     my ($class, %opts) = @_;
 
