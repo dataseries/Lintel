@@ -49,6 +49,7 @@ SET(BIB_FILES
     sss.bib
     supercomputing-review.bib
     tcsc.bib
+    toit.bib
     tr.bib
     tse.bib
     usenix.bib
