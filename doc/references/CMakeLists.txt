@@ -16,7 +16,6 @@ SET(BIB_FILES
     cacm.bib
     csur.bib
     datamation.bib
-    dcs.bib
     disc.bib
     distributedcomputing.bib
     dsn.bib
@@ -24,15 +23,18 @@ SET(BIB_FILES
     efts.bib
     hotdep.bib
     hotos.bib
+    icdcs.bib
     icpp.bib
     ics.bib
     ieee-computer.bib
+    ieeejsac.bib
     ieee-icin.bib
     ieeetoc.bib
     ieeetpds.bib
     isca.bib
     journal-high-perf-compute-apps.bib
     mascots.bib
+    middleware.bib
     nsdi.bib
     osdi.bib
     os-review.bib
@@ -52,6 +54,7 @@ SET(BIB_FILES
     vldb.bib
     web-sites.bib
     wmcsa.bib
+    wmrd.bib
 )
 
 ADD_CUSTOM_TARGET(all-bib ALL 

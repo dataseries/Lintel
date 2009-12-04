@@ -48,7 +48,41 @@ year = "2007"
   year = "2007",
   month = "October",
   pages = "205--220",
-  note = "Available at \url{http://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}"
+  note = "Available at \url{http://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}",
+}
+
+@InProceedings{rowstron:PAST:sosp2001,
+  title     = {Storage management and caching in {PAST}, a 
+                large-scale, persistent peer-to-peer storage utility},
+  author   = "Antony Rowstron and Peter Druschel",
+  year     = 2001,
+  booktitle = "18th ACM Symposium on Operating Systems Principles (SOSP'01)",
+  location = "Chateau Lake Louise, Banff, Canada",
+  moonth    = oct,
+  pages    = "188-201",
+  abstract = {This paper presents and evaluates the storage management
+and caching in PAST, a large-scale peer-to-peer persistent
+storage utility. PAST is based on a self-organizing, Internetbased
+overlay network of storage nodes that cooperatively
+route file queries, store multiple replicas of files, and cache
+additional copies of popular files.
+In the PAST system, storage nodes and files are each assigned
+uniformly distributed identifiers, and replicas of a file
+are stored at nodes whose identifier matches most closely the
+files identifier. This statistical assignment of files to storage
+nodes approximately balances the number of files stored on
+each node. However, non-uniform storage node capacities
+and file sizes require more explicit storage load balancing
+to permit graceful behavior under high global storage utilization;
+likewise, non-uniform popularity of files requires
+caching to minimize fetch distance and to balance the query
+load.
+We present and evaluate PAST, with an emphasis on its
+storage management and caching system. Extensive tracedriven
+experiments show that the system minimizes fetch
+distance, that it balances the query load for popular files,
+and that it displays graceful degradation of performance as
+the global storage utilization increases beyond 95%.}
 }
 
 @inproceedings{vanhorn:criteria:sosp1967,
