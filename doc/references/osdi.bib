@@ -1,8 +1,8 @@
-@string{osdi94 = "OSDI '94: Proceedings of the first Conference on Operating Systmes Design and Implementation"}
-@string{osdi02 = "OSDI '02: Proceedings of the fifth Conference on Operating Systmes Design and Implementation"}
-@string{osdi04 = "OSDI '04: Proceedings of the sixth Conference on Operating Systems Design and Implementation"}
-@string{osdi06 = "OSDI '06: Proceedings of the seventh Conference on Operating Systems Design and Implementation"}
-@string{osdi08 = "OSDI '08: Proceedings of the eight Conference on Operating Systems Design and Implementation"}
+@string{osdi94 = "OSDI '94: Proceedings of the First Conference on Operating Systmes Design and Implementation"}
+@string{osdi02 = "OSDI '02: Proceedings of the Fifth Conference on Operating Systmes Design and Implementation"}
+@string{osdi04 = "OSDI '04: Proceedings of the Sixth Conference on Operating Systems Design and Implementation"}
+@string{osdi06 = "OSDI '06: Proceedings of the Seventh Conference on Operating Systems Design and Implementation"}
+@string{osdi08 = "OSDI '08: Proceedings of the Eight Conference on Operating Systems Design and Implementation"}
 
 @inproceedings{dahlin:cache:osdi1994,
 author = "Michael D. Dahlin and Randolph Y. Wang and Thomas E. Anderson and David A. Patterson",
@@ -65,8 +65,8 @@ year = "2002",
 
 @inproceedings{saito:pangaea:osdi2002,
  author = {Saito, Yasushi and Karamanolis, Christos and Karlsson, Magnus and Mahalingam, Mallik},
- title = {Taming aggressive replication in the Pangaea wide-area file system},
- booktitle = {OSDI '02: Proceedings of the 5th symposium on Operating systems design and implementation},
+ title = {Taming aggressive replication in the {P}angaea wide-area file system},
+ booktitle = osdi02,
  year = {2002},
  pages = {15--30},
  location = {Boston, Massachusetts},
@@ -80,9 +80,9 @@ year = "2002",
   author    = {John R. Douceur and
                Jon Howell},
   title     = {Distributed Directory Service in the Farsite File System},
-  booktitle = {OSDI},
+  booktitle = {osdi2006},
   year      = {2006},
-  pages     = {321-334},
+  pages     = {321--334},
   ee        = {http://www.usenix.org/events/osdi06/tech/douceur.html},
   abstract  = {We present the design, implementation, and evaluation of a fully distributed directory service for Farsite, a logically centralized file system that is physically implemented on a loosely coupled network of desktop computers. Prior to this work, the Farsite system included distributed mechanisms for file content but centralized mechanisms for file metadata. Our distributed directory service introduces tree-structured file identifiers that support dynamically partitioning metadata at arbitrary granularity, recursive path leases for scalably maintaining name-space consistency, and a protocol for consistently performing operations on files managed by separate machines. It also mitigates metadata hotspots via file-field leases and the new mechanism of disjunctive leases. We experimentally show that Farsite can dynamically partition file-system metadata while maintaining full file-system semantics.}
 }
