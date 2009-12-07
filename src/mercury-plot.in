@@ -437,6 +437,12 @@ sub sqlplot {
     } elsif ($found{x} && $found{y}) {
 	$writefn = sub { print OUT "$x $y\n"; };
 	$plotfn = \&plotxy;
+    } elsif ($found{x} && $found{y2} && $found{yerr}) {
+	$writefn = sub { print OUT "$x $y2 $yerr\n"; };
+	$plotfn = \&plotxy2_yerr;
+    } elsif ($found{x} && $found{y2} && $found{ylo} && $found{yhi}) {
+	$writefn = sub { print OUT "$x $y2 $ylo $yhi\n"; };
+	$plotfn = \&plotxy2_yhilo;
     } elsif ($found{x} && $found{y2}) {
 	$writefn = sub { print OUT "$x $y2\n"; };
 	$plotfn = \&plotxy2;
@@ -1271,6 +1277,28 @@ sub plotxy {
     my($filename,$sql_cmd) = @_;
 
     return default_plotinfo($filename,$sql_cmd);
+}
+
+sub plotxy2_yerr {
+    my($filename,$sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{axes} = 'x1y2';
+    $p->{with} = 'yerrorbars';
+    gnuplot('set ytics nomirror');
+    gnuplot('set y2tics');
+    return $p;
+}
+
+sub plotxy2_yhilo {
+    my($filename, $sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{axes} = 'x1y2';
+    $p->{with} = 'yerrorbars';
+    gnuplot('set ytics nomirror');
+    gnuplot('set y2tics');
+    return $p;
 }
 
 sub plotxy2 {
