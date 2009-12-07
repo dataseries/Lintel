@@ -1563,6 +1563,7 @@ sub depBuildParallel {
     my $start_src = rootSrcDir();
     $start_src =~ s!^.*/!!o;
 
+    my $start_dir = aliasGetCwd();
     # Calculate all things we could build and their dependencies
     my %dependencies;
     my @pending = ([$start_src,'']);
@@ -1643,6 +1644,7 @@ sub depBuildParallel {
 	$prev_pending_size = @pending;
     }
 
+    aliasChdir($start_dir); # TODO: figure out why this isn't already happening, we can be left in the wrong dir
     return %$options;
 }
 
@@ -2173,13 +2175,16 @@ sub depPublish {
     usage("unknown option to publish") unless $ret;
 
     print "deppublish: committing any outstanding changes\n";
+    print "  cwd = ", aliasGetCwd(), "\n" if $debug;
     depCommit();
+    print "  cwd = ", aliasGetCwd(), "\n" if $debug;
     my %options = ('made_changes' => 1);
     while ($options{made_changes}) {
         $options{made_changes} = 0;
         print "deppublish: verifying current version passes regression tests\n";
         depBuildStandard();
         print "deppublish: pulling in any remote changes\n";
+	print "  cwd = ", aliasGetCwd(), "\n" if $debug;
         depWalk(sub { }, sub { depPullOne(\%options); }, 0);
 
         unless ($options{made_changes}) {
@@ -2189,6 +2194,7 @@ sub depPublish {
 *** need to get them tested and synchronized quickly because they made it ***
 *** out so other people can see them. ***
 END
+	    print "  cwd = ", aliasGetCwd(), "\n" if $debug;
             depWalk(sub { }, sub { depSyncOne(\%options); }, 0);
             print "****** WARNING, got changes; re-running deppublish...\n"
                 if $options{made_changes};
