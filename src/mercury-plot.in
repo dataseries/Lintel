@@ -158,6 +158,50 @@ while (defined ($_ = $term->readline("$prompt"))) {
 }
 &saveexit;
 
+=pod
+
+=head1 NAME
+
+mercury-plot - plot data out of an SQL database
+
+=head1 SYNOPSIS
+
+% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>]
+               [--user=<user>] [--password=<password>]
+               [--history=<history filename>]
+
+=head1 OVERVIEW
+
+    select <sql select arguments>
+    plot <sql select arguments>, with columns named x,{y,y2}, [yerr,(ylo,yhi)]
+    sql <sql statement>
+    listplot
+    unplot [<plotnum>] 
+    fnplot <function>
+    barplot <sql select arguments>, with columns named major,
+            [minor|stacked_minor], y, [yerr, (ylo,yhi)]
+    plotwith <plotnum|_ for latest,* for default> <with...>
+    plottitle <plotnum|_ for latest> <title | notitle>
+    axplusb <plotnum> 
+    default (table|where) <thing>
+    psplot [--nocolor] [--mode={eps,portrait,landscape=default}] [--fontsize=<int>] <filename>
+    pngplot {psplot args} <filename> [width height] 
+    pngpsplot {psplot args} <base-filename> [width height] 
+    define ... enddefine 
+    source <filename> 
+    fncmds <code> 
+    import-data I<tablename> I<columns> ... -- I<files> ...
+    help [I<command>]
+    man 
+    exit or quit
+
+=head1 COMMANDS
+
+Inside of a file for input to mercury, or typed in at the mercury prompt:
+
+=cut
+
+
 ### QUESTION: Should this all be replaced by a bunch of objects
 ### QUESTION: that have methods, so that extensibility is easier?
 
@@ -285,6 +329,379 @@ sub docmd {
     shift @history if @history > 100;
     syncToGnuplot() if defined $gnuplot_fifo;
 }
+
+my @plots;
+
+sub refresh_plot {
+    my $t;
+    my @foo = map { $t = qq!$_->{data} ! if defined $_->{data};
+		    $t = qq!$_->{function} ! if defined $_->{function};
+		    $t .= " axes $_->{axes} " if defined $_->{axes}; 
+		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle";
+		    $t .= " with $_->{with}" if defined $_->{with};
+		    $t = $_->{explicit} if defined $_->{explicit};
+		    $t; } @plots;
+    &start_gnuplot;
+    if (@foo == 0) {
+	print $gnuplot_fifo "plot x\n";
+    } else {
+	print $gnuplot_fifo "plot ", join(", ",@foo), "\n";
+    }
+    syncToGnuplot();
+}
+
+=pod
+
+=head2 plot I<sql select arguments>
+
+C<plot> is the primary command that generates plots in
+C<mercury-plot>.  It takes as an argument a generic sql statement with
+the expectation that some of the columns will have special names that
+it will use in order to generate the plot.  In this version, the
+special names are x, y, y2, yerr, ylo, yhi, cdf.  A plot with x, y
+will generate a simple scatter or line plot.  Using y2 instead of y
+will plot against the second axis on the plot.  Adding in yerr will
+add in error bars, and explicit tops and bottoms for the error bars
+can be generated with ylo and yhi.  cdf will generate a cumulative
+distribution function plot from a single plot value.
+
+=head3 a few examples 
+
+	plot step as x, nluns as y where variant = 1
+	plot iosize as x, max(iops) as y where runcount = 1 and stripesize = 256 group by iosize
+	plot iosize as x, avg(iops) as y, stddev(iops) as yerr where runcount = 1 group by iosize
+
+=cut
+
+# TODO: make plot able to handle barplot plots also.
+sub sqlplot {
+    my $cmd = shift;
+
+    $cmd = &adjust_sql($cmd);
+    if ($cmd =~ /\border\b/o) {
+	# Leave it alone, user specified order, plot goes in that order.
+    } elsif ($cmd =~ /\bcdf\b/o) {
+	if ($cmd =~ s/\blimit\b/ order by cdf limit /o) {
+	} else {
+	    $cmd .= " order by cdf";
+	}
+    } elsif ($cmd =~ /\bseg_x1\b/o) {
+	# no adjustment
+    } elsif ($cmd =~ s/\blimit\b/ order by x limit /o) {
+    } else {
+	$cmd .= " order by x";
+    }
+    $cmd =~ s/^plot /select /o;
+    my $sth = eval {sql_exec($cmd) };
+    if ($@) {
+	print "$@\n";
+	$command_error = 1;
+	return;
+    }
+    if ($sth->rows == 0) {
+	print "No rows return by query $cmd\n";
+	return;
+    }
+    my @names = @{$sth->{NAME}};
+    my ($x,$y,$y2,$yerr,$ylo,$yhi,$cdf, $seg_x1, $seg_y1, $seg_x2, $seg_y2);
+    my %known_columns = ( 'x' => \$x, 'y' => \$y, 'y2' => \$y2, 
+			  'yerr' => \$yerr, 'ylo' => \$ylo, 'yhi' => \$yhi,
+			  'cdf' => \$cdf, 
+			  'seg_x1' => \$seg_x1, 'seg_y1' => \$seg_y1, 
+			  'seg_x2' => \$seg_x2, 'seg_y2' => \$seg_y2);
+    my %found;
+    for(my $i=0;$i<@names;++$i) {
+	my $t;
+	if (defined $known_columns{$names[$i]}) {
+	    $sth->bind_col($i+1,$known_columns{$names[$i]});
+	    $found{$names[$i]} = $known_columns{$names[$i]};
+	} else {
+	    warn "Don't know how to plot column name $names[$i]\n";
+	}
+    }
+    my $writefn;
+    my $plotfn;
+    my $filename = "/tmp/.plot.data.$$-$plotfiles";
+    unless(open(OUT,">$filename")) {
+	print "Unable to open $filename for write: $!\n";
+	return;
+    }
+
+    if (0) {
+    } elsif ($found{x} && $found{y} && $found{yerr}) {
+	$writefn = sub { print OUT "$x $y $yerr\n"; };
+	$plotfn = \&plotxy_yerr;
+    } elsif ($found{x} && $found{y} && $found{ylo} && $found{yhi}) {
+	$writefn = sub { print OUT "$x $y $ylo $yhi\n"; };
+	$plotfn = \&plotxy_yhilo;
+    } elsif ($found{x} && $found{y}) {
+	$writefn = sub { print OUT "$x $y\n"; };
+	$plotfn = \&plotxy;
+    } elsif ($found{x} && $found{y2} && $found{yerr}) {
+	$writefn = sub { print OUT "$x $y2 $yerr\n"; };
+	$plotfn = \&plotxy2_yerr;
+    } elsif ($found{x} && $found{y2} && $found{ylo} && $found{yhi}) {
+	$writefn = sub { print OUT "$x $y2 $ylo $yhi\n"; };
+	$plotfn = \&plotxy2_yhilo;
+    } elsif ($found{x} && $found{y2}) {
+	$writefn = sub { print OUT "$x $y2\n"; };
+	$plotfn = \&plotxy2;
+    } elsif ($found{cdf}) {
+	my $nrows = $sth->rows;
+	my $i = 0;
+	$writefn = sub { printf OUT "%.4f $cdf\n", 100*$i/$nrows; ++$i };
+	$plotfn = \&plotxy;
+    } elsif ($found{seg_x1} && $found{seg_y1} 
+	     && $found{seg_x2} && $found{seg_y2}) {
+	$writefn = sub { printf OUT "$seg_x1 $seg_y1\n$seg_x2 $seg_y2\n\n"; };
+	$plotfn = \&plotseg;
+    } else {
+	print "Don't know how to plot results.\n";
+	return;
+    }
+    my $warned = 0;
+    FETCH: while(defined $sth->fetch) {
+	while(my($k,$v) = each %found) {
+	    if (!defined $$v) {
+		warn "Null values returned by query.\n"
+		    unless $warned;
+		$warned = 1;
+		next FETCH;
+	    }
+	}
+	&$writefn;
+    }
+    close(OUT);
+    my $newp = &$plotfn($filename,$cmd);
+    push(@plots,$newp);
+    refresh_plot;
+    ++$plotfiles;
+}
+
+sub barplotColors {
+    my ($colors) = @_;
+
+    # In Postscript:
+    # pattern 1: wide cross, pattern 2: narrow cross, pattern 3: black, pattern 4: wide backslash
+    # pattern 5: wide forward slash, pattern 6: narrow backslash, pattern 7: narrow forwardslash
+    # pattern 8: white
+
+    if ($colors eq 'color') {
+	return ('');
+    } elsif ($colors eq '6-grays') {
+	$colors = 'p1,g0.00, p2,g0.20, p4,g0.40, p5,g0.60, p6,g0.80, p7,g1.00';
+    } elsif ($colors eq '4-grays') {
+	$colors = 'p1,g0.00, p2,g0.33, p4,g0.66, p5,g1.00';
+    }
+
+    my @ret;
+    foreach my $ent (split(/,\s*/o, $colors)) {
+	if ($ent =~ /^p(\d+)$/o) {
+	    push(@ret, "fs pattern $1 lt -1");
+	} elsif ($ent =~ /^g(\d+\.\d+)$/o) {
+	    push(@ret, "fs solid $1 lt -1");
+	} else {
+	    die "Unable to interpret color '$ent', expected p# or g#.##";
+	}
+    }
+
+    return @ret;
+}
+
+=pod
+
+=head2 barplot [--color=I<color>] I<sql select arguments>
+
+C<barplot> is the command that generates bar-style plots for C<mercury-plot>.
+It takes as an argument the part of an sql statement after the select.  Two
+columns are required, major and y.  There are a number of optional columns:
+minor or stacked_minor, yerr, and ylo/yhi.  The major columns are separated and
+the minor columns are grouped or stacked together.  The barplot actually
+generates a series of plots, one for each of the minor variables, or 1 if there
+is no minor variable or the plot is stacked.  The bars are ordered in the same
+way that they come back from the sql query, so sql's C<order by> can be used to
+control the order.  For stacked charts the yerr, ylo and yhi columns will be
+ignored.  Mercury-plot will automatically set important gnuplot options like
+the key to 'autotitle columnheader invert', and the style options to histogram
+and rowstacked.  Note that stacked bar charts were added to gnuplot 4.2, so
+will not work with earlier versions.  Mercury will not protect you against this
+issue.
+
+The color option allows you to specify the colors to be used in the stacked bar
+graph.  There are three meta-specifications: color, 6-grays, and 4-grays.
+These specify the use of color, alternating patterns and grayscale with six
+grays, or alternating patterns and grayscale with four grays respectively.  You
+can also explicitly specify the pattern and solid colors to use.  This is done
+by specifying values of either pI<#> to use gnuplot pattern #, or gI<#.##> to
+specify the use of solid grayscale with density #.##.
+
+=head3 a few examples
+
+	barplot time as y, timestddev as yerr, querygroup as major, engine as minor from tmp_ds_barplot where position > 0 order by position
+	barplot time as y, timestddev as yerr, querygroup as major, engine as stacked_minor from tmp_ds_barplot where position > 0 order by position
+	barplot --color=4-grays time as y, timestddev as yerr, engine as major from tmp_ds_barplot order by position
+
+=cut
+
+sub barplot {
+# plots a bar-graph with bars for each  "minor" attribute clustered togeter and the clusters for each "major" attribute seperated.
+    # some constants
+    my $box_width=0.9;
+    my $group_separation=3;
+
+    $_ = $_[0];
+    die "Bad args to barplot"
+	unless m!barplot\s+(.+)$!o;
+    my $select = $1;
+
+    my $color = '4-grays';
+    if ($select =~ s/^--color=(\S+)\s+//o) {
+	$color = $1;
+    }
+    my %data;
+
+    # Collect all the data we want.
+    $select = &adjust_sql("select $select");
+    my $sth = sql_exec($select);
+    my @minor_value_list;
+    my %minors;
+    my @major_value_list;
+    my %majors;
+    while(my $href = $sth->fetchrow_hashref()) {
+	my $major = $href->{major};
+	die "missing major column, or got null value from '$select'"
+	    unless defined $major;
+
+	push(@major_value_list, $major) # preserve order from query
+	    unless defined $majors{$major};
+	$majors{$major} = 1;
+
+	my $y = $href->{y};
+	die "Missing y column, or got null value from '$select'"
+	    unless defined $y;
+
+	my ($ylow, $yhi);
+
+	if (defined $href->{yerr}) {
+	    ($ylow,$yhi) = ($y - $href->{yerr}, $y + $href->{yerr});
+	} elsif (defined $href->{ylo} || defined $href->{yhi}) {
+	    die "Missing one of ylo or yhi, or got null value from '$select'"
+		unless defined $href->{ylo} && defined $href->{yhi};
+	    ($ylow,$yhi) = ($href->{ylo}, $href->{yhi});
+	} else {
+	    ($ylow,$yhi) = ($y,$y);
+	}
+
+	if (defined $href->{minor} || defined $href->{stacked_minor}) {
+	    my $minor = $href->{minor} || $href->{stacked_minor};
+	    die "got null value in minor column from '$select'"
+		unless defined $minor;
+	    die "duplicate value for $major / $minor from '$select'?"
+		if defined $data{$major}->{$minor};
+	    $data{$major}->{$minor} = { 'y' => $y, 'ylow' => $ylow, 'yhi' => $yhi };
+	    push(@minor_value_list, $minor)
+		unless defined $minors{$minor}; # preserve order from query
+	    $minors{$minor} = 1;
+	} else {
+	    die "duplicate value for $major from '$select'?"
+		if defined $data{$major}->{y};
+	    $data{$major} = { 'y' => $y, 'ylow' => $ylow, 'yhi' => $yhi };
+	}
+    }
+
+    my $warned_zero;
+    # Make sure we got everything before starting to make plots
+    foreach my $major (@major_value_list) {
+	if (@minor_value_list) {
+	    foreach my $minor (@minor_value_list) {
+		unless (defined $data{$major}->{$minor}) {
+		    warn "Missing data for major=$major, minor=$minor; no further warnings"
+			unless $warned_zero;
+		    $warned_zero = 1;
+		    $data{$major}->{$minor} = { y => 0, ylow => 0, yhi => 0};
+		}
+	    }
+	} else {
+	    unless (defined $data{$major}->{y}) {
+		warn "Missing data for major=$major; no further warnings"
+		    unless $warned_zero;
+		$warned_zero = 1;
+		$data{$major} = { y => 0, ylow => 0, yhi => 0};
+	    }
+	}
+    }
+
+    # Make the plots...
+
+    # TODO: figure out how to detect the gnuplot version so that we can give an
+    # error if we try to do stacked charts with old gnuplot versions.
+
+    if (defined $sth->{NAME_hash}->{stacked_minor}) {
+	my $filename = "/tmp/.plot.data.$$-$plotfiles";
+	my $fh = new FileHandle(">$filename")
+	    or die "Unable to open $filename for write: $!";
+
+	# TODO: print warning on whitespace?
+	print $fh join("\t", "MAJOR_AXIS", removeWhitespace(@minor_value_list)), "\n";
+	foreach my $major (@major_value_list) {
+	    print $fh join("\t", removeWhitespace($major), 
+			   map { $data{$major}->{$_}->{y} } @minor_value_list), "\n";
+	}
+
+	my $p = default_plotinfo($filename, $select);
+	# Use patterns in order 1,g0,2,g0.20,4,g0.40,5,g0.60,6,g0.80,7,g1.00
+	# 
+	my @colors = barplotColors($color);
+	$p->{explicit} = join(", ", "'$filename' using 2:xtic(1) $colors[0]",
+			      map { push(@colors, shift @colors); 
+				    "'' using $_ $colors[0]" } 3..(@minor_value_list + 1));
+	push(@plots, $p);
+	++$plotfiles;
+	# Lots of magic foo to feed to gnuplot to make it do the right thing.
+	gnuplot("set key autotitle columnheader invert");
+	gnuplot("set style data histogram");
+	gnuplot("set style histogram rowstacked");
+	gnuplot("set style fill solid border -1");
+	gnuplot("set boxwidth 0.75");
+    } else {
+	my $have_minor = @minor_value_list;
+	@minor_value_list = ("data") 
+	    unless @minor_value_list;
+	my $minor_index = 1;
+	my $minor_length = scalar @minor_value_list;
+	foreach my $minor (@minor_value_list) {
+	    my $filename = "/tmp/.plot.data.$$-$plotfiles";
+	    die "Unable to open $filename for write: $!"
+		unless open(OUT,">$filename");
+
+	    my $major_x = $minor_index;
+	    foreach my $major (@major_value_list) {
+		my $t;
+		if ($have_minor) {
+		    $t = $data{$major}->{$minor};
+		} else {
+		    $t = $data{$major};
+		}
+		print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n";
+		$major_x += $minor_length + $group_separation;
+	    }
+	    close(OUT);
+	    my $newp = plotboxes($filename,$minor,$select);
+	    push(@plots,$newp);
+	    ++$plotfiles;
+	    ++$minor_index;
+	}
+	my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation);
+
+	my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; 
+					  "'$_' $major_xtic" } @major_value_list);
+
+	gnuplot('set ticscale 0');
+	gnuplot("set xtics ($xtics_vals)");
+    }
+    refresh_plot;
+}
+
 
 sub savehistory {
     my $fh = new FileHandle ">$history_file";
@@ -569,277 +986,6 @@ sub sqlcmd {
     }
     my $end = time;
     printf "Affected %d rows in %.2fs\n" , $sth->rows, $end-$start;
-}
-
-my @plots;
-
-sub refresh_plot {
-    my $t;
-    my @foo = map { $t = qq!$_->{data} ! if defined $_->{data};
-		    $t = qq!$_->{function} ! if defined $_->{function};
-		    $t .= " axes $_->{axes} " if defined $_->{axes}; 
-		    $t .= defined $_->{title} ? qq!title "$_->{title}"! : "notitle";
-		    $t .= " with $_->{with}" if defined $_->{with};
-		    $t = $_->{explicit} if defined $_->{explicit};
-		    $t; } @plots;
-    &start_gnuplot;
-    if (@foo == 0) {
-	print $gnuplot_fifo "plot x\n";
-    } else {
-	print $gnuplot_fifo "plot ", join(", ",@foo), "\n";
-    }
-    syncToGnuplot();
-}
-
-# TODO: make plot able to handle barplot plots also.
-sub sqlplot {
-    my $cmd = shift;
-
-    $cmd = &adjust_sql($cmd);
-    if ($cmd =~ /\border\b/o) {
-	# Leave it alone, user specified order, plot goes in that order.
-    } elsif ($cmd =~ /\bcdf\b/o) {
-	if ($cmd =~ s/\blimit\b/ order by cdf limit /o) {
-	} else {
-	    $cmd .= " order by cdf";
-	}
-    } elsif ($cmd =~ /\bseg_x1\b/o) {
-	# no adjustment
-    } elsif ($cmd =~ s/\blimit\b/ order by x limit /o) {
-    } else {
-	$cmd .= " order by x";
-    }
-    $cmd =~ s/^plot /select /o;
-    my $sth = eval {sql_exec($cmd) };
-    if ($@) {
-	print "$@\n";
-	$command_error = 1;
-	return;
-    }
-    if ($sth->rows == 0) {
-	print "No rows return by query $cmd\n";
-	return;
-    }
-    my @names = @{$sth->{NAME}};
-    my ($x,$y,$y2,$yerr,$ylo,$yhi,$cdf, $seg_x1, $seg_y1, $seg_x2, $seg_y2);
-    my %known_columns = ( 'x' => \$x, 'y' => \$y, 'y2' => \$y2, 
-			  'yerr' => \$yerr, 'ylo' => \$ylo, 'yhi' => \$yhi,
-			  'cdf' => \$cdf, 
-			  'seg_x1' => \$seg_x1, 'seg_y1' => \$seg_y1, 
-			  'seg_x2' => \$seg_x2, 'seg_y2' => \$seg_y2);
-    my %found;
-    for(my $i=0;$i<@names;++$i) {
-	my $t;
-	if (defined $known_columns{$names[$i]}) {
-	    $sth->bind_col($i+1,$known_columns{$names[$i]});
-	    $found{$names[$i]} = $known_columns{$names[$i]};
-	} else {
-	    warn "Don't know how to plot column name $names[$i]\n";
-	}
-    }
-    my $writefn;
-    my $plotfn;
-    my $filename = "/tmp/.plot.data.$$-$plotfiles";
-    unless(open(OUT,">$filename")) {
-	print "Unable to open $filename for write: $!\n";
-	return;
-    }
-
-    if (0) {
-    } elsif ($found{x} && $found{y} && $found{yerr}) {
-	$writefn = sub { print OUT "$x $y $yerr\n"; };
-	$plotfn = \&plotxy_yerr;
-    } elsif ($found{x} && $found{y} && $found{ylo} && $found{yhi}) {
-	$writefn = sub { print OUT "$x $y $ylo $yhi\n"; };
-	$plotfn = \&plotxy_yhilo;
-    } elsif ($found{x} && $found{y}) {
-	$writefn = sub { print OUT "$x $y\n"; };
-	$plotfn = \&plotxy;
-    } elsif ($found{x} && $found{y2}) {
-	$writefn = sub { print OUT "$x $y2\n"; };
-	$plotfn = \&plotxy2;
-    } elsif ($found{cdf}) {
-	my $nrows = $sth->rows;
-	my $i = 0;
-	$writefn = sub { printf OUT "%.4f $cdf\n", 100*$i/$nrows; ++$i };
-	$plotfn = \&plotxy;
-    } elsif ($found{seg_x1} && $found{seg_y1} 
-	     && $found{seg_x2} && $found{seg_y2}) {
-	$writefn = sub { printf OUT "$seg_x1 $seg_y1\n$seg_x2 $seg_y2\n\n"; };
-	$plotfn = \&plotseg;
-    } else {
-	print "Don't know how to plot results.\n";
-	return;
-    }
-    my $warned = 0;
-    FETCH: while(defined $sth->fetch) {
-	while(my($k,$v) = each %found) {
-	    if (!defined $$v) {
-		warn "Null values returned by query.\n"
-		    unless $warned;
-		$warned = 1;
-		next FETCH;
-	    }
-	}
-	&$writefn;
-    }
-    close(OUT);
-    my $newp = &$plotfn($filename,$cmd);
-    push(@plots,$newp);
-    refresh_plot;
-    ++$plotfiles;
-}
-
-
-sub barplot {
-# plots a bar-graph with bars for each  "minor" attribute clustered togeter and the clusters for each "major" attribute seperated.
-    # some constants
-    my $box_width=0.9;
-    my $group_separation=3;
-
-    $_ = $_[0];
-    die "Bad args to barplot"
-	unless m!barplot\s+(.+)$!o;
-    my $select = $1;
-
-    my %data;
-
-    # Collect all the data we want.
-    $select = &adjust_sql("select $select");
-    my $sth = sql_exec($select);
-    my @minor_value_list;
-    my %minors;
-    my @major_value_list;
-    my %majors;
-    while(my $href = $sth->fetchrow_hashref()) {
-	my $major = $href->{major};
-	die "missing major column, or got null value from '$select'"
-	    unless defined $major;
-
-	push(@major_value_list, $major) # preserve order from query
-	    unless defined $majors{$major};
-	$majors{$major} = 1;
-
-	my $y = $href->{y};
-	die "Missing y column, or got null value from '$select'"
-	    unless defined $y;
-
-	my ($ylow, $yhi);
-
-	if (defined $href->{yerr}) {
-	    ($ylow,$yhi) = ($y - $href->{yerr}, $y + $href->{yerr});
-	} elsif (defined $href->{ylo} || defined $href->{yhi}) {
-	    die "Missing one of ylo or yhi, or got null value from '$select'"
-		unless defined $href->{ylo} && defined $href->{yhi};
-	    ($ylow,$yhi) = ($href->{ylo}, $href->{yhi});
-	} else {
-	    ($ylow,$yhi) = ($y,$y);
-	}
-
-	if (defined $href->{minor} || defined $href->{stacked_minor}) {
-	    my $minor = $href->{minor} || $href->{stacked_minor};
-	    die "got null value in minor column from '$select'"
-		unless defined $minor;
-	    die "duplicate value for $major / $minor from '$select'?"
-		if defined $data{$major}->{$minor};
-	    $data{$major}->{$minor} = { 'y' => $y, 'ylow' => $ylow, 'yhi' => $yhi };
-	    push(@minor_value_list, $minor)
-		unless defined $minors{$minor}; # preserve order from query
-	    $minors{$minor} = 1;
-	} else {
-	    die "duplicate value for $major from '$select'?"
-		if defined $data{$major}->{y};
-	    $data{$major} = { 'y' => $y, 'ylow' => $ylow, 'yhi' => $yhi };
-	}
-    }
-
-    my $warned_zero;
-    # Make sure we got everything before starting to make plots
-    foreach my $major (@major_value_list) {
-	if (@minor_value_list) {
-	    foreach my $minor (@minor_value_list) {
-		unless (defined $data{$major}->{$minor}) {
-		    warn "Missing data for major=$major, minor=$minor; no further warnings"
-			unless $warned_zero;
-		    $warned_zero = 1;
-		    $data{$major}->{$minor} = { y => 0, ylow => 0, yhi => 0};
-		}
-	    }
-	} else {
-	    unless (defined $data{$major}->{y}) {
-		warn "Missing data for major=$major; no further warnings"
-		    unless $warned_zero;
-		$warned_zero = 1;
-		$data{$major} = { y => 0, ylow => 0, yhi => 0};
-	    }
-	}
-    }
-
-    # Make the plots...
-
-    # TODO: figure out how to detect the gnuplot version so that we can give an
-    # error if we try to do stacked charts with old gnuplot versions.
-
-    if (defined $sth->{NAME_hash}->{stacked_minor}) {
-	my $filename = "/tmp/.plot.data.$$-$plotfiles";
-	my $fh = new FileHandle(">$filename")
-	    or die "Unable to open $filename for write: $!";
-
-	# TODO: print warning on whitespace?
-	print $fh join("\t", "MAJOR_AXIS", removeWhitespace(@minor_value_list)), "\n";
-	foreach my $major (@major_value_list) {
-	    print $fh join("\t", removeWhitespace($major), 
-			   map { $data{$major}->{$_}->{y} } @minor_value_list), "\n";
-	}
-
-	my $p = default_plotinfo($filename, $select);
-	$p->{explicit} = join(", ", "'$filename' using 2:xtic(1)",
-			      map { "'' using $_" } 3..(@minor_value_list + 1));
-	push(@plots, $p);
-	++$plotfiles;
-	# Lots of magic foo to feed to gnuplot to make it do the right thing.
-	gnuplot("set key autotitle columnheader invert");
-	gnuplot("set style data histogram");
-	gnuplot("set style histogram rowstacked");
-	gnuplot("set style fill solid border -1");
-	gnuplot("set boxwidth 0.75");
-    } else {
-	my $have_minor = @minor_value_list;
-	@minor_value_list = ("data") 
-	    unless @minor_value_list;
-	my $minor_index = 1;
-	my $minor_length = scalar @minor_value_list;
-	foreach my $minor (@minor_value_list) {
-	    my $filename = "/tmp/.plot.data.$$-$plotfiles";
-	    die "Unable to open $filename for write: $!"
-		unless open(OUT,">$filename");
-
-	    my $major_x = $minor_index;
-	    foreach my $major (@major_value_list) {
-		my $t;
-		if ($have_minor) {
-		    $t = $data{$major}->{$minor};
-		} else {
-		    $t = $data{$major};
-		}
-		print OUT "$major_x $t->{y} $t->{ylow} $t->{yhi} $box_width\n";
-		$major_x += $minor_length + $group_separation;
-	    }
-	    close(OUT);
-	    my $newp = plotboxes($filename,$minor,$select);
-	    push(@plots,$newp);
-	    ++$plotfiles;
-	    ++$minor_index;
-	}
-	my $major_xtic = POSIX::ceil($minor_length/2.0) - ($minor_length + $group_separation);
-
-	my $xtics_vals = join(", ", map { $major_xtic += $minor_length + $group_separation; 
-					  "'$_' $major_xtic" } @major_value_list);
-
-	gnuplot('set ticscale 0');
-	gnuplot("set xtics ($xtics_vals)");
-    }
-    refresh_plot;
 }
 
 sub removeWhitespace {
@@ -1131,6 +1277,28 @@ sub plotxy {
     my($filename,$sql_cmd) = @_;
 
     return default_plotinfo($filename,$sql_cmd);
+}
+
+sub plotxy2_yerr {
+    my($filename,$sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{axes} = 'x1y2';
+    $p->{with} = 'yerrorbars';
+    gnuplot('set ytics nomirror');
+    gnuplot('set y2tics');
+    return $p;
+}
+
+sub plotxy2_yhilo {
+    my($filename, $sql_cmd) = @_;
+
+    my $p = default_plotinfo($filename,$sql_cmd);
+    $p->{axes} = 'x1y2';
+    $p->{with} = 'yerrorbars';
+    gnuplot('set ytics nomirror');
+    gnuplot('set y2tics');
+    return $p;
 }
 
 sub plotxy2 {
@@ -1464,88 +1632,7 @@ sub import_data {
 
 __END__
 
-=pod
-
-=head1 NAME
-
-mercury-plot - plot data out of an SQL database
-
-=head1 SYNOPSIS
-
-% mercury-plot [--man] [--dsn=DBI dsn spec] [--db=<database-key>]
-               [--user=<user>] [--password=<password>]
-               [--history=<history filename>]
-
-=head1 OVERVIEW
-
-    select <sql select arguments>
-    plot <sql select arguments>, with columns named x,{y,y2}, [yerr,(ylo,yhi)]
-    sql <sql statement>
-    listplot
-    unplot [<plotnum>] 
-    fnplot <function>
-    barplot <sql select arguments>, with columns named major,
-            [minor|stacked_minor], y, [yerr, (ylo,yhi)]
-    plotwith <plotnum|_ for latest,* for default> <with...>
-    plottitle <plotnum|_ for latest> <title | notitle>
-    axplusb <plotnum> 
-    default (table|where) <thing>
-    psplot [--nocolor] [--mode={eps,portrait,landscape=default}] [--fontsize=<int>] <filename>
-    pngplot {psplot args} <filename> [width height] 
-    pngpsplot {psplot args} <base-filename> [width height] 
-    define ... enddefine 
-    source <filename> 
-    fncmds <code> 
-    import-data I<tablename> I<columns> ... -- I<files> ...
-    help [I<command>]
-    man 
-    exit or quit
-
-=head1 COMMANDS
-
-Inside of a file for input to mercury, or typed in at the mercury prompt:
-
-=head2 plot I<sql select arguments>
-
-C<plot> is the primary command that generates plots in
-C<mercury-plot>.  It takes as an argument a generic sql statement with
-the expectation that some of the columns will have special names that
-it will use in order to generate the plot.  In this version, the
-special names are x, y, y2, yerr, ylo, yhi, cdf.  A plot with x, y
-will generate a simple scatter or line plot.  Using y2 instead of y
-will plot against the second axis on the plot.  Adding in yerr will
-add in error bars, and explicit tops and bottoms for the error bars
-can be generated with ylo and yhi.  cdf will generate a cumulative
-distribution function plot from a single plot value.
-
-=head3 a few examples 
-
-	plot step as x, nluns as y where variant = 1
-	plot iosize as x, max(iops) as y where runcount = 1 and stripesize = 256 group by iosize
-	plot iosize as x, avg(iops) as y, stddev(iops) as yerr where runcount = 1 group by iosize
-
-=head2 barplot I<sql select arguments>
-
-C<barplot> is the command that generates bar-style plots for C<mercury-plot>.
-It takes as an argument the part of an sql statement after the select.  Two
-columns are required, major and y.  There are a number of optional columns:
-minor or stacked_minor, yerr, and ylo/yhi.  The major columns are separated and
-the minor columns are grouped or stacked together.  The barplot actually
-generates a series of plots, one for each of the minor variables, or 1 if there
-is no minor variable or the plot is stacked.  The bars are ordered in the same
-way that they come back from the sql query, so sql's C<order by> can be used to
-control the order.  For stacked charts the yerr, ylo and yhi columns will be
-ignored.  Mercury-plot will automatically set important gnuplot options like
-the key to 'autotitle columnheader invert', and the style options to histogram
-and rowstacked.  Note that stacked bar charts were added to gnuplot 4.2, so
-will not work with earlier versions.  Mercury will not protect you against this
-issue.
-
-=head3 a few examples
-
-	barplot time as y, timestddev as yerr, querygroup as major, engine as minor from tmp_ds_barplot where position > 0 order by position
-	barplot time as y, timestddev as yerr, querygroup as major, engine as stacked_minor from tmp_ds_barplot where position > 0 order by position
-	barplot time as y, timestddev as yerr, engine as major from tmp_ds_barplot order by position
+=pod 
 
 =head2 plottitle I<which> I<title>
 
