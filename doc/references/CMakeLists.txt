@@ -63,8 +63,8 @@ ADD_CUSTOM_TARGET(all-bib ALL
                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-bibs.sh
 			  lintel-latex-all.bib
 		          ${CMAKE_CURRENT_SOURCE_DIR} 
-			  ${BIB_FILES}  names-long.bib
-		  DEPENDS ${BIB_FILES} names-long.bib)
+			  ${BIB_FILES}  venues-long.bib
+		  DEPENDS ${BIB_FILES} venues-long.bib)
 
 ADD_CUSTOM_TARGET(config-bib ALL 
                   COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-bibs.sh
