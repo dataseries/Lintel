@@ -32,7 +32,7 @@ SET(BIB_FILES
     ieeetoc.bib
     ieeetpds.bib
     isca.bib
-		jacm.bib
+    jacm.bib
     journal-high-perf-compute-apps.bib
     mascots.bib
     middleware.bib
@@ -60,11 +60,22 @@ SET(BIB_FILES
 )
 
 ADD_CUSTOM_TARGET(all-bib ALL 
-                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-bibs.sh 
-		          ${CMAKE_CURRENT_SOURCE_DIR} ${BIB_FILES}
-		  DEPENDS ${BIB_FILES})
+                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-bibs.sh
+			  lintel-latex-all.bib
+		          ${CMAKE_CURRENT_SOURCE_DIR} 
+			  ${BIB_FILES}  names-long.bib
+		  DEPENDS ${BIB_FILES} names-long.bib)
 
-INSTALL(FILES ${BIB_FILES} ${CMAKE_CURRENT_BINARY_DIR}/lintel-latex-all.bib 
+ADD_CUSTOM_TARGET(config-bib ALL 
+                  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/build-bibs.sh
+			  lintel-latex-bib.bib
+		          ${CMAKE_CURRENT_SOURCE_DIR} 
+			  ${BIB_FILES} 
+		  DEPENDS ${BIB_FILES} )
+
+INSTALL(FILES ${BIB_FILES} ${CMAKE_CURRENT_BINARY_DIR}/lintel-latex-all.bib
+	      ${CMAKE_CURRENT_BINARY_DIR}/lintel-latex-bib.bib
+	      venues-short.bib venues-long.bib
         DESTINATION ${CMAKE_INSTALL_PREFIX}/share/lintel-latex-rebuild)
 
 ADD_TEST(web-sites-check ${CMAKE_CURRENT_SOURCE_DIR}/check-web-sites-bib.sh)

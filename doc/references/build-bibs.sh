@@ -6,19 +6,21 @@
 #
 # shiny script because I can't figure out how to just do this in cmake.
 set -e
+OUTNAME="$1"
+shift
 DIR="$1"
 shift
 if [ ! -d "$DIR" ]; then
     echo "$DIR not a directory"
     exit 1
 fi
-echo "%% automatically generated merged bibliography file" >lintel-latex-all.bib-new
-echo >>lintel-latex-all.bib-new
+echo "%% automatically generated merged bibliography file" >${OUTNAME}-new
+echo >>${OUTNAME}-new
 for i in "$@"; do
-    echo "% $DIR/$i" >>lintel-latex-all.bib-new
-    cat $DIR/$i >>lintel-latex-all.bib-new
-    echo >>lintel-latex-all.bib-new
-    echo >>lintel-latex-all.bib-new
+    echo "% $DIR/$i" >>${OUTNAME}-new
+    cat $DIR/$i >>${OUTNAME}-new
+    echo >>${OUTNAME}-new
+    echo >>${OUTNAME}-new
 done
 
-mv lintel-latex-all.bib-new lintel-latex-all.bib
+mv ${OUTNAME}-new ${OUTNAME}
