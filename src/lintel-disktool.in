@@ -75,6 +75,8 @@ if ($cmd eq 'partition') {
 } elsif ($cmd eq 'fail') {
     failDrives(@ARGV);
 } elsif ($cmd eq 'scan') {
+    # TODO: this doesn't work for high scsi-ids (e.g. 0:0:26:0 /dev/sdz)
+    # might have to track the specific id and add it.  scsiadd -a 26 works.
     system("scsiadd -s") == 0 || die "scsiadd -s failed";
 } elsif ($cmd eq 'debug-sfdisk') {
     $config{debug} = 1;
