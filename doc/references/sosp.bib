@@ -1,16 +1,10 @@
-@string{sosp1967 = "SOSP '67: Proceedings of the 1st ACM Symposium on Operating Systems Principles"}
-@string{sosp1995 = "SOSP '95: Proceedings of the 15th ACM Symposium on Operating Systems Principles"}
-@string{sosp1991 = "SOSP '91: Proceedings of the 13th ACM Symposium on Operating Systems Principles"}
-@string{sosp2001 = "SOSP '01: Proceedings of the 18th ACM Symposium on Operating Systems Principles"}
-@string{sosp2003 = "SOSP '03: Proceedings of the 19th ACM Symposium on Operating Systems Principles"}
-@string{sosp2007 = "SOSP '07: Proceedings of the 21st ACM Symposium on Operating Systems Principles"}
+% Information general to a particular conference year is in names-long.bib
+% and names-short.bib
 
 @inproceedings{tucek:triage:sosp2007,
 author = "Joseph Tucek and Shan Lu and Chengdu Huang and Spiros Xanthos and Yuanyuan Zhou",
 title = "Triage: {D}iagnosing Production Run Failures at the User's Site",
-booktitle = sosp2007,
-month = "October",
-year = "2007"
+crossref = {sosp2007},
 }
 @inproceedings{terry:bayou:sosp1995,
   author    = {Douglas B. Terry and
@@ -20,8 +14,7 @@ year = "2007"
                Mike Spreitzer and
                Carl Hauser},
   title     = {Managing Update Conflicts in Bayou, a Weakly Connected Replicated Storage System},
-  booktitle = sosp1995,
-  year      = {1995},
+  crossref = {sosp1995},
   pages     = {172--183},
   bibsource = {DBLP, http://dblp.uni-trier.de}
 }
@@ -30,25 +23,19 @@ year = "2007"
 @inproceedings{ghemawat:google-fs:sosp2003,
   author = {Ghemawat, Sanjay and Gobioff, Howard and Leung, Shun-Tak},
   title = {The {G}oogle {F}ile {S}ystem},
-  booktitle = sosp2003,
+  crossref = {sosp2003},
   doi = {10.1145/945445.945450},
-  isbn = {1581137575},
   keywords = {architecture, system},
   pages = {29--43},
-  publisher = {ACM Press},
   url = {http://dx.doi.org/10.1145/945445.945450},
-  year = {2003},
-  month = {October},
 }
 
 %  note = "Available at \url{http://www.allthingsdistributed.com/files/amazon-dynamo-sosp2007.pdf}",
 @inproceedings{decandia:dynamo:sosp2007,
   title = "Dynamo: {A}mazon's highly available key-value store",
   author = "Guiseppe DeCandia and Deniz Hastorun and Madan Jampani and Gunavardhan Kakulapati and Avinash Lakshman and Alex Pilchin and Swami Sivasubramanian and Peter Vosshall and Werner Vogels",
-  booktitle = sosp2007,
+  crossref = {sosp2007},
   doi = {10.1145/1294261.1294281},
-  year = "2007",
-  month = "October",
   pages = "205--220",
 }
 
@@ -56,10 +43,7 @@ year = "2007"
   title     = {Storage management and caching in {PAST}, a 
                 large-scale, persistent peer-to-peer storage utility},
   author   = "Antony Rowstron and Peter Druschel",
-  year     = 2001,
-  booktitle = sosp2001,
-  location = "Chateau Lake Louise, Banff, Canada",
-  month    = "October",
+  crossref = {sosp2001},
   pages    = "188--201",
   abstract = {This paper presents and evaluates the storage management
 and caching in PAST, a large-scale peer-to-peer persistent
@@ -89,35 +73,28 @@ the global storage utilization increases beyond 95%.}
 @inproceedings{vanhorn:criteria:sosp1967,
 author = "Earl C. van Horn",
 title = "Three criteria for designing computing systems to facilitate debugging",
-booktitle = sosp1967,
 pages = "7.1--7.5",
 month = "October",
-year = "1967",
+crossref = {sosp1967},
 }
 
 @inproceedings{draves+brd:continuations:sosp1991,
 author = "Richard P. Draves and Brian N. Bershad and Richard F. Rashid and Randall W. Dean",
 title = "Using continuations to implement thread management and communication in operating systems",
-booktitle = sosp1991,
-month = "October",
-year = "1991",
+crossref = {sosp1991},
 pages = "122--136",
 }
 
 @inproceedings{welsh+cb:seda:sosp2001,
 author = "Matt Welsh and David Culler and Eric Brewer",
 title = "{SEDA}: {A}n architecture for well-conditioned, scalable {I}nternet services",
-booktitle = sosp2001,
-month = "October",
-year = "2001",
+crossref = {sosp2001},
 pages = "230--243",
 }
 
 @inproceedings{vonbehren:capriccio:sosp2003,
 author = "Rob von Behrenm and Jeremy Condit and Feng Zhou and George C. Necula and Eric Brewer",
 title = "Capriccio: {S}calable threads for {I}nternet services",
-booktitle = sosp2003,
-month = "October",
-year = "2003",
+crossref = {sosp2003},
 pages = "268--281",
 }

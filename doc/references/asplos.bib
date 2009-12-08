@@ -1,55 +1,28 @@
-@string{asplos1998 = "ASPLOS 1998: Proceedings of the 8th International Conference on Architectural Support for Programming Languages and Operating Systems"}
-@string{asplos2000 = "ASPLOS 2000: Proceedings of the 9th International Conference on Architectural Support for Programming Languages and Operating Systems"}
-@string{asplos2004 = "ASPLOS 2004: Proceedings of the 11th International Conference on Architectural Support for Programming Languages and Operating Systems"}
-@string{asplos2006 = "ASPLOS 2006: Proceedings of the 12th International Conference on Architectural Support for Programming Languages and Operating Systems"}
-@string{asplos2009 = "ASPLOS 2009: Proceedings of the 14th International Conference on Architectural Support for Programming Languages and Operating Systems"}
+%Conference information in names-long.bib and names-short.bib
 
 @inproceedings{narayanasamy:strata:asplos06,
  author = {Satish Narayanasamy and Cristiano Pereira and Brad Calder},
  title = "Recording shared memory dependencies using {S}trata",
- booktitle = asplos2006,
- year = {2006},
- location = {San Jose, California, USA},
+ crossref = {asplos06},
  doi = {http://doi.acm.org/10.1145/1168857.1168886},
- publisher = {ACM},
- address = {New York, NY, USA},
  }
 
 @inproceedings{DBLP:conf/asplos/CaulfieldGS09,
   author    = {Adrian M. Caulfield and Laura M. Grupp and Steven Swanson},
   title     = {Gordon: using flash memory to build fast, power-efficient
                clusters for data-intensive applications},
-  booktitle = asplos2009,
-  year      = {2009},
+  crossref = {asplos09},
   pages     = {217--228},
   ee        = {http://doi.acm.org/10.1145/1508244.1508270},
-  crossref  = {conf/asplos/2009},
   note      = "Available at \url{http://www.cs.ucsd.edu/~swanson/papers/Asplos2009Gordon.pdf} Accessed June 2009",
 }
-
-@proceedings{conf/asplos/2009,
-  editor    = {Mary Lou Soffa and
-               Mary Jane Irwin},
-  title     = asplos2009,
-  booktitle = {ASPLOS},
-  publisher = {ACM},
-  year      = {2009},
-  isbn      = {978-1-60558-406-5},
-  bibsource = {DBLP, http://dblp.uni-trier.de}
-}
-
 
 @inproceedings{saito:fab:asplos2004,
  author = {Saito, Yasushi and Fr{\o}lund, Svend and Veitch, Alistair and Merchant, Arif and Spence, Susan},
  title = {{FAB}: {B}uilding distributed enterprise disk arrays from commodity components},
- booktitle = asplos2004,
- year = {2004},
- isbn = {1-58113-804-0},
+ crossref = {asplos04},
  pages = {48--58},
- location = {Boston, MA, USA},
  doi = {http://doi.acm.org/10.1145/1024393.1024400},
- publisher = {ACM},
- address = {New York, NY, USA},
  abstract = {This paper describes the design, implementation, and evaluation of a Federated Array of Bricks (FAB), a distributed disk array that provides the reliability of traditional enterprise arrays with lower cost and better scalability. FAB is built from a collection of bricks, small storage appliances containing commodity disks, CPU, NVRAM, and network interface cards. FAB deploys a new majority-voting-based algorithm to replicate or erasure-code logical blocks across bricks and a reconfiguration algorithm to move data in the background when bricks are added or decommissioned. We argue that voting is practical and necessary for reliable, high-throughput storage systems such as FAB. We have implemented a FAB prototype on a 22-node Linux cluster. This prototype sustains 85MB/second of throughput for a database workload, and 270MB/second for a bulk-read workload. In addition, it can outperform traditional master-slave replication through performance decoupling and can handle brick failures and recoveries smoothly without disturbing client requests.}
 }
 
@@ -65,26 +38,20 @@
                David Rochberg and
                Jim Zelenka},
   title     = {A Cost-Effective, High-Bandwidth Storage Architecture},
-  booktitle = asplos1998,
-  year      = {1998},
-  month     = {October},
+  crossref = {asplos98},
   pages     = {92--103},
   ee        = {http://doi.acm.org/10.1145/291069.291029},
-  bibsource = {DBLP, http://dblp.uni-trier.de}
 }
 
 @inproceedings{kubiatowicz:oceanstore:asplos2000,
-  address = {Boston, MA},
   author = {Kubiatowicz, John and Bindel, David and Chen, Yan and Czerwinski, Steven and Eaton, Patrick and Geels, Dennis and Gummadi, Ramakrishna and Rhea, Sean and Weatherspoon, Hakim and Weimer, Westley and Wells, Chris and Zhao, Ben},
-  booktitle = asplos2000,
+  title = {{OceanStore}: An architecture for global-scale persistent storage},
+  crossref = {asplos00},
   citeulike-article-id = {162294},
   keywords = {bibtex-import},
   pages = {190--201},
   posted-at = {2005-04-16 04:31:45},
   priority = {2},
-  title = {{OceanStore}: An architecture for global-scale persistent storage},
-  year = {2000},
-  month = {November},
   abstract = {OceanStore is a utility infrastructure designed to span the globe and provide continuous access to persistent information. Since this infrastructure is comprised of untrusted servers, data is protected through redundancy and cryptographic techniques. To improve performance, data is allowed to be cached anywhere, anytime. Additionally, monitoring of usage patterns allows adaptation to regional outages and denial of service attacks; monitoring also enhances performance through pro-active movement of data. A prototype implementation is currently under development.}
 }
 

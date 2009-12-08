@@ -102,7 +102,8 @@ rebuild_bibtex() {
     echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
     echo "---               rebuild bibtex               ---" >>$TEXFILE.rebuild.out
     echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
-    @BIBTEX_COMPILER@ $TEXFILE >>$TEXFILE.rebuild.out 2>&1
+    # TODO-joe TODO-eric: think about how to not hardcode min-xrefs
+    @BIBTEX_COMPILER@ --min-crossrefs=9000 $TEXFILE >>$TEXFILE.rebuild.out 2>&1
     bibtex_err=$?
 }
 

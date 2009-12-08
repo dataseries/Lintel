@@ -1,3 +1,9 @@
+---++ How to add new citations
+  If the venue exists (web-sites.bib and tr.bib) add the new cite to the venue.
+
+  Don't include conference information directly, use a crossref and
+  fill in names-long.bib AND names-short.bib.  See, for example, sosp.bib
+
 ---++ How to cite bibs in latex
 
   The command LINTEL_LATEX(foo) in the CMakeLists.txt file for your document
@@ -7,6 +13,15 @@
     (1) List the various venues from which you cite, e.g.,
         "\bibliography{sosp,asplos,fast}"
     (2) Simply include everything: "\bibliography{lintel-latex-all}"
+
+   If you don't include everything, you need to choose either names-long or
+   names-short to go at the end.
+
+   lintel-latex-short instead of all will use short names.
+
+   TODO-joe: did I break option 1?  Will require even fancier stuff if
+   my suggestion doesn't work
+
 
   To pass options through to Lintel, include a command such as the following in
   the appropriate CMakeLists.txt file:
