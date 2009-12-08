@@ -1,21 +1,15 @@
-@string{dsn2000 = "Proceedings of the International Conference on Dependable Systems and Networks (DSN'00)"}
-@string{dsn2004 = "Proceedings of the International Conference on Dependable Systems and Networks (DSN'04)"}
-@string{dsn2006 = "Proceedings of the International Conference on Dependable Systems and Networks (DSN'06)"}
 
 @inproceedings{madeira:sw-fault-injection:dsn2000,
 title={On the emulation of software faults by software fault injection},
 author={Madeira, H. and Costa, D. and Vieira, M.},
-booktitle= dsn2000,
-year={2000},
+crossref = {dsn00},
 pages={417--426},
 }
 
 @inproceedings{goodson:efficient-byzantine-tolerant-erasure-coded-storage:dsn2004,
 title={Efficient {B}yzantine-tolerant erasure-coded storage},
 author={Goodson, G.R. and Wylie, J.J. and Ganger, G.R. and Reiter, M.K.},
-booktitle=dsn2004,
-year={2004},
-month={June-1 July},
+crossref = {dsn04},
 pages={135--144},
 abstract={ This paper describes a decentralized consistency protocol for survivable storage that exploits local data versioning within each storage-node. Such versioning enables the protocol to efficiently provide linearizability and wait-freedom of read and write operations to erasure-coded data in asynchronous environments with Byzantine failures of clients and servers. By exploiting versioning storage-nodes, the protocol shifts most work to clients and allows highly optimistic operation: reads occur in a single round-trip unless clients observe concurrency or write failures. Measurements of a storage system prototype using this protocol show that it scales well with the number of failures tolerated, and its performance compares favorably with an efficient implementation of Byzantine-tolerant state machine replication.},
 }
@@ -24,8 +18,7 @@ abstract={ This paper describes a decentralized consistency protocol for surviva
 @inproceedings{cachin:optimal-resilience-for-erasure-coded-byzantine-distributed-storage:dsn2006,
   author    = {Christian Cachin and Stefano Tessaro},
   title     = {Optimal resilience for erasure-coded {B}yzantine distributed storage},
-  booktitle = dsn2006,
-  year      = {2006},
+  crossref = {dsn06},
   pages     = {115--124},
   ee        = {http://www.zurich.ibm.com/~cca/papers/atomic.pdf},
   abstract = {We analyze the problem of efficient distributed storage of information in a message-passing environment where both less than one third of the servers, as well as an arbitrary number of clients, might exhibit Byzantine behavior, and where clients might access data concurrently. In particular, we provide a simulation of a multiple-writer multiple-reader atomic read/write register in this setting which uses erasure-coding for storage-efficiency and achieves optimal resilience. Additionally, we give the first implementation of non-skipping timestamps which provides optimal resilience and withstands Byzantine clients; it is based on threshold cryptography.}
