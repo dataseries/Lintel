@@ -211,7 +211,7 @@ namespace lintel {
 	/// how large is the buffer overall, e.g what is the current
 	/// maximum value for readAvailable() and writeAvailable().  
 	/// Note that readAvailable() + writeAvailable() <= bufferSize()
-	size_t bufferSize() {
+	size_t bufferSize() const {
 	    return rep->bufferSize();
 	}
 
