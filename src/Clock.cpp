@@ -68,6 +68,7 @@ namespace {
 	unsigned len = strlen(buf);
 	SINVARIANT(len > 0 && buf[len-1] == '\n');
 	buf[len-1] = '\0';
+	fclose(f);
 	return string(buf);
     }
 
