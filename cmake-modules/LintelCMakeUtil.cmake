@@ -39,9 +39,12 @@ ENDMACRO(LINTEL_INSTALL_FILE_PATH)
 # you want something like:
 # ADD_TEST(test-name env PERL5LIB=${Lintel_SOURCE_DIR}/src/perl-modules:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} program --args)
 
-SET(PERL5_MODULES_INC_UNSHIFT "BEGIN { unshift(@INC,'${CMAKE_INSTALL_PREFIX}/share/perl5') if grep(\$_ eq '${CMAKE_INSTALL_PREFIX}/share/perl5', @INC) == 0;};")
-
-SET(PERL_MODULES_INC_UNSHIFT "die 'PERL_MODULES_INC_UNSHIFT is obsolete, use PERL5_MODULES_INC_UNSHIFT';")
+# Intentionally crammed onto a single line so that line number doesn't change
+# when you put this bit into the .in files.  Use prefix/lib/perl5 since that
+# directory shouldn't be shared between architectures, also consistent with
+# location used by debian lenny, which also uses includes /version for both the
+# share and lib dirs.
+SET(PERL5_MODULES_INC_UNSHIFT "BEGIN { foreach my \$dir (qw'${CMAKE_INSTALL_PREFIX}/share/perl5 ${CMAKE_INSTALL_PREFIX}/lib/perl5') { unshift(@INC, \$dir) if grep(\$_ eq \$dir, @INC) == 0;}; }")
 
 ### Try to compile and run some command; set var to TRUE if
 ### successfully run, and FALSE otherwise.
