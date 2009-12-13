@@ -5,33 +5,26 @@
 */
 
 
-#undef bool
-
-#ifdef __hpux
-#define __HPACC_USING_MULTIPLIES_IN_FUNCTIONAL
-#include <functional>
-#undef __HPACC_USING_MULTIPLIES_IN_FUNCTIONAL
-
-#include <iostream.h>
 #include <limits>
 #include <string>
-#endif
 
-#include <Stats.H>
-#include <StatsHistogram.H>
-#include <MersenneTwisterRandom.H>
+#include <Lintel/MersenneTwisterRandom.hpp>
+#include <Lintel/Stats.hpp>
+#include <Lintel/StatsHistogram.hpp>
+#include <Lintel/StatsQuantile.hpp>
 
-// Conflicts between perl and tcl
-#undef STRINGIFY
 extern "C" {
 #include <EXTERN.h>
+// Defined in perl.h and Lintel/CompilerMarkup.hpp
+#undef LIKELY
+#undef UNLIKELY
 #include <perl.h>
 #undef list
 #include "XSUB.h"
 }
 
 
-MODULE = Lintel		PACKAGE = Lintel::Stats
+MODULE = LintelPerl		PACKAGE = Lintel::Stats
 
 PROTOTYPES: ENABLE
 
@@ -65,15 +58,11 @@ Stats::variance()
 
 double
 Stats::stddev()
-	CODE:
-	RETVAL = THIS->stddev();
-	OUTPUT:
-	RETVAL
 
 double
 Stats::conf95()
 
-MODULE = Lintel		PACKAGE = Lintel::Histogram
+MODULE = LintelPerl		PACKAGE = Lintel::Histogram
 
 long
 StatsHistogram::binCount(bin)
@@ -98,7 +87,7 @@ double
 StatsHistogram::binhigh(bin)
 	int bin
 
-MODULE = Lintel		PACKAGE = Lintel::Histogram::Uniform
+MODULE = LintelPerl		PACKAGE = Lintel::Histogram::Uniform
 
 StatsHistogramUniform *
 StatsHistogramUniform::new(bins, low, high, is_scalable = 0)
@@ -107,7 +96,7 @@ StatsHistogramUniform::new(bins, low, high, is_scalable = 0)
 	double high
 	int is_scalable
 
-MODULE = Lintel		PACKAGE = Lintel::Histogram::Log
+MODULE = LintelPerl		PACKAGE = Lintel::Histogram::Log
 
 StatsHistogramLogAccum *
 StatsHistogramLogAccum::new(bins, low, high)
@@ -129,7 +118,18 @@ StatsHistogramLogAccum::binMean(bin)
 	OUTPUT:
 	RETVAL
 	
-MODULE = Lintel		PACKAGE = Lintel::Random::MersenneTwister
+MODULE = LintelPerl             PACKAGE = Lintel::StatsQuantile
+
+StatsQuantile *
+StatsQuantile::new(quantile_error = 0.01, nbound = 1.0e9)
+        double quantile_error
+	double nbound				 
+
+double
+StatsQuantile::getQuantile(quantile)
+       double quantile
+
+MODULE = LintelPerl		PACKAGE = Lintel::Random::MersenneTwister
 
 MersenneTwisterRandom *
 MersenneTwisterRandom::new(seed = 0)

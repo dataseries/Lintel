@@ -9,81 +9,52 @@ package Lintel;
 
 use strict;
 use Carp;
-use vars qw($VERSION @ISA @EXPORT @EXPORT_OK $AUTOLOAD);
+use vars qw($VERSION);
 
-require Exporter;
 require DynaLoader;
-require AutoLoader;
 
-@ISA = qw(Exporter DynaLoader);
-# Items to export into callers namespace by default. Note: do not export
-# names by default without a very good reason. Use EXPORT_OK instead.
-# Do not simply export all your public functions/methods/constants.
-@EXPORT = qw(
-	
-);
 $VERSION = '0.01';
 
-sub AUTOLOAD {
-    # This AUTOLOAD is used to 'autoload' constants from the constant()
-    # XS function.  If a constant is not found then control is passed
-    # to the AUTOLOAD in AutoLoader.
+@LintelPerl::ISA = qw(DynaLoader);
 
-    my $constname;
-    ($constname = $AUTOLOAD) =~ s/.*:://;
-    croak "& not defined" if $constname eq 'constant';
-    my $val = constant($constname, @_ ? $_[0] : 0);
-    if ($! != 0) {
-	if ($! =~ /Invalid/) {
-	    $AutoLoader::AUTOLOAD = $AUTOLOAD;
-	    goto &AutoLoader::AUTOLOAD;
-	}
-	else {
-		croak "Your vendor has not defined Lintel macro $constname";
-	}
-    }
-    no strict 'refs';
-    *$AUTOLOAD = sub () { $val };
-    goto &$AUTOLOAD;
-}
-
-bootstrap Lintel $VERSION;
+bootstrap LintelPerl $VERSION;
 
 @Lintel::Histogram::ISA = qw(Lintel::Stats);
 @Lintel::Histogram::Uniform::ISA = qw(Lintel::Histogram);
 @Lintel::Histogram::Log::ISA = qw(Lintel::Histogram);
-
-# Preloaded methods go here.
-
-# Autoload methods go after =cut, and are processed by the autosplit program.
+@Lintel::StatsQuantile::ISA = qw(Lintel::Stats);
 
 1;
 __END__
-# Below is the stub of documentation for your module. You better edit it!
 
 =head1 NAME
 
-Lintel - Perl extension for blah blah blah
+Lintel - Perl extension for accessing a subset of the Lintel functionality
 
 =head1 SYNOPSIS
 
   use Lintel;
-  blah blah blah
+
+  my $stat = new Lintel::Stats;
+  $stat->add(I<val>);
+  my ($count, $min, $max) = ($stat->count(), $stat->min(), $stat->max());
+  my ($mean, $stddev, $conf95) = ($stat->mean(), $stat->stddev(), $stat->conf95());
+
+  my $qstat = new Lintel:StatsQuantile($error = 0.01, $nbound = 1.0e9)
+  $qstat->add(I<val>); # and other Lintel::Stats methods...
+  my $quantile = $qstat->getQuantile(0.1); # 0..1
 
 =head1 DESCRIPTION
 
-Stub documentation for Lintel was created by h2xs. It looks like the
-author of the extension was negligent enough to leave the stub
-unedited.
-
-Blah blah blah.
+Simple access to some of the Lintel functionality.  See man Stats, StatsQuantile
+for details.
 
 =head1 AUTHOR
 
-A. U. Thor, a.u.thor@a.galaxy.far.far.away
+Eric Anderson, eric.anderson4@hp.com
 
 =head1 SEE ALSO
 
-perl(1).
+perl(1), Stats(3), StatsQuantile(3).
 
 =cut

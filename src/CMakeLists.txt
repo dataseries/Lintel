@@ -61,10 +61,6 @@ SET(LIBLINTEL_SOURCES
 
 SET(LINTEL_FEATURES boost)
 
-################################## SUBDIRS
-
-ADD_SUBDIRECTORY(BatchParallel)
-
 ################################## PROGRAMS
 
 MACRO(LINTEL_SIMPLE_PROGRAM program_name)
@@ -75,8 +71,6 @@ ENDMACRO(LINTEL_SIMPLE_PROGRAM)
 
 LINTEL_SIMPLE_PROGRAM(calcStats)
 LINTEL_SIMPLE_PROGRAM(drawRandomLogNormal)
-
-ADD_SUBDIRECTORY(tests)
 
 ################################## PERL MODULES
 
@@ -165,6 +159,15 @@ ENDIF(LIBXML2_ENABLED)
 IF(BOOST_PROGRAM_OPTIONS_ENABLED)
     TARGET_LINK_LIBRARIES(Lintel ${BOOST_PROGRAM_OPTIONS_LIBRARIES})
 ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
+
+################################## SUBDIRS
+
+ADD_SUBDIRECTORY(BatchParallel)
+IF(PERL_ENABLED)
+    ADD_SUBDIRECTORY(perl)
+ENDIF(PERL_ENABLED)
+
+ADD_SUBDIRECTORY(tests)
 
 ################################## INSTALL
 

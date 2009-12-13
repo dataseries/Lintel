@@ -3,6 +3,7 @@ Stats *				O_OBJECT
 StatsHistogram *		O_OBJECT
 StatsHistogramUniform *		O_OBJECT
 StatsHistogramLogAccum *	O_OBJECT
+StatsQuantile *                 O_OBJECT
 MersenneTwisterRandom *		O_DOBJECT
 
 OUTPUT

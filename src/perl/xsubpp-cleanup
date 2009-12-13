@@ -1,0 +1,8 @@
+#!/usr/bin/perl
+while (<STDIN>) {
+      s/^(#line.*)\.c\"/$1.cpp\"/o; # file rename
+      s/char\* file = __FILE__;/char* file = (char*)__FILE__;/o; # remove warning
+      print;
+      print "    PERL_UNUSED_VAR(Perl___notused); /* -W */\n"
+         if /PERL_UNUSED_VAR.cv.;/o;
+}
