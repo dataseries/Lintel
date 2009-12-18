@@ -101,7 +101,7 @@ T stringToInteger(const std::string &str, int base = 10) {
 	    ret = boost::lexical_cast<T>(str);
 	}
 	catch (boost::bad_lexical_cast &) {
-	    FATAL_ERROR(boost::format("error converting '%s' to integer") % str);
+	    FATAL_ERROR(boost::format("error converting '%s' to integer, not an integer or outside of range [%d .. %d]") % str % std::numeric_limits<T>::min() % std::numeric_limits<T>::max());
 	}
     }
     else {

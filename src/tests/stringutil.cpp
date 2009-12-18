@@ -39,7 +39,7 @@ void test_stringtoint32() {
     SINVARIANT(stringToInteger<int64_t>("0x1234abcdef5678", 16) == 5124462079858296LL);
 
     TEST_INVARIANTMSG(SINVARIANT(stringToInteger<int32_t>("abcdef") == 5),
-		      "error converting 'abcdef' to integer");
+		      "error converting 'abcdef' to integer, not an integer or outside of range [-2147483648 .. 2147483647]");
     TEST_INVARIANTMSG(SINVARIANT(stringToInteger<int32_t>("0xghi", 16) == 0),
 		      "error converting '0xghi' to integer");
 }
