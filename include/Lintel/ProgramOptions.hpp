@@ -153,6 +153,10 @@ namespace lintel {
 	parseCommandLine(pa.args);
     }
     
+    inline void parseCommandLine(const std::string &arg) {
+	parseCommandLine(ProgramArguments(arg));
+    }
+
     /// Generic template program option, you can use ProgramOption<
     /// vector<int> > to allow for multiple values to be specified, or
     /// just ProgramOption<int> for one value.
