@@ -34,11 +34,11 @@ unless ($EUID == 0) {
 
 =over
 
-=item debug
+=item --debug
 
 Show what is being done in detail
 
-=item config <configfile>
+=item --config I<configfile>
 
 Load the specified configuration file instead of the default in:
 /etc/lintel-disktool.config
@@ -47,9 +47,8 @@ Load the specified configuration file instead of the default in:
 
 =cut
 
-my $success = GetOptions(
-		"debug!" => \$Global::debug,
-		"config=s" => \$config_path);
+my $success = GetOptions("debug!" => \$Global::debug,
+			 "config=s" => \$config_path);
 
 usage() unless $success;
 

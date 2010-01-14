@@ -139,6 +139,7 @@ my @define;
 my $markerre;
 my $prompt = ">> ";
 
+$Global::continuation_cmd = '';
 map { die "command line input file $_ is not readable" unless -f $_ && -r $_; } @ARGV;
 map { print "Reading from $_\n" if $debug;
       history("run $_"); exit(1) if $command_error; } @ARGV;
@@ -176,28 +177,32 @@ mercury-plot - plot data out of an SQL database
     plot <sql select arguments>, with columns named x,{y,y2}, [yerr,(ylo,yhi)]
     sql <sql statement>
     listplot
-    unplot [<plotnum>] 
+    unplot [<plotnum>]
     fnplot <function>
     barplot <sql select arguments>, with columns named major,
             [minor|stacked_minor], y, [yerr, (ylo,yhi)]
     plotwith <plotnum|_ for latest,* for default> <with...>
     plottitle <plotnum|_ for latest> <title | notitle>
-    axplusb <plotnum> 
+    axplusb <plotnum>
     default (table|where) <thing>
     psplot [--nocolor] [--mode={eps,portrait,landscape=default}] [--fontsize=<int>] <filename>
-    pngplot {psplot args} <filename> [width height] 
-    pngpsplot {psplot args} <base-filename> [width height] 
-    define ... enddefine 
-    source <filename> 
-    fncmds <code> 
+    pngplot {psplot args} <filename> [width height]
+    pngpsplot {psplot args} <base-filename> [width height]
+    define ... enddefine
+    source <filename>
+    fncmds <code>
     import-data I<tablename> I<columns> ... -- I<files> ...
     help [I<command>]
-    man 
+    man
     exit or quit
 
 =head1 COMMANDS
 
-Inside of a file for input to mercury, or typed in at the mercury prompt:
+Commands can be inside of a file for input to mercury, or typed in at the
+mercury prompt.  A command can be continued over multiple lines by putting \
+and optional whitespace at the end of the line, lines after that will have
+leading whitespace reduced to a single space.  This rule does not apply inside
+of define blocks.  The following commands can be used in mercury-plot:
 
 =cut
 
@@ -206,7 +211,8 @@ Inside of a file for input to mercury, or typed in at the mercury prompt:
 ### QUESTION: that have methods, so that extensibility is easier?
 
 sub docmd {
-    $_ = shift;
+    local $_ = shift;
+
     if ($define_mode) {
 	if(/^enddefine$/o) {
 	    $prompt = ">> ";
@@ -214,6 +220,18 @@ sub docmd {
 	    push(@define,"$_\n");
 	    return;
 	}
+    }
+    if ($Global::continuation_cmd ne '') {
+	s/^\s+/ /o;
+    }
+    if (s/\\\s*$//o) {
+	$Global::continuation_cmd .= $_;
+	$prompt = "... ";
+	return;
+    } else {
+	$_ = "$Global::continuation_cmd$_";
+	$Global::continuation_cmd = '';
+	$prompt = ">> ";
     }
     if (defined $markerre) {
 	if ($_ =~ $markerre) {
@@ -1481,9 +1499,9 @@ sub axplusb {
 
 	$sigma_left = $sigma_right unless defined $sigma_left;
 	$sigma_right = $sigma_left unless defined $sigma_right;
-	
+
 	my $sigma_sum = $sigma_left + $sigma_right;
-	
+
 	if ($sigma_sum < $best_sigma) {
 	    print "**BEST**"
 		if $debug_axplusb;
