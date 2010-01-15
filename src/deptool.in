@@ -568,7 +568,7 @@ Monotone can get confused by multiple keys with the same email address.
 sub depInit {
     checkForMtn();
 
-    my $server = "usi.hpl.hp.com";
+    my $server = mtnServer();
     my $email;
     my $result = GetOptions("server=s" => \$server);
     usage("Unknown error") unless $result;
