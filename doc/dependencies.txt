@@ -1,0 +1,10 @@
+----------------------------
+Fedora-Core12:
+  Lintel required:
+     % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel
+
+  Lintel optional:
+     ...
+
+----------------------------
+

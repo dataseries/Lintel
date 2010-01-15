@@ -31,3 +31,13 @@ ADD_SUBDIRECTORY(src)
 ADD_SUBDIRECTORY(doc)
 ADD_SUBDIRECTORY(cmake-modules)
 
+IF(LINTEL_FIND_ALL_NOTFOUND)
+    MESSAGE("")
+    MESSAGE("************************************")
+    MESSAGE("  Some optional dependency was not found.")
+    MESSAGE("  ${CMAKE_CURRENT_SOURCE_DIR}/doc/dependencies.txt")
+    MESSAGE("  may help identify the right packages")
+    MESSAGE("************************************")
+    MESSAGE("")
+ENDIF(LINTEL_FIND_ALL_NOTFOUND)
+
