@@ -99,36 +99,6 @@ sub bydriveorder {
     return $a cmp $b;
 } 
 
-sub oldConfigRead {
-    my $fh = new FileHandle($config_path)
-	or die "Unable to open $config_path for read: $!";
-
-    while(<$fh>) {
-	next if /^#/o || /^\s*$/o;
-	if (/^drivepattern (\S+)$/o) {
-	    push(@{$config{drivepatterns}}, $1);
-	} elsif (/^serial ('(.+)')$/o) {
-	    $_ = $1;
-	    s/\s+$//o;
-	    $config{serials}{$_} = 1;
-	} elsif (/^sysfsid (\S+)$/o) {
-	    $config{sysfs_ids}{$1} = 1;
-	} elsif (/^mount_path\s+(\S+)$/o) {
-	    $config{mount_path} = $1;
-	} elsif (/^chmod_as\s+(\S+)$/o) {
-	    $config{chmod_as} = $1;
-	} elsif (/^clean_mounts_pattern\s*(\S+)$/o) {
-	    $config{clean_mounts_pattern} = $1;
-	} elsif (/^drive_to_dir_expr\s*(\S.+)$/o) { # has $count and $drive defined
-	    $config{drive_to_dir_expr} = $1;
-	} else {
-	    chomp;
-	    die "Unrecognized line in $config_path: '$_'";
-	}
-    }
-    close($fh);
-}
-
 =pod
 
 =head2 Configuration File Format
@@ -151,27 +121,25 @@ sub oldConfigRead {
 	    clean_mounts_pattern => '^disk\d+$',
 	    fs => 'ext2|xfs',
 	    chmod_as => '/dev/shm',
-	    drive_to_dir_expr => 'disk$count',
 	    sysfs_ids => [ ... ],
-	    serials => [
-	               'H809B8GH            ',
-	               'H808B6EH            ',
-	               'H80D006H            ',
-	               'H80AR0PH            ',
-	               'Y692Z19E            ',
-	               'H80E6P2H            ',
-	               'H80GJTBH            ',
-	               'H805Q83H            ',
-	               '9QJ43FE5            ',
-	               '9QJ434MF            ',
-	               '9QJ41YBN            ',
-	               '9QJ41A79            ',
-	               '9QJ43ES6            '
-	              ],
-	    partition_to_label => sub {
-		my ($partition, $existing_label_to_partition, $info) = @_;
+	    serials => [qw/H809B8GH H808B6EH H80D006H H80AR0PH Y692Z19E
+                           H80E6P2H H80GJTBH/],
 
-		# $info = {}
+            # $disk_info = { 'serial' => serial, 'sysfs_id' => sysfs_id, 'drive' => drive }}
+	    partition_to_label => sub {
+		my ($partition, $existing_label_to_partition, $disk_info) = @_;
+
+	    }
+	    label_to_mount_path => sub {
+		my ($label, $disk_info) = @_;
+		
+		die "bad label $label" unless /^disk(\d+)$/o;
+		my $disk_num = $1;
+		if ($disk_num < 5) {
+		    return "/production/$label";
+		} else {
+		    return "/test/disk" . ($disn_num - 5);
+		}
 	    }
 	}
 
@@ -204,11 +172,11 @@ sub readConfig {
     }
 
     $Global::compartment = new Safe;
+    $Global::compartment->permit('require');
     
     my $result = $Global::compartment->reval($data);
     if ($@) {
-	warn "Please update $config_path to new-style configuration";
-	oldConfigRead();
+	die "Error evaluating $config_path:\n$@";
     } else {
 	die "$config_path should return a hash ref"
 	    unless ref $result eq 'HASH';
@@ -220,8 +188,15 @@ sub readConfig {
 	print "Hi-sysfs_ids ", join(", ", keys %{$config{sysfs_ids}}), "\n" if $Global::debug;
 
 
+	unless (defined $config{label_to_mount_path}) {
+	    die "Unable to create automatic label_to_mount_path fn"
+		unless defined $config{mount_path} && $config{mount_path} =~ m!^/!o;
+	    $config{label_to_mount_path} = sub {
+		return "$config{mount_path}/$_[0]";
+	    }
+	}
 	# TODO: it would be nice to know all the possible valid config names and
-	# check that there aren't any unknown ones.
+	# check that there aren't any unknown ones, also have required and optional
     }
 
     die "No drivepattern's found in $config_path"
@@ -271,7 +246,8 @@ sub findDrives {
 	my $sysfs_id = sysfsIdNumber($drive) || '';
 	$config{all_drives}->{$drive} = {
 	    serial => $serial,
-	    sysfs_id => $sysfs_id
+	    sysfs_id => $sysfs_id,
+	    drive => $drive,
 	} if defined($serial) || defined($sysfs_id);
 	$config{all_serials}->{$serial} = $drive if defined ($serial);
 	$config{all_sysfs_ids}->{$sysfs_id} = $drive if defined ($sysfs_id);
@@ -304,6 +280,9 @@ sub list {
     my @drives = findDrives();
     if (defined $config{not_used_drives} && @{$config{not_used_drives}}) {
 	print "Unused drives: ", join(", ", @{$config{not_used_drives}}), "\n";
+	print "Unused serials: ", join(" ", map { 
+	    $config{all_drives}->{$_}->{serial} 
+	} @{$config{not_used_drives}}), "\n";
     }
     exit(0);
 }	
@@ -445,14 +424,12 @@ sub formatDrives {
     foreach my $drive (@drives) {
 	my $partition = driveToPartition($drive);
 	my $label = getPartitionLabel($partition);
-	$label = eval '&{$config{partition_to_label}}($partition, \%label_to_partition)'
+	$label = call('partition_to_label', $partition, \%label_to_partition, 
+		      $config{all_drives}->{$drive})
 	    if $label eq '';
 
-	die "partition_to_label fn failed: $@"
-	    if $@;
-
 	# 12 character label length maximum for XFS
-	die "No valid label for $partition"
+	die "label '$label' is not valid for $partition"
 	    unless defined $label && $label =~ /^\w{1,12}$/o;
 	
 	die "Duplicate label '$label' for $partition and $label_to_partition{$label}"
@@ -558,6 +535,7 @@ sub mountDrives {
     my %mounted = getMounted(1);
     my %revmounted = reverse %mounted;
     
+    # TODO: handling missing mount path with existing label_to_mount_path fn
     die "Unable to mount drives, $config_path doesn't define mount_path"
 	unless defined $config{mount_path};
 
@@ -594,7 +572,7 @@ sub mountDrives {
 	    next;
 	}
 
-	my $path = "$config{mount_path}/$label";
+	my $path = call('label_to_mount_path', $label, $config{all_drives}->{$drive});
 	if (defined $revmounted{$label}) {
 	    print "(unmount $revmounted{$label} on $label) ";
 	    my $ret = system("umount $path");
@@ -867,9 +845,14 @@ sub getSpecificSfdiskInfo {
 	    && $bits[3] =~ /^\d+$/o && $bits[3] == $expected_sectors) {
 	    $ok{$drive} = 1;
 	}
-	$_ = <SFDISK>; die "??" unless m!^/dev/${drive}p?2\s+!;
-	$_ = <SFDISK>; die "??" unless m!^/dev/${drive}p?3\s+!;
-	$_ = <SFDISK>; die "??" unless m!^/dev/${drive}p?4\s+!;
+	foreach my $pnum (qw/2 3 4/) {
+	    $_ = <SFDISK>;
+	    # Skip warnings about non-aligned partitions
+	    $_ = <SFDISK> if /^\s+start: .c,h,s. expected /o; 
+	    $_ = <SFDISK> if /^\s+end: .c,h,s. expected /o; 
+	    die "sfdisk parse error for $diskpath $_ "
+		unless m!^/dev/${drive}p?$pnum\s+!;
+	}
     }
     close(SFDISK);
     return (\%ok, \%sizes);
@@ -975,6 +958,18 @@ sub is_drive { # not partition
 
     die "$config_path pattern matched $drive, which is a partition, not a drive"
 	unless 0 == ($stat[6] & 0xF);
-    
+}
+
+sub call {
+    my $fn = shift @_;
+
+    die "Configuration function $fn is not defined"
+	unless defined $config{$fn} && ref $config{$fn} eq 'CODE';
+    my $ret = eval "&{\$config{$fn}}(\@_)";
+
+    die "$fn configuration function failed: $@"
+	if $@;
+
+    return $ret;
 }
 
