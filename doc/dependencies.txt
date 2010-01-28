@@ -1,10 +1,24 @@
 ----------------------------
-Fedora-Core12:
+Fedora-Core12 (fedora12):
   Lintel required:
      % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel
+
+  Lintel via version control required:
+     % yum install -y monotone
 
   Lintel optional:
      ...
 
 ----------------------------
 
+Debian-Lenny (debian-5.0):
+  Lintel required:
+     % aptitude install perl monotone libdigest-sha1-perl cmake build-essential
+     % aptitude install libboost-dev
+
+  Lintel optional:
+     % aptitude install doxygen libxml2-dev
+
+
+
+  

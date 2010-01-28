@@ -2066,7 +2066,35 @@ sub runCMakeConfig {
 	push(@cmakecmd, split(/\s+/o, $ENV{DEPTOOL_CMAKE_FLAGS}));
     }
     push(@cmakecmd, $src);
-    runCommand(@cmakecmd);
+    eval { runCommand(@cmakecmd) };
+    if ($@) {
+	my $err = $@;
+
+	warn $err;
+	my $dep_info = "$src/doc/dependencies.txt";
+	if (-r $dep_info && -f $dep_info) {
+	    my $fh = new FileHandle $dep_info
+		or die "Unable to open $dep_info for read: $!";
+	    my $os = operatingSystem();
+	    my @deps;
+	    while (<$fh>) {
+		next unless /^\S.*\($os\):/o;
+		push(@deps, $_);
+		while (<$fh>) {
+		    last unless /^\s+/o || /^$/o;
+		    push(@deps, $_);
+		}
+		last;
+	    }
+	    close($fh);
+	    if (@deps > 0) {
+		print STDERR "\ncmake failed. You may be missing required dependencies.\n";
+		print STDERR "From $dep_info:\n\n";
+		print STDERR @deps;
+	    }
+	}
+	exit(1);
+    }
 }
 
 ##### Monotone operations
@@ -3454,7 +3482,7 @@ sub quietRunCommand {
 
     my $ret = system(@command);
 
-    confess "'" . join(" ", @command) . "' failed ($ret)" unless $ret == 0;
+    die "'" . join(" ", @command) . "' failed ($ret)\n" unless $ret == 0;
 }
 
 sub aliasChdir {
