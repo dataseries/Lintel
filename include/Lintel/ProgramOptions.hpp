@@ -301,6 +301,25 @@ namespace lintel {
 	    : ProgramOption<bool>(name, desc, show_description) { }
     };
 
+    void processOptions(std::vector<detail::ProgramOptionPair> &actions,
+			boost::program_options::variables_map &var_map);
+
+    void parseConfigFile(const std::string &name);
+
+    template<class charT>
+    void parseConfigFile(std::basic_istream<charT> &t) {
+        boost::program_options::variables_map var_map;
+        try {
+            boost::program_options::store(boost::program_options::parse_config_file
+                                          (t, detail::programOptionsDesc()), var_map);
+            boost::program_options::notify(var_map);
+            processOptions(detail::programOptionsActions(), var_map);
+        } catch(boost::program_options::unknown_option &e) {
+            FATAL_ERROR("Unknown options while parsing configuration file.");
+        } catch(...) {
+	    FATAL_ERROR("Error while parsing configuration file.");
+        }
+    }
 }
 
 #endif

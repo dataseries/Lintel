@@ -12,5 +12,6 @@ LINTEL_PO_TEST=fifth ./program_options  --cmdline1 --cmdline2=3 --cmdline3=8 --c
 # works, but just extending it isn't sufficient since you need to make sure
 # the options are parsed.
 LINTEL_PO_TEST=sixth ./program_options --po-1 --test-opt-1 --po-2=5 --test-opt-4=5 || exit 1
-
+LINTEL_PO_TEST=stream_read ./program_options --mode=stream_read --file-path=$SRCDIR/program-options.txt || exit 1
+LINTEL_PO_TEST=file_read ./program_options --mode=file_read --file-path=$SRCDIR/program-options.txt || exit 1
 

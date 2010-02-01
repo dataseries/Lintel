@@ -6,6 +6,8 @@
 
 #include <inttypes.h>
 #include <Lintel/ProgramOptions.hpp>
+#include <fstream>
+#include <boost/program_options/errors.hpp>
 
 using namespace std;
 namespace po = boost::program_options;
@@ -63,7 +65,9 @@ namespace {
 	    cout << boost::format("%s\n") % i->first;
 	}
     }
+};
 
+namespace lintel {
     void processOptions(vector<ProgramOptionPair> &actions, po::variables_map &var_map) {
 	if (false) {
 	    dumpVariables(var_map);
@@ -81,9 +85,6 @@ namespace {
 	}
     }
 
-};
-
-namespace lintel {
     namespace detail {
 	po::options_description &programOptionsDesc(bool is_hidden) {
 	    static po::options_description desc("Allowed options");
@@ -118,7 +119,6 @@ namespace lintel {
         vector<string> parseCommandLine(po::command_line_parser &parser, bool allow_unrecognized) {
             po::variables_map var_map;
             vector<string> unrecognized;
-
             basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
 	    
 	    po::command_line_parser hidden(unrecognized);
@@ -146,4 +146,14 @@ namespace lintel {
         po::command_line_parser parser(argc, argv);
         return parseCommandLine(parser, allow_unrecognized);
     }
+
+    void parseConfigFile(const std::string &filename) {
+	std::basic_ifstream<char> strm(filename.c_str());
+        if (strm) {
+	    parseConfigFile(strm);
+	} else {
+	    FATAL_ERROR(boost::format("Error can not read file : %s") % filename);
+	}
+    }
 }
+

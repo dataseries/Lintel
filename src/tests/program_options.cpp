@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <Lintel/ProgramOptions.hpp>
 #include <Lintel/TestUtil.hpp>
+#include <fstream>
 using namespace std;
 
 void first(int argc, char *argv[]) {
@@ -104,6 +105,38 @@ void sixth(int argc, char *argv[]) {
     exit(0);
 }
 
+void read_config_file_test(int argc, char *argv[]) {
+    lintel::ProgramOption<string> po_mode("mode", "...");
+    lintel::ProgramOption<string> po_file_path("file-path", "Configuration file path");
+
+    lintel::parseCommandLine(argc, argv);
+
+    lintel::ProgramOption<int> po_int("po-int", "Read integer", 1);
+    lintel::ProgramOption<std::string> po_str("po-str", "Read string", "test");
+    lintel::ProgramOption<int> po_s1_int("s1.po-int", "Read section1", 2);
+    lintel::ProgramOption<std::string> po_s2_str("s2.po-str", "Read section2", "test");
+
+    SINVARIANT(po_int.get() == 1);
+    SINVARIANT(po_str.get() == "test");
+    SINVARIANT(po_s1_int.get() == 2);
+    SINVARIANT(po_s2_str.get() == "test");
+
+    if (po_mode.get() == "stream_read") {
+        std::fstream file(po_file_path.get().c_str(), fstream::in);
+	lintel::parseConfigFile(file);
+    } else if (po_mode.get() == "file_read") {
+	lintel::parseConfigFile(po_file_path.get());
+    } else {
+	FATAL_ERROR("should not have gotten here");
+    }	
+
+    SINVARIANT(po_int.get() == 10);
+    SINVARIANT(po_str.get() == "test string");
+    SINVARIANT(po_s1_int.get() == 20);
+    SINVARIANT(po_s2_str.get() == "test section");
+    exit(0);
+}
+
 int main(int argc, char *argv[]) {
     SINVARIANT(getenv("LINTEL_PO_TEST") != NULL);
     
@@ -122,6 +155,8 @@ int main(int argc, char *argv[]) {
         fifth(argc, argv);
     } else if (mode == "sixth") {
 	sixth(argc, argv);
+    } else if (mode == "stream_read" || mode == "file_read") {
+	read_config_file_test(argc, argv);
     }
     // TODO: add test for duplicate program option, should probably abort
     // if the user tries to do that.
