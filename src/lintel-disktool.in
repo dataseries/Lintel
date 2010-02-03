@@ -15,7 +15,13 @@ use Safe;
 use Lintel::ProcessManager;
 
 # TODO: redo file to conform with new coding convention
+
 # TODO: add pod documentation.  Fix up the usage...
+
+# TODO: remove all the globals except for %config;
+
+# TODO: think about the configuration a bit more, if we want to properly
+# support lvm and md configurations, then we need something more sophisticated.
 
 my %config;
 
@@ -119,7 +125,7 @@ sub bydriveorder {
 	    drivepatterns => [ qw/sd[a-z] sd[a-z][a-z]/ ],
 	    mount_path => '/kba',
 	    clean_mounts_pattern => '^disk\d+$',
-	    fs => 'ext2|xfs',
+	    fs => 'ext2|xfs|reserved' | sub { my ($drive, $partition, $label) },
 	    chmod_as => '/dev/shm',
 	    sysfs_ids => [ ... ],
 	    serials => [qw/H809B8GH H808B6EH H80D006H H80AR0PH Y692Z19E
@@ -201,6 +207,7 @@ sub readConfig {
 
     die "No drivepattern's found in $config_path"
 	unless defined $config{drivepatterns} && @{$config{drivepatterns}} > 0;
+    $config{fs} ||= 'ext3';
 }
 
 sub findDrives {
@@ -239,6 +246,8 @@ sub findDrives {
     my $count = @drives;
     print "($count possibles): ";
     my @no_id_info;
+    $config{reserved_drives} = [];
+    $config{not_used_drives} = [];
     foreach my $drive (@drives) {
 	is_drive($drive);
 
@@ -254,6 +263,8 @@ sub findDrives {
 
 	if (! defined $serial && ! defined $sysfs_id) {
 	    push(@no_id_info, $drive);
+	} elsif (defined $config{reserved} && &{$config{reserved}}($serial, $sysfs_id)) {
+	    push(@{$config{reserved_drives}}, $drive);
 	} elsif (defined $serial && $config{serials}{$serial}) {
 	    print ", " if @Global::drives;
 	    push(@Global::drives, $drive);
@@ -278,12 +289,12 @@ sub findDrives {
 
 sub list {
     my @drives = findDrives();
-    if (defined $config{not_used_drives} && @{$config{not_used_drives}}) {
-	print "Unused drives: ", join(", ", @{$config{not_used_drives}}), "\n";
-	print "Unused serials: ", join(" ", map { 
-	    $config{all_drives}->{$_}->{serial} 
-	} @{$config{not_used_drives}}), "\n";
-    }
+    print "Unused drives: ", join(" ", @{$config{not_used_drives}}), "\n";
+    print "Unused serials: ", join(" ", map { 
+	$config{all_drives}->{$_}->{serial} 
+    } @{$config{not_used_drives}}), "\n";
+
+    print "Reserved drives: ", join(" ", @{$config{reserved_drives}}), "\n";
     exit(0);
 }	
 
@@ -342,25 +353,39 @@ sub driveToPartition {
     die "Unable to convert $drive to partition";
 }
 
+sub zeroPartition {
+    my ($partition) = @_;
+
+    my $ret = system("dd if=/dev/zero of=$partition bs=1024k count=1 >/dev/null 2>&1");
+    die "\ndd failed for $partition" 
+	unless $ret == 0;
+}
+
 sub formatOneDrive {
     my ($drive, $fs, $label) = @_;
 
-    my $ret = system("dd if=/dev/zero of=/dev/${drive}1 bs=1024k count=1 >/dev/null 2>&1");
-    die "\ndd failed for /dev/${drive}1" 
-	unless $ret == 0;
     my $partition = driveToPartition($drive);
+    if (ref $fs) {
+	$fs = &$fs($drive, $partition, $label);
+    }
+
     if ($fs eq 'ext2') {
-	$ret = system("mkfs.ext2 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
+	zeroPartition($partition);
+	my $ret = system("mkfs.ext2 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
 	die "\nmkfs.ext2 failed for $partition"
 	    unless $ret == 0;
     } elsif ($fs eq 'ext3') {
-	$ret = system("mkfs.ext3 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
+	zeroPartition($partition);
+	my $ret = system("mkfs.ext3 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
 	die "\nmkfs.ext2 failed for $partition"
 	    unless $ret == 0;
     } elsif ($fs eq 'xfs')  {
-	$ret = system("mkfs.xfs -L $label $partition >/dev/null 2>&1");
+	zeroPartition($partition);
+	my $ret = system("mkfs.xfs -L $label $partition >/dev/null 2>&1");
 	die "\nmkfs.xfs failed for $partition"
 	    unless $ret == 0;
+    } elsif ($fs eq 'reserved') {
+	exit(0);
     } else {
 	die "huh $fs";
     }
@@ -397,7 +422,7 @@ sub formatDrives {
     my %ok = get_ok_partitions();
     my %mounted = getMounted(1);
 
-    my $fs = $config{fs} || 'ext3';
+    my $fs = $config{fs};
 
     my %label_to_partition;
     my %drive_to_label;
@@ -561,6 +586,7 @@ sub mountDrives {
     print "Mounting... ";
     foreach my $drive (@drives) {
 	my $partition = driveToPartition($drive);
+
 	my $label = getPartitionLabel($partition);
 
 	die "Unable to mount $partition, missing label"
