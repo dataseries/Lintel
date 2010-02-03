@@ -1,0 +1,10 @@
+# Sample config file
+po-int=10
+po-str="test string"
+# section-1
+[s1]
+po-int = 20
+# section 2
+[s2]
+po-str = "test section"
+ 
