@@ -315,8 +315,9 @@ namespace lintel {
             boost::program_options::notify(var_map);
             processOptions(detail::programOptionsActions(), var_map);
         } catch(boost::program_options::unknown_option &e) {
+	    // TODO-manas: improve the error message or don't catch the exceptions
             FATAL_ERROR("Unknown options while parsing configuration file.");
-        } catch(...) {
+        } catch(...) { // TODO-manas: catch (...) is almost always a bad idea.
 	    FATAL_ERROR("Error while parsing configuration file.");
         }
     }

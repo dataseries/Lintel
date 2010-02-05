@@ -42,7 +42,7 @@ namespace {
 
 namespace {
     string argv0 = "unknown-program-name"; // For usage message. 
-    std::string extra_help;
+    string extra_help;
     using namespace lintel::detail;
 
     // separated out for the future when we may have multiple parsing
@@ -106,7 +106,7 @@ namespace lintel {
         programOptionsUsage(argv0);
     }
 
-    void programOptionsUsage(const std::string &_argv0) {
+    void programOptionsUsage(const string &_argv0) {
 	cout << boost::format("Usage: %s [options] %s\n") % _argv0 % extra_help
 	     << programOptionsDesc() << "\n";
     }
@@ -147,7 +147,7 @@ namespace lintel {
         return parseCommandLine(parser, allow_unrecognized);
     }
 
-    void parseConfigFile(const std::string &filename) {
+    void parseConfigFile(const string &filename) {
 	std::basic_ifstream<char> strm(filename.c_str());
         if (strm) {
 	    parseConfigFile(strm);
