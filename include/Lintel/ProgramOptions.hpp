@@ -309,17 +309,10 @@ namespace lintel {
     template<class charT>
     void parseConfigFile(std::basic_istream<charT> &t) {
         boost::program_options::variables_map var_map;
-        try {
-            boost::program_options::store(boost::program_options::parse_config_file
-                                          (t, detail::programOptionsDesc()), var_map);
-            boost::program_options::notify(var_map);
-            processOptions(detail::programOptionsActions(), var_map);
-        } catch(boost::program_options::unknown_option &e) {
-	    // TODO-manas: improve the error message or don't catch the exceptions
-            FATAL_ERROR("Unknown options while parsing configuration file.");
-        } catch(...) { // TODO-manas: catch (...) is almost always a bad idea.
-	    FATAL_ERROR("Error while parsing configuration file.");
-        }
+        boost::program_options::store(boost::program_options::parse_config_file
+                                      (t, detail::programOptionsDesc()), var_map);
+        boost::program_options::notify(var_map);
+        processOptions(detail::programOptionsActions(), var_map);
     }
 }
 
