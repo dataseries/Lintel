@@ -17,4 +17,21 @@
  abstract = {No single encoding scheme or fault model is optimal for all data. A versatile storage system allows them to be matched to access patterns, reliability requirements, and cost goals on a per-data item basis. Ursa Minor is a cluster-based storage system that allows data-specific selection of, and on-line changes to, encoding schemes and fault models. Thus, different data types can share a scalable storage infrastructure and still enjoy specialized choices, rather than suffering from "one size fits all." Experiments with Ursa Minor show performance benefits of 2-3× when using specialized choices as opposed to a single, more general, configuration. Experiments also show that a single cluster supporting multiple workloads simultaneously is much more efficient when the choices are specialized for each distribution rather than forced to use a "one size fits all" configuration. When using the specialized distributions, aggregate cluster throughput nearly doubled.}
 }
 
+@INPROCEEDINGS{pinheiro07:disk-failure-trends:fast2007,
+AUTHOR = "Eduardo {Pinheiro} and Wolf-Dietrich {Weber} and Luiz Andr\'{e} {Barroso}",
+TITLE = "{F}ailure trends in a large disk drive population",
+crossref = {fast07},
+}
 
+@inproceedings{schroeder07:disk-failures-in-the-real-world:fast2007,
+AUTHOR = "Bianca {Schroeder} and Garth A. {Gibson}",
+TITLE = "{D}isk failures in the real world: {W}hat does an {MTTF} of 1,000,000 hours mean to you?",
+crossref = {fast07},
+PAGES = "1--16",
+}
+
+@inproceedings{schroeder:understanding-latent-sector-errors:fast2010,
+title = "{Understanding Latent Sector Errors and How to Protect Against Them}",
+author = "{Bianca Schroeder and Sotirios Damouras and Phillipa Gill}",
+crossref = {fast10},
+}

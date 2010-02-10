@@ -19,6 +19,7 @@ SET(BIB_FILES
     disc.bib
     distributedcomputing.bib
     dsn.bib
+		eurosys.bib
     fast.bib
     efts.bib
     hotdep.bib
@@ -44,6 +45,7 @@ SET(BIB_FILES
     siam-parallel-scientific.bib
     sigact.bib
     sigcomm.bib
+		sigmetrics.bib
     sigmod.bib
     sosp.bib
     sss.bib
