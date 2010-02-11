@@ -19,6 +19,8 @@ Debian-Lenny (debian-5.0):
   Lintel optional:
      % aptitude install doxygen libxml2-dev
 
+     # lintel-latex-rebuild:
+     % aptitude install texlive-latex-base ghostscript
 
 
   
