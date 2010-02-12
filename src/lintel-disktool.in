@@ -279,7 +279,7 @@ sub findDrives {
 	}
     }
     print "\n";
-    die "Unable to find any drives for tracing; ignored: " . join(" ", @{$config{not_used_drives}})
+    warn "Unable to find any drives for tracing; ignored: " . join(" ", @{$config{not_used_drives}})
 	unless @Global::drives;
     if (@no_id_info) {
 	print "Unable to get sginfo -s or sysfs info on: ", join(", ", @no_id_info), "\n";
