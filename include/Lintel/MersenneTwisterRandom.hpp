@@ -113,6 +113,12 @@ private:
 
 extern MersenneTwisterRandom MTRandom; 
 
+// TODO: replace this with Fisher-Yates shuffle from
+// http://en.wikipedia.org/wiki/Fisher–Yates_shuffle This is the same algorithm
+// as in the g++ stl random_shuffle, but all the published explanations work
+// differently, and it's cleaner to have a reference to algorithms that come
+// with an explanation of correctness.
+
 template <class RandomAccessIter>
 inline void
 MT_random_shuffle(RandomAccessIter first, RandomAccessIter last, MersenneTwisterRandom &rng = MTRandom)
