@@ -13,7 +13,7 @@ END_OF_HOST_LIST
 }
 TEST_HOSTS=`test_hosts`
 
-SCHROOT_ENVS="etch-32bit lenny-32bit karmic-64bit"
+SCHROOT_ENVS="etch-32bit lenny-32bit lenny-64bit karmic-64bit fedora12-64bit"
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 set -e
