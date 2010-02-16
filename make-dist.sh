@@ -4,7 +4,7 @@ PACKAGES="Lintel DataSeries"
 test_hosts() {
     awk '{print $1}' <<END_OF_HOST_LIST
 keyvalue-debian-x86-2.u.hpl.hp.com # Debian Etch 32bit
-pds-big-1.u.hpl.hp.com # Debian Lenny 64bit
+keyvalue-d64-5.u.hpl.hp.com # Debian Lenny 64bit
 hplxc.hpl.hp.com # RHEL4.5
 ts-rhel5.hpl.hp.com # RHEL5.4
 endpin.cs.hmc.edu # OpenSuSE 11.1
