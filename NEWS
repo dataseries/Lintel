@@ -2,7 +2,33 @@ This file lists major changes to Lintel.  The full reverse-chronological change
 log (without the merge revisions) can be found in the Changelog.mtn file in the
 tar releases, or by using mtn log if you got the sources via version control.
 
-2009-11-29:
+2010-02-15:
+   * Release
+
+2010-02-08:
+   * Program options can now read options from a file
+
+2010-02-03:
+   * lintel-disktool configuration can now specify that some drives are reserved.
+
+2010-01-28:
+   * deptool will now print out dependency information if the initial cmake fails.
+
+2010-01-15:
+   * Fedora Core 12 is probably now working as a build target; tested using a chroot.
+
+2009-12-13: 
+   * Resurrect code that has the perl interface to lintel.
+
+2009-12-04: 
+   * Extend mercury-plot to allow color control in stacked bar charts,
+     and to support y2 + yerr | y2 + ylo/yhi
+
+2009-12-02:
+   * Add support for Ubunti 9.10 (Karmic Koala) -- boost libraries have been
+     renamed.
+
+2009-12-01: 
    * Release
 
 2009-11-27:
