@@ -13,7 +13,7 @@ END_OF_HOST_LIST
 }
 TEST_HOSTS=`test_hosts`
 
-SCHROOT_ENVS="etch-32bit lenny-32bit lenny-64bit karmic-64bit fedora12-64bit"
+SCHROOT_ENVS="fedora12-64bit etch-32bit karmic-64bit lenny-32bit lenny-64bit"
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
 
 REMOTE_TMP=/var/tmp
@@ -30,8 +30,8 @@ fi
 
 WWW=/var/www/external/tesla.hpl.hp.com/opensource
 if [ "$1" = "--martenot-copy" -a "$2" != "" ]; then
-    PROJ=/tmp/make-dist/projects
-    cp /tmp/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
+    PROJ=$REMOTE_TMP/make-dist/projects
+    cp $REMOTE_TMP/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
     cp $PROJ/Lintel-$2.tar.bz2 $WWW/Lintel-$2.tar.bz2
@@ -202,7 +202,7 @@ done
 
 echo "Now do the final copy bits."
 
-ssh martenot.hpl.hp.com /tmp/make-dist/make-dist.sh --martenot-copy $NOW
+ssh martenot.hpl.hp.com $REMOTE_TMP/make-dist/make-dist.sh --martenot-copy $NOW
 scp /tmp/make-dist/latest-release martenot:$WWW/latest-release
 
 echo "Update the html, and resync to tesla, and we're ready to go."
