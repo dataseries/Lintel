@@ -1,7 +1,7 @@
 ----------------------------
 Fedora-Core12 (fedora12):
   Lintel required:
-     % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel
+     % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel tar
 
   Lintel via version control required:
      % yum install -y monotone
