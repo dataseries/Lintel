@@ -8,7 +8,7 @@ sed 's/Assertion failure in file .*testutil.cpp, line.*/Assertion failure in tes
 cat >testutil.good <<EOF 
 
 **** Assertion failure in testutil.cpp
-**** Failed expression: e.msg == "wrong test msg"
+**** Failed expression: found
 **** Details: unexpected error message 'expected to fail'
 EOF
 

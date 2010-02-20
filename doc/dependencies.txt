@@ -1,7 +1,7 @@
 ----------------------------
 Fedora-Core12 (fedora12):
   Lintel required:
-     % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel
+     % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel tar
 
   Lintel via version control required:
      % yum install -y monotone
@@ -19,6 +19,8 @@ Debian-Lenny (debian-5.0):
   Lintel optional:
      % aptitude install doxygen libxml2-dev
 
+     # lintel-latex-rebuild:
+     % aptitude install texlive-latex-base ghostscript
 
 
   

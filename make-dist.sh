@@ -4,7 +4,7 @@ PACKAGES="Lintel DataSeries"
 test_hosts() {
     awk '{print $1}' <<END_OF_HOST_LIST
 keyvalue-debian-x86-2.u.hpl.hp.com # Debian Etch 32bit
-pds-big-1.u.hpl.hp.com # Debian Lenny 64bit
+keyvalue-d64-5.u.hpl.hp.com # Debian Lenny 64bit
 hplxc.hpl.hp.com # RHEL4.5
 ts-rhel5.hpl.hp.com # RHEL5.4
 endpin.cs.hmc.edu # OpenSuSE 11.1
@@ -13,8 +13,10 @@ END_OF_HOST_LIST
 }
 TEST_HOSTS=`test_hosts`
 
-SCHROOT_ENVS="etch-32bit lenny-32bit karmic-64bit"
+SCHROOT_ENVS="fedora12-64bit etch-32bit karmic-64bit lenny-32bit lenny-64bit"
 [ "$MTN_PULL_FROM" = "" ] && MTN_PULL_FROM=usi.hpl.hp.com
+
+REMOTE_TMP=/var/tmp
 
 set -e
 
@@ -28,8 +30,8 @@ fi
 
 WWW=/var/www/external/tesla.hpl.hp.com/opensource
 if [ "$1" = "--martenot-copy" -a "$2" != "" ]; then
-    PROJ=/tmp/make-dist/projects
-    cp /tmp/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
+    PROJ=$REMOTE_TMP/make-dist/projects
+    cp $REMOTE_TMP/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
     cp $PROJ/Lintel-$2.tar.bz2 $WWW/Lintel-$2.tar.bz2
@@ -37,11 +39,11 @@ if [ "$1" = "--martenot-copy" -a "$2" != "" ]; then
     exit 0
 fi
 
-if [ "$1" = "--prepare" -a "$0" = "/tmp/make-dist.sh" ]; then
-    [ ! -d /tmp/make-dist ] || mv /tmp/make-dist /tmp/make-dist.rm 
-    [ ! -d /tmp/make-dist.rm ] || rm -rf /tmp/make-dist.rm 
-    mkdir /tmp/make-dist 
-    mv $0 /tmp/make-dist/make-dist.sh
+if [ "$1" = "--prepare" -a "$0" = "$REMOTE_TMP/make-dist.sh" ]; then
+    [ ! -d $REMOTE_TMP/make-dist ] || mv $REMOTE_TMP/make-dist $REMOTE_TMP/make-dist.rm 
+    [ ! -d $REMOTE_TMP/make-dist.rm ] || rm -rf $REMOTE_TMP/make-dist.rm 
+    mkdir $REMOTE_TMP/make-dist 
+    mv $0 $REMOTE_TMP/make-dist/make-dist.sh
     exit 0
 fi
 
@@ -60,10 +62,10 @@ if [ "$1" = "--test-local" -a "$2" != "" -a "$3" != "" ]; then
 fi
 
 if [ "$1" = "--test-wget" -a "$2" != "" -a "$3" != "" ]; then
-    PATH=/tmp/make-dist/bin:$PATH
-    cd /tmp/make-dist
-    export PROJECTS=/tmp/make-dist/projects
-    export BUILD_OPT=/tmp/make-dist/build
+    PATH=$REMOTE_TMP/make-dist/bin:$PATH
+    cd $REMOTE_TMP/make-dist
+    export PROJECTS=$REMOTE_TMP/make-dist/projects
+    export BUILD_OPT=$REMOTE_TMP/make-dist/build
     unset http_proxy
     unset no_proxy
     case $3 in
@@ -75,14 +77,14 @@ if [ "$1" = "--test-wget" -a "$2" != "" -a "$3" != "" ]; then
 	hplxc.hpl.hp.com) PATH=$PATH:/hpl/home/anderse/.depot/rhel4-x86_64/bin ;;
 	ts-rhel5.hpl.hp.com) PATH=$PATH:/home/anderse/.depot/rhel5-x86_64/bin ;;
     esac
-    perl /tmp/make-dist/deptool-bootstrap --debug tarinit --no-cache http://tesla.hpl.hp.com/opensource/tmp/latest-release
+    perl $REMOTE_TMP/make-dist/deptool-bootstrap --debug tarinit --no-cache http://tesla.hpl.hp.com/opensource/tmp/latest-release
     # Make sure we downloaded the right files
     [ -f $PROJECTS/Lintel-$2.tar.bz2 ]
     [ -f $PROJECTS/DataSeries-$2.tar.bz2 ]
     cd $PROJECTS/DataSeries
-    perl /tmp/make-dist/deptool-bootstrap build -t
+    perl $REMOTE_TMP/make-dist/deptool-bootstrap build -t
     echo "MAKE-DIST: EVERYTHING OK!"
-    echo $2 >/tmp/make-dist/result-$3
+    echo $2 >$REMOTE_TMP/make-dist/result-$3
     exit 0
 fi
 
@@ -156,15 +158,15 @@ echo "starting test-host builds..."
 for host in $TEST_HOSTS; do
     echo "$LOG/$host.log"
     echo -n "  copy..."
-    scp /tmp/make-dist/make-dist.sh $host:/tmp/make-dist.sh >$LOG/$host.log 2>&1
+    scp /tmp/make-dist/make-dist.sh $host:$REMOTE_TMP/make-dist.sh >$LOG/$host.log 2>&1
     echo -n "  prepare..."
-    ssh $host /tmp/make-dist.sh --prepare >$LOG/$host.log 2>&1
+    ssh $host $REMOTE_TMP/make-dist.sh --prepare >$LOG/$host.log 2>&1
     echo -n "  copy..."
-    scp /tmp/make-dist/deptool-bootstrap $host:/tmp/make-dist/deptool-bootstrap >>$LOG/$host.log 2>&1
+    scp /tmp/make-dist/deptool-bootstrap $host:$REMOTE_TMP/make-dist/deptool-bootstrap >>$LOG/$host.log 2>&1
 
     echo "  start build."
 
-    ssh $host /tmp/make-dist/make-dist.sh --test-wget $NOW $host >>$LOG/$host.log 2>&1 &
+    ssh $host $REMOTE_TMP/make-dist/make-dist.sh --test-wget $NOW $host >>$LOG/$host.log 2>&1 &
 done
 
 echo "schroot builds..."
@@ -188,7 +190,7 @@ fi
 for host in $TEST_HOSTS; do
     echo -n "$host: fetch..."
     echo "No-File-Copied" >$LOG/result-$host
-    scp $host:/tmp/make-dist/result-$host $LOG/result-$host >>$LOG/$host.log 2>&1 || true
+    scp $host:$REMOTE_TMP/make-dist/result-$host $LOG/result-$host >>$LOG/$host.log 2>&1 || true
     GOT="`head -1 $LOG/result-$host`"
     if [ "$GOT" = "$NOW" ]; then
 	echo "ok"
@@ -200,7 +202,7 @@ done
 
 echo "Now do the final copy bits."
 
-ssh martenot.hpl.hp.com /tmp/make-dist/make-dist.sh --martenot-copy $NOW
+ssh martenot.hpl.hp.com $REMOTE_TMP/make-dist/make-dist.sh --martenot-copy $NOW
 scp /tmp/make-dist/latest-release martenot:$WWW/latest-release
 
 echo "Update the html, and resync to tesla, and we're ready to go."

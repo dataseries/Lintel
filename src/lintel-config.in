@@ -37,7 +37,7 @@ EOF
 exit 1
 }
 
-features=`echo "@LINTEL_FEATURES@" | sed 's/;/ /'`
+features=`echo "@LINTEL_FEATURES@" | sed 's/;/ /g'`
 
 case "$1" in
     --cflags)
@@ -55,21 +55,9 @@ case "$1" in
     --libtool-libs)
         $0 --libs
 	;;
-    --libtool-lintelgc)
-        echo /no/such/file/no/support/for/lintel-config/--libtool-lintelgc
-	exit 1
-	;;
     --libtool-lintelpthread)
         echo "`$0 --libs` -lLintelPThread"
 	exit 0
-	;;
-    --mustgclibs)
-        echo /no/such/file/no/support/for/lintel-config/--mustgclibs
-	exit 1
-	;;
-    --nogclibs)
-        echo /no/such/file/no/support/for/lintel-config/--nogclibs
-	exit 1
 	;;
     --features)
         echo $features
