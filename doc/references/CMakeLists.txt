@@ -21,11 +21,13 @@ SET(BIB_FILES
     dsn.bib
 		eurosys.bib
     fast.bib
+		edcc.bib
     efts.bib
     hotdep.bib
     hotos.bib
     icdcs.bib
     icpp.bib
+		ic.bib
     ics.bib
     ieee-computer.bib
     ieeejsac.bib
@@ -41,6 +43,7 @@ SET(BIB_FILES
     osdi.bib
     os-review.bib
     pldi.bib
+		podc.bib
     scientific-programming.bib
     siam-parallel-scientific.bib
     sigact.bib
@@ -51,7 +54,10 @@ SET(BIB_FILES
     sss.bib
     supercomputing-review.bib
     tcsc.bib
+		tocs.bib
+		tods.bib
     toit.bib
+		toplas.bib
     tr.bib
     tse.bib
     usenix.bib
