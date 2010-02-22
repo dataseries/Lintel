@@ -72,6 +72,7 @@ sub new {
     $opts{children} = {};
     $opts{in_signal_handler} = 0;
 
+    $SIG{CHLD} = sub { };
     return bless \%opts, $class;
 }
 

@@ -1,3 +1,5 @@
+NOTE: the list of optional dependencies is quite incomplete.
+
 ----------------------------
 Fedora-Core12 (fedora12):
   Lintel required:
@@ -21,6 +23,7 @@ Debian-Lenny (debian-5.0):
 
      # lintel-latex-rebuild:
      % aptitude install texlive-latex-base ghostscript
+
 
 
   
