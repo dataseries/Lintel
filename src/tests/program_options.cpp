@@ -137,6 +137,9 @@ void read_config_file_test(int argc, char *argv[]) {
     exit(0);
 }
 
+// TODO: with options like --foo bar -- baz; if you call parseCommandLine,
+// you will not get the baz option back in the array.
+
 int main(int argc, char *argv[]) {
     SINVARIANT(getenv("LINTEL_PO_TEST") != NULL);
     
