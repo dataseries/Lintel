@@ -11,8 +11,16 @@ namespace {
 
 void Clock::perThreadInit() {
     PThreadScopedLock lock(mutex);
-    
-    INVARIANT(!did_per_thread_init, "already did Clock::perThreadInit");
+    // TODO-review: Again, if there are two users of the todcc
+    // functionality; it is unreasonable for them to have to
+    // coordinate when lintel is in the perfect position to do so for
+    // them.
+    if (did_per_thread_init) {
+	return;
+    }
+
+    //INVARIANT(!did_per_thread_init, "already did Clock::perThreadInit");
+
     did_per_thread_init = true;
     INVARIANT(pthread_key_create(&per_thread_clock, NULL) == 0, "bad");
     Clock::calibrateClock();

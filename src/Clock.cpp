@@ -125,9 +125,20 @@ namespace {
 }
 
 void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
-    INVARIANT(clock_rate == -Double::Inf || allow == allow_unsafe_frequency_scaling, 
-	      "Already calibrated the clock, so can't change the Clock::allowUnsafeFrequencyScaling mode");
-    allow_unsafe_frequency_scaling = allow;
+    // TODO-review : If we have two separate modules that
+    // independantly want to use todcc and do not know about one
+    // another, then invarianting out is too paranoid.  It should be
+    // lintel's job to coordinate multiple users of the todcc
+    // functionality.
+    
+    if (clock_rate == -Double::Inf || allow == allow_unsafe_frequency_scaling) {
+	allow_unsafe_frequency_scaling = allow;
+    } else {
+	cerr << "Already calibrated the clock; ignoring change to frequesncy scaling mode" << endl;;
+    }
+
+    //INVARIANT(clock_rate == -Double::Inf || allow == allow_unsafe_frequency_scaling, 
+    //	      "Already calibrated the clock, so can't change the Clock::allowUnsafeFrequencyScaling mode");
 }
 
 void Clock::initialMeasurements() {
