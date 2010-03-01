@@ -111,13 +111,11 @@ namespace {
 	    // great.
 	} else if (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast ||
 		   allow_unsafe_frequency_scaling == Clock::AUFSO_WarnSlow) {
-	    cerr << "Warning, frequency scaling may be enabled on at least one cpu.\n"
-		 << "This program is using Clock::todcc*, and may therefore get\n";
-	    if (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast) {
-		cerr << "incorrect times back." << endl;
-	    } else {
-		cerr << "slower than expected time operations." << endl;
-	    }
+	    LintelLog::warn(string("Warning, frequency scaling may be enabled on a cpu.\n")
+			    + "This program is using Clock::todcc*, and may therefore get\n"
+			    + (allow_unsafe_frequency_scaling == Clock::AUFSO_WarnFast
+			       ? "incorrect times back." 
+			       : "slower than expected time operations."));
 	} else if (allow_unsafe_frequency_scaling == Clock::AUFSO_No) {
 	    FATAL_ERROR("frequency scaling enabled on at least one cpu; configuration disallows use of Clock::todcc()");
 	}
@@ -125,20 +123,13 @@ namespace {
 }
 
 void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
-    // TODO-review : If we have two separate modules that
-    // independantly want to use todcc and do not know about one
-    // another, then invarianting out is too paranoid.  It should be
-    // lintel's job to coordinate multiple users of the todcc
-    // functionality.
-    
     if (clock_rate == -Double::Inf || allow == allow_unsafe_frequency_scaling) {
 	allow_unsafe_frequency_scaling = allow;
     } else {
-	cerr << "Already calibrated the clock; ignoring change to frequesncy scaling mode" << endl;;
+	LintelLog::warn(format("Already calibrated lintel::Clock; ignoring change to frequency"
+			       " scaling mode from %d to %d") % allow_unsafe_frequency_scaling 
+			% allow);
     }
-
-    //INVARIANT(clock_rate == -Double::Inf || allow == allow_unsafe_frequency_scaling, 
-    //	      "Already calibrated the clock, so can't change the Clock::allowUnsafeFrequencyScaling mode");
 }
 
 void Clock::initialMeasurements() {
@@ -329,8 +320,8 @@ void Clock::calibrateClock(bool print_calibration_information,
 	}
 
 	if (print_calibration_information || tries >= print_calibration_warnings_after_tries) {
-	    cerr << format("Calibrating clock rate, try %d: est mean %.10g, conf95 %.10g\n")
-		% tries % truncated_mean.mean() % truncated_mean.conf95();
+	    LintelLog::warn(format("Calibrating clock rate, try %d: est mean %.10g, conf95 %.10g\n")
+			    % tries % truncated_mean.mean() % truncated_mean.conf95());
 	}
 	if (truncated_mean.conf95() < truncated_mean.mean() * max_conf95_rel) {
 	    setClockRate(truncated_mean.mean());
@@ -345,8 +336,9 @@ void Clock::calibrateClock(bool print_calibration_information,
     if (print_calibration_information) {
 	Tfrac calibrate_end = todTfrac();
 	double calibrate_ms = 1000 * TfracToDouble(calibrate_end - calibrate_start);
-	cout << format("Final calibrated clock rate is %.8g, conf95 %.8g, %d samples; %.3fms to calibrate\n") 
-	    % clock_rate % truncated_mean.conf95() % truncated_mean.count() % calibrate_ms;
+	LintelLog::info(format("Final calibrated clock rate is %.8g, conf95 %.8g, %d samples;"
+			       " %.3fms to calibrate\n") % clock_rate % truncated_mean.conf95() 
+			% truncated_mean.count() % calibrate_ms);
     }
 }
 
