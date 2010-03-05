@@ -125,11 +125,13 @@ sub bydriveorder {
 	    drivepatterns => [ qw/sd[a-z] sd[a-z][a-z]/ ],
 	    mount_path => '/kba',
 	    clean_mounts_pattern => '^disk\d+$',
-	    fs => 'ext2|xfs|reserved' | sub { my ($drive, $partition, $label) },
+	    fs => 'ext2|xfs' | sub { my ($drive, $partition, $label) },
 	    chmod_as => '/dev/shm',
 	    sysfs_ids => [ ... ],
 	    serials => [qw/H809B8GH H808B6EH H80D006H H80AR0PH Y692Z19E
-                           H80E6P2H H80GJTBH/],
+                           H80E6P2H H80GJTBH/], # drives used in this config
+            known_serials => [qw/... list of serials that are recognized by this config .../],
+            reserved => sub { my ($serial, $sysfs_id) = @_; return $drive_is_reserved; },
 
             # $disk_info = { 'serial' => serial, 'sysfs_id' => sysfs_id, 'drive' => drive }}
 	    partition_to_label => sub {
@@ -290,11 +292,23 @@ sub findDrives {
 sub list {
     my @drives = findDrives();
     print "Unused drives: ", join(" ", @{$config{not_used_drives}}), "\n";
-    print "Unused serials: ", join(" ", map { 
-	$config{all_drives}->{$_}->{serial} 
-    } @{$config{not_used_drives}}), "\n";
-
+    my @unused_serials = map { $config{all_drives}->{$_}->{serial} } @{$config{not_used_drives}};
+    print "Unused serials: ", join(" ", @unused_serials), "\n";
     print "Reserved drives: ", join(" ", @{$config{reserved_drives}}), "\n";
+
+    if (defined $config{known_serials}) {
+	my %found_serials;
+	map { $found_serials{$config{all_drives}->{$_}->{serial}} = 1 } 
+            keys %{$config{all_drives}};
+	my @lost_serials = grep(!defined $found_serials{$_}, @{$config{known_serials}});
+	print "Drives listed in config but not present: ", join(" ", @lost_serials), "\n";
+	
+	my %known_serials;
+	map { $known_serials{$_} = 1 } @{$config{known_serials}};
+
+	my @unknown_serials = grep(!defined $known_serials{$_}, @unused_serials);
+	print "Drives not listed in config: ", join(" ", @unknown_serials), "\n";
+    }
     exit(0);
 }	
 
@@ -305,6 +319,7 @@ sub removeMeta {
     return $_;
 }
 
+# TODO: probably should do this in parallel also, as in formatting
 sub partitionDrives {
     my @drives = findDrives();
 
