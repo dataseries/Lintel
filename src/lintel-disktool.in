@@ -79,6 +79,8 @@ if ($cmd eq 'partition') {
     zeroDrives($ARGV[1]);
 } elsif ($cmd eq 'fail') {
     failDrives(@ARGV);
+} elsif ($cmd eq 'visual-check') {
+    visualCheck(@ARGV);
 } elsif ($cmd eq 'scan') {
     # TODO: this doesn't work for high scsi-ids (e.g. 0:0:26:0 /dev/sdz)
     # might have to track the specific id and add it.  scsiadd -a 26 works.
@@ -457,6 +459,8 @@ sub formatDrives {
 	print "($partition, $label)" if $config{debug};
 
 	if ($label ne '' && $label =~ /^\w{1,12}$/o) {
+	    # Verify that label can be mapped to a path.
+	    call('label_to_mount_path', $label, $config{all_drives}->{$drive});
 	    $label_to_partition{$label} = $partition;
 	}
     }
@@ -735,6 +739,29 @@ sub zeroDrives {
     }
     die "Something wasn't ok" unless $ok;
 }
+
+=pod
+
+=head2 visual-check
+
+Read all of the drives, /dev/sda .. /dev/sdzz in series, with a pause for
+user input between pairs so that they can verify the the drives are accessed
+in the "right" order.
+
+=cut
+
+sub visualCheck {
+    # foreach my $i ('a' .. 'z', 'aa' .. 'zz') {    
+    die "Unimplemented";
+}
+
+
+# TODO: need a repurpose <prefix> type option that will zero out drives that
+# have the specified label -- needed when we move drives from one use to 
+# another.
+
+##### Common functions
+
 
 # Returns map of directory under $config{mount_path} to the full parition path under /dev;
 # or the reverse if $dev_to_mount_path is set
