@@ -458,6 +458,7 @@ sub formatDrives {
 	my $label = getPartitionLabel($partition);
 	print "($partition, $label)" if $config{debug};
 
+	my $path = call('label_to_mount_path', $label, $config{all_drives}->{$drive});
 	if ($label ne '' && $label =~ /^\w{1,12}$/o) {
 	    # Verify that label can be mapped to a path.
 	    call('label_to_mount_path', $label, $config{all_drives}->{$drive});
