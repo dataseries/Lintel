@@ -1305,13 +1305,18 @@ sub dbpRunIndividualTest {
     print "Start test at ", time, "\n";
     $ENV{DEPTOOL_PARALLEL_TEST_NUM} = $test;
     my $testdir = "Testing/Parallel/$test";
-    my $fh = new FileHandle("ctest -V -O $testdir/log -I $test,$test,1 2>&1 |")
+    my $time = "/usr/bin/time";
+    $time = '' unless -x $time;
+    my $fh = new FileHandle("$time ctest -V -O $testdir/log -I $test,$test,1 2>&1 |")
 	or die "Can not fork ctest: $!";
 
     while(<$fh>) {
 	# throw this all away, it's intermingled output streams
 	# without any signals of separation, so is effectively
 	# useless.
+	if (/user.*system.*CPU/o) {
+	    print $_;
+	}
     }
     my $ok = close($fh) || 0; 
     print "End test at ", time, "\n";
@@ -1372,22 +1377,24 @@ sub dbpDoParallelTest {
     if (defined $config->{sequential_tests}) {
 	print "Running sequential tests.\n";
 	foreach my $test (@{$config->{sequential_tests}}) {
-	    my $match_num;
+	    my @match_nums;
 	    for (my $testnum = 0; $testnum < @testlist; ++$testnum) {
 		next unless $testlist[$testnum] =~ /$test/;
-		die "Two tests match $test ($match_num and $testnum+1)" 
-		    if defined $match_num;
-		$match_num = $testnum + 1; # ctest counts from 1.
+		push (@match_nums, $testnum + 1); # ctest counts from 1.
 	    }
 	    die "Did not find any test that matched $test"
-		unless defined $match_num;
-	    die "Already ran test $match_num ($test)"
-		if $sequential_tests{$match_num};
-	    $sequential_tests{$match_num} = 1;
-	    print "Test $match_num\n";
-	    &$starttest($match_num);
-	    $children->wait();
-	    die "?" unless $children->nChildren() == 0;
+		unless @match_nums > 0;
+	    foreach my $match_num (@match_nums) {
+		if ($sequential_tests{$match_num}) {
+		    warn "Already ran test $match_num ($test)";
+		    next;
+		}
+		$sequential_tests{$match_num} = 1;
+		print "Test $match_num\n";
+		&$starttest($match_num);
+		$children->wait();
+		die "?" unless $children->nChildren() == 0;
+	    }
 	}
     }
 
