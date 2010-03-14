@@ -1305,13 +1305,18 @@ sub dbpRunIndividualTest {
     print "Start test at ", time, "\n";
     $ENV{DEPTOOL_PARALLEL_TEST_NUM} = $test;
     my $testdir = "Testing/Parallel/$test";
-    my $fh = new FileHandle("ctest -V -O $testdir/log -I $test,$test,1 2>&1 |")
+    my $time = "/usr/bin/time";
+    $time = '' unless -x $time;
+    my $fh = new FileHandle("$time ctest -V -O $testdir/log -I $test,$test,1 2>&1 |")
 	or die "Can not fork ctest: $!";
 
     while(<$fh>) {
 	# throw this all away, it's intermingled output streams
 	# without any signals of separation, so is effectively
 	# useless.
+	if (/user.*system.*CPU/o) {
+	    print $_;
+	}
     }
     my $ok = close($fh) || 0; 
     print "End test at ", time, "\n";
@@ -1372,22 +1377,24 @@ sub dbpDoParallelTest {
     if (defined $config->{sequential_tests}) {
 	print "Running sequential tests.\n";
 	foreach my $test (@{$config->{sequential_tests}}) {
-	    my $match_num;
+	    my @match_nums;
 	    for (my $testnum = 0; $testnum < @testlist; ++$testnum) {
 		next unless $testlist[$testnum] =~ /$test/;
-		die "Two tests match $test ($match_num and $testnum+1)" 
-		    if defined $match_num;
-		$match_num = $testnum + 1; # ctest counts from 1.
+		push (@match_nums, $testnum + 1); # ctest counts from 1.
 	    }
 	    die "Did not find any test that matched $test"
-		unless defined $match_num;
-	    die "Already ran test $match_num ($test)"
-		if $sequential_tests{$match_num};
-	    $sequential_tests{$match_num} = 1;
-	    print "Test $match_num\n";
-	    &$starttest($match_num);
-	    $children->wait();
-	    die "?" unless $children->nChildren() == 0;
+		unless @match_nums > 0;
+	    foreach my $match_num (@match_nums) {
+		if ($sequential_tests{$match_num}) {
+		    warn "Already ran test $match_num ($test)";
+		    next;
+		}
+		$sequential_tests{$match_num} = 1;
+		print "Test $match_num\n";
+		&$starttest($match_num);
+		$children->wait();
+		die "?" unless $children->nChildren() == 0;
+	    }
 	}
     }
 
@@ -1696,22 +1703,28 @@ sub setPin {
 
 =pod
 
-=head2 pull
+=head2 pull [--unsafe]
 
-If you want to update your local repositories and projects, but aren't
-yet ready to make your changes available or just want changes other
-people have made, then pull is the command you want to use.  Pull will
-walk all of the directories dependent on your current directory and
-will pull data from the central server and then update the local
-directory.  If you happen to have outstanding changes, pull will
-perform a commit before doing the update so that you wouldn't
-accidentally destroy your current changes.
+If you want to update your local repositories and projects, but aren't yet
+ready to make your changes available or just want changes other people have
+made, then pull is the command you want to use.  Pull will walk all of the
+directories dependent on your current directory and will pull data from the
+central server and then update the local directory.  If you happen to have
+outstanding changes, pull will normally perform a commit before doing the
+update so that you wouldn't accidentally destroy your current changes.  If you
+are sure that you want to pull despite having changes, you can use the --unsafe
+option.
 
 =cut
 
 sub depPull {
     my %options;
-    depWalk(\&depPullCheckClean, sub { depPullOne(\%options); }, 0);
+
+    my $ret = GetOptions("unsafe!" => \$options{unsafe_pull_with_changes});
+    usage("unknown options to pull") unless $ret;
+
+    depWalk(sub { depPullCheckClean(\%options) },
+	    sub { depPullOne(\%options); }, 0);
 }
 
 ### sets $options->{made_changes} if we made changes.
@@ -1719,7 +1732,7 @@ sub depPull {
 sub depPullOne {
     my($options) = @_;
 
-    depCommitOne();
+    depCommitOne() unless $options->{unsafe_pull_with_changes};
     mtnOp("pull");
     depPullMerge();
     depPullUpdate($options);
@@ -1746,7 +1759,7 @@ sub depPullUpdate {
     if (-f $deppin_filename) {
         my @heads = getCurHeads();
         die "??" unless @heads == 1;
-        
+
         if (foundPin($cur_rev, $heads[0])) {
 	    print << "END";
 ****
@@ -1834,7 +1847,11 @@ sub depPinFilename {
 }
 
 sub depPullCheckClean {
+    my ($options) = @_;
+
+    return if $options->{unsafe_pull_with_changes};
     my $cwd = aliasGetCwd();
+
     if (depCommitHaveUnknown()) {
 	die "You have unknown files in $cwd
 Requiring you to commit first. Aborting.\n";
@@ -1932,7 +1949,7 @@ sub depCommitGetUnknown {
     my @unknown = <$fh>;
     close($fh);
     die "?? mtn" if $?;
-    
+
     return @unknown;
 }
 
@@ -1949,7 +1966,7 @@ sub depCommitHaveChanges {
     return 1 if defined $_;
     return 0;
 }
-    
+
 sub depCommitDoCommit {
     my %options = @_;
     my $cwd = aliasGetCwd();
@@ -1960,6 +1977,7 @@ sub depCommitDoCommit {
                 if $first_time;
             return;
         }
+
         $auto_yes_to_prompts = 0 unless $first_time;
         $first_time = 0;
         print "depcommit: you have uncommitted differences in $cwd
