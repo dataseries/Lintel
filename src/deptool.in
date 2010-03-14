@@ -1511,7 +1511,7 @@ sub dbpFinishWhich {
     die "??" unless defined $info->{"running_$which"};
     unless ($info->{"running_$which"} == 0) {
 	# print "$which not done\n";
-	return;
+	return 1;
     }
 
     die "internal" unless defined $info->{"status_$which"};
@@ -1539,6 +1539,7 @@ sub dbpFinishWhich {
 		= dbpOutOfDate($dir, $dependencies, $info);
 	    die "Internal error, not up to date" if $out_of_date || ! $deps_done_all_installs;
 	}
+	return 1;
     } else {
 	print "\n";
 	print "--------------------\n";
@@ -1549,7 +1550,7 @@ sub dbpFinishWhich {
 	    print "\n-------------------- STDERR:\n";
 	    system("cat deptool.$which.err");
 	}
-	exit(1);
+	return 0;
     }
 }
 
@@ -1612,13 +1613,17 @@ sub depBuildParallel {
 
     my $prev_pending_size = @pending;
     # Process everything we have to process.
+    my $ok = 1;
+
     while (@pending > 0 || $children->nChildren() > 0) {
-	unless (defined $running{build}) {
-	    $running{build} = dbpStartBuild($children, \@pending, \%dependencies);
-	}
-	foreach my $which (qw/install test/) {
-	    next if defined $running{$which};
-	    $running{$which} = dbpStartWhich($which, $children, \@pending, \%dependencies);
+	if ($ok) {
+	    unless (defined $running{build}) {
+		$running{build} = dbpStartBuild($children, \@pending, \%dependencies);
+	    }
+	    foreach my $which (qw/install test/) {
+		next if defined $running{$which};
+		$running{$which} = dbpStartWhich($which, $children, \@pending, \%dependencies);
+	    }
 	}
 
 	if (@pending == $prev_pending_size) {
@@ -1644,11 +1649,16 @@ sub depBuildParallel {
 		}
 	    } else {
 		foreach my $which (qw/build install test/) {
-		    dbpFinishWhich($which, \%running, \%dependencies);
+		    $ok = 0 unless dbpFinishWhich($which, \%running, \%dependencies);
 		}
 	    }
 	}
 	$prev_pending_size = @pending;
+    }
+
+    unless ($ok) {
+	print "Exiting on error, check previous output for precise problem.\n";
+	exit(1);
     }
 
     aliasChdir($start_dir); # TODO: figure out why this isn't already happening, we can be left in the wrong dir
