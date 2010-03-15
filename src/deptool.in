@@ -1505,7 +1505,7 @@ sub dbpFinishWhich {
     my ($which, $running, $dependencies) = @_;
 
     my $dir = $running->{$which};
-    return unless defined $dir;
+    return 1 unless defined $dir;
     my $info = $dependencies->{$dir};
 
     die "??" unless defined $info->{"running_$which"};
@@ -1624,11 +1624,14 @@ sub depBuildParallel {
 		next if defined $running{$which};
 		$running{$which} = dbpStartWhich($which, $children, \@pending, \%dependencies);
 	    }
+	} else {
+	    last if $children->nChildren() == 0;
 	}
 
 	if (@pending == $prev_pending_size) {
 	    # only wait if we couldn't get anything removed
-	    die "? $pending[0]->[1] $pending[0]->[0]" unless $children->nChildren() > 0;
+	    die "Not making progress, no children ok=$ok; '$pending[0]->[1]' '$pending[0]->[0]'" 
+		unless $children->nChildren() > 0;
 
 	    my %finished = $children->wait(10);
 
@@ -1649,7 +1652,10 @@ sub depBuildParallel {
 		}
 	    } else {
 		foreach my $which (qw/build install test/) {
-		    $ok = 0 unless dbpFinishWhich($which, \%running, \%dependencies);
+		    unless (dbpFinishWhich($which, \%running, \%dependencies)) {
+			print "Failed on $which in $running{$which}\n";
+			$ok = 0;
+		    }
 		}
 	    }
 	}
