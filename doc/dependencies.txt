@@ -22,5 +22,6 @@ Debian-Lenny (debian-5.0):
      # lintel-latex-rebuild:
      % aptitude install texlive-latex-base ghostscript
 
-
+     # mercury-plot
+     % aptitude install gnuplot libio-pty-perl libdata-showtable-perl
   
