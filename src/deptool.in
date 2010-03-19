@@ -1917,9 +1917,13 @@ sub ignoresFileName() {
 
 sub depCommitUnknown { 
     my $cwd = aliasGetCwd();
-    return unless depCommitHaveUnknown();
-    my @unknown = depCommitGetUnknown();
+    # TODO: check to make sure that we properly add recursive subdirectories;
+    # there seemed to be a bug in this.  Unknown if moving the
+    # haveUnknown/getUnknown bits into the while loop will fix it.
     while(1) {
+	return unless depCommitHaveUnknown();
+	my @unknown = depCommitGetUnknown();
+
         print "You have un-added files in $cwd:\n";
         print @unknown;
         print "\nDo you want to ignore or add them [no-default]?";
