@@ -74,6 +74,21 @@ do { \
 /// on the debugging side of things; it has support for some of the
 /// other standard levels for logging for converage, but currently
 /// no support for turning those levels on or off.
+///
+/// LintelLog operates around the idea of named debug "categories"
+/// which are specified through the use of staticly declared
+/// LintelLog::Category objects.  The creation of these objects
+/// provides the ability to activate any debugging statements within a
+/// category through the use of an environment variable,
+/// LINTEL_LOG_DEBUG, which contains a comma-separated list of
+/// Category names.  This environment variable is parsed by the
+/// command LintelLog::parseEnv(), which must be called to enable
+/// debugging.  By default LintelLog will send debugging to the
+/// console, however, this can be overridden through the use of
+/// "appender" functions.  These appender functions recieve the
+/// debugging string and a LogType and can act accordingly.  These are
+/// activated by calling LintelLog::addAppender().  Multiple appenders
+/// can be applied simultaneously.
 class LintelLog {
 public:
     /// Similar to the logging levels from http://www.slf4j.org/ we
