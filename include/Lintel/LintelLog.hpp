@@ -9,6 +9,45 @@
 
     Very low overhead logging support; disable debug level logging by
     adding -DDISABLE_DEBUG_LINTELLOG
+
+    The lintel logging class.  Right now it is pretty highly focused
+    on the debugging side of things; it has support for some of the
+    other standard levels for logging for converage, but currently
+    no support for turning those levels on or off.
+   
+    To use lintel log, you would normally write things like:
+   
+    LintelLogDebug("class-name", boost::format("a message %s") % error_code);
+   
+    You would then call LintelLog::parseEnv() to parse the LINTEL_LOG_DEBUG
+    environment variable, and run your program with LINTEL_LOG_DEBUG set to
+    class-name.  LintelLog will then print out the debug messages to stdout.
+   
+    If you have informational, warning or error messages, you can print those with
+    LintelLog::info,warn,error respectively.
+   
+    If you want multiple debug levels, you would use 
+    LintelLogDebugLevel("another-category", 3, "details")
+    and then set LINTEL_LOG_DEBUG to another-category=3
+   
+    You can specify multiple debugging categories using comma separation.
+   
+    Advanced features:
+   
+    If you want to write out messages to a different destination than the
+    screen, then you need to specify an appender, which will replace the
+    default of using the consoleAppender.  You can specify your own appender in
+    addition to the generic console one if you want messages sent to multiple
+    places.
+   
+    If you want to specify debug levels from a string, you can use
+    parseDebugString, or you can directly call setDebugLevel.
+   
+    If you want variable categories for a debugging statement, you can use
+    LintelLogDebugLevelVariable, or you can manually create a
+    LintelLog::Category object.  Note that creating those objects is expensive
+    because it needs to translate the string into an integer id.
+
 */
 
 #ifndef LINTEL_LOG_HPP
@@ -70,25 +109,8 @@ do { \
 } while(0)
 #endif
 
-/// The lintel logging class.  Right now it is pretty highly focused
-/// on the debugging side of things; it has support for some of the
-/// other standard levels for logging for converage, but currently
-/// no support for turning those levels on or off.
-///
-/// LintelLog operates around the idea of named debug "categories"
-/// which are specified through the use of staticly declared
-/// LintelLog::Category objects.  The creation of these objects
-/// provides the ability to activate any debugging statements within a
-/// category through the use of an environment variable,
-/// LINTEL_LOG_DEBUG, which contains a comma-separated list of
-/// Category names.  This environment variable is parsed by the
-/// command LintelLog::parseEnv(), which must be called to enable
-/// debugging.  By default LintelLog will send debugging to the
-/// console, however, this can be overridden through the use of
-/// "appender" functions.  These appender functions recieve the
-/// debugging string and a LogType and can act accordingly.  These are
-/// activated by calling LintelLog::addAppender().  Multiple appenders
-/// can be applied simultaneously.
+/// See file level documentation for overall documentation since the macros are
+/// an integral part of this class.
 class LintelLog {
 public:
     /// Similar to the logging levels from http://www.slf4j.org/ we
