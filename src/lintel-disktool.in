@@ -458,8 +458,7 @@ sub formatDrives {
 	my $label = getPartitionLabel($partition);
 	print "($partition, $label)" if $config{debug};
 
-	my $path = call('label_to_mount_path', $label, $config{all_drives}->{$drive});
-	if ($label ne '' && $label =~ /^\w{1,12}$/o) {
+	if ($label ne '') {
 	    # Verify that label can be mapped to a path.
 	    call('label_to_mount_path', $label, $config{all_drives}->{$drive});
 	    $label_to_partition{$label} = $partition;
@@ -1045,7 +1044,7 @@ sub call {
 	unless defined $config{$fn} && ref $config{$fn} eq 'CODE';
     my $ret = eval "&{\$config{$fn}}(\@_)";
 
-    die "$fn configuration function failed: $@"
+    confess "$fn configuration function failed: $@"
 	if $@;
 
     return $ret;
