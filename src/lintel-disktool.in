@@ -458,8 +458,7 @@ sub formatDrives {
 	my $label = getPartitionLabel($partition);
 	print "($partition, $label)" if $config{debug};
 
-	my $path = call('label_to_mount_path', $label, $config{all_drives}->{$drive});
-	if ($label ne '' && $label =~ /^\w{1,12}$/o) {
+	if ($label ne '') {
 	    # Verify that label can be mapped to a path.
 	    call('label_to_mount_path', $label, $config{all_drives}->{$drive});
 	    $label_to_partition{$label} = $partition;
@@ -640,24 +639,33 @@ sub mountDrives {
     print "done.\n";
 }
 
+=pod
+
+=head2 umount [I<label-regex>...]
+
+Umount one or more of the drives.  If specified, label-regex specifies a
+regular expression that should match with the drive label names.  A filesystem
+is unmounted if it matches with any of the specified label-regexs.
+
+=cut
+
 sub umountDrives {
     my (@to_umount) = @_;
     my %mounted = getMounted();
 
-    if (@to_umount > 0) {
-	grep(s!^$config{mount_path}/!!o, @to_umount);
-	my %tmp = %mounted;
-	%mounted = ();
-	map { if (defined $tmp{$_}) {
-	    $mounted{$_} = $tmp{$_}
-	} else {
-	    print "ignore $_, not mounted\n";
-	} } @to_umount;
-    }
-
-    print "Unmounting...";
+    print "Unmounting... ";
     my $first = 1;
     foreach my $mounted (sort bydriveorder keys %mounted) {
+	if (@to_umount > 0) {
+	    my $found = 0;
+	    foreach my $substr (@to_umount) {
+		if ($mounted =~ /$substr/) {
+		    $found = 1;
+		    last;
+		}
+	    }
+	    next unless $found;
+	}
 	print ", " unless $first;
 	$first = 0;
 	print "$mounted";
@@ -1036,7 +1044,7 @@ sub call {
 	unless defined $config{$fn} && ref $config{$fn} eq 'CODE';
     my $ret = eval "&{\$config{$fn}}(\@_)";
 
-    die "$fn configuration function failed: $@"
+    confess "$fn configuration function failed: $@"
 	if $@;
 
     return $ret;
