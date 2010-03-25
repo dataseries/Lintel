@@ -13,6 +13,8 @@
 #include <map>
 
 #include <Lintel/HashMap.hpp>
+#include <Lintel/HashUnique.hpp>
+
 #include <Lintel/MersenneTwisterRandom.hpp>
 #include "boost_foreach.hpp"
 
@@ -302,6 +304,11 @@ void test_constA(const HashMap<int, int> &test_map,
     SINVARIANT(test_map.lookup(6) == NULL);
 }
 
+void test_constHashUnique(const HashUnique<int> &unique) {
+    SINVARIANT(unique.exists(3));
+    SINVARIANT(!unique.exists(0));
+}
+
 void test_const() {
     HashMap<int, int> test_map;
     HashMap<int, int> test_map2;
@@ -311,6 +318,11 @@ void test_const() {
     test_constA(test_map, test_map2);
     SINVARIANT(test_map[5] == 5 && test_map2[6] == 6 &&
 	       test_map.size() == 1 && test_map2.size() == 1);
+
+    HashUnique<int> unique;
+    unique.add(3);
+    test_constHashUnique(unique);
+    cout << "Const tests pass\n";
 }
 
 void test_keys() {
@@ -326,7 +338,6 @@ void test_keys() {
 	SINVARIANT(keys[i] == i);
     }
 }
-
 
 int main() {
     test_types();

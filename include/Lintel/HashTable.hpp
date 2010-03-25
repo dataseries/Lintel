@@ -93,13 +93,8 @@ struct HashTable_hte {
 
 
 template <class D, class HashFn, class Equal, 
-#ifdef RWSTD_SIMPLE_DEFAULT
-    class AllocHTE RWSTD_SIMPLE_DEFAULT(allocator),
-    class AllocInt RWSTD_SIMPLE_DEFAULT(allocator) >
-#else
     class AllocHTE = std::allocator<HashTable_hte<D> >,
     class AllocInt = std::allocator<int> >
-#endif
 class HashTable {
 public:
     explicit HashTable(double _target_chain_length) {

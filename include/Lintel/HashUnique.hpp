@@ -16,18 +16,10 @@
 
 template <class K,
           class KHash = HashMap_hash<const K>,
-          class KEqualFn = std::equal_to<const K> >
+          class KEqual = std::equal_to<const K> >
 class HashUnique {
 public:
-    struct KEqual {
-	KEqualFn fn;
-	bool operator()(const K &a, const K &b) {
-	    return fn(a,b);
-	}
-    };
-    
-    HashUnique() {
-    }
+    HashUnique() { }
 
     HashUnique(const HashUnique &__in) {
 	hashtable = __in.hashtable;
@@ -39,7 +31,7 @@ public:
 	return *this;
     }
 
-    bool exists(const K &k) {
+    bool exists(const K &k) const {
 	const K *v = hashtable.lookup(k);
 	return v != NULL;
     }
