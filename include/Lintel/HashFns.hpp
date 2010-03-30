@@ -182,6 +182,14 @@ namespace lintel {
 
     template <typename T> inline uint32_t hash(const T &v) { 
 	return Hash<T>()(v);
+	
+    }
+    
+    // Automatically generate the hash for pairs
+    template <typename A, typename B> inline uint32_t 
+    hashType(const std::pair<A, B> &p) {
+	uint32_t f = hash(p.first);
+	return hashBytes(& f, sizeof(uint32_t), hash(p.second));
     }
 
     inline uint32_t hashType(const std::string &a) { 
