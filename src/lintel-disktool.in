@@ -74,7 +74,7 @@ if ($cmd eq 'partition') {
 } elsif ($cmd eq 'umount') {
     umountDrives(@ARGV);
 } elsif ($cmd eq 'list') {
-    list();
+    list(@ARGV);
 } elsif ($cmd eq 'zero') {
     zeroDrives($ARGV[1]);
 } elsif ($cmd eq 'fail') {
@@ -310,6 +310,15 @@ sub list {
 
 	my @unknown_serials = grep(!defined $known_serials{$_}, @unused_serials);
 	print "Drives not listed in config: ", join(" ", @unknown_serials), "\n";
+    }
+
+    foreach my $drive (@_) {
+	$drive =~ s!^/dev/!!o;
+	if (defined $config{all_drives}->{$drive}) {
+	    print "$drive: serial=$config{all_drives}->{$drive}->{serial}\n";
+	} else {
+	    print "$drive: No information.\n";
+	}
     }
     exit(0);
 }	
