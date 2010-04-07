@@ -11,7 +11,7 @@ namespace lintel {
     public:
 	static const char * translate() {
 	    static char table[] = 
-	"+,0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ_abcdefghijklmnopqrstuvwxyz";
+	"+,0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 	    return table;
 	}
 
