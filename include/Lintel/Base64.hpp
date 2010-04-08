@@ -97,8 +97,39 @@ namespace lintel {
 	    encode(data, size, digits, &ret[0]);
 	    return ret;
 	}
+
 	static void encode(const void * data, size_t size, int32_t digits,
 			   char * ret) {
+	    const unsigned char * cdata = 
+		reinterpret_cast<const unsigned char *>(data);
+	    size_t in_off;
+	    int32_t out_off;
+	    uint32_t trans_buf = 0;
+	    uint32_t bits = 0;
+	    for(out_off=0, in_off=0;
+		in_off < size && out_off < digits; ++out_off) {
+		if (bits < 6) {
+		    trans_buf+= ((uint32_t)cdata[in_off]) << (32-8-bits);
+		    ++in_off;
+		    bits+=8;
+		}
+		ret[out_off] = translate()[trans_buf >> (32-6)];
+		trans_buf <<= 6;
+		bits-=6;
+	    }
+	    // For the spare bits..
+	    for(; bits>0 && out_off < digits; ++out_off) {
+		ret[out_off] = translate()[trans_buf >> (32-6)];
+		trans_buf <<=6;
+		bits-=6;
+	    }
+	}
+	
+	// This is the same as encode, but instead of adding zero bits at the end,
+	// it adds zero bits at the beginning; that is, it treats the input
+	// string as a big-endian binary integer.
+	static void encodeBackward(const void * data, size_t size, int32_t digits,
+				  char * ret) {
 	    const unsigned char * cdata = 
 		reinterpret_cast<const unsigned char *>(data);
 	    size_t in_off;
