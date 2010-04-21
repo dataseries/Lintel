@@ -637,6 +637,8 @@ sub mountDrives {
 	}
 
 	print "$drive ";
+	# TODO: add a way to specify mount options, e.g. for xfs, 
+	# -o logbufs=8,logbsize=256k,noatime,nodiratime,barrier 
 	my $ret = system("mount $partition $path");
 	die "mount failed" unless $ret == 0;
 	if (defined $config{chmod_as}) {
