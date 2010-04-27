@@ -19,8 +19,7 @@
 using namespace std;
 using boost::format;
 
-void testBasic()
-{
+void testBasic() {
     // mostly tested in class function order, setDebugLevel in wrong place
     LintelLog::setDebugLevel("test", 1);
 
@@ -47,24 +46,30 @@ void testBasic()
     LintelLog::error(format("%s format") % "error");
 }
 
+void testComplexMatch() {
+    LintelLog::setDebugLevel("complex*", 1);
+
+    SINVARIANT(LintelLog::wouldDebug("complex-foo"));
+    LintelLogDebug("complex-bar", "complex-match");
+    LintelLogDebug("env-foo", "env-complex-match");
+    LintelLog::info("complex-match-ok");
+}
+
 string last_message;
 LintelLog::LogType last_logtype;
 
-void saveAppender(const string &msg, const LintelLog::LogType logtype)
-{
+void saveAppender(const string &msg, const LintelLog::LogType logtype) {
     last_message = msg;
     last_logtype = logtype;
 }
 
-void testVariable(const string &cat)
-{
+void testVariable(const string &cat) {
     LintelLog::Category test(cat);
 
     LintelLogDebugLevelVariable(test, 1, "test-variable");
 }
 
-void testHooked()
-{
+void testHooked() {
     LintelLog::addAppender(boost::bind(saveAppender, _1, _2));
 
     LintelLog::info("test");
@@ -86,8 +91,7 @@ void testHooked()
     SINVARIANT(last_message.empty() && last_logtype == LintelLog::Debug);
 }
 
-void testEnv()
-{
+void testEnv() {
     LintelLog::parseEnv();
 
     LintelLogDebug("env", "env-test");
@@ -95,8 +99,7 @@ void testEnv()
 	      "environment test failed; need LINTEL_LOG_DEBUG=env set");
 }
 
-void testDebugString()
-{
+void testDebugString() {
     LintelLog::parseDebugString("ds,dslevel=5");
     LintelLogDebug("ds", "ds-test");
     SINVARIANT(last_message == "ds-test" && last_logtype == LintelLog::Debug);
@@ -110,8 +113,7 @@ void testDebugString()
 	       && last_logtype == LintelLog::Debug);
 }
 
-void testMisc()
-{
+void testMisc() {
     vector<string> known_cats;
     known_cats.push_back("known");
     known_cats.push_back("two");
@@ -123,7 +125,7 @@ void testMisc()
 
     LintelLog::parseDebugString("help");
     LintelLog::debugMessagesInitial();
-    SINVARIANT(last_message == "known debugging options: ds, dslevel, env, help, known, test, test2, test3, two");
+    INVARIANT(last_message == "known debugging options: complex-bar, complex-foo, ds, dslevel, env, env-foo, help, known, test, test2, test3, two", last_message);
 
     last_message.clear();
     LintelLog::debugMessagesFinal();
@@ -131,11 +133,10 @@ void testMisc()
 
     LintelLog::parseDebugString("LintelLog::stats");
     LintelLog::debugMessagesFinal();
-    SINVARIANT(last_message == "2 calls to slow wouldDebug path");
+    INVARIANT(last_message == "3 calls to slow wouldDebug path", last_message);
 }
 
-void testOverflow()
-{
+void testOverflow() {
     LintelLog::addAppender(boost::bind(LintelLog::consoleTimeAppender, 
 				       _1, _2));
 
@@ -149,9 +150,9 @@ void testOverflow()
 	       && last_logtype == LintelLog::Warn);
 }
 
-int main()
-{
+int main() {
     testBasic();
+    testComplexMatch();
     testHooked();
     testEnv();
     testDebugString();

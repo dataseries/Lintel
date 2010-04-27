@@ -23,14 +23,17 @@
     environment variable, and run your program with LINTEL_LOG_DEBUG set to
     class-name.  LintelLog will then print out the debug messages to stdout.
    
-    If you have informational, warning or error messages, you can print those with
-    LintelLog::info,warn,error respectively.
+    If you have informational, warning or error messages, you can print those
+    with LintelLog::info,warn,error respectively.
    
     If you want multiple debug levels, you would use 
     LintelLogDebugLevel("another-category", 3, "details")
     and then set LINTEL_LOG_DEBUG to another-category=3
    
-    You can specify multiple debugging categories using comma separation.
+    You can specify multiple debugging categories using comma separation.  You
+    can also match multiple categories at the same time by putting a '*' at the
+    end of the category in LINTEL_LOG_DEBUG, e.g. LINTEL_LOG_DEBUG='test-*'
+    would match both test-1 and test-2.
    
     Advanced features:
    
@@ -280,17 +283,17 @@ private:
     static void maybeInitInstance();
 
     struct instance_data {
+	SimpleMutex mutex;
 	std::vector<uint8_t> debug_levels;
 	HashMap<std::string, uint32_t> category2id;
+	typedef std::pair<std::string, uint8_t> complex_match; // prefix, level
+	std::vector<complex_match *> complex_matches;
 	std::vector<appender_fn> appenders;
-	SimpleMutex mutex;
 	// use about 4k of space to store the debugging levels; it
 	// turns out there isn't any race-free way to resize this once
 	// we go multi-threaded, so rely on the calls to
 	// reserveCategories() to resize this if necessary.
-	instance_data() {
-	    debug_levels.reserve(4000); 
-	}
+	instance_data();
     };
 
     static instance_data *instance;

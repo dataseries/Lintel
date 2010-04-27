@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-LINTEL_LOG_DEBUG=env ./lintel_log >log_out 2>log_err
+LINTEL_LOG_DEBUG=env\* ./lintel_log >log_out 2>log_err
 
 cat >log_out.correct <<EOF
 report string
@@ -12,6 +12,8 @@ report 5
 line2 happy
 DEBUG: debug format
 INFO: info format
+DEBUG: complex-match
+INFO: complex-match-ok
 LintelLog tests successful
 EOF
 
@@ -28,4 +30,4 @@ EOF
 cmp log_out log_out.correct
 cmp log_err log_err.correct
 
-rm log_out log_err log_out.correct log_err.correct
+# rm log_out log_err log_out.correct log_err.correct

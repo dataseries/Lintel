@@ -26,16 +26,14 @@ LintelLog::instance_data *LintelLog::instance;
 
 static unsigned slow_woulddebug_calls;
 
-bool LintelLog::wouldDebug(const string &category, unsigned level)
-{
+bool LintelLog::wouldDebug(const string &category, unsigned level) {
     ++slow_woulddebug_calls;
     maybeInitInstance();
     uint32_t id = categoryToId(category);
     return instance->debug_levels[id] >= level;
 }
 
-void LintelLog::reserveCategories(unsigned max_categories)
-{
+void LintelLog::reserveCategories(unsigned max_categories) {
     maybeInitInstance();
     instance->mutex.lock();
     SINVARIANT(max_categories >= instance->debug_levels.size());
@@ -43,8 +41,7 @@ void LintelLog::reserveCategories(unsigned max_categories)
     instance->mutex.unlock();
 }
 
-void LintelLog::parseEnv()
-{
+void LintelLog::parseEnv() {
     char *env = getenv("LINTEL_LOG_DEBUG");
     if (env == NULL) {
 	return;
@@ -52,8 +49,7 @@ void LintelLog::parseEnv()
     parseDebugString(env);
 }
 
-void LintelLog::parseDebugString(const string &debug_options)
-{
+void LintelLog::parseDebugString(const string &debug_options) {
     vector<string> parts;
     split(debug_options, ",", parts);
     for(vector<string>::iterator i = parts.begin(); 
@@ -69,30 +65,43 @@ void LintelLog::parseDebugString(const string &debug_options)
     }
 }
 
-void LintelLog::setKnownCategories(const vector<string> &categories)
-{
+void LintelLog::setKnownCategories(const vector<string> &categories) {
     for(vector<string>::const_iterator i = categories.begin(); 
 	i != categories.end(); ++i) {
 	categoryToId(*i);
     }
 }
 
-void LintelLog::setDebugLevel(const string &category, uint8_t level)
-{
+void LintelLog::setDebugLevel(const string &category, uint8_t level) {
     maybeInitInstance();
 
-    // Assuming that readers will either see the old or the new value,
-    // and hence we won't have to lock the read path.
+    // Assuming that readers will either see the old or the new value, and
+    // hence we won't have to lock the read path.  This is why the strings are
+    // stored in a pointer.
     instance->mutex.lock();
-    uint32_t id = lockedCategoryToId(category);
-    SINVARIANT(instance->debug_levels.size() > id);
-    instance->debug_levels[id] = level;
-    instance->mutex.unlock();
-    maybeCategoryLimitWarning(id);
+
+    // TODO: add support for starting with ( and ending with ) to be a regex match if we 
+    // have the pcre library.
+    if (!category.empty() && category[category.size() - 1] == '*') {
+	SINVARIANT(instance->complex_matches.size() < instance->complex_matches.capacity());
+
+	instance_data::complex_match *tmp 
+	    = new instance_data::complex_match(category.substr(0, category.size() - 1), level);
+	SimpleMutex memory_barrier;
+	memory_barrier.lock();
+	memory_barrier.unlock();
+	instance->complex_matches.push_back(tmp);
+	instance->mutex.unlock();
+    } else {
+	uint32_t id = lockedCategoryToId(category);
+	SINVARIANT(id < instance->debug_levels.size());
+	instance->debug_levels[id] = level;
+	instance->mutex.unlock();
+	maybeCategoryLimitWarning(id);
+    }
 }
 
-void LintelLog::debugMessagesInitial()
-{
+void LintelLog::debugMessagesInitial() {
     static Category help("help");
     if (wouldDebug(help)) {
 	vector<string> debug_names;
@@ -112,15 +121,13 @@ void LintelLog::debugMessagesInitial()
     }
 }
 
-void LintelLog::debugMessagesFinal()
-{
+void LintelLog::debugMessagesFinal() {
     LintelLogDebug("LintelLog::stats", 
 		   format("%d calls to slow wouldDebug path")
 		   % slow_woulddebug_calls);
 }
 
-void LintelLog::addAppender(appender_fn fn)
-{
+void LintelLog::addAppender(appender_fn fn) {
     maybeInitInstance();
     instance->mutex.lock();
     instance->appenders.push_back(fn);
@@ -134,8 +141,7 @@ static string str_WARN("WARN");
 static string str_ERROR("ERROR");
 static string str_sep(": ");
 
-const string &LintelLog::logTypeToString(const LogType logtype)
-{
+const string &LintelLog::logTypeToString(const LogType logtype) {
     switch(logtype)
 	{
 	case Report: return str_empty;
@@ -147,8 +153,7 @@ const string &LintelLog::logTypeToString(const LogType logtype)
 	}
 }
 
-void LintelLog::consoleAppender(const std::string &msg, LogType logtype)
-{
+void LintelLog::consoleAppender(const std::string &msg, LogType logtype) {
     switch(logtype) 
 	{
 	case Report: cout << msg << "\n"; break;
@@ -164,8 +169,7 @@ void LintelLog::consoleAppender(const std::string &msg, LogType logtype)
 	}
 }
 
-void LintelLog::consoleTimeAppender(const std::string &msg, LogType logtype)
-{
+void LintelLog::consoleTimeAppender(const std::string &msg, LogType logtype) {
     struct timeval t;
     CHECKED(gettimeofday(&t,NULL)==0, "how did gettimeofday fail?");
     
@@ -185,8 +189,7 @@ void LintelLog::consoleTimeAppender(const std::string &msg, LogType logtype)
 	}
 }
 
-void LintelLog::log(const string &msg, const LogType log_type)
-{
+void LintelLog::log(const string &msg, const LogType log_type) {
     maybeInitInstance();
     // TODO: the next lock statement can deadlock because we were called
     // recursively.  Unfortunately, one (large) case where this can happen
@@ -207,8 +210,7 @@ void LintelLog::log(const string &msg, const LogType log_type)
     instance->mutex.unlock();
 }
 
-uint32_t LintelLog::categoryToId(const string &category)
-{
+uint32_t LintelLog::categoryToId(const string &category) {
     maybeInitInstance();
     instance->mutex.lock();
     uint32_t ret = lockedCategoryToId(category);
@@ -218,8 +220,7 @@ uint32_t LintelLog::categoryToId(const string &category)
     return ret;
 }
 
-void LintelLog::maybeCategoryLimitWarning(uint32_t id)
-{
+void LintelLog::maybeCategoryLimitWarning(uint32_t id) {
     if (((id * 5) / 4) >= instance->debug_levels.capacity()) {
 	static bool generated_warning = false;
 	if (!generated_warning) {
@@ -231,8 +232,7 @@ void LintelLog::maybeCategoryLimitWarning(uint32_t id)
     }
 }
 
-uint32_t LintelLog::lockedCategoryToId(const string &category)
-{
+uint32_t LintelLog::lockedCategoryToId(const string &category) {
     uint32_t ret;
     uint32_t *t = instance->category2id.lookup(category);
     if (t != NULL) {
@@ -245,12 +245,18 @@ uint32_t LintelLog::lockedCategoryToId(const string &category)
 	instance->category2id[category] = ret;
 	instance->debug_levels.resize(ret+1);
 	SINVARIANT(instance->debug_levels[ret] == 0);
+	for(vector<instance_data::complex_match *>::iterator i = instance->complex_matches.begin(); 
+	    i != instance->complex_matches.end(); ++i) {
+	    if (prefixequal(category, (**i).first)) {
+		instance->debug_levels[ret] = (**i).second;
+		break; // first match
+	    }
+	}
     }
     return ret;
 }
 
-void LintelLog::maybeInitInstance()
-{
+void LintelLog::maybeInitInstance() {
     static SimpleMutex init_mutex;
 
     // is this actually safe?  Really don't want to have to take the
@@ -265,4 +271,9 @@ void LintelLog::maybeInitInstance()
 	}
 	init_mutex.unlock();
     }
+}
+
+LintelLog::instance_data::instance_data() {
+    debug_levels.reserve(4000); 
+    complex_matches.reserve(100);
 }
