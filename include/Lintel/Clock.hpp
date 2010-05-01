@@ -217,10 +217,12 @@ public:
 	return ret;
     }
 
+    /// Extracts only the seconds portion of in
     static uint32_t TfracToSec(Tfrac in) {
 	return static_cast<uint32_t>(in >> 32);
     }
 
+    /// Extracts only the microseconds portion of in
     static uint32_t TfracToMicroSec(Tfrac in) {
 	in = in & 0xFFFFFFFFULL;
 	// Have to convert through a double because the conversion is
@@ -229,6 +231,7 @@ public:
 	return static_cast<uint32_t>(round(tmp));
     }
 
+    /// Extracts only the nanoseconds portion of in
     static uint32_t TfracToNanoSec(Tfrac in) {
 	in = in & 0xFFFFFFFFULL;
 	// Have to convert through a double because the conversion is
