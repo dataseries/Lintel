@@ -28,8 +28,30 @@ namespace lintel {
 	    return inverse;
 	}
 	
-	// TODO - decode... don't need it yet.  But I did make the
-	// inverse translation table for you.
+	static std::string decode(std::string &data) {
+	    return encode(data.data(), data.size());
+	}
+
+	static std::string decode(const char *data, int32_t size) {
+	    const char *table = detranslate();
+	    int32_t ret_size = ((size*6)/8);
+	    std::string ret(ret_size, translate()[0]);
+	    int32_t out_off = 0;
+	    uint32_t trans_buf = 0;
+	    uint32_t bits = 0;
+	    for(size_t in_off = 0;
+		in_off < size && out_off < ret_size; ++in_off) {
+		trans_buf += ((uint32_t)table[(uint32_t)data[in_off]]) << (32-6-bits);
+		bits += 6;
+		if (bits >= 8) {
+		    ret[out_off] = trans_buf >> (32-8);
+		    trans_buf <<= 8;
+		    ++out_off;
+		    bits -= 8;
+		}
+	    }
+	    return ret;
+	}
 	
 	static std::string encode(uint32_t number, int32_t digits) {
 	    if (digits==0) {
