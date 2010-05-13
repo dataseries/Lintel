@@ -79,7 +79,8 @@ public:
 
     StatsQuantile(double quantile_error = 0.01, 
 		  int64_t Nbound = 1000 * 1000 * 1000, 
-		  int print_nrange = 10);
+		  int print_nrange = 10,
+		  bool lazy = true);
 
     virtual ~StatsQuantile();
     virtual void reset();
@@ -176,6 +177,8 @@ private:
     int *collapse_pos;
     bool collapse_even_low;
     int print_nrange;
+
+    bool lazy;
 
     double collapseVal(int buffer) const {
 	return all_buffers[buffer][collapse_pos[buffer]];

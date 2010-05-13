@@ -43,9 +43,9 @@ namespace {
     };
 
     struct BK {
-	uint16_t b, k;
+	uint32_t b, k;
 	BK() : b(0), k(0) { }
-	BK(uint16_t in_b, uint16_t in_k) : b(in_b), k(in_k) { }
+	BK(uint32_t in_b, uint32_t in_k) : b(in_b), k(in_k) { }
     };
 
     HashMap<ErrorNbound, BK> bk_cache;
@@ -72,16 +72,16 @@ namespace {
     
 }
 
-StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _print_nrange)
+StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _print_nrange, bool lazy)
     : quantile_error(_quantile_error), Nbound(in_nbound < 100 ? 100 : in_nbound), 
-      print_nrange(_print_nrange)
+      print_nrange(_print_nrange), lazy(lazy)
 {
     // sanity check that we haven't been called in a weird/wrong way.
     INVARIANT(quantile_error < 0.2, format("whoa, quantile_error %.3g >= 0.2??") % quantile_error);
     double tmp_nbound = Nbound; // easy for calculations
     INVARIANT(in_nbound > 1, format("Usage error? StatsQuantile nbound set to %d?") % in_nbound);
 	      
-    int best_b = -1, best_k = -1;
+    int32_t best_b = -1, best_k = -1;
 
     // If we are making lots of smallish StatsQuantiles, we can spend
     // too much of our time doing this, so cache the sizes.
@@ -94,10 +94,10 @@ StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _pri
 	// The hunt for b = nbuffers, and k = buffer_size is on, following 
 	// section 4.5 in the paper
 
-	const int max_b = 30;
-	const int max_h = 40;
-	for(int b=2;b<max_b;b++) {
-	    int h = 3;
+	const int32_t max_b = 30;
+	const int32_t max_h = 40;
+	for(int32_t b=2;b<max_b;b++) {
+	    int32_t h = 3;
 	    for(;h < max_h;h++) {
 		double v = (h-2) * choose(b+h-2,h-1) - choose(b+h-3,h-3) + choose(b+h-3,h-2);
 		if (v > 2 * quantile_error * tmp_nbound) {
@@ -150,31 +150,42 @@ void StatsQuantile::init(int _nbuffers, int _buffer_size) {
     buffer_weight = new int64_t[nbuffers];
     buffer_level = new int[nbuffers];
     buffer_sorted = new bool[nbuffers];
-    tmp_buffer = new double[buffer_size];
+    if (!lazy) {
+	tmp_buffer = new double[buffer_size];
+    } else {
+	tmp_buffer = NULL;
+    }
     collapse_pos = new int[buffer_size];
     init_buffers();
 }
 
 void StatsQuantile::init_buffers() {
     for(int i=0;i<nbuffers;i++) {
-	if (all_buffers[i] == NULL) {
+	if (all_buffers[i] == NULL && ! lazy) {
 	    all_buffers[i] = new double[buffer_size];
 	}
 	// touch all the space to make sure it is allocated; necessary
 	// to avoid demand allocation (which can create long delays
 	// when used in Buttress2)
-	for(int j=0;j<buffer_size;j+=32) {
-	    all_buffers[i][j] = 0.0;
+	if (all_buffers[i] != NULL) {
+	    for(int j=0;j<buffer_size;j+=32) {
+		all_buffers[i][j] = 0.0;
+	    }
 	}
 	buffer_weight[i] = -1;
 	buffer_level[i] = -1;
 	buffer_sorted[i] = false;
     }
+
     cur_buffer = 0;
     cur_buffer_pos = 0;
     buffer_weight[cur_buffer] = 1;
     buffer_level[cur_buffer] = 0;
     collapse_even_low = true;
+    if (lazy) {
+	cur_buffer = -1;
+	cur_buffer_pos = buffer_size+1;
+    }
 }
 
 StatsQuantile::~StatsQuantile() {
@@ -197,10 +208,13 @@ void StatsQuantile::reset() {
 void StatsQuantile::addQuantile(const double value) {
     if (cur_buffer_pos >= buffer_size) {
 	cur_buffer += 1;
+	if (lazy && all_buffers[cur_buffer] == NULL) {
+	    all_buffers[cur_buffer] = new double[buffer_size];
+	}
 	cur_buffer_pos = 0;
 	if (cur_buffer == nbuffers) {
 	    collapse();
-	} else {
+	} else if (cur_buffer>0) {
 #if 1
 	    // do the sort here to amortize the work
 	    sort(all_buffers[cur_buffer - 1],
@@ -231,13 +245,17 @@ void StatsQuantile::add(const Stats &_stat) {
 
     Stats::add(_stat); 
 
-    if (cur_buffer == 0 && cur_buffer_pos == 0 && // we are empty
+    if ((cur_buffer == -1 || 
+	 (cur_buffer == 0 && cur_buffer_pos == 0)) && // we are empty
 	buffer_size == stat->buffer_size && // we are compatible
 	nbuffers == stat->nbuffers) {
 	INVARIANT(countll() == _stat.countll(), "??");
 	INVARIANT(stat->cur_buffer < nbuffers, "??");
 	for(int i=0; i <= stat->cur_buffer; ++i) {
 	    // Will copy some useless stuff in last buffer.
+	    if (all_buffers[i] == NULL) {
+		all_buffers[i] = new double[buffer_size];
+	    }
 	    memcpy(all_buffers[i], stat->all_buffers[i],
 		   sizeof(double) * buffer_size);
 	    buffer_weight[i] = stat->buffer_weight[i];
@@ -593,7 +611,9 @@ void StatsQuantile::collapse() {
     for(int i=first_buffer; i < nbuffers; ++i) {
 	pq.push(make_pair(collapseVal(i), i));
     }
-
+    if (tmp_buffer == NULL) {
+	tmp_buffer = new double[buffer_size];
+    }
     while(next_output_pos < buffer_size) {
 	int min_buffer = pq.top().second;
 	double min_val = pq.top().first;
