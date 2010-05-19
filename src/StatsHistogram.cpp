@@ -647,8 +647,8 @@ StatsHistogramUniformAccum::add(const double index_value,
     if (is_scalable  &&  (index_value < bin_low || index_value >= bin_high)) {
 	num_rescales++;		// About to do a reset, so count it
 
-	unsigned long i, j;
 	while (index_value < bin_low) {	// Add bins to lower end of range
+	    int i,j;
 	    bin_low -= bin_high - bin_low;
 	    for (i = num_bins-1, j = num_bins-2;
 		 0 <= j;
@@ -665,6 +665,7 @@ StatsHistogramUniformAccum::add(const double index_value,
 	    bin_width += bin_width;
 	}
 	while (index_value >= bin_high) {	// Add bins to upper end of range
+	    unsigned i,j;
 	    bin_high += bin_high - bin_low;
 	    for (i=0, j=0; i<(num_bins/2); i++, j+=2) {
 		bins[i] = bins[j]+bins[j+1];

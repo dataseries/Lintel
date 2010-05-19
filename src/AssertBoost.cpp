@@ -37,7 +37,7 @@ const char * AssertBoostException::what() throw () {
     } catch (...) {
 	ret = default_what;
     }
-    return default_what;
+    return ret;
 }
 
 const std::string AssertBoostException::summary() {

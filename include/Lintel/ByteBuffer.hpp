@@ -327,7 +327,6 @@ namespace lintel {
 	/// @param size length of buf
 	void append(const void *buf, size_t size) {
 	    uniqueify();
-	    SINVARIANT(size >= 0);
 	    if (writeAvailable() < size) {
 	        int needed = size - writeAvailable();
 		resizeBuffer(bufferSize() + needed);
