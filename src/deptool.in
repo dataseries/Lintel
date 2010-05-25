@@ -556,8 +556,9 @@ option so that these questions will be automatically answered.
 
 After you have run init, you will have a key file.  To be able to sync to a
 particular server, you need to send the public key to the monotone
-administrator for that server.  For HPL, the administrator of usi.hpl.hp.com is
-anderse@hpl.hp.com.
+administrator for that server.  You can get the key file by running mtn pubkey
+I<email-address>, the same address you used when running deptool init.  For
+HP Labs, the administrator of usi.hpl.hp.com is anderse@hpl.hp.com.
 
 B<Warning:> If you already have a key set up on one machine, you should just
 copy your keys directory to the new machine rather than creating a new key.
