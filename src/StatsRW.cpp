@@ -123,19 +123,19 @@ StatsRW::printRome(int depth, std::ostream &out) const
       all->printRome(depth,out);
   } else {
       out << spaces << "{\n";
-      if (read) {
+      if (read->count() != 0) {
 	  out << spaces << "  { read {\n";
 	  read->printRome(depth+4,out);
 	  out << spaces << "  }}\n";
       }
 
-      if (write) {
+      if (write->count() != 0) {
 	  out << spaces << "  { write {\n";
 	  write->printRome(depth+4,out);
 	  out << spaces << "  }}\n";
       }
 
-      if (all) {
+      if (all->count() != 0) {
 	  out << spaces << "  { all {\n";
 	  all->printRome(depth+4,out);
 	  out << spaces << "  }}\n";
@@ -164,19 +164,19 @@ void StatsRW::printTabular(int depth, std::ostream& out) const
       all->printTabular(depth,out);
   } else {
       out << spaces << "StatsRW begin\n";
-      if (read) {
+      if (read->count() != 0) {
 	  out << spaces << "read begin\n";
 	  read->printTabular(depth+4,out);
 	  out << spaces << "read end\n";
       }
 
-      if (write) {
+      if (write->count() != 0) {
 	  out << spaces << "write begin\n";
 	  write->printTabular(depth+4,out);
 	  out << spaces << "write end\n";
       }
 
-      if (all) {
+      if (all->count() != 0) {
 	  out << spaces << "all begin\n";
 	  all->printTabular(depth+4,out);
 	  out << spaces << "all end\n";

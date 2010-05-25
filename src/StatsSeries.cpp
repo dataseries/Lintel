@@ -125,7 +125,6 @@ StatsSeries::reset()
 double
 StatsSeries::autocovariance(unsigned lag) const
 {
-  SINVARIANT(lag>=0);
   SINVARIANT(lag<=max_lag);
   
   double lastsamples;

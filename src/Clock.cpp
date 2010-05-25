@@ -99,6 +99,7 @@ namespace {
 		}
 	    }
 	}
+	INVARIANT(closedir(dir) == 0, "closedir failed");
 	INVARIANT(cpu_count > 0, "can't check frequency scaling, no cpus found?");
 	if (all_ok) {
 	    may_have_frequency_scaling = false;
