@@ -53,6 +53,7 @@ SET(BIB_FILES
     sosp.bib
     sss.bib
     supercomputing-review.bib
+    tcs.bib
     tcsc.bib
 		tocs.bib
 		tods.bib
