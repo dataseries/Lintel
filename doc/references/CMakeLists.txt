@@ -50,6 +50,7 @@ SET(BIB_FILES
     sigcomm.bib
 		sigmetrics.bib
     sigmod.bib
+    socc.bib
     sosp.bib
     sss.bib
     supercomputing-review.bib
