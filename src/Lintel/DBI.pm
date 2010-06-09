@@ -200,7 +200,12 @@ sub load_sths {
 	    if $invalid_sth_names{$k};
 	# TODO: delay prepare's until use in the Lintel::DBI::sth
 	# AUTOLOAD and then cache.
-	$this->{sth}->{$k} = $this->{dbh}->prepare($v);
+	eval {
+	    $this->{sth}->{$k} = $this->{dbh}->prepare($v);
+	}; 
+	if ($@) {
+	    confess("Unable to prepare: $@: statement '$v'");
+	}
 	$this->{sth}->{__definitions}->{$k} = $v;
     }
 }
@@ -316,8 +321,13 @@ sub runSQL {
     confess "expected array reference" unless ref $statements eq 'ARRAY';
 
     foreach my $statement (@$statements) {
-	my $rows = $self->{dbh}->do($statement)
-	    or confess "Failed to run statement '$statement'";
+        eval {
+	    my $rows = $self->{dbh}->do($statement)
+		or confess "Failed to run statement '$statement'";
+	};
+	if ($@) {
+	    confess "$@: statement '$statement'";
+	}
     }
 }
 
