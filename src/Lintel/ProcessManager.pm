@@ -81,7 +81,17 @@ sub DESTROY {
 
     if ($this->nChildren() > 0) {
 	unless (defined $this->{auto_kill_on_destroy}) {
-	    warn "Lintel::ProcessManager($$): deleting process manager with children still present, auto-kill\n ";
+	    warn "Lintel::ProcessManager($$): deleting process manager with children still present:\n";
+	    while (my ($k, $v) = each %{$this->{children}}) {
+		my $command = 'unknown';
+		if (ref $v->{cmd} eq 'ARRAY') {
+		    $command = join(" ", @{$v->{cmd}});
+		} elsif (ref $v->{cmd} eq 'CODE') {
+		    $command = "Function: $v->{cmd}";
+		}
+		warn "  pid $k, command $command\n";
+		warn "Automatically killing children";
+	    }
 	    $this->{auto_kill_on_destroy} = 1;
 	}
 	if ($this->{auto_kill_on_destroy}) {
@@ -94,18 +104,26 @@ sub DESTROY {
 }
 
 sub waitForFile {
-    my ($this, $path) = @_;
+    my ($this, $path, $pid) = @_;
 
     return unless defined $path;
+    die "internal" unless defined $pid;
     print "Lintel::ProcessManager($$): Wait for file $path to be created\n" if $this->{debug};
     for(my $start = time; ! -f $path; ) {
 	my $delay = time - $start;
-	die "Waited too long ($delay seconds) for fork to make $path" 
-	    unless $delay < 3;
-	select(undef,undef,undef,0.01);
+	if ($delay >= 3) {
+	    warn "Waited too long ($delay seconds) for fork to make $path";
+	    die "Process $pid has exited; giving up."
+		unless kill(0, $pid) >= 1;
+	    die "Waited way too long; giving up."
+		if $delay > 30;
+	    select(undef,undef,undef,0.25); # sleep longer now.
+	} else {
+	    select(undef,undef,undef,0.01);
+	}
     }
 }
-	
+
 =pod
 
 =head2 $mgr->fork(%options)
@@ -214,10 +232,14 @@ sub fork {
     }
 
     print "Lintel::ProcessManager($$): Parent ($pid)\n" if $this->{debug};
-    $this->waitForFile($opts{stdout});
-    $this->waitForFile($opts{stderr}) unless defined $opts{stderr} && $opts{stderr} eq 'STDOUT';
+    $this->waitForFile($opts{stdout}, $pid);
+    $this->waitForFile($opts{stderr}, $pid)
+	unless defined $opts{stderr} && $opts{stderr} eq 'STDOUT';
 
-    $this->{children}->{$pid} = $opts{exitfn};
+    $this->{children}->{$pid} =	{
+				 exitfn => $opts{exitfn},
+				 cmd => $opts{cmd}
+				};
 
     return $pid;
 }
@@ -256,7 +278,7 @@ sub wait {
 	    unless (exists $this->{children}->{$child}) {
 		warn "Unexpected pid $child exited with status $status";
 	    } else {
-		my $fn = $this->{children}->{$child};
+		my $fn = $this->{children}->{$child}->{exitfn};
 		delete $this->{children}->{$child}; # in case fn calls wait
 		&$fn($child, $status) if defined $fn;
 	    }
