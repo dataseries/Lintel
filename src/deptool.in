@@ -100,6 +100,7 @@ sub usage {
    cmake # run cmake with special options for current branch
    pin <revision> # pin branch at a particular revision
    code-review <revision...> # code-review a revision
+   review-status <revision/selector> # check the review status
    help [commands|options|environment|command-name] # get help
 
 =head1 OVERVIEW
@@ -2810,9 +2811,9 @@ sub reviewStatus {
 	@revisions = selectRevisions(@revisions);
     }
 
-    my $certs = vcGetCertificates(@revisions);
-
     foreach my $revision (@revisions) {
+	my $certs = vcGetCertificates($revision);
+
 	my $rev_certs = $certs->{$revision};
 	next if $unreviewed_only && defined $rev_certs->{review};
 	die "Missing changelog cert on $revision?"
@@ -3694,8 +3695,8 @@ sub simpleParse {
         my $match = $matches->[2*$i];
         my $var = $matches->[2*$i+1];
 
-        die "?? $i" unless defined $match;
-        die "Error on line $i expected $match, got '$_'"
+        confess "?? $i" unless defined $match;
+        confess "Error on line $i expected $match, got '$_'"
             unless /$match/;
         $ret{$var} = $1 if defined $var;
     }
@@ -3758,7 +3759,7 @@ sub vcGetCertificates {
 				     qr/^Key\s+: (\S+)$/o => 'key',
 				     qr/^Sig\s+: (\S+)$/o => 'sig',
 				     qr/^Name\s+: (\S+)$/o => 'name',
-				     qr/^Value\s+: (.+)$/o => 'value' ]);
+				     qr/^Value\s+: (.*)$/o => 'value' ]);
 	    $info{value} .= "\n";
 	    for ($i += 5; $i < @lines && $lines[$i] !~ /^-+$/o; ++$i) {
 		$_ = $lines[$i];
