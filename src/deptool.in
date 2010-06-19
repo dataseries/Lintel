@@ -34,6 +34,9 @@ use Safe;
 use Sys::Hostname;
 use Time::HiRes 'time';
 
+# TODO: split this file into separate pieces for the different commands or
+# something, it's gotten gigantic.
+
 BEGIN {
     # RHEL5 doesn't have Digest::SHA1 by default, only MD5
     eval "use Digest::SHA1 'sha1_hex';";
@@ -287,6 +290,7 @@ my %commands = ('checkout' => \&depCheckout,
                 'cmake' => \&runCMake,
                 'pin' => \&setPin,
                 'code-review' => \&codeReview,
+		'review-status' => \&reviewStatus,
                 'mtnpull' => sub { mtnOp("pull"); },
                 'mtnpush' => sub { mtnOp("push"); },
                 'mtnsync' => sub { mtnOp("sync"); },
@@ -2285,7 +2289,7 @@ sub depSyncOne {
 The code-review command is designed to help performing code reviews of
 a set of related changes.  For a single revision, it is exactly
 equivalent to running kdiff3 on all files that were changed in
-I<revision>.  
+I<revision>.
 
 If multiple revisions are specified, the first step is to build a
 single diff between the parent of the earliest revision specified and
@@ -2296,7 +2300,7 @@ revision I<r> in date order, it will apply the patch between I<r> and
 I<r>'s parent, which may not be the previous listed revision.
 Assuming each of the patch commands succeeds, the resulting directory
 will be the equivalent of just applying the updates specified by the
-revisions in order.  
+revisions in order.
 
 If one of the patches does not succeed, the code review will prompt
 the user to make a repair patch, in particular by creating the file
@@ -2327,7 +2331,7 @@ diff ordering file changes.
 
 print a list of all the files that are going to be compared
 
-=item exit 
+=item exit
 
 stop the code review; do not clean up temporary files.
 
@@ -2341,9 +2345,8 @@ get help usage
 
 =item I<filename-substring>
 
-select the unique filename that matches I<filename-substring> to be
-reviewed next, or if multiple files match, then print out an error
-message.
+select the unique filename that matches I<filename-substring> to be reviewed
+next, or if multiple files match, then choose the alphabetically first one.
 
 =back
 
@@ -2391,7 +2394,7 @@ sub codeReview {
                                  qr/^Author:/o => undef,
                                  qr/^Date: (\S+)$/o => 'date',
 				 qr/^Branch: (\S+)$/o => 'branch' ]);
-        
+
         $parents{$info{revision}} = $info{ancestor};
         $dates{$info{revision}} = $info{date};
 	$branch = $info{branch} unless defined $branch;
@@ -2434,7 +2437,7 @@ sub codeReviewSequence {
     my $database = $mtn_options{database};
     die "missing db in .../_MTN/options" 
         unless defined $database;
-    
+
     my $start = $parents->{$revisions[0]};
 
     print "Trying to build single sequence diff from ", 
@@ -2442,7 +2445,7 @@ sub codeReviewSequence {
       "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
 
     codeReviewCheckout($database, "$basedir/$start", $start);
-    
+
     my $last = $start;
     while (@revisions > 0) {
         my $to = $revisions[0];
@@ -2484,14 +2487,14 @@ sub makeDiffOrder {
 	  my $thrift_key = $suffix eq 'thrift' ? 0 : 1;
           my $header_key = $suffix eq 'hpp' ? 0 : 1;
           my $cmake_key = $name =~ /^CMake/o ? 0 : 1;
-          
+
           # sort cmake files first, then tests, then by filename 
           # sorting headers before sources.
-          
+
           $file_key{$_} = "$cmake_key-$test_key-$name-$header_key";
       } @changed;
     @changed = sort { $file_key{$a} cmp $file_key{$b} } @changed;
-    
+
     my $fh = new FileHandle ">$basedir/diff-order"
         or die "bad";
     print $fh join("\n", @changed), "\n";
@@ -2562,6 +2565,10 @@ sub kdiffDirs {
             };
             # warn "kdiff3 command failed (ignoring)" if $@;
             $cur = $next;
+	} elsif (/^reviewed\s*(.*)$/o) {
+	    markReviewed($revisions, $1);
+            runCommand("rm -rf $basedir");
+            last;
         } elsif ($_ eq 'auto') {
             $auto = -M "$basedir/diff-order";
         } elsif ($_ eq 'files') {
@@ -2577,8 +2584,9 @@ sub kdiffDirs {
 
 auto: skip the prompt for a command until the next file to diff changes
 files: list the files we will diff.
-exit: exit from deptool code-review-diff
+reviewed <optional-comment>: mark the revisions as reviewed, and then finish.
 finish: delete the code review temporary directories and exit
+exit: exit from deptool code-review-diff
 help: show this help
 *: try to find a file with this as a substring and diff it next.
 END_OF_HELP
@@ -2645,19 +2653,21 @@ sub selectPrevDiffFile {
         print "\n\n************\nNo match for $target found. Choices:\n", 
             join("\n", @order), "\n";
         return $cur;
-    } elsif (@match > 1) {
+    } 
+
+    if (@match > 1) {
+	@match = sort @match;
         print "\n\n************\nMultiple matches for $target found:\n",
             join("\n", @match), "\n";
-        return $cur;
-    } else {
-        for(my $i=0; $i < @order; ++$i) {
-            if ($order[$i] eq $match[0]) {
-                return "*start*" if $i == 0;
-                return $order[$i-1];
-            }
-        }
-        die "??";
     }
+
+    for(my $i=0; $i < @order; ++$i) {
+	if ($order[$i] eq $match[0]) {
+	    return "*start*" if $i == 0;
+	    return $order[$i-1];
+	}
+    }
+    die "??";
 }
 
 sub getDiffOrder {
@@ -2672,36 +2682,22 @@ sub getDiffOrder {
     return @order;
 }
 
-sub getCmdOutput {
-    my($cmd) = @_;
+sub markReviewed {
+    my($revisions, $comment) = @_;
 
-    my $fh = new FileHandle "$cmd 2>/dev/null |" 
-        or die "Unable to run $cmd: $!";
-    my @ret = <$fh>;
-    close($fh) or confess "close failed: $!\ncommand is $cmd";
-    die "$cmd failed" unless $? == 0;
-    return @ret;
-}
-
-sub simpleParse {
-    my($data, $matches) = @_;
-
-    my %ret;
-
-    # print join(", ", @$matches);
-    die "bad parse" unless @$data >= @$matches;
-    for(my $i=0; $i < @$matches/2; ++$i) {
-        local $_ = $data->[$i];
-        chomp;
-        my $match = $matches->[2*$i];
-        my $var = $matches->[2*$i+1];
-
-        die "?? $i" unless defined $match;
-        die "Error on line $i expected $match, got '$_'"
-            unless /$match/;
-        $ret{$var} = $1 if defined $var;
+    $comment ||= '';
+    my @at = localtime(time);
+    my $at = sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $at[5]+1900, $at[4]+1, $at[3],
+		     $at[2], $at[1], $at[0]);
+    if (length $comment < 1) {
+	$comment = $at;
+    } else {
+	$comment = "$at: $comment";
     }
-    return %ret;
+
+    foreach my $revision (@$revisions) {
+	vcAddCertificate($revision, 'review', $comment);
+    }
 }
 
 sub codeReviewCheckout {
@@ -2762,6 +2758,119 @@ sub findFilesPrefix {
     find(sub { local $_ = $File::Find::name;
                die "??" unless s,^$prefix\b/?,,;
                push(@ret, $_); }, $prefix);
+    return @ret;
+}
+
+=pod
+
+=head2 review-status [I<revision>...] | [I<selector>...]
+
+The C<review-status> command will print out the review status for a set of
+listed revisions, or the revisions selected by the selectors.  Valid selectors
+include:
+
+=over 4
+
+=item who=I<regex>
+
+Include the revision of the author of the revision matches I<regex>; usually
+just the username would be used.
+
+=item min-date=I<date>
+
+Specify a minimum date to include in the list, usually used to prune out early
+revisions that were reviewed before using this feature.
+
+=item max-date=I<date>
+
+Specify a maximum date to include in the list, useful for reducing the number
+of revisions to examine.
+
+=item unreviewed
+
+Only print out revisions that have not been reviewed.  Note that this option is
+slower than the others since the certificates need to be retrieved in addition
+to the log information in order to determine if there have been any reviews.
+
+=back
+
+=cut
+
+sub reviewStatus {
+    my @revisions = @ARGV;
+
+    usage("Missing argumentes to review-status") unless @revisions > 0;
+
+    my $unreviewed_only;
+    if ($revisions[0] =~ /=/) {
+	if (grep(/^unreviewed$/o, @revisions)) {
+	    $unreviewed_only = 1;
+	    @revisions = grep(!/^unreviewed$/o, @revisions);
+	}
+	@revisions = selectRevisions(@revisions);
+    }
+
+    my $certs = vcGetCertificates(@revisions);
+
+    foreach my $revision (@revisions) {
+	my $rev_certs = $certs->{$revision};
+	next if $unreviewed_only && defined $rev_certs->{review};
+	die "Missing changelog cert on $revision?"
+	    unless defined $rev_certs->{changelog};
+	my $changelog_by = $rev_certs->{changelog}->[0]->{who};
+	my $changelog = $_ = $rev_certs->{changelog}->[0]->{value};
+	s/\n(.|\n)*$//o;
+
+	s/^(.{1,60}\S+).*/$1/o; # try to break at whitespace
+	s/^(.{1,70}).*/$1/o; # truncate regardless
+	$_ .= " ..." unless $_ eq $changelog;
+	print "$revision: $changelog_by\n  ($_)\n";
+	if (defined $rev_certs->{review}) {
+	    foreach my $ent (@{$rev_certs->{review}}) {
+		$_ = $ent->{value};
+		chomp;
+		my $date = 'unknown';
+		$date = $1
+		    if s/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(: )?//o;
+		print "  reviewed by $ent->{who} at $date\n";
+		print "    $_\n" if length > 0;
+	    }
+	} else {
+	    $_ = $rev_certs->{date}->[0]->{value};
+	    chomp;
+	    print "  No reviews for revision dated $_.\n";
+	}
+	print "\n";
+    }
+}
+
+sub selectRevisions {
+    my (@selectors) = @_;
+
+    my ($who, $min_date, $max_date);
+
+    foreach $_ (@selectors) {
+	if (/^who=(\w+)$/o) {
+	    $who = $1;
+	} elsif (/^min-date=(\S+)$/o) {
+	    $min_date = $1;
+	} elsif (/^max-date=(\S+)$/o) {
+	    $max_date = $1;
+	} else {
+	    usage("review-status: Unknown selector '$_'; see deptool help review-status");
+	}
+    }
+
+    my @revisions = vcGetNonMergeRevisions();
+    my @ret;
+    foreach my $rev (@revisions) {
+	die "? $rev->{Revision}"
+	    unless defined $rev->{Author} && defined $rev->{Date};
+	next if defined $who && $rev->{Author} !~ /$who/o;
+	next if defined $min_date && $rev->{Date} lt $min_date;
+	next if defined $max_date && $rev->{Date} gt $max_date;
+	push (@ret, $rev->{Revision});
+    }
     return @ret;
 }
 
@@ -3133,7 +3242,7 @@ Needed to determine the central repository for public updates.
 
 sub getEnv {
     my $result = GetOptions("quiet!" => \$quiet);
-                            
+
     usage("Unknown error") unless $result;
     usage("Missing requested env var") unless @ARGV == 1;
 
@@ -3142,7 +3251,7 @@ sub getEnv {
         my $shell = $1;
         $quiet = 1;
         $auto_yes_to_prompts = 1;
-        
+
         printEnv($shell, 'PROJECTS', \&projects);
         printEnv($shell, 'BUILD_ROOT', \&buildRoot);
         printEnv($shell, 'OS', \&operatingSystem);
@@ -3157,7 +3266,7 @@ sub getEnv {
         die "Unknown env var $env"
             if $@ && $@ =~ /^Undefined subroutine/o;
         die $@ if $@;
-        
+
         print "$ret\n";
     }
 }
@@ -3558,6 +3667,46 @@ sub readMtnOptions {
     return %ret;
 }
 
+sub getCmdOutput {
+    my($cmd) = @_;
+
+    my $fh = new FileHandle "$cmd 2>/dev/null |"
+        or die "Unable to run $cmd: $!";
+    my @ret = <$fh>;
+    close($fh) or confess "close failed: $!\ncommand is $cmd";
+    die "$cmd failed" unless $? == 0;
+    return @ret;
+}
+
+sub simpleParse {
+    my($data, $matches) = @_;
+
+    my %ret;
+
+    # print join(", ", @$matches);
+    confess "simpleParse(): matches array should have even # entries"
+	unless @$matches % 2 == 0;
+    die "bad parse: # data lines = " . scalar @$data . " < #match pairs = " . (@$matches/2) 
+	unless @$data >= @$matches/2;
+    for(my $i=0; $i < @$matches/2; ++$i) {
+        local $_ = $data->[$i];
+        chomp;
+        my $match = $matches->[2*$i];
+        my $var = $matches->[2*$i+1];
+
+        die "?? $i" unless defined $match;
+        die "Error on line $i expected $match, got '$_'"
+            unless /$match/;
+        $ret{$var} = $1 if defined $var;
+    }
+    return %ret;
+}
+
+###### Version control abstraction functions
+
+# TODO: propagate this to other vc actions so we can support multiple vc
+# systems (e.g. svn) at the same time.
+
 sub vcVersion {
     unless (defined $Cache::vc_version) {
 	my @output = getCmdOutput("mtn --version");
@@ -3585,6 +3734,94 @@ sub vcLogRevision {
     } else {
 	die "Don't know how to get revision log on $vcver";
     }
+}
+
+sub vcAddCertificate {
+    my ($revision, $cert_name, $cert_val) = @_;
+
+    quietRunCommand('mtn', 'cert', $revision, $cert_name, $cert_val);
+}
+
+sub vcGetCertificates {
+    my @revisions = @_;
+
+    my %ret;
+
+    foreach my $revision (@revisions) {
+	my @lines = getCmdOutput("mtn list certs $revision");
+
+	my %rev_info;
+	for (my $i = 0; $i < @lines; ) {
+	    my @slice = @lines[$i .. $i + 4];
+	    my %info = simpleParse(\@slice,
+				   [ qr/^-+$/o => undef,
+				     qr/^Key\s+: (\S+)$/o => 'key',
+				     qr/^Sig\s+: (\S+)$/o => 'sig',
+				     qr/^Name\s+: (\S+)$/o => 'name',
+				     qr/^Value\s+: (.+)$/o => 'value' ]);
+	    $info{value} .= "\n";
+	    for ($i += 5; $i < @lines && $lines[$i] !~ /^-+$/o; ++$i) {
+		$_ = $lines[$i];
+		s/^\s+: //o;
+		$info{value} .= $_;
+	    }
+	    chomp $info{value};
+	    if ($info{sig} eq 'ok') {
+		push(@{$rev_info{$info{name}}}, { 'who' => $info{key},
+						  'value' => $info{value} });
+	    }
+	}
+	$ret{$revision} = \%rev_info;
+    }
+    return \%ret;
+}
+
+sub vcGetNonMergeRevisions {
+    my $cmd = "mtn log --no-graph --no-merges";
+    my $fh = new FileHandle "$cmd |"
+	or die "Unable to run $cmd: $!";
+    my @ret;
+    while (<$fh>) {
+	chomp;
+	die "? '$_'" unless /^-+$/o;
+	my %ent;
+	my $tmp = $_;
+	$_ = <$fh>;
+	if ($_ =~ /^Revision: ([a-f0-9]{40})$/o) {
+	    $ent{Revision} = $1;
+	    while (<$fh>) {
+		chomp;
+		last if /^\s*$/o;
+		die "? '$_'" unless /^(\w+): (.*)$/o; # .* because earliest Ancestor is empty.
+		$ent{$1} = $2;
+	    }
+	    $ent{changes} = '';
+	    while (<$fh>) {
+		last if /^-{50,}$/o;
+		$ent{changes} .= $_;
+	    }
+	    push (@ret, \%ent);
+	} else {
+	    # assume someone put lots of --- in the changelog
+
+	    die "?" unless @ret > 0;
+	    my $ent = $ret[@ret-1];
+	    $ent->{changes} .= $tmp;
+	    while (1) {
+		last if /^-{50,}$/o;
+		$ent{changes} .= $_;
+		$_ = <$fh>;
+		last unless defined $_;
+	    }
+	}
+	last unless defined $_;
+	redo;
+    }
+    $_ = <$fh>;
+    die "? '$_' still have input; last rev $ret[$#ret]->{Revision}" if defined $_;
+    close($fh) or confess "close failed: $! ($?)\ncommand is $cmd";
+    die "$cmd failed" unless $? == 0;
+    return @ret;
 }
 
 =pod
