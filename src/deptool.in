@@ -2332,13 +2332,19 @@ diff ordering file changes.
 
 print a list of all the files that are going to be compared
 
-=item exit
+=item reviewed [I<comments>]
 
-stop the code review; do not clean up temporary files.
+specify that the revisions under code-review have been reviewed, and optionally
+include a comment on the review.  Review status can be determined by using
+C<deptool review-status>.
 
 =item finish
 
-stop the code review; clean up all temporary files.
+clean up all temporary files, then exit.
+
+=item exit
+
+stop the code review; do not clean up temporary files.
 
 =item help
 
@@ -2581,6 +2587,8 @@ sub kdiffDirs {
             runCommand("rm -rf $basedir");
             last;
         } elsif ($_ eq 'help') {
+	    # TODO-sprint: figure out how to extract this from the pod help;
+	    # they got out of sync.
             print <<"END_OF_HELP";
 
 auto: skip the prompt for a command until the next file to diff changes
