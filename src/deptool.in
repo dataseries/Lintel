@@ -2531,7 +2531,7 @@ sub kdiffDirs {
         print "Editable diff ordering file: $basedir/diff-order\n";
         my $default = "diff $next";
         $default = "finish" if $next eq '*end*';
-        print "commands: auto, files, exit, finish, help\n";
+        print "commands: auto, files, reviewed, finish, exit, help\n";
         print "Enter filename substring or command [$default]: ";
         if (defined $auto && (-M "$basedir/diff-order") == $auto) {
             print "[auto]\n";
