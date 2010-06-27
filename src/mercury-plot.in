@@ -56,13 +56,15 @@ my $password;
 my $db;
 my $print_manpage;
 my $debug = 0;
+my $batch = 0;
 my $success = GetOptions("dsn=s" => \$Plot::Mercury::Default_DSN,
 			 "db=s" => \$db,
 			 "user=s" => \$user,
 			 "password=s" => \$password,
 			 "history=s" => \$history_file,
 			 "debug!" => \$debug,
-			 "man!" => \$print_manpage);
+			 "man!" => \$print_manpage,
+			 "batch!" => \$batch);
 pod2usage(-verbose => 2, -exitval => 0) if $print_manpage;
 eval "package MercuryEval; use Plot::Mercury; "; die "$@" if $@;
 
@@ -75,8 +77,10 @@ die "Usage: $0
     # or in the file /etc/MercuryDSN
     [--user=<user>] [--password=<password>]
     [--history=<history-filename, default $history_file>]
-    [--help] [--man] [--debug] [input-file ...] [< input]\n"
+    [--help] [--man] [--debug] [--batch] [input-file ...] [< input]\n"
     unless $success;
+
+my $gnuplot_terminal_type = $batch ? "unknown" : "x11";
 
 if (defined $db) {
     ($Plot::Mercury::Default_DSN,$user,$password) 
@@ -242,7 +246,7 @@ sub docmd {
 	return;
     }
     s/^\s+//o; # allow for indendation
-    if (/^select /o) {
+    if (/^select\s+/o) {
 	push(@history,$_);
 	sqlselect($_);
     } elsif (/^htmlselect /o) {
@@ -903,15 +907,68 @@ default table <tablename|none>
 }
 
 sub sqlselect {
-    my $cmd = shift;
+    local @ARGV = split(/ /o, $_);
+
+    my $format = 'text-table';
+    my $filename;
+
+    die "?" unless $ARGV[0] eq 'select';
+    for(my $i = 1; $i < @ARGV; ++$i) {
+	unless ($ARGV[$i] =~ /^--/o) {
+	    splice(@ARGV,$i,0,"--");
+	    last;
+	}
+    }
+    my $ret = GetOptions("format=s" => \$format,
+			 "filename=s" => \$filename);
+    unless ($ret) {
+	print "select [--format={text-table,html}] [--filename=<path>] <sql select>\n";
+	$command_error = 1;
+	return;
+    }
+    my $cmd = join(' ', @ARGV);
 
     $cmd = &adjust_sql($cmd);
     my $sth = eval { sql_exec($cmd) };
     if ($@) {
 	print "$@\n";
+        $command_error = 1;
 	return;
     }
     
+    # Data::Showtable explicitly writes to STDOUT, grr.
+    my $save_stdout;
+    if (defined $filename) {
+	$save_stdout = new FileHandle ">&STDOUT"
+	    or die "Can't dup stdout: $!";
+	unless(open(STDOUT, ">$filename")) {
+	    print "Unable to open $filename for write: $!\n";
+	    $command_error = 1;
+	    return;
+	}
+    } 
+
+    my $error;
+    if ($format eq 'text-table') {
+	sqlSelectTextTable($sth, ! defined $filename);
+    } elsif ($format eq 'html') {
+	sqlSelectHtml($sth);
+    } else {
+	$error = "Unknown format '$format', expected text-table or html\n";
+    }
+    if (defined $save_stdout) {
+	open(STDOUT, ">&=", fileno($save_stdout))
+	    or die "Unable to dup back to save_stdout: $!";
+    }
+    if (defined $error) {
+	print STDERR $error;
+	$command_error = 1;
+    }
+}
+
+sub sqlSelectTextTable {
+    my ($sth, $pager_ok) = @_;
+
     my $rows = $sth->rows;
     my @types = map { "text" } @{$sth->{NAME}};
     
@@ -929,7 +986,7 @@ sub sqlselect {
     }
     my $total_width = 0; map { $total_width += $_ } @widths;
     my $lesspid;
-    if ($total_width * $rows > 50*80) {
+    if ($total_width * $rows > 50*80 && $pager_ok) {
 	open(SAVESTDOUT,">&STDOUT");
 	select(SAVESTDOUT);
 	$lesspid = open(STDOUT,"| less");
@@ -954,7 +1011,31 @@ sub sqlselect {
     }
 }
 
+sub sqlSelectHtml {
+    my ($sth) = @_;
+
+    # TODO: consider using HTML version of Data::ShowTable; check to see when 
+    # it was added to make sure it will work on supported platforms.
+    my $rows = $sth->rows;
+    
+    print "<TABLE BORDER=\"2\">\n";
+    print "  <TR>\n   ";
+    foreach my $header (@{$sth->{NAME}}) {
+	print " <TH>$header</TH>";
+    }
+    print "\n  </TR>\n";
+    while(my @row = $sth->fetchrow_array) {
+	print "  <TR>\n   ";
+	foreach my $v (@row) {
+	    print " <TD>$v</TD>";
+	}
+	print " </TR>\n";
+    }
+    print "</TABLE>\n";
+}
+
 sub htmlselect {
+    warn "htmlselect command is obsolete.  TODO: remove after 2011-01-01";
     my $cmd = shift;
 
     my $fh;
@@ -990,6 +1071,7 @@ sub htmlselect {
 	print " </TR>\n";
     }
     print "</TABLE>\n";
+
     select($oldfh);
 }
 
@@ -1045,7 +1127,7 @@ sub start_gnuplot {
     $gnuplot_fifo->autoflush(1);
     # TODO: auto-detect if there is the wxt terminal and use that if possible;
     # also need to fix other uses of set terminal x11
-    print $gnuplot_fifo "set terminal x11\n";
+    print $gnuplot_fifo "set terminal $gnuplot_terminal_type\n";
 }
 
 # The idea here is that we keep reading from gnuplot until we are able
@@ -1151,7 +1233,7 @@ sub psplot {
     print $gnuplot_fifo "set terminal postscript $mode enhanced $use_color solid $fontsize\n";
     print $gnuplot_fifo "replot\n";
     print $gnuplot_fifo "set output\n";
-    print $gnuplot_fifo "set terminal x11\n";
+    print $gnuplot_fifo "set terminal $gnuplot_terminal_type\n";
     syncToGnuplot(); 
     return 1;
 }
