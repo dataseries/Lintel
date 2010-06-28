@@ -19,15 +19,15 @@ SET(BIB_FILES
     disc.bib
     distributedcomputing.bib
     dsn.bib
-		eurosys.bib
+    eurosys.bib
     fast.bib
-		edcc.bib
+    edcc.bib
     efts.bib
     hotdep.bib
     hotos.bib
     icdcs.bib
     icpp.bib
-		ic.bib
+    ic.bib
     ics.bib
     ieee-computer.bib
     ieeejsac.bib
@@ -43,12 +43,13 @@ SET(BIB_FILES
     osdi.bib
     os-review.bib
     pldi.bib
-		podc.bib
+    podc.bib
+    rfcs.bib
     scientific-programming.bib
     siam-parallel-scientific.bib
     sigact.bib
     sigcomm.bib
-		sigmetrics.bib
+    sigmetrics.bib
     sigmod.bib
     socc.bib
     sosp.bib
@@ -56,10 +57,10 @@ SET(BIB_FILES
     supercomputing-review.bib
     tcs.bib
     tcsc.bib
-		tocs.bib
-		tods.bib
+    tocs.bib
+    tods.bib
     toit.bib
-		toplas.bib
+    toplas.bib
     tr.bib
     tse.bib
     usenix.bib
