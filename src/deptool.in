@@ -2801,26 +2801,54 @@ Only print out revisions that have not been reviewed.  Note that this option is
 slower than the others since the certificates need to be retrieved in addition
 to the log information in order to determine if there have been any reviews.
 
+=item db=I<path>
+
+Instead of using the database implied by the current directory, use one
+specified explicitly.
+
+=item branch=I<branch>
+
+Select only revisions on the specified branch.  If using the implicit branch
+from the current directory, revision status will follow revisions to other
+branches.
+
 =back
 
 =cut
 
 sub reviewStatus {
-    my @revisions = @ARGV;
-
-    usage("Missing argumentes to review-status") unless @revisions > 0;
+    usage("Missing arguments to review-status") unless @ARGV > 0;
 
     my $unreviewed_only;
-    if ($revisions[0] =~ /=/) {
-	if (grep(/^unreviewed$/o, @revisions)) {
+
+    my @revisions;
+    my @selectors;
+    my $db;
+
+    foreach $_ (@ARGV) {
+	if ($_ eq 'unreviewed') {
 	    $unreviewed_only = 1;
-	    @revisions = grep(!/^unreviewed$/o, @revisions);
+	} elsif (/^db=(\S+)$/o) {
+	    $db = $1;
+	    push(@selectors, $_);
+	} elsif (/=/o) {
+	    push(@selectors, $_);
+	} elsif (/^[0-9a-fA-F]+$/o) {
+	    push(@revisions, $_);;
+	} else {
+	    die "Unknown argument $_; see deptool help review-status";
 	}
-	@revisions = selectRevisions(@revisions);
     }
 
+    if (@selectors > 0) {
+	push(@revisions, selectRevisions(@selectors));
+    }
+
+    die "Selectors @ARGV did not select any revisions"
+	unless @revisions > 0;
+
     foreach my $revision (@revisions) {
-	my $certs = vcGetCertificates($revision);
+	my $certs = vcGetCertificates($db, $revision);
 
 	my $rev_certs = $certs->{$revision};
 	next if $unreviewed_only && defined $rev_certs->{review};
@@ -2856,28 +2884,31 @@ sub reviewStatus {
 sub selectRevisions {
     my (@selectors) = @_;
 
-    my ($who, $min_date, $max_date);
+    my %selectors = ('who' => undef,
+		     'min-date' => undef,
+		     'max-date' => undef,
+		     'branch' => undef,
+		     'db' => undef);
 
     foreach $_ (@selectors) {
-	if (/^who=(\w+)$/o) {
-	    $who = $1;
-	} elsif (/^min-date=(\S+)$/o) {
-	    $min_date = $1;
-	} elsif (/^max-date=(\S+)$/o) {
-	    $max_date = $1;
+	if (/^(\S+)=(\S+)$/o) {
+	    my ($sel, $val) = ($1, $2);
+	    die "Unknown selector $sel" unless exists $selectors{$sel};
+	    die "Duplicate selector $sel" if defined $selectors{$sel};
+	    $selectors{$sel} = $val;
 	} else {
-	    usage("review-status: Unknown selector '$_'; see deptool help review-status");
+	    die "Unknown argument '$_'; see deptool help review-status";
 	}
     }
 
-    my @revisions = vcGetNonMergeRevisions();
+    my @revisions = vcGetNonMergeRevisions($selectors{db}, $selectors{branch});
     my @ret;
     foreach my $rev (@revisions) {
 	die "? $rev->{Revision}"
 	    unless defined $rev->{Author} && defined $rev->{Date};
-	next if defined $who && $rev->{Author} !~ /$who/o;
-	next if defined $min_date && $rev->{Date} lt $min_date;
-	next if defined $max_date && $rev->{Date} gt $max_date;
+	next if defined $selectors{who} && $rev->{Author} !~ /$selectors{who}/o;
+	next if defined $selectors{'min-date'} && $rev->{Date} lt $selectors{'min_date'};
+	next if defined $selectors{'max-date'} && $rev->{Date} gt $selectors{'max-date'};
 	push (@ret, $rev->{Revision});
     }
     return @ret;
@@ -3752,12 +3783,17 @@ sub vcAddCertificate {
 }
 
 sub vcGetCertificates {
-    my @revisions = @_;
+    my ($db, @revisions) = @_;
 
+    if (defined $db) {
+	$db = "--db $db";
+    } else {
+	$db = "";
+    }
     my %ret;
 
     foreach my $revision (@revisions) {
-	my @lines = getCmdOutput("mtn list certs $revision");
+	my @lines = getCmdOutput("mtn $db list certs $revision");
 
 	my %rev_info;
 	for (my $i = 0; $i < @lines; ) {
@@ -3786,7 +3822,29 @@ sub vcGetCertificates {
 }
 
 sub vcGetNonMergeRevisions {
-    my $cmd = "mtn log --no-graph --no-merges";
+    my ($db, $branch) = @_;
+
+    if (defined $db) {
+	$db = "--db $db";
+    } else {
+	$db = '';
+    }
+
+    my $from = '';
+    if (defined $branch) {
+	my @out = getCmdOutput("mtn $db head -b $branch");
+	grep(chomp, @out);
+
+	die "multiple heads for branch $branch ($out[0] $out[1])?"
+	    unless @out == 1;
+
+	die "head output for branch $branch not hex ($out[0])?"
+	    unless $out[0] =~ /^([0-9a-f]+) \S+/o;
+
+	$from = "--from $1";
+    }
+
+    my $cmd = "mtn $db log $from --no-graph --no-merges";
     my $fh = new FileHandle "$cmd |"
 	or die "Unable to run $cmd: $!";
     my @ret;
@@ -3799,6 +3857,7 @@ sub vcGetNonMergeRevisions {
 	if ($_ =~ /^Revision: ([a-f0-9]{40})$/o) {
 	    $ent{Revision} = $1;
 	    while (<$fh>) {
+		$ent{Branch} = $1 if /^Branch: (\S+)$/o;
 		chomp;
 		last if /^\s*$/o;
 		die "? '$_'" unless /^(\w+): (.*)$/o; # .* because earliest Ancestor is empty.
@@ -3809,7 +3868,7 @@ sub vcGetNonMergeRevisions {
 		last if /^-{50,}$/o;
 		$ent{changes} .= $_;
 	    }
-	    push (@ret, \%ent);
+	    push (@ret, \%ent) unless defined $branch && $branch ne $ent{Branch};
 	} else {
 	    # assume someone put lots of --- in the changelog
 
