@@ -2907,7 +2907,7 @@ sub selectRevisions {
 	die "? $rev->{Revision}"
 	    unless defined $rev->{Author} && defined $rev->{Date};
 	next if defined $selectors{who} && $rev->{Author} !~ /$selectors{who}/o;
-	next if defined $selectors{'min-date'} && $rev->{Date} lt $selectors{'min_date'};
+	next if defined $selectors{'min-date'} && $rev->{Date} lt $selectors{'min-date'};
 	next if defined $selectors{'max-date'} && $rev->{Date} gt $selectors{'max-date'};
 	push (@ret, $rev->{Revision});
     }
