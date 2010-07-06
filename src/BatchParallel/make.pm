@@ -11,19 +11,21 @@ die "module version mismatch"
 sub usage {
     print <<END_OF_USAGE;
 batch-parallel make transform=<perl-expr> command=<cmd> [command=<cmd> ...]
-                    [printcmd] [debug-transform] -- file|dir ...
+                    [printcmd] [debug-transform] [unexpanded-dirs] 
+                    -- file|dir ...
 
-  This module will search for all files under the listed file or
-  directories that are changed by the transform, i.e. the value of \$_
-  is different after evaluating the expression.  If any of the output
-  names already exist, then the input file will be ignored.  For each
-  of those files it will then apply the commands listed (multiple ones
-  can be specified).  Before running the command, it will substitute
-  \$< with the input name, \$@ with the output name + -tmp, and \$TMP
-  with a temporary directory for this job.  If all of the commands
-  succeed (exit value 0), it will move the output file into the final
-  location.  Otherwise it will leave the \$@-tmp file alone.
-  Regardless, it will delete all the files under \$TMP.
+  This module will by default search for all files under the listed file or
+  directories that are changed by the transform, i.e. the value of \$_ is
+  different after evaluating the expression.  Although if unexpanded-dirs is
+  specified, then the arguments specified for file and dir will be left
+  unchanged.  If any of the output names already exist, then the input file
+  will be ignored.  For each of those files it will then apply the commands
+  listed (multiple ones can be specified).  Before running the command, it will
+  substitute \$< with the input name, \$@ with the output name + -tmp, and
+  \$TMP with a temporary directory for this job.  If all of the commands
+  succeed (exit value 0), it will move the output file into the final location.
+  Otherwise it will leave the \$@-tmp file alone.  Regardless, it will delete
+  all the files under \$TMP.
 
 END_OF_USAGE
 }
@@ -46,6 +48,8 @@ sub new {
 	    push(@{$this->{commands}}, $1);
 	} elsif ($arg eq 'debug-transform') {
 	    $this->{debug_transform} = 1;
+	} elsif ($arg eq 'unexpanded-dirs') {
+	    $this->{unexpanded_dirs} = 1;
 	} else {
 	    usage();
 	    die "unable to interpret argument '$arg'."
@@ -92,6 +96,19 @@ sub destination_file {
     my($this, $prefix, $src_path) = @_;
 
     return $this->transform($src_path);
+}
+
+sub find_things_to_build {
+    my ($this, @dirs) = @_;
+
+    if ($this->{unexpanded_dirs}) {
+	my $source_count = @dirs;
+	my @possibles = map { [$_, $_] } @dirs;
+	my @things_to_build = $this->determine_things_to_build(\@possibles);
+	return ($source_count, @things_to_build);
+    } else {
+	$this->SUPER::find_things_to_build(@dirs);
+    }
 }
 
 # returns 0 on failure, 1 on success
