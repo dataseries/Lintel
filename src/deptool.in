@@ -2856,6 +2856,7 @@ sub reviewStatus {
 	    unless defined $rev_certs->{changelog};
 	my $changelog_by = $rev_certs->{changelog}->[0]->{who};
 	my $changelog = $_ = $rev_certs->{changelog}->[0]->{value};
+	s/^\s*\n//go;
 	s/\n(.|\n)*$//o;
 
 	s/^(.{1,60}\S+).*/$1/o; # try to break at whitespace
@@ -3835,6 +3836,9 @@ sub vcGetNonMergeRevisions {
 	my @out = getCmdOutput("mtn $db head -b $branch");
 	grep(chomp, @out);
 
+	die "no heads for branch $branch"
+	    unless @out > 0;
+
 	die "multiple heads for branch $branch ($out[0] $out[1])?"
 	    unless @out == 1;
 
@@ -3868,6 +3872,8 @@ sub vcGetNonMergeRevisions {
 		last if /^-{50,}$/o;
 		$ent{changes} .= $_;
 	    }
+            # dunno how this happened, but it's present on some old DataSeries revisions.
+	    $ent{Branch} ||= 'unknown-branch'; 
 	    push (@ret, \%ent) unless defined $branch && $branch ne $ent{Branch};
 	} else {
 	    # assume someone put lots of --- in the changelog
