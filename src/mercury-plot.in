@@ -421,7 +421,8 @@ sub sqlplot {
 	return;
     }
     if ($sth->rows == 0) {
-	print "No rows return by query $cmd\n";
+	print "Error: no rows return by query $cmd\n";
+	$command_error = 1;
 	return;
     }
     my @names = @{$sth->{NAME}};
@@ -1477,8 +1478,9 @@ sub plotwith {
     }
 	
     $plot = @plots - 1 if ($plot eq '_');
-    if ($plot > @plots) {
-	print "No plot number $plot!\n";
+    if ($plot > @plots || $plot < 0) {
+	print "Error: No plot number $plot!\n";
+	$command_error = 1;
 	return;
     }
     $plots[$plot]->{with} = $with;
