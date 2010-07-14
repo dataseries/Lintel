@@ -185,7 +185,10 @@ public:
 	value_type fullval; fullval.first = k;
 	return hashtable.find(fullval);
     }
-	
+
+    bool remove(iterator &it, bool must_exist = true) {
+	return hashtable.remove(*it, must_exist);
+    }
 
     explicit HashMap(double target_chain_length) 
 	: hashtable(target_chain_length)
