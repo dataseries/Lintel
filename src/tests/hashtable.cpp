@@ -13,8 +13,10 @@
 #include <Lintel/HashTable.hpp>
 #include <Lintel/HashMap.hpp>
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
 
 using namespace std;
+using boost::format;
 
 HashMap<string,string> test;
 
@@ -104,8 +106,7 @@ void constHTTest(const inttable &table, int maxi) {
     }
 }
 
-int main(int argc, char *argv[]) {
-    SINVARIANT(argc == 1);
+void collisionTest() {
     printf("test collision add/remove\n");
     
     HashTable<int,collisionHash,intEqual> collisiontable;
@@ -158,7 +159,10 @@ int main(int argc, char *argv[]) {
 	collisiontable.remove(i);
     }
     SINVARIANT(collisiontable.size() == 0);
-    
+}
+
+void generalTest() {
+
     int maxi = 20000;
     inttable table;
     
@@ -256,8 +260,45 @@ int main(int argc, char *argv[]) {
 	table.addOrReplace(i, replaced);
 	SINVARIANT(replaced == true);
     }
+}
 
+void eraseTest() {
+    MersenneTwisterRandom rng;
+
+    cout << format("erase test using seed %d\n") % rng.seed_used;
+    vector<int32_t> ents;
+    inttable table;
+
+    static const uint32_t nents = 1000;
+
+    for (uint32_t i = 0; i < nents; ++i) {
+	uint32_t v = rng.randInt();
+	ents.push_back(v);
+	table.add(v);
+    }
+
+    MT_random_shuffle(ents.begin(), ents.end(), rng);
+    
+    for (uint32_t i = 0; i < nents; ++i) {
+	SINVARIANT(table.size() == nents - i);
+	inttable::iterator e = table.find(ents[i]);
+	SINVARIANT(e != table.end());
+	table.erase(e);
+	for(uint32_t j = i + 1; j < nents; ++j) {
+	    INVARIANT(table.lookup(ents[j]) != NULL, format("%d %d") % i % j);
+	}
+    }
+    SINVARIANT(table.empty() && table.size() == 0);
+    cout << "erase test passed.\n";
+}
+
+int main(int argc, char *argv[]) {
+    SINVARIANT(argc == 1);
+
+    collisionTest();
+    generalTest();
     stringHTTests();
+    eraseTest();
 
     printf("success.\n");
 }

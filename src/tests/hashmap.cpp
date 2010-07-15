@@ -339,6 +339,39 @@ void test_keys() {
     }
 }
 
+void testErase() {
+    MersenneTwisterRandom rng;
+
+    cout << format("erase test using seed %d\n") % rng.seed_used;
+    vector<uint32_t> ents;
+    HashMap<uint32_t, uint32_t> table;
+
+    static const uint32_t nents = 1000;
+
+    for (uint32_t i = 0; i < nents; ++i) {
+	uint32_t v = rng.randInt();
+	ents.push_back(v);
+	table[v] = v;
+    }
+
+    MT_random_shuffle(ents.begin(), ents.end(), rng);
+    
+    for (uint32_t i = 0; i < nents; ++i) {
+	SINVARIANT(table.size() == nents - i);
+	HashMap<uint32_t, uint32_t>::iterator e = table.find(ents[i]);
+	SINVARIANT(e != table.end());
+	table.erase(e);
+	for(uint32_t j = 0; j <= i; ++j) {
+	    INVARIANT(table.lookup(ents[j]) == NULL, format("%d %d") % i % j);
+	}
+	for(uint32_t j = i + 1; j < nents; ++j) {
+	    INVARIANT(table.lookup(ents[j]) != NULL, format("%d %d") % i % j);
+	}
+    }
+    SINVARIANT(table.empty() && table.size() == 0);
+    cout << "erase test passed.\n";
+}
+
 int main() {
     test_types();
     test_foreach();
@@ -347,4 +380,5 @@ int main() {
     test_pointermap();
     test_const();
     test_keys();
+    testErase();
 }
