@@ -331,6 +331,7 @@ private:
 	    return cur_chain;
 	}
     protected:
+	friend class HashTable<D, HashFn, Equal, AllocHTE, AllocInt>;
 	iterator_base(t_hashtable_type *_mytable, int32_t start_chain = 0,
 		      int32_t _chain_loc = -1) 
 	    : mytable(_mytable), cur_chain(start_chain), 
@@ -407,8 +408,28 @@ public:
 	return end();
     }
 
-    bool remove(iterator &it, bool must_exist = true) {
-       	return remove(*it, must_exist);
+    // TODO: think about whether there is a way to combine erase() and
+    // remove(); both are useful interfaces, and as written each is more
+    // efficient then building one on another; remove finds prev in a single
+    // pass, and erase doesn't have to re-do the hash and compare operations.
+    void erase(iterator it) {
+       	DEBUG_SINVARIANT(it.mytable == this);
+	chains[it.chain_loc].data = D();
+
+	int32_t prev = -1, cur = entry_points[it.cur_chain];
+	while (cur != it.chain_loc) {
+	    prev = cur;
+	    cur = chains[cur].next;
+	    DEBUG_SINVARIANT(cur != -1);
+	}
+	if (prev == -1) {
+	    entry_points[it.cur_chain] = chains[cur].next;
+	} else {
+	    chains[prev].next = chains[cur].next;
+	}
+	chains[cur].next = free_list;
+	++free_list_size;
+	free_list = cur;
     }
 
     class const_iterator : public iterator_base<const D, const HashTable> {

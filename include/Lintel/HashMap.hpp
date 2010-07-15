@@ -186,16 +186,17 @@ public:
 	return hashtable.find(fullval);
     }
 
-    bool remove(iterator &it, bool must_exist = true) {
-	return hashtable.remove(*it, must_exist);
+    // TODO: try to find someone with enough C++ STL magic foo to explain why
+    // this isn't const &.
+    void erase(iterator it) {
+	hashtable.erase(it);
     }
 
     explicit HashMap(double target_chain_length) 
 	: hashtable(target_chain_length)
     { }
 
-    HashMap() {
-    }
+    HashMap() { }
 
     HashMap(const HashMap &__in) {
 	hashtable = __in.hashtable;
