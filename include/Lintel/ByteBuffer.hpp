@@ -95,21 +95,25 @@ namespace lintel {
             back -= amt;
         }
 
-	void resizeBuffer(uint32_t new_size) {
-	    uint8_t *new_data = new uint8_t[new_size];
-		
-	    if (!empty()) {
-		uint32_t old_available = readAvailable();
-		SINVARIANT(old_available <= new_size);
-		memcpy(new_data, readStart(), old_available);
-		back = old_available;
+	void resizeBuffer(size_t new_size) {
+	    if (new_size == data_size && byte_data != NULL) {
+		shift(); // Faster than allocate, copy, free
 	    } else {
-		back = 0;
+		uint8_t *new_data = new uint8_t[new_size];
+		
+		if (!empty()) {
+		    size_t old_available = readAvailable();
+		    SINVARIANT(old_available <= new_size);
+		    memcpy(new_data, readStart(), old_available);
+		    back = old_available;
+		} else {
+		    back = 0;
+		}
+		front = 0;
+		data_size = new_size;
+		delete [] byte_data;
+		byte_data = new_data;
 	    }
-	    front = 0;
-	    data_size = new_size;
-	    delete [] byte_data;
-	    byte_data = new_data;
 	}
 
 	void shift() {
@@ -143,10 +147,15 @@ namespace lintel {
     /// Copy on write buffer of bytes.  Unlike C++ strings, data can be
     /// efficiently read into the buffer.  With a string, the data first has to
     /// be read into a separate buffer and then copied into the string.
+    /// 
+    /// A ByteBuffer has three separate regions as shown in the below picture.
     ///
     ///   +---------------+---------------+----------------+
-    ///   | XunavailableX | readAvailable | writeAvailable |
+    ///   S XunavailableX R readAvailable W writeAvailable E
     ///   +---------------+---------------+----------------+
+    ///
+    /// reading occurs in the region between R and W, and moves the R pointer to the right.
+    /// writing occurs in the region between W and E and moves the W pointer to the right.
     class ByteBuffer {
     public:
 	/// Construct a ByteBuffer.
@@ -421,11 +430,12 @@ namespace lintel {
 
 	/// Resize the bufer to be new_size bytes in length.  It is an
 	/// error to call this with readAvailable() > new_size.
-	/// Currently readable data will be moved to the beginning of
-	/// the buffer.  Note this function is called resizeBuffer
+	/// Readable data will be moved to the beginning of
+	/// the buffer, and there will be a valid pointer for the buffer even if new_size is 0.
+	/// Note this function is called resizeBuffer
 	/// rather than just resize because it does *not* zero the
 	/// buffer as is done in all of the STL resize functions.
-	void resizeBuffer(uint32_t new_size) {
+	void resizeBuffer(size_t new_size) {
 	    uniqueify();
 	    rep->resizeBuffer(new_size);
 	}

@@ -27,6 +27,9 @@ void basicChecks(ByteBuffer &buf) {
     SINVARIANT(buf.readAvailable() == 0);
     SINVARIANT(buf.writeAvailable() == 0);
 
+    buf.resizeBuffer(0);
+    SINVARIANT(buf.readStart() != NULL);
+
     buf.resizeBuffer(8192);
     SINVARIANT(buf.readAvailable() == 0);
     SINVARIANT(buf.writeAvailable() == 8192);
