@@ -407,6 +407,10 @@ public:
 	return end();
     }
 
+    bool remove(iterator &it, bool must_exist = true) {
+       	return remove(*it, must_exist);
+    }
+
     class const_iterator : public iterator_base<const D, const HashTable> {
     public:
 	const_iterator(const HashTable &mytable, int32_t start_chain = 0,
