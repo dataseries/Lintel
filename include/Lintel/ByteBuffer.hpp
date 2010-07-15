@@ -143,6 +143,10 @@ namespace lintel {
     /// Copy on write buffer of bytes.  Unlike C++ strings, data can be
     /// efficiently read into the buffer.  With a string, the data first has to
     /// be read into a separate buffer and then copied into the string.
+    ///
+    ///   +---------------+---------------+----------------+
+    ///   | XunavailableX | readAvailable | writeAvailable |
+    ///   +---------------+---------------+----------------+
     class ByteBuffer {
     public:
 	/// Construct a ByteBuffer.
