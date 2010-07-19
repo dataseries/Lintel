@@ -29,6 +29,9 @@ fi
 PAPER_SIZE=letter
 CONTINUE=true
 ERROR_ON_WARNINGS=false
+# TODO: make this variable an option, ask Joe why when it was added the default 
+# was 9000.
+MIN_CROSSREFS=9000
 while $CONTINUE; do
     case "$1" in
 	--tex)
@@ -97,14 +100,18 @@ rebuild_latex() {
 }
 
 rebuild_bibtex() {
-    echo -n " bibtex"
-    echo "" >>$TEXFILE.rebuild.out
-    echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
-    echo "---               rebuild bibtex               ---" >>$TEXFILE.rebuild.out
-    echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
-    # TODO-joe TODO-eric: think about how to not hardcode min-xrefs
-    @BIBTEX_COMPILER@ --min-crossrefs=9000 $TEXFILE >>$TEXFILE.rebuild.out 2>&1
-    bibtex_err=$?
+    if grep citation $TEXFILE.aux >/dev/null 2>&1; then
+        echo -n " bibtex"
+        echo "" >>$TEXFILE.rebuild.out
+        echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
+        echo "---               rebuild bibtex               ---" >>$TEXFILE.rebuild.out
+        echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
+        @BIBTEX_COMPILER@ --min-crossrefs=$MIN_CROSSREFS $TEXFILE >>$TEXFILE.rebuild.out 2>&1
+        bibtex_err=$?
+    else
+	echo -n " (skip-bibtex-no-citations)"
+	bibtex_err=0
+    fi
 }
 
 rebuild() {
