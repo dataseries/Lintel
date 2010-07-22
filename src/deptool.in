@@ -2787,13 +2787,13 @@ just the username would be used.
 
 =item min-date=I<date>
 
-Specify a minimum date to include in the list, usually used to prune out early
-revisions that were reviewed before using this feature.
+Specify a minimum date (in the form YYYY-MM-DD) to include in the list, usually 
+used to prune out early revisions that were reviewed before using this feature.
 
 =item max-date=I<date>
 
-Specify a maximum date to include in the list, useful for reducing the number
-of revisions to examine.
+Specify a maximum date (in the form YYYY-MM-DD) to include in the list, useful 
+for reducing the number of revisions to examine.
 
 =item unreviewed
 
@@ -2832,6 +2832,10 @@ sub reviewStatus {
 	    $db = $1;
 	    push(@selectors, $_);
 	} elsif (/=/o) {
+	    # TODO-sprint: check that min-data and max-date selectors match YYYY-MM-DD format
+
+	    # TODO-sprint: consider a summary line that shows the number of unreviewed and total
+	    # revisions examined
 	    push(@selectors, $_);
 	} elsif (/^[0-9a-fA-F]+$/o) {
 	    push(@revisions, $_);;
