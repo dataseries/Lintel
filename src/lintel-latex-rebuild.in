@@ -10,14 +10,15 @@ usage() {
     [ "$1" != "" ] && echo "$@"
     echo "Usage: $0"
     echo "  [--tex <path>] [--bib <path>] [--bst <path>] [--paper <paper-size>]"
-    echo "  [--error-on-warnings] <srcdir> <main-texfile-basename>"
+    echo "  [--error-on-warnings] [--latex-binary <path>] <srcdir> <main-texfile-basename>"
     echo "-----"
     echo "    <path> is a : separated sequence of paths"
     exit 0
 }
 
+LATEX_COMMAND="@LATEX_COMPILER@"
 if [ "$1" = "--selfcheck" ]; then
-    for i in @LATEX_COMPILER@ @BIBTEX_COMPILER@ @DVIPS_CONVERTER@ @PS2PDF14_CONVERTER@; do
+    for i in "$LATEX_COMMAND" @BIBTEX_COMPILER@ @DVIPS_CONVERTER@ @PS2PDF14_CONVERTER@; do
 	if [ ! -x $i ]; then
 	    echo "lintel-latex-rebuild selfcheck failed; $i is missing"
 	    exit 1
@@ -62,6 +63,12 @@ while $CONTINUE; do
 	    shift
 	    ERROR_ON_WARNINGS=true
 	    ;;
+	--latex-binary)
+	    shift
+	    [ $# != 0 ] || usage
+	    LATEX_COMMAND="$1"
+	    shift
+	    ;;
 	*)
 	    CONTINUE=false
 	    ;;
@@ -95,7 +102,7 @@ rebuild_latex() {
     echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
     echo "---                rebuild latex               ---" >>$TEXFILE.rebuild.out
     echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
-    @LATEX_COMPILER@ $TEXFILE.tex </dev/null >>$TEXFILE.rebuild.out 2>&1
+    $LATEX_COMMAND $TEXFILE.tex </dev/null >>$TEXFILE.rebuild.out 2>&1
     latex_err=$?
 }
 

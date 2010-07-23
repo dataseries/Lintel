@@ -225,7 +225,7 @@ the BUILD_ROOT environment variable, which defaults to ~/build.
 =item --operating-system=<string>
 
 Specify the operating system's name.  Normally this would be specified
-in the OS environment variable, which defaults to various strings depending
+in the BUILD_OS environment variable, which defaults to various strings depending
 on the inferred operating system, e.g. debian-etch, or rhel5.
 
 =item --uname-m=<string>
@@ -238,14 +238,14 @@ uname -m.
 
 Specify the debugging build directory.  Normally this would be
 specified by the BUILD_DEBUG environment variable, which defaults to
-$BUILD_ROOT/dbg-$OS-$UNAME_M, or $BUILD_ROOT/debug if that directory
+$BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M, or $BUILD_ROOT/debug if that directory
 exists.
 
 =item --build-opt=<path>
 
 Specify the optimize build directory.  Normally this would be
 specified by the BUILD_OPT environment variable, which defaults to
-$BUILD_ROOT/opt-$OS-$UNAME_M, or $BUILD_ROOT/optimize if that
+$BUILD_ROOT/opt-$BUILD_OS-$UNAME_M, or $BUILD_ROOT/optimize if that
 directory exists.
 
 =item --monotone-dir=<path>
@@ -3249,7 +3249,7 @@ BUILD_DEBUG are set.
 
 =item operatingSystem
 
-The OS environment variable.  Automatically inferred by looking at
+The BUILD_OS environment variable.  Automatically inferred by looking at
 various files in /etc to determine the operating system type and
 version.
 
@@ -3261,13 +3261,13 @@ you have to build differently for different architecture types.
 =item buildDebug
 
 The BUILD_DEBUG environment variable.  Specifies the root directory
-for debugging builds.  Defaults to $BUILD_ROOT/dbg-$OS-$UNAME_M, or
+for debugging builds.  Defaults to $BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M, or
 $BUILD_ROOT/debug if the latter exists.
 
 =item buildOpt
 
 The BUILD_OPT environment variable.  Specifies the root directory
-for optimized builds.  Defaults to $BUILD_ROOT/opt-$OS-$UNAME_M, or
+for optimized builds.  Defaults to $BUILD_ROOT/opt-$BUILD_OS-$UNAME_M, or
 $BUILD_ROOT/optimize if the latter exists.
 
 =item makeParallelism
@@ -3299,7 +3299,7 @@ sub getEnv {
 
         printEnv($shell, 'PROJECTS', \&projects);
         printEnv($shell, 'BUILD_ROOT', \&buildRoot);
-        printEnv($shell, 'OS', \&operatingSystem);
+        printEnv($shell, 'BUILD_OS', \&operatingSystem);
         printEnv($shell, 'UNAME_M', \&unameM);
         printEnv($shell, 'BUILD_DEBUG', \&buildDebug);
         printEnv($shell, 'BUILD_OPT', \&buildOpt);
@@ -3348,7 +3348,7 @@ sub buildRoot {
 }
 
 sub operatingSystem {
-    $Cache::operating_system ||= $ENV{OS};
+    $Cache::operating_system ||= $ENV{BUILD_OS};
     unless(defined $Cache::operating_system) {
 	if (-f "/etc/lsb-release") { # need to check this first, Ubuntu has /etc/debian_version
             my $lsbver = new FileHandle("/etc/lsb-release")
@@ -3414,8 +3414,13 @@ sub operatingSystem {
             $Cache::operating_system = "unknown";
         }
         if ($Cache::operating_system =~ /unknown/o) {
-            print STDERR "Unknown OS, using $Cache::operating_system\n";
-	    print STDERR "Set \$OS to avoid warning, or fix deptool to auto-detect\n";
+	    if (defined $ENV{OS}) {
+		print STDERR "Unrecognized operating system, overriding with deprecated env var OS\n";
+		$Cache::operating_system = $ENV{OS};
+	    } else {
+		print STDERR "Unrecognized operating system, using $Cache::operating_system\n";
+	    }
+	    print STDERR "Set \$BUILD_OS to avoid warning, or fix deptool to auto-detect\n";
 	    unless ($quiet) { # We're probably running under getEnv.
 		print "Hit return to continue: ";
 		$_ = <STDIN>;

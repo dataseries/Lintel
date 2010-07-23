@@ -26,5 +26,5 @@ Debian-Lenny (debian-5.0):
 
 
      # mercury-plot
-     % aptitude install gnuplot libio-pty-perl libdata-showtable-perl
+     % aptitude install gnuplot libio-pty-perl libdata-showtable-perl netpbm
   
