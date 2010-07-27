@@ -104,6 +104,10 @@ rebuild_latex() {
     echo "--------------------------------------------------" >>$TEXFILE.rebuild.out
     $LATEX_COMMAND $TEXFILE.tex </dev/null >>$TEXFILE.rebuild.out 2>&1
     latex_err=$?
+    case $LATEX_COMMAND in
+	# perltex drops the exit code from latex so we have to infer it from the output.
+	*perltex) [ `grep 'Emergency stop.' $TEXFILE.rebuild.out | wc -l` -ge 1 ] && latex_err=77 ;;
+    esac
 }
 
 rebuild_bibtex() {
@@ -130,7 +134,11 @@ rebuild() {
 # Two initial rounds to get enough far through that it could be stable
 echo -n "initial latex rounds:"
 rebuild
-rebuild
+if [ $latex_err != 0 ]; then
+    # clean up old files that may be bad and prevent a clean build.
+    rm $TEXFILE.aux $TEXFILE.bbl $TEXFILE.blg
+    rebuild
+fi
 rebuild_latex
 echo " done."
 
