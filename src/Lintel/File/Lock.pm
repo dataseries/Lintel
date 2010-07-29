@@ -36,17 +36,17 @@ Lintel::File::Lock - locking and unlocking of files
 		      flags => $flags,
 		      mode => $mode);
 
-getLock will attempt to acquire a lock on filename.  By default, the 
+getLock will attempt to acquire a lock on filename.  By default, the
 file will be created if it doesn't exist, and getLock will return
 an exclusive locked read/write FileHandle on success.  If you are going to
 write to the file, you should call one of C<seek($fh, 0, SEEK_END); or
 seek($fh, 0, SEEK_SET);> to set the current writing position.
 
-To release the lock, set the filehandle to undef.  
+To release the lock, set the filehandle to undef.
 
-If no waittime is specified, it will wait forever.  Otherwise if it 
-has waited for waittime seconds, it will return undef.  Various additional 
-information is printed to stderr if verbose is specified.  
+If no waittime is specified, it will wait forever.  Otherwise if it
+has waited for waittime seconds, it will return undef.  Various additional
+information is printed to stderr if verbose is specified.
 
 The flags parameter is a bitwise or of the flags to sysopen.  The
 default is to use O_CREAT | O_RDWR.
@@ -64,18 +64,18 @@ have functional locking.
 
 sub getLockEx {
     my ($filename, %param) = @_;
-    return getLock($filename, $param{waittime}, $param{verbose}, 
+    return getLock($filename, $param{waittime}, $param{verbose},
 	            $param{flags}, $param{mode});
 }
 
-sub getLock { 
+sub getLock {
     my ($filename, $waittime, $verbose, $flags, $mode) = @_;
     die "?" unless defined $filename;
     $flags ||= O_CREAT | O_RDWR;
     $mode ||= 0666;
 
     my $fh;
-    sysopen($fh, $filename, $flags, $mode) 
+    sysopen($fh, $filename, $flags, $mode)
 	or die "Unable to create or open $filename for read/write: $!";
     if (defined $waittime) {
 	die "??" if $waittime < 0;

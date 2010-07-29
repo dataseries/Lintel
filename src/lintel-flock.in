@@ -60,7 +60,7 @@ if (defined $unlock) {
     } else {
 	exit(1);
     }
-} 
+}
 
 die "Invalid waittime $waittime, should be >= 0"
     if defined $waittime && $waittime < 0;
@@ -70,7 +70,11 @@ die "missing filename for lock"
 
 if (@command > 0) {
     print "lintel-flock-$$: Getting lock on $filename\n" if $debug;
-    my $fh = Lintel::File::Lock::getLock($filename, $waittime, $verbose);
+    my $fh = eval { Lintel::File::Lock::getLock($filename, $waittime, $verbose); };
+    if ($@) {
+	print "failed: internal-error $@";
+	exit(233);
+    }
     print "lintel-flock-$$: Post get-lock on $filename\n" if $debug;
 
     if (defined $fh) {
@@ -88,7 +92,11 @@ if (@command > 0) {
 } else {
     die("missing callpid argument or command argument")
 	unless defined $callpid;
-    my $fh = Lintel::File::Lock::getLock($filename, $waittime, $verbose);
+    my $fh = eval { Lintel::File::Lock::getLock($filename, $waittime, $verbose); };
+    if ($@) {
+	print "failed: internal-error $@";
+	exit(233);
+    }
     print STDERR "XX $fh\n" if $verbose;
     if (defined $fh) {
 	background($fh, $callpid, $verbose);
@@ -109,7 +117,8 @@ sub background {
 	if $verbose;
     my $pid = fork();
     unless(defined $pid && $pid >= 0) {
-	die "fork failed: $!";
+	print "failed: fork failed: $!";
+	exit(233);
     }
     if ($pid == 0) { # child
 	close(STDOUT);
