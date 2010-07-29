@@ -35,6 +35,10 @@
 #include <boost/static_assert.hpp>
 #include <boost/type_traits/is_integral.hpp>
 
+// TODO: replace these bits with the new functions from
+// http://burtleburtle.net/bob/c/lookup3.c which are supposed to be better.
+// Also consider including some of the other goodish hashes on that page.
+
 /// A fast way of doing an inline mix of three integers; used in the
 /// BobJenkinsHash as a core operation; this is placed here so that
 /// hashing on a bunch of small integers can be done quickly without a
