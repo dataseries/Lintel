@@ -28,3 +28,15 @@ Debian-Lenny (debian-5.0):
      # mercury-plot
      % aptitude install gnuplot libio-pty-perl libdata-showtable-perl netpbm
   
+----------------------------
+
+CentOS 5 (centos5)
+  Lintel required:
+     yum install -y perl cmake gcc-c++ make boost-devel tar
+
+  Lintel optional:
+     # remove deptool warning
+     yum install -y perl-Digest-SHA1
+
+     # XMLUtil
+     yum install -y libxml2-devel

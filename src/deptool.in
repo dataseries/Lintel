@@ -3394,6 +3394,8 @@ sub operatingSystem {
                 $Cache::operating_system = "rhel$1";
 	    } elsif (/^Fedora release (\d+) \(\w+\)$/o) {
 		$Cache::operating_system = "fedora$1";
+	    } elsif (/^CentOS release (\d+)\b/o) {
+		$Cache::operating_system = "centos$1";
             } else {
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "rh-unknown-$_";
