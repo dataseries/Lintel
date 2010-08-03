@@ -8,7 +8,7 @@ endif
 TOOLSDIR := @CMAKE_INSTALL_PREFIX@/share/packaging
 
 help: 
-	@echo "make rpm | tar | repo"
+	@echo "make rpm | tar | repo | clean"
 
 checkdir: FORCE
 	@dashdir=`pwd | sed 's,/,-,g'`; \
@@ -18,7 +18,9 @@ checkdir: FORCE
 		echo "Hmm, mismatch between current directory($$dashdir) and package name ($(PACKAGE))"; exit 1; \
 	fi
 
-tar: $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz
+hook_tar::
+
+tar: hook_tar $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz
 
 rpm: $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz $(PACKAGE).spec $(rpm_topdir)/BUILD $(rpm_topdir)/RPMS $(rpm_topdir)/SRPMS 
 	TOOLSDIR=$(TOOLSDIR) rpmbuild --define='_initrddir /etc/rc.d/init.d' --define='_optdir /opt' -ba $(PACKAGE).spec
@@ -27,7 +29,7 @@ repo: rpm
 	rsync -av --exclude=BUILD --exclude=SOURCES $(rpm_topdir)/* root@pa-install.u:$(REPODIR)
 	ssh root@pa-install.u /bin/sh -c "'cd $(REPODIR); pwd; make'"
 
-clean: 
+clean::
 	rm $(PACKAGE).spec redhat/postinst
 
 all:
