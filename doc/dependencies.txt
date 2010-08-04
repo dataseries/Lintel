@@ -40,3 +40,11 @@ CentOS 5 (centos5)
 
      # XMLUtil
      yum install -y libxml2-devel
+
+     # Lintel::Net::SSH::KnownHostsFile.pm
+     yum install -y openssh-clients perl-Digest-SHA1
+     rpm -i perl-Digest-HMAC*rpm  # non-standard on centos5
+
+     # Lintel::DBI
+     yum -y install perl-DBI perl-DBD-MySQL
+
