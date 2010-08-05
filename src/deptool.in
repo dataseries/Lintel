@@ -1945,7 +1945,7 @@ sub depCommitUnknown {
             return;
         } elsif ($_ eq 'add') {
             print "Adding files...\n";
-            runCommand("mtn","add","--unknown");
+            runCommand("mtn","add", "--recursive", "--unknown");
             return;
         } else {
             print "Expected 'ignore' or 'add', not '$_'; try again\n";
