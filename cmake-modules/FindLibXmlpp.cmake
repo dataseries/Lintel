@@ -4,6 +4,7 @@
 #
 #  LIBXMLPP_FOUND - system has LibXml++
 #  LIBXMLPP_INCLUDE_DIR - the LibXml++ include directory
+#  LIBXMLPP_INCLUDES - all includes for LibXml++ include
 #  LIBXMLPP_LIBRARIES - the libraries needed to use LibXml++
 #  LIBXMLPP_DEFINITIONS - Compiler switches required for using LibXml++
 # (c) Hewlett Packard Development Company, 2006
@@ -31,6 +32,8 @@ FIND_PATH(LIBXMLPP_INCLUDE_DIR libxml++/libxml++.h
    ${_LibXmlppIncDir}
    PATH_SUFFIXES libxml++-2.6
    )
+
+SET(LIBXMLPP_INCLUDES ${LIBXMLPP_INCLUDE_DIR} ${LIBXMLPP_EXTRA_INCLUDES})
 
 FIND_LIBRARY(LIBXMLPP_LIBRARIES NAMES xml++-2.6
    PATHS
