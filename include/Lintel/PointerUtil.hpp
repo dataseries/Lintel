@@ -77,15 +77,40 @@ namespace lintel {
     /// Convert a pointer into a reference after verifying that the
     /// pointer is not null.
     template <typename T> T &safeRef(T *from) {
-	SINVARIANT(from != NULL);
+	INVARIANT(from != NULL, "source pointer is null");
 	return *from;
     }
 
     /// Convert a const pointer into a reference after verifying that
     /// the pointer is not null.
     template <typename T> const T &safeRef(const T *from) {
-	SINVARIANT(from != NULL);
+	INVARIANT(from != NULL, "source pointer is null");
 	return *from;
+    }
+
+    /// Convert a boost shared pointer into a reference after verifying that
+    /// the pointer is not null.
+    template <typename T> T &safeRef(boost::shared_ptr<T> &from) {
+	INVARIANT(from != NULL, "source pointer is null");
+	return *from;
+    }
+
+    /// Convert a const boost shared pointer into a reference after verifying that
+    /// the pointer is not null.
+    template <typename T> const T &safeRef(boost::shared_ptr<const T> &from) {
+	INVARIANT(from != NULL, "source pointer is null");
+	return *from;
+    }
+
+
+    /// Convert a type into a void *
+    template<typename T> void *voidCast(T p) {
+	return reinterpret_cast<void *>(p);
+    }
+
+    /// Convert a boost shared pointer into a void pointer
+    template<typename T> void *voidCast(boost::shared_ptr<T> &p) {
+	return static_cast<void *>(p.get());
     }
 }
 

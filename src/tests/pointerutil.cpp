@@ -69,8 +69,41 @@ public:
     int val3;
 };
 
-int main()
-{
+void testSafeRef() {
+    using lintel::safeRef;
+
+    int *a = new int;
+    SINVARIANT(&safeRef(a) == a);
+    const int *b = a;
+    SINVARIANT(&safeRef(b) == b);
+
+    boost::shared_ptr<int> c(a);
+    SINVARIANT(&safeRef(c) == a);
+    boost::shared_ptr<const int> d(c);
+    SINVARIANT(&safeRef(d) == b);
+
+    c.reset(); d.reset();
+    b = a = NULL;
+    TEST_INVARIANT_MSG1(safeRef(a), "source pointer is null");
+    TEST_INVARIANT_MSG1(safeRef(b), "source pointer is null");
+    TEST_INVARIANT_MSG1(safeRef(c), "source pointer is null");
+    TEST_INVARIANT_MSG1(safeRef(d), "source pointer is null");
+}
+
+void testVoidCast() {
+    using lintel::voidCast;
+
+    int *a = new int;
+    boost::shared_ptr<int> b(a);
+
+    SINVARIANT(voidCast(a) == static_cast<void *>(a));
+    SINVARIANT(voidCast(b) == static_cast<void *>(a));
+
+    int v = 5;
+    SINVARIANT(voidCast(v) == reinterpret_cast<void *>(v));
+}
+
+int main() {
     derived1 *d1 = new derived1(3,4);
 
     base1 *d1_b1 = static_cast<base1 *>(d1);
@@ -124,5 +157,9 @@ int main()
 			"dynamic crosscast failed in boost::shared_ptr<T> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]",
 			"dynamic crosscast failed in boost::shared_ptr<X> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]");
 
+    testSafeRef();
+    testVoidCast();
+
+    cout << "All pointerutil tests passed.\n";
     return 0;
 }
