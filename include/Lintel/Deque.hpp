@@ -106,6 +106,13 @@ public:
 
     class iterator {
     public:
+	typedef std::forward_iterator_tag iterator_category;
+
+	typedef T value_type;
+	typedef T &reference;
+	typedef T *pointer;
+	typedef ptrdiff_t difference_type;
+	
 	iterator(Deque &_mydeque, unsigned pos) 
 	    : mydeque(_mydeque), cur_pos(pos)
 	{ }

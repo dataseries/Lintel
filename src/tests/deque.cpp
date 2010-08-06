@@ -113,9 +113,24 @@ void testPushBack() {
     SINVARIANT(deque.empty());
 }
 
+void testAssign() {
+    Deque<int> a;
+    a.push_back(1);
+    a.push_back(2);
+    a.push_back(3);
+
+    vector<int> b;
+    b.assign(a.begin(), a.end());
+    SINVARIANT(b.size() == 3);
+    for(uint32_t i = 0; i < 3; ++i) {
+	SINVARIANT(b[i] == i+1);
+    }
+}
+
 int main(int argc, char *argv[]) {
     testPushBack();
     testNoDefaultConstructor();
+    testAssign();
     cout << "deque tests passed.\n";
 }
 
