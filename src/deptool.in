@@ -3817,10 +3817,10 @@ sub vcGetCertificates {
 	    my @slice = @lines[$i .. $i + 4];
 	    my %info = simpleParse(\@slice,
 				   [ qr/^-+$/o => undef,
-				     qr/^Key\s+: (\S+)$/o => 'key',
-				     qr/^Sig\s+: (\S+)$/o => 'sig',
-				     qr/^Name\s+: (\S+)$/o => 'name',
-				     qr/^Value\s+: (.*)$/o => 'value' ]);
+				     qr/^Key\s+:\s+(.+)$/o => 'key',
+				     qr/^Sig\s+:\s+(\S+)$/o => 'sig',
+				     qr/^Name\s+:\s+(\S+)$/o => 'name',
+				     qr/^Value\s+:\s+(.*)$/o => 'value' ]);
 	    $info{value} .= "\n";
 	    for ($i += 5; $i < @lines && $lines[$i] !~ /^-+$/o; ++$i) {
 		$_ = $lines[$i];
