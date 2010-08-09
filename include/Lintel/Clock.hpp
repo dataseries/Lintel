@@ -20,6 +20,7 @@
 
 #include <stdint.h>
 #include <limits>
+#include <utility>
 
 #include <boost/config.hpp>
 
@@ -107,10 +108,9 @@ public:
 			       double max_conf95_rel = 0.01,
 			       int print_calibration_warnings_after_tries = 1);
 
-    /// True if calibrateClock has already been run
-    static bool isCalibrated() {
-	return clock_rate > 0;
-    }
+    /// True if calibrateClock has already been run; note clock_rate can be < 0 if we
+    /// are running in AUFSO_UseTod, in which case we are just assumed to be calibrated.
+    static bool isCalibrated();
 
     Clock(bool allow_calibration = false);
 
@@ -270,7 +270,8 @@ public:
 	AUFSO_WarnFast, ///< like Yes but print out a warning to cerr
 	AUFSO_WarnSlow, ///< like Slow but print out a warning to cerr
 	AUFSO_Slow, ///< substitute todTfrac() when frequency scaling is possible
-	AUFSO_No ///< fail when frequency scaling is possible
+	AUFSO_No, ///< fail when frequency scaling is possible
+	AUFSO_UseTod, ///< always use todTfrac()
     };
     /// \brief How should we deal with frequency scaling?
     /// Frequency scaling means that the estimated clock could be wrong
@@ -278,6 +279,14 @@ public:
     /// can't tell that the frequency would be constant or we know 
     /// it isn't, then we use allow to determine how to behave.
     static void allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow = AUFSO_WarnFast);
+
+    /// return current frequency scaling mode and whether we might have frequency scaling
+    static std::pair<AllowUnsafeFreqScalingOpt, bool> getFrequencyScalingInfo();
+
+    /// Return time in seconds for estimated latency of calling todTfrac()
+    /// Useful for deciding if you will set frequency scaling mode to
+    /// AUFSO_UseTod, if for example, the tod latency is << 1us.
+    static double estimateTodTfracLatency();
 
     ////////////////////////////////
     // Utility functions

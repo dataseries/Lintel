@@ -133,6 +133,42 @@ void Clock::allowUnsafeFrequencyScaling(AllowUnsafeFreqScalingOpt allow) {
     }
 }
 
+std::pair<Clock::AllowUnsafeFreqScalingOpt, bool> Clock::getFrequencyScalingInfo() {
+    return make_pair(allow_unsafe_frequency_scaling, may_have_frequency_scaling);
+}
+
+double Clock::estimateTodTfracLatency() {
+    static const uint32_t nmeasurements = 5;
+    double measurements[nmeasurements];
+
+    for (uint32_t i = 0; i < nmeasurements; ++i) {
+	// same logic as in initialMeasurements; wait for time to change,
+	// measure until next change.
+	Tfrac start = todTfrac(), cur;
+	while (start == (cur = todTfrac())) {
+	    // wait
+	}
+	uint32_t count = 1; // first call
+	start = cur;
+	while (start == (cur = todTfrac())) {
+	    ++count;
+	}
+	if (cur < start) {
+	    --i; // try again; clock very confused
+	} else {
+	    SINVARIANT(cur > start);
+	    measurements[i] = TfracToDouble(cur - start) / count;
+	}
+    }
+    sort(measurements, measurements + nmeasurements);
+    SINVARIANT(nmeasurements >= 2);
+    // take 10th percentile
+    uint32_t offset = ceil(nmeasurements * 0.1);
+    SINVARIANT(offset > 0 && offset < nmeasurements);
+
+    return measurements[offset]; 
+}
+
 void Clock::initialMeasurements() {
     {
 	vector<Tll> elapsed;
@@ -167,8 +203,8 @@ void Clock::initialMeasurements() {
     {
 	// Estimate min # cycles to pass a quanta
 	vector<uint64_t> cycles;
-	// This many measurements will be somewhat slow on windows
-	// ~0.45s since we have to pass through 3 tod changes, and the
+	// This many measurements will be somewhat slow on windows ~0.45s since
+	// we take 10 measurements, have to pass through 3 tod changes, and the
 	// windows quanta is 15ms.
 	const uint32_t nmeasurements = 10;
 	cycles.reserve(nmeasurements);
@@ -235,6 +271,11 @@ void Clock::calibrateClock(bool print_calibration_information,
 			   int print_calibration_warnings_after_tries) {
     if (clock_rate != -Double::Inf) {
 	return; // already calibrated; don't handle changes.
+    }
+    if (allow_unsafe_frequency_scaling == AUFSO_UseTod) {
+	may_have_frequency_scaling = true;
+	clock_rate = 0;
+	return;
     }
 
     Tfrac calibrate_start = todTfrac();
@@ -321,7 +362,7 @@ void Clock::calibrateClock(bool print_calibration_information,
 	}
 
 	if (print_calibration_information || tries >= print_calibration_warnings_after_tries) {
-	    LintelLog::warn(format("Calibrating clock rate, try %d: est mean %.10g, conf95 %.10g\n")
+	    LintelLog::warn(format("Calibrating clock rate, try %d: est mean %.10g, conf95 %.10g")
 			    % tries % truncated_mean.mean() % truncated_mean.conf95());
 	}
 	if (truncated_mean.conf95() < truncated_mean.mean() * max_conf95_rel) {
@@ -343,17 +384,20 @@ void Clock::calibrateClock(bool print_calibration_information,
     }
 }
 
+bool Clock::isCalibrated() {
+    return clock_rate > 0 || allow_unsafe_frequency_scaling == Clock::AUFSO_UseTod;
+}
+
 Clock::Clock(bool allow_calibration)
     : nrecalibrate(0), bad_get_tod_cycle_gap(NULL), 
       last_calibrate_tod_tfrac(0),
       last_cc(0), last_recalibrate_cc(0), recalibrate_interval_cycles(0)
 {
-    if (clock_rate <= 0) {
-	INVARIANT(allow_calibration,
-		  "you failed to call Clock::calibrateClock()!");
+    if (!isCalibrated()) {
+	INVARIANT(allow_calibration, "you failed to call Clock::calibrateClock()!");
 	calibrateClock();
+	SINVARIANT(clock_rate > 0);
     }
-    SINVARIANT(clock_rate > 0);
     setRecalibrateIntervalSeconds();
 }
 
@@ -384,15 +428,15 @@ void Clock::unbindFromProcessor() {
 
 Clock::Tfrac Clock::todccTfrac_recalibrate() {
     if (may_have_frequency_scaling) {
-	if (allow_unsafe_frequency_scaling == AUFSO_WarnSlow ||
-	    allow_unsafe_frequency_scaling == AUFSO_Slow) {
-	    return todTfrac();
-	} else {
-	    SINVARIANT(allow_unsafe_frequency_scaling == AUFSO_Yes ||
-		       allow_unsafe_frequency_scaling == AUFSO_WarnFast);
-	}
+	switch (allow_unsafe_frequency_scaling) 
+	    {
+	    case AUFSO_Yes: case AUFSO_WarnFast: break;
+	    case AUFSO_WarnSlow: case AUFSO_Slow: case AUFSO_UseTod: 
+		return todTfrac();
+	    default:
+		FATAL_ERROR("internal");
+	    }
     }
-
 
     INVARIANT(clock_rate > 0,
 	      "You do not appear to have setup a Clock object; how did you get here?");
@@ -463,8 +507,22 @@ void Clock::timingTest() {
     // it's using todcc() and it's not worth fixing until we have real
     // regression stuff on this.
 
+    {
+	struct timeval start, end;
+	gettimeofday(&start, NULL);
+	static const uint32_t reps = 100000;
+	for (uint32_t i = 0; i < reps; ++i) {
+	    gettimeofday(&end, NULL);
+	}
+
+	double elapsed = (end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec) * 1.0e-6;
+
+	cout << format("%.2fs elapsed, %.2fns/op\n") % elapsed % (1.0e9 * elapsed / reps);
+    }
+    
+    cout << "Starting timing test\n";
     Clock::Tfrac measurement_time_tfrac = Clock::secNanoToTfrac(1,0);
-    Clock::calibrateClock(true,0.001);
+    Clock::calibrateClock(true, 0.001);
     Clock myclock;
     myclock.setRecalibrateIntervalSeconds();
 
@@ -488,6 +546,8 @@ void Clock::timingTest() {
 	    % (ns_per_todtfrac * clock_rate / 1000.0) % (ns_per_todtfrac/ns_per_todtfrac);
     }
 
+    unsigned clock_reps = nreps;
+
     {
 	Clock::Tfrac start = myclock.todTfrac();
 	Clock::Tfrac end_target = start + measurement_time_tfrac;
@@ -497,13 +557,11 @@ void Clock::timingTest() {
 	Clock::Tfrac end = myclock.todTfrac();
 	SINVARIANT(end > start && end - start >= measurement_time_tfrac * 0.99);
 	double elapsed_ns = Clock::TfracToDouble(end - start) * 1.0e9;
-	ns_per_todtfrac = elapsed_ns / static_cast<double>(nreps);
+	double ns_per_todcctfrac = elapsed_ns / static_cast<double>(nreps);
 	cout << format("todccTfrac            %9d   %8.0f   %7.4g   %7.4g     %5.3g\n")
-	    % nreps % (elapsed_ns * 1e-3) % ns_per_todtfrac
-	    % (ns_per_todtfrac * clock_rate / 1000.0) % (ns_per_todtfrac/ns_per_todtfrac);
+	    % nreps % (elapsed_ns * 1e-3) % ns_per_todcctfrac
+	    % (ns_per_todcctfrac * clock_rate / 1000.0) % (ns_per_todtfrac/ns_per_todcctfrac);
     }
-
-    unsigned clock_reps = nreps;
 
     // Test as if we could just magically use the cycle counter
     {

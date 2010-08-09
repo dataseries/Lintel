@@ -27,10 +27,10 @@ void Clock::perThreadInit() {
 }
 
 Clock &Clock::perThread() {
-    INVARIANT(clock_rate > 0 && did_per_thread_init, 
-	      "you need to call Clock::perThreadInit before calling Clock::perThread()");
     Clock *c = static_cast<Clock *>(pthread_getspecific(per_thread_clock));
     if (c == NULL) {
+	INVARIANT(did_per_thread_init && isCalibrated(),
+		  "you need to call Clock::perThreadInit before calling Clock::perThread()");
 	c = new Clock;
 	pthread_setspecific(per_thread_clock, c);
     }

@@ -16,6 +16,8 @@ int main(int argc, char *argv[]) {
 	return 0;
     }
     Clock::selfCheck();
+    LintelLog::info(boost::format("Estimated tod tfrac latency: %.2fus")
+		    % (Clock::estimateTodTfracLatency() * 1.0e6));
     if (LintelLog::wouldDebug("timing")) {
 	Clock::timingTest();
     }
