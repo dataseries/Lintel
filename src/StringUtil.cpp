@@ -198,26 +198,32 @@ static int unpackhexchar(const char v) {
 	return v - '0';
     if (v >= 'a' && v <= 'f')
 	return 10 + v - 'a';
+    if (v >= 'A' && v <= 'F')
+	return 10 + v - 'A';
     FATAL_ERROR(format("bad hex character %d\n") % static_cast<unsigned>(v));
     return -1;
 }
 
-static unsigned char unpackhex(const char *v) {
+unsigned char unpackhex(const char *v) {
     int v1 = unpackhexchar(v[0]);
     int v2 = unpackhexchar(v[1]);
     return (unsigned char)((v1 << 4) | v2);
 }
 
-string hex2raw(const string &in) {
-    INVARIANT((in.size() % 2) == 0,
-	      format("can't convert '%s' to hex, not an even number of digits")
-	      % in);
+string hex2raw(const char *ch, uint32_t n) {
+    INVARIANT((n % 2) == 0, 
+	      format("can't convert string to hex, not an even number of %d digits") % n);
     string out;
-    out.resize(in.size()/2);
-    for(unsigned int i=0;i<out.size();++i) {
-	out[i] = unpackhex(in.data()+2*i);
+    out.resize(n/2);
+    for(uint32_t i = 0; i < n/2; ++i) {
+	out[i] = unpackhex(ch + 2*i);
     }
     return out;
+}
+
+// TODO-sprint: Add test case for hex2raw
+string hex2raw(const string &in) {
+    return hex2raw(in.c_str(), in.size());
 }
 
 string maybehex2raw(const string &in) {

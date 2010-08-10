@@ -59,6 +59,9 @@ inline std::string hexstring(const std::string &instr) {
     return hexstring(instr.data(), instr.size());
 }
 
+/** convert two hex char into unsigned char*/
+unsigned char unpackhex(const char *ch);
+
 /** even though it is a void *, maybe it is completely printable... */
 std::string maybehexstring(const void *data, unsigned datasize);
 
@@ -67,6 +70,9 @@ std::string maybehexstring(const std::string &instr);
 
 /** convert instr into a CSV form as accepted by Excel */
 std::string toCSVform(const std::string &instr); 
+
+/** convert n char into a raw string, abort if it contains non-hex characters */
+std::string hex2raw(const char *ch, uint32_t n);
 
 /** convert instr into a raw string, abort if it contains non-hex characters */
 std::string hex2raw(const std::string &instr);
