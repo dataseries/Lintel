@@ -226,16 +226,20 @@ string hex2raw(const string &in) {
     return hex2raw(in.c_str(), in.size());
 }
 
-string maybehex2raw(const string &in) {
+bool ishexstring(const string &in) {
     if ((in.size() % 2) != 0) {
-	return in;
+	return false;
     }
-    for(unsigned int i=0;i<in.size();++i) {
+    for(uint32_t i = 0; i < in.size(); ++i) {
 	if (!isxdigit(in[i])) {
-	    return in;
+	    return false;
 	}
     }
-    return hex2raw(in);
+    return true;
+}
+
+string maybehex2raw(const string &in) {
+    return ishexstring(in) ? hex2raw(in) : in;
 }
 
 bool prefixequal(const string &str, const string &prefix) {

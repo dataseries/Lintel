@@ -62,6 +62,9 @@ inline std::string hexstring(const std::string &instr) {
 /** convert two hex char into unsigned char*/
 unsigned char unpackhex(const char *ch);
 
+/** returns true if in is valid hex string else return false*/
+bool ishexstring(const std::string &in);
+
 /** even though it is a void *, maybe it is completely printable... */
 std::string maybehexstring(const void *data, unsigned datasize);
 
