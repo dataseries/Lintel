@@ -6,6 +6,7 @@
 
 #include <string>
 
+// Consider replacing with: http://code.google.com/p/stringencoders/
 // TODO: add test cases, probably make a lot of this not inline.
 namespace lintel {
     class ASCIIbeticalB64 {
