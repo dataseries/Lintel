@@ -82,6 +82,24 @@ void test_mysqlEscape() {
     INVARIANT(mysqlEscape(pre) == post, "\n" + post + " isn't \n" + mysqlEscape(pre));
 }
 
+void test_hexstring() {
+    string decafbad("decafbad");
+    string decafbadhex("6465636166626164");
+    string decafbadraw("\xde\xca\xfb\xad");
+
+    string decaf("decaf");
+    string helloworld("Hello World!");
+    string helloworldhex("48656c6c6f20576f726c6421");
+
+    SINVARIANT(ishexstring(decafbad) && ishexstring(decafbadhex) && ishexstring(helloworldhex));
+    SINVARIANT(!ishexstring(decaf) && !ishexstring(helloworld) && !ishexstring(decafbadraw));
+
+    SINVARIANT(decafbad == hexstring(decafbadraw));
+    SINVARIANT(hexstring(maybehexstring(maybehex2raw(decafbad))) == decafbadhex);
+    
+    SINVARIANT(hexstring(helloworld)==helloworldhex && hex2raw(helloworldhex)==helloworld);    
+}
+
 // TODO: test the remainder of things in StringUtil.hpp
 
 int main(int argc, char *argv[]) {
@@ -94,5 +112,7 @@ int main(int argc, char *argv[]) {
     test_wstring2string();
 #endif
     test_mysqlEscape();
+    test_hexstring();
+
     return 0;
 }

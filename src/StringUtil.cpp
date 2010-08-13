@@ -221,7 +221,6 @@ string hex2raw(const char *ch, uint32_t n) {
     return out;
 }
 
-// TODO-sprint: Add test case for hex2raw
 string hex2raw(const string &in) {
     return hex2raw(in.c_str(), in.size());
 }
