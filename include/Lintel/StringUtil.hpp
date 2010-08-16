@@ -169,5 +169,18 @@ std::wstring string2wstring(const std::string &s,
 std::string wstring2string(const std::wstring &s, char dfault = 0,
 			   const std::locale &loc = std::locale());
 
+/** UCharStringAdaptor provides a method for getting an const unsigned
+    data buffer pointer 'udata()' from a string.
+ */
+class UCharStringAdaptor {
+    const std::string& ref;
+public:
+    UCharStringAdaptor( const std::string& _s) : ref(_s) {};
+
+    inline const unsigned char * udata() {
+	return reinterpret_cast<const unsigned char *>(ref.data());
+    }
+};
+
 #endif
 #endif
