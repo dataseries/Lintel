@@ -182,6 +182,5 @@ public:
     }
 };
 
-// TODO-ks1: add test for UCharStringAdaptor
 #endif
 #endif
