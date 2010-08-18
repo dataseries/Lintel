@@ -173,14 +173,15 @@ std::string wstring2string(const std::wstring &s, char dfault = 0,
     data buffer pointer 'udata()' from a string.
  */
 class UCharStringAdaptor {
-    const std::string& ref;
+    const std::string &ref;
 public:
-    UCharStringAdaptor( const std::string& _s) : ref(_s) {};
+    UCharStringAdaptor(const std::string &_s) : ref(_s) {};
 
     inline const unsigned char * udata() {
 	return reinterpret_cast<const unsigned char *>(ref.data());
     }
 };
 
+// TODO-ks1: add test for UCharStringAdaptor
 #endif
 #endif

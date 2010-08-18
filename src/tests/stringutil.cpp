@@ -100,6 +100,14 @@ void test_hexstring() {
     SINVARIANT(hexstring(helloworld)==helloworldhex && hex2raw(helloworldhex)==helloworld);    
 }
 
+void test_ucharstringadaptor() {
+    string s("1234");
+    const unsigned char *us = UCharStringAdaptor(s).udata();
+    for (unsigned int i = 0; i < s.length(); i++) {
+	SINVARIANT((int)s[i] == (int)us[i]);
+    }
+}
+
 // TODO: test the remainder of things in StringUtil.hpp
 
 int main(int argc, char *argv[]) {
@@ -113,6 +121,7 @@ int main(int argc, char *argv[]) {
 #endif
     test_mysqlEscape();
     test_hexstring();
+    test_ucharstringadaptor();
 
     return 0;
 }
