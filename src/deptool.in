@@ -3410,7 +3410,7 @@ sub operatingSystem {
 		$Cache::operating_system = "opensuse-$1";
 	    } else {
                 s/\W/_/go; s/\s/_/go;
-		$Cache::operating_system = "opensuse-unknown-$_";
+		$Cache::operating_system = "suse-unknown-$_";
 	    }
         } else {
             $Cache::operating_system = "unknown";

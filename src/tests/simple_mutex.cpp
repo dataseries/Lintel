@@ -8,9 +8,15 @@
 
 SIMPLE_MUTEX_SINGLETON(test);
 
-int main()
-{
+void scopedLock(SimpleMutex &m) {
+    SimpleScopedLock lock(m);
+}
+
+int main() {
     SimpleMutex test2;
+
+    scopedLock(test());
+    scopedLock(test2);
 
     test().lock();
     test().unlock();

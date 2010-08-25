@@ -299,6 +299,7 @@ void test_constA(const HashMap<int, int> &test_map,
 
     SINVARIANT(test_map.cGet(5) == 5);
     SINVARIANT(test_map2.cGet(6) == 6);
+    SINVARIANT(test_map.dGet(33) == 0);
 
     SINVARIANT(test_map.lookup(5) != NULL && *test_map.lookup(5) == 5);
     SINVARIANT(test_map.lookup(6) == NULL);

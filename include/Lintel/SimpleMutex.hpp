@@ -29,6 +29,21 @@ private:
     pthread_mutex_t m;
 };
 
+/// Simple scoped lock, again valid for use in non-threaded programs
+/// slight overhead in those programs for the write and the function calls.
+class SimpleScopedLock : boost::noncopyable {
+public:
+    SimpleScopedLock(SimpleMutex &m) : m(m) {
+        m.lock();
+    }
+
+    ~SimpleScopedLock() {
+        m.unlock();
+    }
+
+    SimpleMutex &m;
+};
+        
 /// \brief A macro that creates a singleton pattern function 
 ///   
 /// Simple macro to create a singleton pattern; this is useful for having a

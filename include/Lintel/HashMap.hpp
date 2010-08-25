@@ -136,6 +136,20 @@ public:
 	}
     }
 
+    /// Const "default" get returning default value if entry is missing in table.
+    const V &dGet(const K &k) const {
+	value_type fullval; fullval.first = k;
+	const value_type *v = hashtable.lookup(fullval);
+	if (v == NULL) {
+	    static V default_v;
+            return default_v;
+	} else {
+	    return v->second;
+	}
+    }
+    
+
+
     bool exists(const K &k) const {
 	return lookup(k) != NULL;
     }

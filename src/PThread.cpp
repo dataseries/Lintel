@@ -14,6 +14,7 @@
 
 
 #include <Lintel/PThread.hpp>
+#include <Lintel/SimpleMutex.hpp>
 #include <Lintel/StringUtil.hpp>
 
 using namespace std;
@@ -44,8 +45,10 @@ int PThreadMisc::getCurrentCPU(bool unknown_ok) {
 }
 
 int PThreadMisc::getNCpus(bool unknown_ok) {
+    static SimpleMutex m;
     static unsigned nprocs;
 
+    SimpleScopedLock lock(m);
     if (nprocs == 0) {
 	// automatically set on windows, and hence cygwin.
         if (const char* result = getenv("NUMBER_OF_PROCESSORS")) {
