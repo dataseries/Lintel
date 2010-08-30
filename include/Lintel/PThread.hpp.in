@@ -19,6 +19,7 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Clock.hpp>
 #include <Lintel/LockOrderingGroup.hpp>
+#include <Lintel/PointerUtil.hpp>
 
 #if __linux__
 extern "C" {
@@ -297,14 +298,17 @@ public:
 	abstime.tv_sec += static_cast<time_t>(floor(seconds));
 	abstime.tv_nsec += static_cast<time_t>(round(1.0e9 * (seconds - floor(seconds))));
 
-	if (abstime.tv_nsec > 1000 * 1000 * 1000) {
+	if (abstime.tv_nsec >= 1000 * 1000 * 1000) {
 	    abstime.tv_sec += 1;
 	    abstime.tv_nsec -= 1000 * 1000 * 1000;
 	    SINVARIANT(abstime.tv_nsec < 1000 * 1000 * 1000);
 	}
 	
         int ret = pthread_cond_timedwait(&c, &m.m, &abstime);
-        SINVARIANT(ret == 0 || ret == ETIMEDOUT);
+        using lintel::voidCast;
+        INVARIANT(ret == 0 || ret == ETIMEDOUT, 
+                  boost::format("error on timedWait(%p, %p, %d.%09d): %s ") % voidCast(&c)
+                  % voidCast(&m.m) % abstime.tv_sec % abstime.tv_nsec % strerror(ret));
         return ret == ETIMEDOUT ? true : false;
     }
 private:
