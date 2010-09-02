@@ -2632,11 +2632,8 @@ sub getChanged {
         }
       } @new_files;
 
-    # TODO-review: if a patch deletes a file (e.g. KeyValue revision 2129c95905), the die below was
-    # making code review unhappy, causing it to fail.  However, there does not appear to be any need
-    # for the check later in the code.  That is, the rest of the code doesn't seem to care.  So, I
-    # am changing this to a warning
     while(my($k,$v) = each %old) {
+        # TODO: check the log message to determine if the file was actually dropped
         warn "old file $k missing, assuming it was dropped" unless $v == 2;
     }
 
