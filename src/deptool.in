@@ -2725,13 +2725,15 @@ sub codeReviewPatch {
         or die "copy ($basedir/$last,$basedir/$to) failed: $!";
     quietRunCommand("mtn diff -d $database -r $from -r $to >$basedir/$to.patch");
     eval {
-        quietRunCommand("patch -U -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
+        quietRunCommand("patch -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
     };
     if ($@) {
         my @failed = grep(/\.rej$/o, findFilesPrefix("$basedir/$to"));
         print "\n\n**************\n";
-        print "Patch failed for files: ", join(", ", @failed), "\n";
+        print "Patch failed ($basedir/$to.patch.err) for files: ", join(", ", @failed), "\n";
 
+        die "No failed files found, examine error file for help"
+            unless @failed > 0;
         foreach my $file (@failed) {
             my $patch = $file;
             $file =~ s/\.rej$//o;
