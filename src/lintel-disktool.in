@@ -286,7 +286,7 @@ sub findDrives {
     warn "Unable to find any drives for tracing; ignored: " . join(" ", @{$config{not_used_drives}})
 	unless @Global::drives;
     if (@no_id_info) {
-	print "Unable to get sginfo -s or sysfs info on: ", join(", ", @no_id_info), "\n";
+	print "Unable to get @SGINFO_PATH@ -s or sysfs info on: ", join(", ", @no_id_info), "\n";
     }
     return @Global::drives;
 }
@@ -351,7 +351,7 @@ sub partitionDrives {
 	print ", " unless $first;
 	$first = 0;
 	print "$drive";
-	open(SFDISK, "| sfdisk /dev/$drive >/tmp/lintel-disktool.partition.$log 2>&1")
+	open(SFDISK, "| @SFDISK_PATH@ /dev/$drive >/tmp/lintel-disktool.partition.$log 2>&1")
 	    or die "??";
 	print SFDISK "0,\n";
 	close(SFDISK);
@@ -395,6 +395,7 @@ sub formatOneDrive {
 	$fs = &$fs($drive, $partition, $label);
     }
 
+    $ENV{PATH} = "$ENV{PATH}:/sbin:/usr/sbin"; # RHEL5 sudo doesn't include these paths by default
     if ($fs eq 'ext2') {
 	zeroPartition($partition);
 	my $ret = system("mkfs.ext2 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
@@ -428,7 +429,20 @@ sub getPartitionLabel {
 	return '' if /unknown volume type/o;
 	return $1 if /^ID_FS_LABEL=(.*)$/o;
     }
-    die "Did not find ID_FS_LABEL=.* in output of $cmd";
+
+    # RHEL5 vol_id returns nothing for missing devices, but will print "unknown
+    # volume type" if asked with -u.  Debian 5 will only show output if not
+    # given --uuid, with that option it prints nothing even though without an
+    # option it prints ID_FS_UUID
+
+    my $cmd2 = "/lib/udev/vol_id -u $partition 2>&1";
+    $fh = new FileHandle "$cmd2 |"
+        or die "Can not run $cmd2: $!";
+    $_ = <$fh>;
+    return '' if /unknown volume type/o;
+
+    die "Did not find ID_FS_LABEL=.* in output of $cmd
+  or 'unknown volume type' in output of $cmd2";
 }
 
 sub nextUnique {
@@ -887,7 +901,7 @@ sub getSpecificSfdiskInfo {
     my ($diskpath) = @_;
     my %ok;
     my %sizes;
-    open(SFDISK, "sfdisk -uS -l $diskpath 2>&1 |") or die "bad";
+    open(SFDISK, "@SFDISK_PATH@ -uS -l $diskpath 2>&1 |") or die "unable to run @SFDISK_PATH@ -uS";
     while(<SFDISK>) {
 	die "??1 '$_'" unless /^\s*$/o;
 	$_ = <SFDISK>;
@@ -997,8 +1011,8 @@ sub serialNumber {
 
     $drive =~ s!^/dev/!!o;
     my $ret;
-    open(SGINFO, "sginfo -s /dev/$drive 2>&1 |")
-	or die "bad";
+    open(SGINFO, "@SGINFO_PATH@ -s /dev/$drive 2>&1 |")
+	or die "unable to run @SGINFO_PATH@ -s /dev/$drive";
     $_ = <SGINFO>;
     if (!defined $_) {
 	$ret = undef;
@@ -1010,7 +1024,7 @@ sub serialNumber {
 	$ret = undef;
     } else {
 	chomp;
-	die "First line from sginfo -s /dev/$drive not 'Serial Number ...', but '$_'";
+	die "First line from @SGINFO_PATH@ -s /dev/$drive not 'Serial Number ...', but '$_'";
     }
     close(SGINFO);
     return $ret;
