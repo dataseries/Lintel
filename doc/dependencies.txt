@@ -27,6 +27,9 @@ Debian-Lenny (debian-5.0):
 
      # mercury-plot
      % aptitude install gnuplot libio-pty-perl libdata-showtable-perl netpbm
+
+     # lintel-disktool
+     % aptitude install sg3-utils
   
 ----------------------------
 
@@ -48,3 +51,5 @@ CentOS 5 (centos5)
      # Lintel::DBI
      yum -y install perl-DBI perl-DBD-MySQL
 
+     # lintel-disktool
+     yum -y install sg3_utils
