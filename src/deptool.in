@@ -3780,11 +3780,15 @@ sub vcVersion {
     return $Cache::vc_version;
 }
 
+sub vcVersionString {
+    local $_ = vcVersion();
+    return "$_->{type}-$_->{version}";
+}
+
 sub vcLogRevision {
     my ($revision) = @_;
 
-    $_ = vcVersion();
-    my $vcver = "$_->{type}-$_->{version}";
+    my $vcver = vcVersionString();
     if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
 	my ($major, $minor) = ($1,$2);
 	if ($major == 0 && $minor <= 0.28) { # may be later than this
@@ -3870,7 +3874,22 @@ sub vcGetNonMergeRevisions {
 	$from = "--from $1";
     }
 
-    my $cmd = "mtn $db log $from --no-graph --no-merges";
+    my $cmd;
+
+    my $vcver = vcVersionString();
+    if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
+	my ($major, $minor) = ($1,$2);
+	if ($major == 0 && $minor <= 0.28) { # may be later than this
+	    $cmd = "mtn $db log $from --no-merges";
+	} elsif ($major == 0 && $minor < 45) { # date formatting added in 0.45
+	    $cmd = "mtn $db log $from --no-graph --no-merges";
+	} else {
+	    $cmd = "mtn $db log $from --no-graph --no-merges --no-format-dates";
+	}
+    } else {
+	die "Don't know how to get non-merge revisions from $vcver";
+    }
+ 
     my $fh = new FileHandle "$cmd |"
 	or die "Unable to run $cmd: $!";
     my @ret;
@@ -3883,10 +3902,10 @@ sub vcGetNonMergeRevisions {
 	if ($_ =~ /^Revision: ([a-f0-9]{40})$/o) {
 	    $ent{Revision} = $1;
 	    while (<$fh>) {
-		$ent{Branch} = $1 if /^Branch: (\S+)$/o;
+		$ent{Branch} = $1 if /^Branch:\s+(\S+)$/o;
 		chomp;
 		last if /^\s*$/o;
-		die "? '$_'" unless /^(\w+): (.*)$/o; # .* because earliest Ancestor is empty.
+		die "? '$_'" unless /^(\w+):\s+(.*)$/o; # .* because earliest Ancestor is empty.
 		$ent{$1} = $2;
 	    }
 	    $ent{changes} = '';
@@ -3900,7 +3919,7 @@ sub vcGetNonMergeRevisions {
 	} else {
 	    # assume someone put lots of --- in the changelog
 
-	    die "?" unless @ret > 0;
+	    confess "weird, no revision data accumulated $_ " unless @ret > 0;
 	    my $ent = $ret[@ret-1];
 	    $ent->{changes} .= $tmp;
 	    while (1) {
