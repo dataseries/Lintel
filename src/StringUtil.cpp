@@ -242,7 +242,7 @@ string maybehex2raw(const string &in) {
 }
 
 bool prefixequal(const string &str, const string &prefix) {
-    return str.compare(0,prefix.size(),prefix) == 0;
+    return str.size() >= prefix.size() && str.compare(0, prefix.size(), prefix) == 0;
 }
 
 bool suffixequal(const string &str, const string &prefix) {
