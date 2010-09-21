@@ -460,6 +460,9 @@ sub sqlplot {
     } elsif ($found{x} && $found{y}) {
 	$writefn = sub { print OUT "$x $y\n"; };
 	$plotfn = \&plotxy;
+    } elsif ($found{x} && $sth->rows == 1) {
+        $writefn = sub { print OUT "$x\n"; };
+	$plotfn = \&plotx;
     } elsif ($found{x} && $found{y2} && $found{yerr}) {
 	$writefn = sub { print OUT "$x $y2 $yerr\n"; };
 	$plotfn = \&plotxy2_yerr;
@@ -1375,6 +1378,12 @@ sub plotxy_yhilo {
 }
 
 sub plotxy {
+    my($filename,$sql_cmd) = @_;
+
+    return default_plotinfo($filename,$sql_cmd);
+}
+
+sub plotx {
     my($filename,$sql_cmd) = @_;
 
     return default_plotinfo($filename,$sql_cmd);
