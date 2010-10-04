@@ -262,6 +262,18 @@ public:
 	return ret;
     }
 
+    static Tfrac TfracOffsetDouble(Tfrac in, double offset) {
+	bool negate = offset < 0;
+	if (negate) {
+	    offset = -offset;
+	}
+	int64_t cooked_offset = secondsToTfrac(offset);
+	if (negate) {
+	    cooked_offset = -cooked_offset;
+	}
+	return in + cooked_offset;
+    }
+
     ////////////////////////////////
     // Configuration functions
 
