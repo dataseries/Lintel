@@ -262,11 +262,19 @@ public:
 	return ret;
     }
 
+    // TODO-joe: Can the whole function be shortened as the following?
+    // return (in + ((offset<0)? -1:1) * secondsToTfrac(fabs(offset)));
     static Tfrac TfracOffsetDouble(Tfrac in, double offset) {
-	bool negate = offset < 0;
+	bool negate = (offset < 0);
 	if (negate) {
 	    offset = -offset;
 	}
+	// TODO-joe: Shouldn't the type of cooked_offset be Tfrac? It
+	// will prevent the "cooked_offset = -cooked_offset;" though,
+	// but I will still prefer
+	// Tfrac cooked_offset = ...
+	// if (negate) return in-cooked_offset;
+	// else return in+cooked_offset;
 	int64_t cooked_offset = secondsToTfrac(offset);
 	if (negate) {
 	    cooked_offset = -cooked_offset;
