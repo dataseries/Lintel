@@ -96,8 +96,7 @@ sub usage {
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-o (optimize build)] [-l|local]
    commit [--no-tests] # commit branch after dependencies
-   publish # publish branch and dependencies
-   cmake # run cmake with special options for current branch
+   publish [--no-tests] # publish branch and dependencies
    pin <revision> # pin branch at a particular revision
    code-review <revision...> # code-review a revision
    review-status <revision/selector> # check the review status
@@ -354,7 +353,7 @@ Tests will be run by default before committing, but can be disabled
 with --no-tests.  You can also specify the build type to be run before
 committing.
 
-=item publish
+=item publish [I<--no-tests>]
 
 Perform the full publishing steps; first run a commit, then build and
 test, next pull and update.  If no changes were made, synchronize the
@@ -393,10 +392,11 @@ current directory.
 Run the mtn sync operation with the appropriate options based on the
 current directory.
 
-=item mtnserve
+=item mtnserve [--work-dir=I</path>] [--config-from=I<base-URL>]
 
 Start up a monotone server based on the database for the current
-directory.
+directory, or as a general repository based on the configuration
+of some other repository.
 
 =item getenv I<variable> I<for-{sh,csh}>
 
@@ -2198,10 +2198,25 @@ sub mtnOp {
 
 =pod
 
-=head2 mtnserve [--work-dir=/path] [--config-from=base-URL]
+=head2 mtnserve [--work-dir=I</path>] [--config-from=I<base-URL>]
 
 Run the mtn serve command with the appropriate database based on the
-current directory.
+current directory, or as a general repository based on the configuration
+of some other repository.
+
+This variant is intended to be used with the MTN_SERVER environment variable
+and the mtn{pull,push,sync} sub-commands to move a few revisions between
+databases. If no options are specified, the database for the current source
+directory is identified and a monotone server is started for that database.
+
+This variant is intended to be used to set up an untested repository, as
+controlled by the untested_repository option in the deptool.config file.  If
+the config-from option is specified, then the monotonerc and public keys are
+downloaded from that URL (after appending /monotonerc, and /pubkeys).  They are
+loaded into a special 'serve.db' database.  The work-dir option can be
+specified to control where the database, public keys and monotonerc will be
+stored.  A server will then be started after loading the public keys into the
+database.
 
 =cut
 
@@ -2269,7 +2284,6 @@ sub mtnServeGeneral {
     runCommand("cat $work_dir/pubkeys/*.pubkey | mtn -d $work_dir/serve.db read");
     my @args = ('mtn', '-d', "$work_dir/serve.db", '--norc', '--rcfile', "$work_dir/serve.rc",
                '--keydir', "$work_dir/keys");
-    push (@args, '--rcfile', "$work_dir/serve-extra.rc") if -f "$work_dir/serve-extra.rc";
     push (@args, 'serve');
     runCommand(@args);
 }
@@ -2298,6 +2312,9 @@ available.  It performs the following steps:
 Normally, before you can publish you will need to get authorization at the
 central server.  In order to do so, for monotone, you would run C<mtn pubkey>
 I<email-address> and send the result to the appropriate administrator.
+
+The --no-tests option is only valid if an untested_repository has been specified
+in the deptool.config file.
 
 =cut
 
@@ -3617,6 +3634,7 @@ file is expect to return a hash reference, for example:
             # build in parallel if the build path ends in /Lintel
     	return $_[0] =~ m!/Lintel$/o; 
         }
+        untested_repository => 'untested.server.example.com'
     }
 
 Valid options in a deptool.config file include the following.  Unknown options will
@@ -3652,6 +3670,11 @@ Specify a list of regex's for tests that have to be run sequentially.  All of
 the sequential tests will be executed before any of the parallel tests.  It is
 an error for a regexp to match multiple tests or no tests.  This option has no
 effect if parallel tests are not enabled.
+
+=item untested_repository => 'hostname'
+
+Specify a hostname for a repository that does not require tests to be run before
+publish is executed.
 
 =back
 
