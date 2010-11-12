@@ -1903,6 +1903,12 @@ sub depCommit {
     my $ret = GetOptions("t|tests!" => \$options{tests});
     usage("unknown option to commit") unless $ret;
 
+    depCommitOptions(%options);
+}
+
+sub depCommitOptions {
+    my (%options) = @_;
+
     %options = depBuildStandard(%options);
     depWalk(sub { }, sub { depCommitOne(%options); }, 0);
 }
@@ -2192,7 +2198,7 @@ sub mtnOp {
 
 =pod
 
-=head2 mtnserve
+=head2 mtnserve [--work-dir=/path] [--config-from=base-URL]
 
 Run the mtn serve command with the appropriate database based on the
 current directory.
@@ -2200,26 +2206,79 @@ current directory.
 =cut
 
 sub mtnServe {
-    my $src = rootSrcDir();
-    my %mtn_opts = readMtnOptions($src);
-    die "? no database" unless defined $mtn_opts{database};
+    my ($work_dir, $config_from);
 
-    local $_ = vcVersion();
-    my $vcver = "$_->{type}-$_->{version}";
-    if ($vcver =~ /^monotone-0.28\b/o) {
-	runCommand("mtn","-d",$mtn_opts{database},'serve','*');
-    } elsif ($vcver =~ /^monotone-0.4\d\b/o) {
-	runCommand("mtn","-d",$mtn_opts{database},'serve');
+    my $result = GetOptions("work-dir=s" => \$work_dir,
+                            "config-from=s" => \$config_from);
+    usage("Unknown error") unless $result;
+
+    if (defined $config_from) {
+        mtnServeGeneral($work_dir, $config_from);
     } else {
-	die "Don't know how to run serve on $vcver";
+        die "Unable to support work dir in local mode"
+            if defined $work_dir;
+        
+        my $src = rootSrcDir();
+        my %mtn_opts = readMtnOptions($src);
+        die "? no database" unless defined $mtn_opts{database};
+        
+        local $_ = vcVersion();
+        my $vcver = "$_->{type}-$_->{version}";
+        if ($vcver =~ /^monotone-0.28\b/o) {
+            runCommand("mtn","-d",$mtn_opts{database},'serve','*');
+        } elsif ($vcver =~ /^monotone-0.4\d\b/o) {
+	    runCommand("mtn","-d",$mtn_opts{database},'serve');
+        } else {
+	    die "Don't know how to run serve on $vcver";
+        }
     }
+}
+
+sub urlMirror {
+    my ($from, $to) = @_;
+
+    my $ret = mirror($from, $to);
+    die "Unable to fetch $from to $to: $ret"
+        unless $ret == 200 || $ret == 304;
+}
+
+sub mtnServeGeneral {
+    my ($work_dir, $config_from) = @_;
+
+    eval "use LWP::Simple; use HTML::Parser;";
+    die $@ if $@;
+
+    $work_dir = "$ENV{HOME}/.monotone" unless defined $work_dir;
+    mkpath("$work_dir/pubkeys");
+    if (defined $config_from) {
+        print "Mirroring monotonerc, pubkeys from $config_from...\n";
+        urlMirror("$config_from/monotonerc", "$work_dir/serve.rc");
+        my $key_list = get("$config_from/pubkeys");
+        die "Unable to get $config_from/pubkeys" unless defined $key_list;
+        
+        my @keys;
+        my $parser = HTML::Parser->new(api_version => 3,
+                                       start_h => [ sub { push(@keys, $_[0]->{href}); }, 'attr']);
+        $parser->parse($key_list);
+        @keys = grep(defined && /\.pubkey$/o, @keys);
+        map { urlMirror("$config_from/pubkeys/$_", "$work_dir/pubkeys/$_") } @keys;
+    }
+    unless (-f "$work_dir/serve.db") {
+        runCommand('mtn', '-d', "$work_dir/serve.db", 'db', 'init');
+    }
+    runCommand("cat $work_dir/pubkeys/*.pubkey | mtn -d $work_dir/serve.db read");
+    my @args = ('mtn', '-d', "$work_dir/serve.db", '--norc', '--rcfile', "$work_dir/serve.rc",
+               '--keydir', "$work_dir/keys");
+    push (@args, '--rcfile', "$work_dir/serve-extra.rc") if -f "$work_dir/serve-extra.rc";
+    push (@args, 'serve');
+    runCommand(@args);
 }
 
 ##### depPublish
 
 =pod
 
-=head2 publish
+=head2 publish [--no-tests]
 
 The publish command is the core logic for making changes globally
 available.  It performs the following steps:
@@ -2243,14 +2302,23 @@ I<email-address> and send the result to the appropriate administrator.
 =cut
 
 sub depPublish {
-    my $ret = GetOptions(); # No valid options
+    my %options = ('tests' => 1);
+    my $ret = GetOptions("t|tests!" => \$options{tests});
     usage("unknown option to publish") unless $ret;
 
+    unless ($options{tests}) {
+        my $config = readConfig(rootSrcDir());
+        die "Unable to publish without tests unless untested_repository option
+is set in deptool.config"
+            unless defined $config->{untested_repository};
+        $ENV{MTN_SERVER} = $config->{untested_repository};
+    }
     print "deppublish: committing any outstanding changes\n";
     print "  cwd = ", aliasGetCwd(), "\n" if $debug;
-    depCommit();
+    depCommitOptions(%options);
     print "  cwd = ", aliasGetCwd(), "\n" if $debug;
-    my %options = ('made_changes' => 1);
+    $options{made_changes} = 1;
+
     while ($options{made_changes}) {
         $options{made_changes} = 0;
         print "deppublish: verifying current version passes regression tests\n";
@@ -3500,12 +3568,11 @@ sub makeParallelism {
 }
 
 sub mtnServer {
-    $Cache::mtn_server ||= $ENV{MTN_SERVER};
-    unless(defined $Cache::mtn_server) {
+    unless(defined $ENV{MTN_SERVER}) {
         userPrompt("assume default mtn server usi.hpl.hp.com (set via \$MTN_SERVER)");
-        $Cache::mtn_server = "usi.hpl.hp.com";
+        $ENV{MTN_SERVER} = "usi.hpl.hp.com";
     }
-    return $Cache::mtn_server;
+    return $ENV{MTN_SERVER};
 }
 
 ##### Common functions
@@ -3639,7 +3706,7 @@ sub readConfig {
     }
 
     my %expect = map { $_ => 1 } qw/dependencies parallel_test parallel_test_path 
-	                            sequential_tests/;
+	                            sequential_tests untested_repository/;
     
     foreach my $key (keys %$result) {
 	warn "Unrecognized option '$key' in $cfg_path" unless $expect{$key};
