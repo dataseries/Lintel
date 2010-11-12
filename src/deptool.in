@@ -2322,7 +2322,7 @@ is set in deptool.config"
     while ($options{made_changes}) {
         $options{made_changes} = 0;
         print "deppublish: verifying current version passes regression tests\n";
-        depBuildStandard();
+        depBuildStandard(%options);
         print "deppublish: pulling in any remote changes\n";
 	print "  cwd = ", aliasGetCwd(), "\n" if $debug;
         depWalk(sub { }, sub { depPullOne(\%options); }, 0);
