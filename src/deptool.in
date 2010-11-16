@@ -2462,8 +2462,8 @@ sub mtnServePushTo {
 $output
 </PRE>
 END
-            unlink("$rebuild_log/current");
-            symlink($outpath, "$rebuild_log/current") or die "symlink failed: $!";
+            unlink("$rebuild_log/current.html");
+            symlink($outpath, "$rebuild_log/current.html") or die "symlink failed: $!";
         }
     }
     exit(0);

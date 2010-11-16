@@ -434,7 +434,7 @@ void checkLazy() {
 	for (int i=0; i<bound_mag; i++) {
 	    bound *= 10;
 	}
-	bound *= mt.randDouble() + .01;
+	bound = static_cast<int64_t>(bound * (mt.randDouble() + .01));
 	double err = 1;
 	for (int i=0; i<error_mag; i++) {
 	    err /= 10;

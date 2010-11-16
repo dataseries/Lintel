@@ -163,7 +163,7 @@ double Clock::estimateTodTfracLatency() {
     sort(measurements, measurements + nmeasurements);
     SINVARIANT(nmeasurements >= 2);
     // take 10th percentile
-    uint32_t offset = ceil(nmeasurements * 0.1);
+    uint32_t offset = static_cast<uint32_t>(ceil(nmeasurements * 0.1));
     SINVARIANT(offset > 0 && offset < nmeasurements);
 
     return measurements[offset]; 

@@ -122,7 +122,7 @@ void testAssign() {
     vector<int> b;
     b.assign(a.begin(), a.end());
     SINVARIANT(b.size() == 3);
-    for(uint32_t i = 0; i < 3; ++i) {
+    for(int32_t i = 0; i < 3; ++i) {
 	SINVARIANT(b[i] == i+1);
     }
 }
