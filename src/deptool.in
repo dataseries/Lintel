@@ -2494,8 +2494,9 @@ Normally, before you can publish you will need to get authorization at the
 central server.  In order to do so, for monotone, you would run C<mtn pubkey>
 I<email-address> and send the result to the appropriate administrator.
 
-The --no-tests option is only valid if an untested_repository has been specified
-in the deptool.config file.
+The --no-tests option is only valid if an untested_repository has been
+specified in the deptool.config file. It won't run the tests, but will
+compile and publish to the untested_repository.
 
 =cut
 
