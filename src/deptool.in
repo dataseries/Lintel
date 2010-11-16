@@ -2373,10 +2373,21 @@ sub mtnServePushTo {
         or warn "symlink failed: $!";
     readlink("$workdir/dbs/keys") eq "$workdir/keys" or die "?";
     my $pm = new Lintel::ProcessManager;
+    my $failure_count = 0;
+    my $last_heads = '';
     while (1) {
         print "Push to waiting...\n";
         while (!$updated) {
-            sleep(600);
+            if ($failure_count > 0 && $failure_count < 5) { # at least one, not too many
+                print "(... 10-15s before retry ...)\n";
+                sleep(10);
+                runCommand("/bin/sh $workdir/push_to.sh") unless $updated;
+                while (!$updated) {
+                    sleep(1); # wait for signal to arrive
+                }
+            } else {
+                sleep(600);
+            }
         }
         my $now = scalar localtime(time);
         print "\n---------------------------------------------------------\n";
@@ -2408,19 +2419,36 @@ sub mtnServePushTo {
                             }, 'stdout' => "$workdir/push-one.log", 'stderr' => 'STDOUT');
         my %pid_to_status = $pm->waitAll();
         die "internal" unless defined $pid_to_status{$pid};
+
+
+        my $output = readFile("$workdir/push-one.log");
+        my @heads = grep(/^HEADS /o, split(/\n/o, $output));
+        my $new_heads = join('', @heads);
         if ($pid_to_status{$pid} == 0) {
-            print "Success on id $push_id\n";
+            print "Success at $now\n";
+            $failure_count = 0;
         } else {
-            print "Failure on id $push_id\n";
+            if ($last_heads eq $new_heads) {
+                print "Unchanged heads ($new_heads)\n";
+            } else {
+                print "Heads have changed, reseting failure count\n";
+                $failure_count = 0;
+            }
+            ++$failure_count;
+            print "Failure $failure_count at $now\n";
         }
+        $last_heads = $new_heads;
         if (defined $rebuild_log) {
-             my $output = readFile("$workdir/push-one.log");
-             my @heads = grep(/^HEADS /o, split(/\n/o, $output));
-             grep(s!HEADS (\w+):!  <LI> <B>$1</B>:!o, @heads);
-             my $result = $pid_to_status{$pid} == 0 ? qq(<FONT COLOR="green">Success</FONT>)
-                 : qq(<FONT COLOR="red">Failure</FONT>);
+            unlink($rebuild_log);
+            mkpath($rebuild_log);
+            grep(s!HEADS (\w+):!  <LI> <B>$1</B>:!o, @heads);
+            my $result = $pid_to_status{$pid} == 0 ? qq(<FONT COLOR="green">Success</FONT>)
+                : qq(<FONT COLOR="red">Failure</FONT>);
              
-            writeFile($rebuild_log, <<"END");
+            my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+            my $outpath = sprintf("%s/%04d-%02d-%02dT%02d:%02d:%02d.html", $rebuild_log,
+                                  $year + 1900, $mon + 1, $mday, $hour, $min, $sec);
+            writeFile($outpath, <<"END");
 <H1>$result on rebuild at $now</H1>
 <H2>Head revisions:</H2>
 <UL>
@@ -2431,6 +2459,8 @@ sub mtnServePushTo {
 $output
 </PRE>
 END
+            unlink("$rebuild_log/current");
+            symlink($outpath, "$rebuild_log/current") or die "symlink failed: $!";
         }
     }
     exit(0);
