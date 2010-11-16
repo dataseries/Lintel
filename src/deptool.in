@@ -15,7 +15,7 @@ deptool - a program for helping with the software development process
 use strict;
 
 use Carp;
-use Cwd;
+use Cwd qw/getcwd chdir/;
 use Data::Dumper;
 use English;
 use Fcntl;
@@ -320,7 +320,7 @@ Initialize the system, this will create the appropriate version
 control files, and will pull the initial database(s).
 
 =item tarinit [I</path/to/tar.bz2>...] [I<http://host/path/to/tar>] 
-      [I<http://host/path/to/latest-release]
+      [I<http://host/path/to/latest-release>]
 
 Initialize the system.  This will optionally download and unpack the
 specified source packages.
@@ -2221,17 +2221,21 @@ database.
 =cut
 
 sub mtnServe {
-    my ($work_dir, $config_from);
+    my ($work_dir, $config_from, $push_to, $rebuild_log);
 
     my $result = GetOptions("work-dir=s" => \$work_dir,
-                            "config-from=s" => \$config_from);
+                            "config-from=s" => \$config_from,
+                            "push-to=s" => \$push_to,
+                            "rebuild-log=s" => \$rebuild_log);
     usage("Unknown error") unless $result;
 
     if (defined $config_from) {
-        mtnServeGeneral($work_dir, $config_from);
+        mtnServeGeneral($work_dir, $config_from, $push_to, $rebuild_log);
     } else {
-        die "Unable to support work dir in local mode"
-            if defined $work_dir;
+        warn "Deprecating the local mode of mtn serve, will be removed after 2011-06-01; 
+report if you are still using it and how the general mode is insufficient";
+        die "Unable to support work dir/push_to/rebuild-log in local mode"
+            if defined $work_dir || defined $push_to || defined $rebuild_log;
         
         my $src = rootSrcDir();
         my %mtn_opts = readMtnOptions($src);
@@ -2258,10 +2262,12 @@ sub urlMirror {
 }
 
 sub mtnServeGeneral {
-    my ($work_dir, $config_from) = @_;
+    my ($work_dir, $config_from, $push_to, $rebuild_log) = @_;
 
     eval "use LWP::Simple; use HTML::Parser;";
     die $@ if $@;
+    
+    # setup: copy config, prepare db/keys
 
     $work_dir = "$ENV{HOME}/.monotone" unless defined $work_dir;
     mkpath("$work_dir/pubkeys");
@@ -2282,10 +2288,119 @@ sub mtnServeGeneral {
         runCommand('mtn', '-d', "$work_dir/serve.db", 'db', 'init');
     }
     runCommand("cat $work_dir/pubkeys/*.pubkey | mtn -d $work_dir/serve.db read");
+
+    my $pm = new Lintel::ProcessManager();
     my @args = ('mtn', '-d', "$work_dir/serve.db", '--norc', '--rcfile', "$work_dir/serve.rc",
                '--keydir', "$work_dir/keys");
+
+    # start push-to process
+    if (defined $push_to) {
+        die "Invalid push to, expected server:project" unless $push_to =~ /^(.+):(\w+)$/o;
+        my ($host, $project) = ($1,$2);
+        unlink(glob("$work_dir/to-push-*.db"));
+        writeFile("$work_dir/next-sync-id", "0");
+        my $push_pid = $pm->fork(cmd => sub { mtnServePushTo($work_dir, $host, $project, 
+                                                             $rebuild_log); },
+                                 stdout => "$work_dir/push_to.log", stderr => 'STDOUT',
+                                 exitfn => sub { print "Unexpected exit of push-to, consult $work_dir/push_to.log\n"; exit(1); });
+        writeFile("$work_dir/push_to.sh", <<"END");
+#!/bin/sh
+ID=`cat $work_dir/next-sync-id`
+cp -p $work_dir/serve.db $work_dir/to-push-\$ID.db
+kill -USR1 $push_pid        
+END
+        writeFile("$work_dir/push_to.rc", <<"END");
+function note_netsync_end (session_id, status, bytes_in, bytes_out, certs_in, certs_out, revs_in, 
+                           revs_out, keys_in, keys_out)
+   if revs_in + certs_in > 0 then
+       return execute("lintel-flock", "--filename", "$work_dir/next-sync-id", "--", 
+                      "/bin/sh", "$work_dir/push_to.sh");
+   end
+end
+END
+        push(@args, "--rcfile", "$work_dir/push_to.rc");
+    }
     push (@args, 'serve');
-    runCommand(@args);
+
+    # start the mtn server
+    $pm->fork(cmd => \@args, stdout => "$work_dir/serve.log", stderr => 'STDOUT',
+              exitfn => sub { print "Unexpected exit of mtn server, examine $work_dir/serve.log\n";
+                              exit(1); });
+    print "Server starting, logging to $work_dir/*.log\n";
+    $pm->waitAll();
+}
+
+sub mtnServePushTo {
+    my ($workdir, $host, $project, $rebuild_log) = @_;
+
+    my $updated = 0;
+    $SIG{USR1} = sub {
+        print "Got signal\n" if 0;
+        $updated = 1;
+    };
+      
+    my $push_count = 0;
+    $ENV{PROJECTS} = "$workdir/projects";
+    $ENV{BUILD_OPT} = "$workdir/build";
+    $ENV{MONOTONE_DIR} = "$workdir/dbs";
+    $ENV{MTN_SERVER} = $host;
+    $ENV{PATH} = "$workdir/build/bin:$ENV{PATH}";
+
+    mkpath("$workdir/dbs");
+    symlink("$workdir/keys", "$workdir/dbs/keys")
+        or warn "symlink failed: $!";
+    readlink("$workdir/dbs/keys") eq "$workdir/keys" or die "?";
+    my $pm = new Lintel::ProcessManager;
+    while (1) {
+        print "Push to waiting...\n";
+        while (!$updated) {
+            sleep(600);
+        }
+        my $now = scalar localtime(time);
+        print "\n---------------------------------------------------------\n";
+        print "Updated at $now, id=$push_count\n";
+        $updated = 0;
+        my $push_id = $push_count;
+        {
+            my $fh = Lintel::File::Lock::getLock("$workdir/next-sync-id");
+            ++$push_count;
+            seek($fh, 0, Fcntl::SEEK_SET);
+            print $fh $push_count;
+            close($fh);
+        }
+        die "missing $workdir/to-push-$push_id.db" unless -f "$workdir/to-push-$push_id.db";
+        rename("$workdir/to-push-$push_id.db", "$workdir/dbs/to-push.db");
+        print "Rebuilding, testing, pushing; logging to $workdir/push-one.log\n";
+        my $pid = $pm->fork('cmd' => sub { 
+                                runCommand("deptool checkout $project");
+                                chdir("$workdir/projects/$project")
+                                    or die "chdir $workdir/projects/$project failed: $!";
+                                runCommand("deptool pull"); 
+                                runCommand("deptool publish");
+                                exit(0);
+                            }, 'stdout' => "$workdir/push-one.log", 'stderr' => 'STDOUT');
+        my %pid_to_status = $pm->waitAll();
+        die "internal" unless defined $pid_to_status{$pid};
+        if ($pid_to_status{$pid} == 0) {
+            print "Success on id $push_id\n";
+        } else {
+            print "Failure on id $push_id\n";
+        }
+        if (defined $rebuild_log) {
+             my $output = readFile("$workdir/push-one.log");
+             my $result = $pid_to_status{$pid} == 0 ? qq(<FONT COLOR="green">Success</FONT>)
+                 : qq(<FONT COLOR="red">Failure</FONT>);
+             
+            writeFile($rebuild_log, <<"END");
+<H1>$result on rebuild at $now</H1>
+Log:
+<PRE>
+$output
+</PRE>
+END
+        }
+    }
+    exit(0);
 }
 
 ##### depPublish
@@ -3690,11 +3805,7 @@ sub readConfig {
     confess "Error: missing $cfg_path\n"
 	unless -r $cfg_path;
 
-    my $fh = new FileHandle($cfg_path)
-	or die "Can not open $cfg_path for read: $!";
-    # slurp mode
-    local $/; 
-    my $file = <$fh>;
+    my $file = readFile($cfg_path);
 
     my $compartment = new Safe;
     my $result = $compartment->reval($file);
@@ -3848,6 +3959,26 @@ sub simpleParse {
         $ret{$var} = $1 if defined $var;
     }
     return %ret;
+}
+
+sub writeFile {
+    my ($filename, $contents) = @_;
+
+    my $fh = new FileHandle ">$filename"
+        or die "Unable to open $filename for write: $!";
+    print $fh $contents;
+    close($fh);
+    die "$filename has wrong size" unless -s $filename == length $contents;
+}
+
+sub readFile {
+    my ($filename) = @_;
+
+    my $fh = new FileHandle($filename)
+	or die "Can not open $filename for read: $!";
+    # slurp mode
+    local $/; 
+    my $file = <$fh>;
 }
 
 ###### Version control abstraction functions
