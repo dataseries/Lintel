@@ -2398,6 +2398,11 @@ sub mtnServePushTo {
                                 chdir("$workdir/projects/$project")
                                     or die "chdir $workdir/projects/$project failed: $!";
                                 runCommand("deptool pull"); 
+                                depWalk(sub { 
+                                    my @heads = getCurHeads();
+                                    my ($project, @rest) = divideDir(aliasGetCwd());
+                                    print "HEADS $project: @heads\n";
+                                }, sub { }, 0);
                                 runCommand("deptool publish");
                                 exit(0);
                             }, 'stdout' => "$workdir/push-one.log", 'stderr' => 'STDOUT');
@@ -2410,12 +2415,18 @@ sub mtnServePushTo {
         }
         if (defined $rebuild_log) {
              my $output = readFile("$workdir/push-one.log");
+             my @heads = grep(/^HEADS /o, split(/\n/o, $output));
+             grep(s!HEADS (\w+):!  <LI> <B>$1</B>:!o, @heads);
              my $result = $pid_to_status{$pid} == 0 ? qq(<FONT COLOR="green">Success</FONT>)
                  : qq(<FONT COLOR="red">Failure</FONT>);
              
             writeFile($rebuild_log, <<"END");
 <H1>$result on rebuild at $now</H1>
-Log:
+<H2>Head revisions:</H2>
+<UL>
+@heads
+</UL>
+<H2>Log:</H2>
 <PRE>
 $output
 </PRE>
