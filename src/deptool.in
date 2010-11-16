@@ -2409,11 +2409,14 @@ sub mtnServePushTo {
                                 chdir("$workdir/projects/$project")
                                     or die "chdir $workdir/projects/$project failed: $!";
                                 runCommand("deptool pull"); 
+                                $ENV{MTN_SERVER} = 'localhost';
                                 depWalk(sub { 
                                     my @heads = getCurHeads();
                                     my ($project, @rest) = divideDir(aliasGetCwd());
                                     print "HEADS $project: @heads\n";
+                                    mtnOp("push"); # push anything we go to the untested server
                                 }, sub { }, 0);
+                                $ENV{MTN_SERVER} = $host;
                                 runCommand("deptool publish");
                                 exit(0);
                             }, 'stdout' => "$workdir/push-one.log", 'stderr' => 'STDOUT');
