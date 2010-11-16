@@ -2198,33 +2198,55 @@ sub mtnOp {
 
 =pod
 
-=head2 mtnserve [--work-dir=I</path>] [--config-from=I<base-URL>]
+=head2 mtnserve [options]
 
 Run the mtn serve command with the appropriate database based on the
 current directory, or as a general repository based on the configuration
 of some other repository.
 
-This variant is intended to be used with the MTN_SERVER environment variable
-and the mtn{pull,push,sync} sub-commands to move a few revisions between
-databases. If no options are specified, the database for the current source
+If no options are specified, this variant is intended to be used with the
+MTN_SERVER environment variable and the mtn{pull,push,sync} sub-commands to
+move a few revisions between databases. The database for the current source
 directory is identified and a monotone server is started for that database.
+This usage is currently deprecated unless it turns out to be useful in which
+case we will revisit that decision.
 
-This variant is intended to be used to set up an untested repository, as
-controlled by the untested_repository option in the deptool.config file.  If
-the config-from option is specified, then the monotonerc and public keys are
-downloaded from that URL (after appending /monotonerc, and /pubkeys).  They are
-loaded into a special 'serve.db' database.  The work-dir option can be
-specified to control where the database, public keys and monotonerc will be
-stored.  A server will then be started after loading the public keys into the
-database.
+The variant with options is intended to be used to set up an untested repository, as
+controlled by the untested_repository option in the deptool.config file.  This variant
+is identified by specifying the config-from option.  Options include:
+
+=over 4
+
+=item --config-from=I<base-url>
+
+The the monotonerc and public keys are downloaded from that URL (after
+appending /monotonerc, and /pubkeys).  They are loaded into a special
+'serve.db' database.
+
+=item --work-dir=I<path>
+
+The work-dir option can be specified to control where the database, public keys
+and monotonerc will be stored.  By default this will be ~/.monotone/untested-repo.
+
+=item --push-to=I<server>:I<project>
+
+The push-to option specifies a server and a project to push the updates to if
+the project builds and passes tests.
+
+=item --rebuild-log=I<path>
+
+The rebuild-log option specifies a filename where the result of the most recent rebuild
+should be stored.  The output is in html form, so can be viewed through a web browser.
+
+=back
 
 =cut
 
 sub mtnServe {
     my ($work_dir, $config_from, $push_to, $rebuild_log);
 
-    my $result = GetOptions("work-dir=s" => \$work_dir,
-                            "config-from=s" => \$config_from,
+    my $result = GetOptions("config-from=s" => \$config_from,
+                            "work-dir=s" => \$work_dir,
                             "push-to=s" => \$push_to,
                             "rebuild-log=s" => \$rebuild_log);
     usage("Unknown error") unless $result;
@@ -2269,7 +2291,7 @@ sub mtnServeGeneral {
     
     # setup: copy config, prepare db/keys
 
-    $work_dir = "$ENV{HOME}/.monotone" unless defined $work_dir;
+    $work_dir = "$ENV{HOME}/.monotone/untested-repo" unless defined $work_dir;
     mkpath("$work_dir/pubkeys");
     if (defined $config_from) {
         print "Mirroring monotonerc, pubkeys from $config_from...\n";
