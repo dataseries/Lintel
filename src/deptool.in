@@ -68,7 +68,8 @@ use Lintel::ProcessManager;
 # and make crap in src every so often those breaking depbuild (or at least
 # misleading it as to what has been created and what should be recreated).
 
-# TODO: think about how to check for rebuild after make clean
+# TODO: think about where to document the code to remove the .deptool.build_stamp 
+# file now present in Lintel/CMakeLists.txt
 
 # TODO: add ability to have hooks for pre-commit checks, this allows
 # for mechanical verification of common errors.
@@ -2312,8 +2313,7 @@ sub mtnServeGeneral {
     runCommand("cat $work_dir/pubkeys/*.pubkey | mtn -d $work_dir/serve.db read");
 
     my $pm = new Lintel::ProcessManager();
-    my @args = ('mtn', '-d', "$work_dir/serve.db", '--norc', '--rcfile', "$work_dir/serve.rc",
-               '--keydir', "$work_dir/keys");
+    my @args = ('mtn', '-d', "$work_dir/serve.db", '--norc', '--rcfile', "$work_dir/serve.rc");
 
     # start push-to process
     if (defined $push_to) {

@@ -10,6 +10,10 @@ CMAKE_MINIMUM_REQUIRED(VERSION 2.4.4 FATAL_ERROR)
 
 PROJECT(Lintel)
 
+# http://www.vtk.org/Bug/view.php?id=8164
+ADD_CUSTOM_TARGET(bug-8164-workaround COMMAND true)
+SET_DIRECTORY_PROPERTIES(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES ".deptool.build_stamp")
+
 IF(COMMAND CMAKE_POLICY)
     CMAKE_POLICY(SET CMP0003 NEW) # don't warn about -lpthread, it's ok.
     CMAKE_POLICY(SET CMP0005 OLD) # we escape a string definition in src/CMakeLists.txt
