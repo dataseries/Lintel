@@ -33,6 +33,7 @@ ERROR_ON_WARNINGS=false
 # TODO: make this variable an option, ask Joe why when it was added the default 
 # was 9000.
 MIN_CROSSREFS=9000
+USE_FLOCK=true
 while $CONTINUE; do
     case "$1" in
 	--tex)
@@ -69,6 +70,10 @@ while $CONTINUE; do
 	    LATEX_COMMAND="$1"
 	    shift
 	    ;;
+        --disable-flock)
+            shift
+            USE_FLOCK=false;
+            ;;
 	*)
 	    CONTINUE=false
 	    ;;
@@ -96,6 +101,15 @@ if [ -f $1/$TEXFILE.blg -o -f $1/$TEXFILE.bbl -o -f $1/$TEXFILE.dvi -o -f $1/$TE
     exit 1
 fi
     
+if $USE_FLOCK; then
+    FLOCK_BITS=`lintel-flock --filename=$TEXFILE.rebuild.lock --callpid=$$`
+    # Lock will be auto-released when calling process exits, so do nothing to explicitly release
+    case "$FLOCK_BITS" in
+      success:*) echo "Acquired rebuild lock $TEXFILE.rebuild.lock" ;;
+      *) echo "lintel-flock error: '$FLOCK_BITS'"; exit 1 ;;
+    esac
+fi
+
 rebuild_latex() {
     echo -n " latex"
     echo "" >>$TEXFILE.rebuild.out
