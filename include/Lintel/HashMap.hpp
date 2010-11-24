@@ -114,12 +114,27 @@ public:
     /// Returns the value associated with the key, if it exists. Otherwise,
     /// creates an entry initialized with the default value.
     V &operator[] (const K &k) {
-	value_type fullval; fullval.first = k;
+	value_type fullval; 
+	fullval.first = k;
 	value_type *v = hashtable.lookup(fullval);
 	if (v == NULL) {
 	    return hashtable.add(fullval)->second;
 	} else {
 	    return v->second;
+	}
+    }
+
+    /// Add the key to the map if the key doesn't already exist, otherwise leave the existing
+    /// key-value pair unchanged.  Returns true if new key is added, otherwise return false.
+    bool addUnlessExist(const K &k) {
+	value_type fullval; 
+	fullval.first = k;
+	value_type *v = hashtable.lookup(fullval);
+	if (v == NULL) {
+	    hashtable.add(fullval);
+	    return true;
+	} else {
+	    return false;
 	}
     }
 
