@@ -394,7 +394,7 @@ void testAddUnlessExist() {
     SINVARIANT(!hm2.exists(2));
     hm2.addUnlessExist(2);
     SINVARIANT(hm2.exists(2));
-    SINVARIANT(hm2.size() == 3 && hm2[0] == 1 && hm2[1] == 2 && hm2[2] == 0);
+    SINVARIANT(hm2.size() == 3 && hm2[0] == 1 && hm2[1] == 2 && hm2[2] == 0); // default value of int is 0
 }
 
 int main() {
