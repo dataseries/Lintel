@@ -107,7 +107,7 @@ template<typename INT> uint32_t test_int_type(const string &type) {
     return ret;
 }
 
-void test_types() {
+void testTypes() {
     cout << format("Using random seed %d\n") % rng.seed_used;
     // these runs test HashMap against std::map with random key-value pairs.
     test_int_type<int>("int");
@@ -136,7 +136,7 @@ void test_types() {
     SINVARIANT(test_int_type<int>("int") == 122073032);
 }
 
-void test_foreach() {
+void testForeach() {
     map<uint32_t, uint32_t> test_map;
     typedef map<uint32_t, uint32_t>::value_type test_map_vt;
     HashMap<uint32_t, uint32_t> test_hm;
@@ -182,7 +182,7 @@ template <> struct HashMap_hash<const foo> {
 };
 
 
-void test_struct() {
+void testStruct() {
     HashMap<foo, int> test_map;
 
     for(int i=0; i < 10; ++i) {
@@ -230,7 +230,7 @@ void Test::test() {
     foo = foomap.begin();
 }
 
-void test_iterator() {
+void testIterator() {
     HashMap<int, int> test_map;
 
     test_map[3] = 3;
@@ -250,7 +250,7 @@ void test_iterator() {
     SINVARIANT(a == b && b == c);
 }
     
-void test_pointermap() {
+void testPointermap() {
     {
 	HashMap<Test *, int, PointerHashMapHash<Test>, PointerHashMapEqual<Test> > test_map;
     
@@ -285,8 +285,7 @@ void test_pointermap() {
     }
 }
     
-void test_constA(const HashMap<int, int> &test_map,
-		 const HashMap<int, int> &test_map2) {
+void testConstA(const HashMap<int, int> &test_map, const HashMap<int, int> &test_map2) {
     HashMap<int, int>::const_iterator i = test_map.find(5);
     SINVARIANT(i != test_map.end() && i->second == 5);
     i = test_map.find(6);
@@ -305,28 +304,28 @@ void test_constA(const HashMap<int, int> &test_map,
     SINVARIANT(test_map.lookup(6) == NULL);
 }
 
-void test_constHashUnique(const HashUnique<int> &unique) {
+void testConstHashUnique(const HashUnique<int> &unique) {
     SINVARIANT(unique.exists(3));
     SINVARIANT(!unique.exists(0));
 }
 
-void test_const() {
+void testConst() {
     HashMap<int, int> test_map;
     HashMap<int, int> test_map2;
 
     test_map[5] = 5;
     test_map2[6] = 6;
-    test_constA(test_map, test_map2);
+    testConstA(test_map, test_map2);
     SINVARIANT(test_map[5] == 5 && test_map2[6] == 6 &&
 	       test_map.size() == 1 && test_map2.size() == 1);
 
     HashUnique<int> unique;
     unique.add(3);
-    test_constHashUnique(unique);
+    testConstHashUnique(unique);
     cout << "Const tests pass\n";
 }
 
-void test_keys() {
+void testKeys() {
     HashMap<int, int> test_map;
 
     for(int i = 0; i < 10; ++i) {
@@ -340,7 +339,7 @@ void test_keys() {
     }
 }
 
-void test_erase() {
+void testErase() {
     MersenneTwisterRandom rng;
 
     cout << format("erase test using seed %d\n") % rng.seed_used;
@@ -373,25 +372,39 @@ void test_erase() {
     cout << "erase test passed.\n";
 }
 
-void test_add_unless_exist() {
-    HashMap<int, string> hm;
+void testAddUnlessExist() {
+    HashMap<int32_t, string> hm;
     hm[0] = "zero";
     hm[1] = "one";
-    SINVARIANT(hm.size()==2 && hm[0]=="zero" && hm[1]=="one");
+    SINVARIANT(hm.size() == 2 && hm[0] == "zero" && hm[1] == "one");
     hm.addUnlessExist(0); // no effect
-    SINVARIANT(hm.size()==2 && hm[0]=="zero"); 
+    SINVARIANT(hm.size() == 2 && hm[0] == "zero"); 
+    SINVARIANT(!hm.exists(2));
     hm.addUnlessExist(2);
-    SINVARIANT(hm.size()==3 && hm[2]==""); // default value of string is ""
+    SINVARIANT(hm.exists(2));
+    SINVARIANT(hm.size() == 3 && hm[2] == ""); // default value of string is ""
+
+    // Same test, but with base type to verify defaulting works for base types.
+    HashMap<int32_t, int> hm2; 
+    hm2[0] = 1;
+    hm2[1] = 2;
+    SINVARIANT(hm2.size() == 2 && hm2[0] == 1 && hm2[1] == 2);
+    hm2.addUnlessExist(0); // no effect
+    SINVARIANT(hm2.size() == 2 && hm2[0] == 1); 
+    SINVARIANT(!hm2.exists(2));
+    hm2.addUnlessExist(2);
+    SINVARIANT(hm2.exists(2));
+    SINVARIANT(hm2.size() == 3 && hm2[0] == 1 && hm2[1] == 2 && hm2[2] == 0);
 }
 
 int main() {
-    test_types();
-    test_foreach();
-    test_struct();
-    test_iterator();
-    test_pointermap();
-    test_const();
-    test_keys();
-    test_erase();
-    test_add_unless_exist();
+    testTypes();
+    testForeach();
+    testStruct();
+    testIterator();
+    testPointermap();
+    testConst();
+    testKeys();
+    testErase();
+    testAddUnlessExist();
 }
