@@ -340,7 +340,7 @@ void test_keys() {
     }
 }
 
-void testErase() {
+void test_erase() {
     MersenneTwisterRandom rng;
 
     cout << format("erase test using seed %d\n") % rng.seed_used;
@@ -373,6 +373,17 @@ void testErase() {
     cout << "erase test passed.\n";
 }
 
+void test_add_unless_exist() {
+    HashMap<int, string> hm;
+    hm[0] = "zero";
+    hm[1] = "one";
+    SINVARIANT(hm.size()==2 && hm[0]=="zero" && hm[1]=="one");
+    hm.addUnlessExist(0); // no effect
+    SINVARIANT(hm.size()==2 && hm[0]=="zero"); 
+    hm.addUnlessExist(2);
+    SINVARIANT(hm.size()==3 && hm[2]==""); // default value of string is ""
+}
+
 int main() {
     test_types();
     test_foreach();
@@ -381,5 +392,6 @@ int main() {
     test_pointermap();
     test_const();
     test_keys();
-    testErase();
+    test_erase();
+    test_add_unless_exist();
 }
