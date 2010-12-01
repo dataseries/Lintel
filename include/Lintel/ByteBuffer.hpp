@@ -21,10 +21,12 @@
 
 #include <string>
 
+#include <boost/format.hpp>
 #include <boost/utility.hpp>
 #include <boost/shared_ptr.hpp>
 
 #include <Lintel/AssertBoost.hpp>
+#include <Lintel/LintelLog.hpp>
 
 // WARNING: This class is used by thrift.  When modifying the class
 // ensure that no changes are made to the structural layout of the
@@ -99,6 +101,7 @@ namespace lintel {
 	    if (new_size == data_size && byte_data != NULL) {
 		shift(); // Faster than allocate, copy, free
 	    } else {
+	      LintelLogDebug("ByteBuffer", boost::format("resizing to: %d") % new_size);
 		uint8_t *new_data = new uint8_t[new_size];
 		
 		if (!empty()) {
