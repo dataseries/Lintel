@@ -2193,6 +2193,11 @@ sub mtnOp {
     my $syncbranch = $branch;
     $syncbranch =~ s!^(.*/.*)/.*$!$1!o;
     my $server = mtnServer();
+    my $maybe_proto= substr($server,0,4);
+    if ($maybe_proto eq "ssh:") {
+        $server = $server . basename($database);
+    }
+
     runCommand("mtn","-d",$database,$op,$server,"$syncbranch*");
     runCommand("mtn","-d",$database,'heads','-b',$branch);
 }
