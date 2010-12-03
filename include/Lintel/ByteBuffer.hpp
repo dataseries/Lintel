@@ -101,7 +101,8 @@ namespace lintel {
 	    if (new_size == data_size && byte_data != NULL) {
 		shift(); // Faster than allocate, copy, free
 	    } else {
-	      LintelLogDebug("ByteBuffer", boost::format("resizing to: %d") % new_size);
+                LintelLogDebug("ByteBuffer", boost::format("resizing bytebuffer %p from %d to %d") 
+                               % static_cast<void *>(this) % data_size % new_size);
 		uint8_t *new_data = new uint8_t[new_size];
 		
 		if (!empty()) {
