@@ -3556,6 +3556,10 @@ C<make -j $MAKE_PARALLELISM>.
 
 The MTN_SERVER environment variable.  Defaults to usi.hpl.hp.com.
 Needed to determine the central repository for public updates.
+To use 'mtn over ssh' instead of the default monotone protocol
+for deppull, deppublish operations, it can be specified as 
+ssh://[user@]server[:port]/path-to-monotone-db/
+deptool appends the appropriate database
 
 =back
 
