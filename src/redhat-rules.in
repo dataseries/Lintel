@@ -9,6 +9,7 @@ TOOLSDIR := @CMAKE_INSTALL_PREFIX@/share/packaging
 
 help: 
 	@echo "make rpm | tar | repo | clean"
+	@echo "override hook_tar to do things before the package is tarred up"
 
 checkdir: FORCE
 	@dashdir=`pwd | sed 's,/,-,g'`; \
@@ -20,7 +21,7 @@ checkdir: FORCE
 
 hook_tar::
 
-tar: hook_tar $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz
+tar: $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz
 
 rpm: $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz $(PACKAGE).spec $(rpm_topdir)/BUILD $(rpm_topdir)/RPMS $(rpm_topdir)/SRPMS 
 	TOOLSDIR=$(TOOLSDIR) rpmbuild --define='_initrddir /etc/rc.d/init.d' --define='_optdir /opt' -ba $(PACKAGE).spec
@@ -82,7 +83,7 @@ redhat/postinst: redhat/postinst.in checkdir
 	sed -e 's/__PACKAGE__/$(PACKAGE)/' -e 's/__VERSION__/${VERSION}/' < $< > $@-new
 	mv $@-new $@
 
-$(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz: checkdir $(PACKAGE).spec redhat/postinst $(rpm_topdir)/SOURCES FORCE
+$(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz: hook_tar checkdir $(PACKAGE).spec redhat/postinst $(rpm_topdir)/SOURCES FORCE
 	(cwd=`pwd`;dir=`basename $$cwd`; cd ..; [ "$$dir" == "$(PACKAGE)" ] || mv $$dir $(PACKAGE); tar cvvfz $(rpm_topdir)/SOURCES/$(PACKAGE).tar.gz $(PACKAGE); [ "$$dir" == "$(PACKAGE)" ] || mv $(PACKAGE) $$dir)
 
 $(rpm_topdir)/BUILD:
