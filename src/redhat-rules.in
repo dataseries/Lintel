@@ -31,7 +31,7 @@ repo: rpm
 	ssh root@pa-install.u /bin/sh -c "'cd $(REPODIR); pwd; make'"
 
 clean::
-	rm $(PACKAGE).spec redhat/postinst
+	-rm $(PACKAGE).spec redhat/postinst
 
 all:
 	@echo "nothing to compile"

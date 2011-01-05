@@ -295,7 +295,9 @@ sub list {
     my @drives = findDrives();
     print "Unused drives: ", join(" ", @{$config{not_used_drives}}), "\n";
     my @unused_serials = map { $config{all_drives}->{$_}->{serial} } @{$config{not_used_drives}};
+    my @unused_sysfs = map { $config{all_drives}->{$_}->{sysfs_id} } @{$config{not_used_drives}};
     print "Unused serials: ", join(" ", @unused_serials), "\n";
+    print "Unused sysfs ids: ", join(" ", @unused_sysfs), "\n";
     print "Reserved drives: ", join(" ", @{$config{reserved_drives}}), "\n";
 
     if (defined $config{known_serials}) {
@@ -376,7 +378,7 @@ sub driveToPartition {
 
     return "/dev/${drive}1" if -b "/dev/${drive}1";
     return "/dev/${drive}p1" if -b "/dev/${drive}p1";
-    die "Unable to convert $drive to partition";
+    confess "Unable to convert $drive to partition";
 }
 
 sub zeroPartition {
@@ -626,13 +628,20 @@ sub mountDrives {
 
     my $count = 0;
     print "Mounting... ";
+    my %ok = get_ok_partitions();
     foreach my $drive (@drives) {
+        unless ($ok{$drive}) {
+            print "(skip $drive, not ok) ";
+            next;
+        }
 	my $partition = driveToPartition($drive);
 
 	my $label = getPartitionLabel($partition);
 
-	die "Unable to mount $partition, missing label"
-	    if $label eq '';
+        if ($label eq '') {
+            print "(skip $partition, not formatted) ";
+            next;
+        }
 
 	if ($mounted{$partition}) {
 	    die "$partition mounted on '$mounted{$partition}', not '$label'"
