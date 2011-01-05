@@ -353,7 +353,10 @@ sub partitionDrives {
 	print ", " unless $first;
 	$first = 0;
 	print "$drive";
-	open(SFDISK, "| @SFDISK_PATH@ /dev/$drive >/tmp/lintel-disktool.partition.$log 2>&1")
+        # if GPT remnants are present, sfdisk will refuse to operate; zero it out, we own the drive.
+        system("dd if=/dev/zero of=/dev/$drive bs=128k count=1 oflag=direct,sync >/tmp/lintel-disktool.partition.$log 2>&1") == 0
+            or die "dd failed: $!";
+	open(SFDISK, "| @SFDISK_PATH@ /dev/$drive >>/tmp/lintel-disktool.partition.$log 2>&1")
 	    or die "??";
 	print SFDISK "0,\n";
 	close(SFDISK);
@@ -914,6 +917,10 @@ sub getSpecificSfdiskInfo {
     while(<SFDISK>) {
 	die "??1 '$_'" unless /^\s*$/o;
 	$_ = <SFDISK>;
+        if (/^WARNING: GPT .GUID Partition Table. detected/o) {
+            # probably garbage, but tolerate, definitely not ok since we work through msdos partitions
+            last;
+        }
 	die "?? $_ ??" unless m!^Disk /dev/(\S+): (\d+) cylinders, (\d+) heads, (\d+) sectors/track!o;
 	my ($drive, $cylinders, $heads, $sectorspercyl) = ($1,$2, $3, $4);
 	$sizes{$drive} = {'cylinders' => $cylinders, 'heads' => $heads, 
