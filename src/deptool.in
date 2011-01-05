@@ -3828,6 +3828,9 @@ file is expect to return a hash reference, for example:
         untested_repository => 'untested.server.example.com'
     }
 
+deptool.conf will be evaluated in a Safe(3perl) compartment so it can't execute
+functions such as system.  A copy of the environment will be present as %ENV.
+
 Valid options in a deptool.config file include the following.  Unknown options will
 result in a warning being printed out.
 
@@ -3884,6 +3887,7 @@ sub readConfig {
     my $file = readFile($cfg_path);
 
     my $compartment = new Safe;
+    %{$compartment->varglob('ENV')} = %ENV;
     my $result = $compartment->reval($file);
     die "Unable to evaluate $cfg_path: $@" if $@;
     die "Did not get a hash ref back from evaluating $cfg_path" unless ref $result eq 'HASH';
