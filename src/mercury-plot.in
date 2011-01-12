@@ -475,7 +475,9 @@ sub sqlplot {
     } elsif ($found{cdf}) {
 	my $nrows = $sth->rows;
 	my $i = 0;
-	$writefn = sub { printf OUT "%.4f $cdf\n", 100*$i/$nrows; ++$i };
+        # increment i first; the last value should be at 100% since all values are
+        # <= that value.  The first should be strictly above 0% for the same reason
+	$writefn = sub { ++$i; printf OUT "%.4f $cdf\n", 100*$i/$nrows; };
 	$plotfn = \&plotxy;
     } elsif ($found{seg_x1} && $found{seg_y1} 
 	     && $found{seg_x2} && $found{seg_y2}) {
