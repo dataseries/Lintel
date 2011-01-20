@@ -842,7 +842,7 @@ sub atMostOneRowArray {
     my @ret = $sth->fetchrow_array();
     return () unless @ret;
     my @tmp = $sth->fetchrow_array();
-    confess "?? @tmp" if @tmp > 0;
+    confess "multiple rows returned from statment: " . join(", ", @tmp) if @tmp > 0;
     return @ret;
 }
 
