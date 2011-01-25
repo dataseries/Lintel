@@ -343,6 +343,7 @@ sub docmd {
     } elsif (/^man$/o) {
 	pod2usage(-verbose => 2, -exitval => 'NOEXIT');
     } elsif (/^import-data\s+(\S.+)\s+--\s+(\S.+)$/o) {
+	push(@history,$_);
 	import_data($1,$2);
     } else {
 	print "Unknown command '$_'; try help or man\n";
@@ -1681,7 +1682,7 @@ sub import_data {
 		my $column = $columns[$i];
 		if ($parts[$i] =~ /^\d+$/o) { 
 		    $types{$column}->{bigint} = $parts[$i];
-		} elsif ($parts[$i] =~ /^\d+\.\d+$/o) {
+		} elsif ($parts[$i] =~ /^-?\d+\.\d+$/o) {
 		    $types{$column}->{double} = $parts[$i];
 		} elsif (length $parts[$i] < 256) {
 		    $types{$column}->{varchar} = $parts[$i];
@@ -1695,6 +1696,9 @@ sub import_data {
 
     my @sql_columns;
     foreach my $column (@columns) {
+        # TODO: need to either a) define compatible column types, or b) check for consistency.
+        # a bug above meant that -# was determined to be varchar rather than double, but there
+        # were #'s later that should have conflicted; maybe count?
 	if (defined $types{$column}->{longtext}) {
 	    print "$column: inferred longtext type from $types{$column}->{longtext}\n";
 	    $types{$column} = 'text';
