@@ -345,7 +345,7 @@ namespace lintel {
 	void append(const void *buf, size_t size) {
 	    uniqueify();
 	    if (writeAvailable() < size) {
-	        int needed = size - writeAvailable();
+	        size_t needed = size - writeAvailable();
 		resizeBuffer(bufferSize() + needed);
 	    }
 	    memcpy(writeStart(size), buf, size);
