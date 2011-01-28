@@ -45,6 +45,7 @@ use warnings;
 use Carp;
 use POSIX qw(:sys_wait_h setpgid);
 use Time::HiRes 'time';
+use BSD::Resource;
 
 =pod
 
@@ -216,6 +217,12 @@ sub fork {
 		    or die "Can't write to $opts{stderr}: $!";
 	    }
 	}
+
+        if (defined $opts{max_mem_bytes}) {
+            setrlimit(RLIMIT_VMEM, $opts{max_mem_bytes}, RLIM_INFINITY)
+                || die "setrlimit failed: $!";
+        }
+
 	print STDERR "Lintel::ProcessManager($$): exec $cmd\n" if $this->{debug};
 
 	if (ref $opts{cmd} eq 'ARRAY') {
