@@ -7,7 +7,7 @@ die "module version mismatch"
 
 sub usage {
     print <<END_OF_USAGE;
-batch-parallel jobsfile [printcmd] -- file output-dir
+batch-parallel jobsfile [printcmd] [maxjobs=#] -- file output-dir
   printcmd: include command in output-dir/<line#>
 
   - The file should specify the command to execute 1 job/line.
@@ -19,6 +19,10 @@ batch-parallel jobsfile [printcmd] -- file output-dir
     will have their output in output-dir/<line#>-hostname-pid
   - if a line# file already exists, the job will not be re-executed
   - line#'s count starting from 1
+  - if maxjobs=# is specified, it will be used in setting the output file
+    format to have the right number of leading digits (including leading 0's)
+    so that adding jobs to the file won't cause the output files to re-sort. 
+    If not specified, jobsfile will use max(3, ceiling(log_10(#lines))) digits.
 END_OF_USAGE
 }
 
@@ -32,6 +36,8 @@ sub new {
 	    exit(0);
 	} elsif ($arg eq 'printcmd') {
 	    $this->{printcommand} = 1;
+        } elsif ($arg =~ /^maxjobs=(\d+)$/o) {
+            $this->{maxjobs} = $1;
 	} else {
 	    usage();
 	    die "unable to interpret argument '$arg'."
@@ -79,8 +85,14 @@ sub find_things_to_build {
     }
     close(JOBSLIST) or die "close failed: $!";
     print "done.\n";
-    my $digits = 1;
-    while((10 ** ($digits)-1) < $linenum) { 
+    my $digits = 3; # default so that adding a few lines isn't likely to push the count over
+                    # a power of 10 boundary.
+    if (defined $this->{maxjobs}) {
+        $digits = 1; # user specified, use their constant
+    } else {
+        $this->{maxjobs} = $linenum;
+    }
+    while((10 ** ($digits)-1) < $this->{maxjobs}) { 
 	++$digits;
     }
     my $outfile_fmt = "%0${digits}d";
