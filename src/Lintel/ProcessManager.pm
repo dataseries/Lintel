@@ -277,6 +277,7 @@ sub wait {
 	    unless $this->nChildren() > 0;
 	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
 	    my $status = $?;
+	    $status = $status & ~_wcore($status); # WCOREDUMP not defined often
 	    print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
 
 	    $exited{$child} = $status;
@@ -324,6 +325,14 @@ sub wait {
     }
 
     return %exited;
+}
+
+eval { &POSIX::WCOREDUMP(256) };
+if( $@ ) {
+    *_wcore = sub { $_[0] & 0xff7f };
+}
+else {
+    *_wcore = sub { POSIX::WCOREDUMP($_[0]) }
 }
 
 =pod
