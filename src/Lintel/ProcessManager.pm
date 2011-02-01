@@ -1,6 +1,7 @@
 package Lintel::ProcessManager;
 
-# TODO: write tests for this module.
+# TODO: write better tests for this module (test-lintel-processmanager only covers a little of the
+# functionality).
 
 =pod
 
@@ -145,9 +146,10 @@ the command is run through a shell (string) or not (array ref).
 
 =item setpgid => 0|1
 
-Should the sub-process execute setpgid after forking.  If yes, this
-process will become a new process group leader, and so can be killed
-as a group.
+Should the sub-process execute setpgid after forking.  If yes, this process will become a new
+process group leader, and so can be killed as a group.  I.e. if the sub-process forks children, you
+can run kill -1, $pid; and it will kill both the process and its children.  The default, 0 leaves
+the sub process part of the parent's group.
 
 =item stdout => 'path'
 
@@ -218,6 +220,13 @@ sub fork {
 	    }
 	}
 
+        # TODO-ks1: Please add documentation, fix it so that it doesn't require the
+        # BSD::Resource module (not all platforms have it by default), Add a
+        # LINTEL_WITH_PERL_MODULE to CMakeConfig.txt, but don't make it conditionally
+        # compiled (the LWPM will cause it to print the message about optional dependencies)
+        # Add it to doc/dependencies.txt, and change this to do an eval "use BSD::Resource";
+        # die "Can not support max_mem_bytes without BSD::Resource module: $@" if $@
+        # then write a test.  It's Lintel, the quality bar is pretty high.
         if (defined $opts{max_mem_bytes}) {
             setrlimit(RLIMIT_VMEM, $opts{max_mem_bytes}, RLIM_INFINITY)
                 || die "setrlimit failed: $!";
