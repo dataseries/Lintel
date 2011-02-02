@@ -53,3 +53,6 @@ CentOS 5 (centos5)
 
      # lintel-disktool
      yum -y install sg3_utils
+
+     # Lintel::ProcessManager (with memory contraints)
+     yum -y install perl-BSD-Resource.x86_64

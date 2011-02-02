@@ -46,7 +46,6 @@ use warnings;
 use Carp;
 use POSIX qw(:sys_wait_h setpgid);
 use Time::HiRes 'time';
-use BSD::Resource;
 
 =pod
 
@@ -161,12 +160,18 @@ What path (if any) should stderr be redirected to for the sub process.
 If the special value STDOUT is specified, then stderr is set to be
 stdout.
 
-item exitfn => sub { my ($pid, $status) = @_; ... }
+=item exitfn => sub { my ($pid, $status) = @_; ... }
 
 What function should be called when the sub-process exits.  The
 process will be given both the process id that exited and the status
 of the exit.  It can take any desired action.  Exit functions will be
 called during an execution of the wait() method.
+
+=item max_mem_bytes => <nbytes>
+
+This option uses BSD::Resource if it is available to set the core limit
+for the process to be started.   If BSD::Resource is not available then
+specifying this option will raise an error through die().
 
 =back
 
@@ -220,14 +225,9 @@ sub fork {
 	    }
 	}
 
-        # TODO-ks1: Please add documentation, fix it so that it doesn't require the
-        # BSD::Resource module (not all platforms have it by default), Add a
-        # LINTEL_WITH_PERL_MODULE to CMakeConfig.txt, but don't make it conditionally
-        # compiled (the LWPM will cause it to print the message about optional dependencies)
-        # Add it to doc/dependencies.txt, and change this to do an eval "use BSD::Resource";
-        # die "Can not support max_mem_bytes without BSD::Resource module: $@" if $@
-        # then write a test.  It's Lintel, the quality bar is pretty high.
         if (defined $opts{max_mem_bytes}) {
+            eval { use BSD::Resource };
+	    die "Can not support max_mem_bytes without BSD::Resource module: $@" if $@;
             setrlimit(RLIMIT_VMEM, $opts{max_mem_bytes}, RLIM_INFINITY)
                 || die "setrlimit failed: $!";
         }
