@@ -522,8 +522,9 @@ namespace lintel {
     private:
 	void uniqueify() {
 	    if (!rep.unique()) {
-		SINVARIANT(allow_copy_on_write);
-		
+                // ignore 'allow_copy_on_write' if size is zero
+                if (rep->bufferSize() != 0)
+		    SINVARIANT(allow_copy_on_write);
 		forceUnique();
 	    }
 	}

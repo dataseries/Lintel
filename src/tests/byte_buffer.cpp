@@ -14,6 +14,7 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
+#include <vector>
 #include <Lintel/ByteBuffer.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 
@@ -357,6 +358,23 @@ void unextendTest() {
     SINVARIANT(buff.asString() == "01234");
 }
 
+void allowCOWOnZeroSizeTest() {
+    // Emulate what is done by thrift demarshall of lists of ByteBuffers.
+    // resize the list to be of the desired size, causing it to be populated 
+    // with N elements which are *copied* from a golden sample created with
+    // the default ctor. These all now have allow_copy_on_write=false (default)
+    // and, with two or more elements, they are copies of each other.
+    // Thrift would then demarshall into the skeletal ByteBuffers.
+    // ByteBuffer will allow COW if original size is zero
+    vector<ByteBuffer> myList;
+    myList.resize(3);
+    // Replacing one element with a unique buffer should leave two that are copies
+    myList.at(1) = ByteBuffer("0123456789");
+    myList.at(1).append("extra");
+    // This would fail unless zero sized bytebuffers can be added to
+    myList.at(0).append("0123456789");
+}
+
 int main(int argc, char *argv[]) {
     ByteBuffer buf(true);
 
@@ -368,6 +386,7 @@ int main(int argc, char *argv[]) {
     appendStreamTests(argc, argv);
     overloadOutOperatorTests();
     unextendTest();
+    allowCOWOnZeroSizeTest(); 
     
     return 0;
 }
