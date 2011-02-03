@@ -2618,6 +2618,11 @@ clean up all temporary files, then exit.
 
 stop the code review; do not clean up temporary files.
 
+=item ask
+
+ask whether you wanted to mark the revisions as reviewed or finish.  This is the
+default when hitting return at the end of the review.
+
 =item help
 
 get help usage
@@ -2647,6 +2652,13 @@ should check *.patch.err file to see if we have any skipped patches,
 this can occur as a result of renames and as a result of added files in
 skipped revisions
 
+=item *
+
+what in the world do we do to help people review merge revisions?  Occasionally
+people actually edit when they merge (because of a conflict), and it could be
+useful to review those, but what would we review it against?  Would a three-way
+merge make sense?
+
 =back
 
 =cut
@@ -2654,6 +2666,7 @@ skipped revisions
 sub codeReview {
     my @revisions = @ARGV;
 
+    $auto_yes_to_prompts = 0;
     my $root_src_dir = rootSrcDir();
     aliasChdir($root_src_dir);
     die "No revisions specified." if @revisions == 0;
@@ -2667,13 +2680,40 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
     foreach my $revision (@revisions) {
         my @output = vcLogRevision($revision);
 
-        my %info = simpleParse(\@output, 
-                               [ qr/^-+$/o => undef,
-                                 qr/^Revision: (\S+)$/o => 'revision',
-                                 qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor',
-                                 qr/^Author:/o => undef,
-                                 qr/^Date:\s+(.+)$/o => 'date',
-				 qr/^Branch:\s+(\S+)$/o => 'branch' ]);
+        my %info = eval {
+            simpleParse(\@output, 
+                        [ qr/^-+$/o => undef,
+                          qr/^Revision: (\S+)$/o => 'revision',
+                          qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor',
+                          qr/^Author:/o => undef,
+                          qr/^Date:\s+(.+)$/o => 'date',
+                          qr/^Branch:\s+(\S+)$/o => 'branch' ]);
+        };
+
+        if ($@ =~ /Error on line 3.*got .Parent:/o) {
+            %info = eval {
+                simpleParse(\@output, 
+                            [ qr/^-+$/o => undef,
+                              qr/^Revision: (\S+)$/o => 'revision',
+                              qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor1',
+                              qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor2',
+                              qr/^Author:/o => undef,
+                              qr/^Date:\s+(.+)$/o => 'date',
+                              qr/^Branch:\s+(\S+)$/o => 'branch' ]);
+            };
+            die "revision $revision looks like a merge revision, but doesn't parse: $@"
+                if $@;
+            print "Revision $revision appears to be a merge
+revision.  That is currently not supported for viewing differences.  Most
+likely, the revision was a mistake in specifying the revision to review. 
+However, if you know an appropriate way to review merge revisions, please
+provide feedback.\n";
+            userPrompt("Continue reviewing");
+            $info{ancestor} = "merge:$info{ancestor1}"; # lie
+            $info{revision} = "merge:$info{revision}"; # mark as merge
+        } elsif ($@) {
+            die $@;
+        }
 
         $parents{$info{revision}} = $info{ancestor};
         $dates{$info{revision}} = $info{date};
@@ -2693,7 +2733,7 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
         -d "$basedir/$final_dir" && -f "$basedir/diff-order") {
         print "$basedir already exists, as do the relevant
 first and last revisions and the diff-order file.  
-Assuming you just want to continue editing.\n";
+Assuming you just want to continue reviewing.\n";
     } elsif (-d $basedir) {
         print "Missing expected files to continue diffing in $basedir\n";
         print "Return to delete, ctrl-c to abort: ";
@@ -2712,36 +2752,46 @@ Assuming you just want to continue editing.\n";
 sub codeReviewSequence {
     my ($revs, $parents, $basedir) = @_;
 
-    my @revisions = @$revs;
-    my %mtn_options = readMtnOptions();
-    my $database = $mtn_options{database};
-    die "missing db in .../_MTN/options" 
-        unless defined $database;
+    die "no revisions?" unless @$revs > 0;
+    my @revisions = grep(!/^merge:/o, @$revs);
+    my ($start, $last);
+    if (@revisions > 0) {
+        my %mtn_options = readMtnOptions();
+        my $database = $mtn_options{database};
+        die "missing db in .../_MTN/options" 
+            unless defined $database;
+        
+        $start = $parents->{$revisions[0]};
+        
+        print "Trying to build single sequence diff from ", 
+            substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
+                "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
+        
+        codeReviewCheckout($database, "$basedir/$start", $start);
+        
+        $last = $start;
+        while (@revisions > 0) {
+            my $to = $revisions[0];
+            my $from = $parents->{$to};
+            
+            print "Trying to patch $last\n   with ", substr($from, 0, 20), 
+                " -> ", substr($to, 0, 20), "\n";
+            
+            codeReviewPatch($database, $basedir, $last, $from, $to);
+            $last = $to;
+            shift @revisions;
+        }
 
-    my $start = $parents->{$revisions[0]};
+        print "Successfully built single sequence for review.\n";
 
-    print "Trying to build single sequence diff from ", 
-      substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
-      "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
-
-    codeReviewCheckout($database, "$basedir/$start", $start);
-
-    my $last = $start;
-    while (@revisions > 0) {
-        my $to = $revisions[0];
-        my $from = $parents->{$to};
-
-        print "Trying to patch $last\n   with ", substr($from, 0, 20), 
-            " -> ", substr($to, 0, 20), "\n";
-
-        codeReviewPatch($database, $basedir, $last, $from, $to);
-        $last = $to;
-        shift @revisions;
+        makeDiffOrder($basedir, $start, $last);
+    } else {
+        print "No files to review, all specified revisions are merge revisions.\n";
+        my $fh = new FileHandle ">$basedir/diff-order" or die "bad";
+        close($fh);
+        ($start, $last) = ('no-such-directory', 'no-such-directory');
     }
 
-    print "Successfully built single sequence for review.\n";
-
-    makeDiffOrder($basedir, $start, $last);
     kdiffDirs($basedir, $start, $last, $revs);
 }
 
@@ -2791,6 +2841,7 @@ sub kdiffDirs {
     # message for the file we are reviewing.
 
     foreach my $rev (@$revisions) {
+        $rev =~ s/^merge://o;
         print vcLogRevision($rev);
     }
     my $cur = '*start*';
@@ -2803,8 +2854,8 @@ sub kdiffDirs {
         print "Current next file to diff: $next\n";
         print "Editable diff ordering file: $basedir/diff-order\n";
         my $default = "diff $next";
-        $default = "finish" if $next eq '*end*';
-        print "commands: auto, files, reviewed, finish, exit, help\n";
+        $default = "ask" if $next eq '*end*';
+        print "commands: auto, files, reviewed, finish, exit, ask, help\n";
         print "Enter filename substring or command [$default]: ";
         if (defined $auto && (-M "$basedir/diff-order") == $auto) {
             print "[auto]\n";
@@ -2813,7 +2864,7 @@ sub kdiffDirs {
             $_ = <STDIN>;
             chomp;
         }
-        $_ = 'finish' if $_ eq '' && $default eq 'finish';
+        $_ = 'ask' if $_ eq '' && $default eq 'ask';
         if ($_ eq '') {
             my $check_next = getNextDiffFile($basedir, $cur);
             if ($check_next ne $next) {
@@ -2858,6 +2909,25 @@ sub kdiffDirs {
             last;
         } elsif ($_ eq 'finish') {
             runCommand("rm -rf $basedir");
+            last;
+        } elsif ($_ eq 'ask') {
+            while (1) {
+                print "Did you mean to type reviewed, {y[es], n[o]}? ";
+                $_ = <STDIN>;
+                if (/^\s*$/o) {
+                    print "There is no default.\n";
+                } elsif (/^y/io) {
+                    markReviewed($revisions, '');
+                    runCommand("rm -rf $basedir");
+                    last;
+                } elsif (/^n/io) {
+                    runCommand("rm -rf $basedir");
+                    last;
+                } else {
+                    chomp;
+                    print "Unrecognized response '$_'\n";
+                }
+            }
             last;
         } elsif ($_ eq 'help') {
 	    # TODO-sprint: figure out how to extract this from the pod help;
@@ -2917,6 +2987,7 @@ sub getNextDiffFile {
     my($basedir, $cur) = @_;
 
     my @order = getDiffOrder($basedir);
+    return '*end*' if @order == 0;
     return $order[0] if $cur eq '*start*';
     for(my $i=0; $i < @order; ++$i) {
         if ($order[$i] eq $cur) {
@@ -2961,6 +3032,7 @@ sub getDiffOrder {
     my @order = <$fh>;
     close($fh);
     grep(chomp, @order);
+    @order = grep(!/^\s*$/o, @order);
 
     return @order;
 }
@@ -3004,8 +3076,17 @@ sub codeReviewPatch {
         print "\n\n**************\n";
         print "Patch failed ($basedir/$to.patch.err) for files: ", join(", ", @failed), "\n";
 
-        die "No failed files found, examine error file for help"
-            unless @failed > 0;
+        my $fh = new FileHandle "$basedir/$to.patch.err"
+            or die "Can't open $basedir/$to.patch.err: $!";
+        my @errors = <$fh>;
+        print @errors;
+        close($fh);
+        unless (@failed > 0) {
+            print "No failed files found, above should show errors.\n";
+            userPrompt("continue code-review");
+            return;
+        }
+
         foreach my $file (@failed) {
             my $patch = $file;
             $file =~ s/\.rej$//o;

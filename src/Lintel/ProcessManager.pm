@@ -226,10 +226,10 @@ sub fork {
 	}
 
         if (defined $opts{max_mem_bytes}) {
-            eval { use BSD::Resource };
+            eval q#use BSD::Resource;
+                   setrlimit(RLIMIT_VMEM, $opts{max_mem_bytes}, RLIM_INFINITY)
+                       || die "setrlimit failed: $!";#;
 	    die "Can not support max_mem_bytes without BSD::Resource module: $@" if $@;
-            setrlimit(RLIMIT_VMEM, $opts{max_mem_bytes}, RLIM_INFINITY)
-                || die "setrlimit failed: $!";
         }
 
 	print STDERR "Lintel::ProcessManager($$): exec $cmd\n" if $this->{debug};
@@ -271,6 +271,15 @@ error to call this from within the process manager signal handler, or
 without any children.
 
 =cut
+
+sub posix_wcoredump {
+    my $ret = eval q!&POSIX::WCOREDUMP($_[0]);!;
+    if ($@) { # Assume it was function not found.
+        return $_[0] & 0x80;
+    } else {
+        return $ret;
+    }
+}
 
 sub wait {
     my ($this, $timeout) = @_;
@@ -334,13 +343,6 @@ sub wait {
     }
 
     return %exited;
-}
-
-eval { &POSIX::WCOREDUMP(256) };
-if ($@) {
-    *posix_wcoredump = sub { $_[0] & 0x80 };
-} else {
-    *posix_wcoredump = sub { POSIX::WCOREDUMP($_[0]) }
 }
 
 =pod

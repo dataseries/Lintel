@@ -172,9 +172,6 @@ sub unlock { # die on error, true on success
     return 1;
 }
 
-
-__END__
-
 =pod
 
 =head1 NAME
@@ -226,7 +223,7 @@ passing in the string that was printed from the successful lock.
 
   # try to lock the file, the following would all be in one script
   
-  RET=`lintel-flock --filename=/tmp/do-compile --callpid=$$ --timeout=5`
+  RET=`lintel-flock --filename=/tmp/do-compile --callpid=$$ --waittime=5`
   case "$RET" in
     success:*) echo "Got the lock." ;;
     timeout) echo "Timed, out, aborting"; exit 0 ;;
@@ -247,4 +244,4 @@ Eric Anderson <anderse@hpl.hp.com>
 
 Lintel::File::Lock(3), perl(1)
 
-
+=cut
