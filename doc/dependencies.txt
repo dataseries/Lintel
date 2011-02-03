@@ -31,6 +31,9 @@ Debian-Lenny (debian-5.0):
      # lintel-disktool
      % aptitude install sg3-utils
   
+     # Lintel::ProcessManager (add support for memory resource limit)
+     % aptitude install libbsd-resource-perl
+
 ----------------------------
 
 CentOS 5 (centos5)
@@ -54,5 +57,5 @@ CentOS 5 (centos5)
      # lintel-disktool
      yum -y install sg3_utils
 
-     # Lintel::ProcessManager (with memory contraints)
+     # Lintel::ProcessManager (add support for memory resource limit)
      yum -y install perl-BSD-Resource.x86_64

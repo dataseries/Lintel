@@ -8,7 +8,7 @@ my $process_manager = new Lintel::ProcessManager();
 eval { use BSD::Resource };
 unless ($@) {
     memtest(1024*1024, 0);
-    memtest(200*1024*1024, 1);
+    memtest(100*1024*1024, 1);
 }
 test(1);
 test(4);
@@ -18,13 +18,15 @@ test(64);
 
 sub memtest {
     my ($objsize, $expect_error) = @_;
-    print "Expect an \"Out of memory\" error next\n" if ($expect_error);
+    print "Expect an \"Out of memory\" error to be printed next, verifying it is caught\n"
+        if ($expect_error);
     my $pid = $process_manager->fork(
 	cmd => "perl -e 'BEGIN { my \$foo = \".\"x$objsize; } exit(0);'",
-	max_mem_bytes => 100*1024*1024);
+        # limit of 25 MB does not work on centos5 chroot (1 MB size does not succeed)
+	max_mem_bytes => 50*1024*1024); 
     my $ecode = $process_manager->waitPid($pid);
-    die ("unexpected error $ecode on memtest $objsize") if ($ecode && !$expect_error);
-    die ("unexpected completion $ecode on memtest $objsize") if (!$ecode && $expect_error);
+    die "unexpected error $ecode on memtest $objsize" if ($ecode && !$expect_error);
+    die "unexpected completion $ecode on memtest $objsize" if (!$ecode && $expect_error);
 }
 
 sub test {
