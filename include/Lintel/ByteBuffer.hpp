@@ -41,6 +41,12 @@
 // ByteBuffer part of the type.  Then there's no ambiguity in whether
 // we can copy a ByteBuffer.  This will reduce the memory usage of a
 // ByteBuffer.
+
+// TODO: consider changing the sense of 'max_size_cow_always_allowed' in
+// ByteBuffer to strictly disallow copy on write, or allow copy on write 
+// of buffers of size zero up to a limit, even when allow_copy_on_write 
+// is false. Permit variation on a per-instance basis.
+
 namespace lintel {
     /// Basic buffer class.  Copies are disabled because they would be
     /// painfully inefficient.  If you want a copyable buffer, then
@@ -520,10 +526,12 @@ namespace lintel {
 	}	    
 
     private:
+        static const size_t max_size_cow_always_allowed = 0;
+
 	void uniqueify() {
 	    if (!rep.unique()) {
-                // ignore 'allow_copy_on_write' if size is zero
-                if (rep->bufferSize() != 0)
+                // check 'allow_copy_on_write' if size above threshold
+                if (rep->bufferSize() > max_size_cow_always_allowed)
 		    SINVARIANT(allow_copy_on_write);
 		forceUnique();
 	    }
