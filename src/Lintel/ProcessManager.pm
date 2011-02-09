@@ -277,7 +277,7 @@ sub posix_wcoredump {
     if ($@) { # Assume it was function not found.
         return $_[0] & 0x80;
     } else {
-        return $ret;
+        return $ret || 0;
     }
 }
 
