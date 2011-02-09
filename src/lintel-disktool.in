@@ -360,7 +360,7 @@ sub partitionDrives {
 	    or die "??";
 	print SFDISK "0,\n";
 	close(SFDISK);
-	die "??" unless $? == 0;
+	die "?? log is /tmp/lintel-disktool.partition.$log " unless $? == 0;
     }
     print "\n";
     if ($first == 0) {
@@ -379,15 +379,17 @@ sub partitionDrives {
 sub driveToPartition {
     my ($drive) = @_;
 
-    return "/dev/${drive}1" if -b "/dev/${drive}1";
-    return "/dev/${drive}p1" if -b "/dev/${drive}p1";
+    return "/dev/${drive}p1" if -b "/dev/${drive}p1" && $drive =~ m!^cciss/c\d+d\d+$!o;
+    return "/dev/${drive}1" if -b "/dev/${drive}1" && $drive =~ /^sd[a-z]+$/o;
     confess "Unable to convert $drive to partition";
 }
 
 sub zeroPartition {
     my ($partition) = @_;
 
-    my $ret = system("dd if=/dev/zero of=$partition bs=1024k count=1 >/dev/null 2>&1");
+    my $cmd = "dd if=/dev/zero of=$partition bs=1024k count=1 >/dev/null 2>&1";
+    print "$cmd\n" if $Global::debug;
+    my $ret = system($cmd);
     die "\ndd failed for $partition" 
 	unless $ret == 0;
 }
@@ -401,26 +403,24 @@ sub formatOneDrive {
     }
 
     $ENV{PATH} = "$ENV{PATH}:/sbin:/usr/sbin"; # RHEL5 sudo doesn't include these paths by default
+    my $cmd;
     if ($fs eq 'ext2') {
-	zeroPartition($partition);
-	my $ret = system("mkfs.ext2 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
-	die "\nmkfs.ext2 failed for $partition"
-	    unless $ret == 0;
+        $cmd = "mkfs.ext2 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1";
     } elsif ($fs eq 'ext3') {
-	zeroPartition($partition);
-	my $ret = system("mkfs.ext3 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1");
-	die "\nmkfs.ext2 failed for $partition"
-	    unless $ret == 0;
+	$cmd = "mkfs.ext3 -m 0 -O sparse_super,dir_index -L $label $partition >/dev/null 2>&1";
     } elsif ($fs eq 'xfs')  {
-	zeroPartition($partition);
-	my $ret = system("mkfs.xfs -L $label $partition >/dev/null 2>&1");
-	die "\nmkfs.xfs failed for $partition"
-	    unless $ret == 0;
+	$cmd = "mkfs.xfs -L $label $partition >/dev/null 2>&1";
     } elsif ($fs eq 'reserved') {
 	exit(0);
     } else {
 	die "huh $fs";
     }
+    die "internal" unless defined $cmd;
+    zeroPartition($partition);
+    my $ret = system($cmd);
+    print "$cmd\n" if $Global::debug;
+    die "\n$cmd failed for $partition"
+        unless $ret == 0;
     exit(0);
 }
 
