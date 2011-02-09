@@ -273,11 +273,13 @@ without any children.
 =cut
 
 sub posix_wcoredump {
+    confess "posix_wcoredump called incorrectly; first argument should be defined"
+        unless defined $_[0];
     my $ret = eval q!&POSIX::WCOREDUMP($_[0]);!;
-    if ($@) { # Assume it was function not found.
+    if ($@ || !defined $ret) { # Assume it was function not found.
         return $_[0] & 0x80;
     } else {
-        return $ret || 0;
+        return $ret;
     }
 }
 
@@ -295,6 +297,8 @@ sub wait {
 	    unless $this->nChildren() > 0;
 	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
 	    my $status = $?;
+            # TODO: add a test where we exit with lots of different status; it's possible
+            # we need to set $SIG{CHLD} = 'IGNORE' or something, but it seems to be working.
 	    $status = $status & ~posix_wcoredump($status); # WCOREDUMP not defined often
 	    print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
 
