@@ -26,6 +26,10 @@ batch-parallel jobsfile [printcmd] [maxjobs=#] -- file output-dir
 END_OF_USAGE
 }
 
+# TODO: add an option [skip-queued=<seconds>] that will write a .queued file out
+# when starting the jobs, and will skip queueing any jobs that have a .queued file
+# more recent than <seconds>
+
 sub new {
     my $class = shift;
     
@@ -125,6 +129,8 @@ sub rebuild_thing_do {
 
     my($outfile,$cmd) = @$thing_info;
 
+    # TODO: check to see of the final output file is present already, and if so assume
+    # we raced with another invocation and skip actually running the command.
     $cmd = "($cmd)";
     my $hostname = `hostname`;chomp($hostname);
     my $tmpoutfile = "$outfile-$hostname-$$";
