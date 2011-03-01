@@ -86,9 +86,11 @@ namespace lintel {
     }
 
     namespace detail {
+        // sets the line length for help on program options
+        uint32_t default_line_length = 160;
 	po::options_description &programOptionsDesc(bool is_hidden) {
-	    static po::options_description desc("Allowed options");
-	    static po::options_description hidden("Allowed options (hidden)");
+	    static po::options_description desc("Allowed options", default_line_length);
+	    static po::options_description hidden("Allowed options (hidden)", default_line_length);
 	    return is_hidden ? hidden : desc;
 	}
 
