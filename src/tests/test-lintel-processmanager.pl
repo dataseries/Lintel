@@ -82,8 +82,8 @@ sub testCoreDump {
     my $mask_status = maskCoredump($core_status);
     die "? $mask_status != $status" unless $mask_status == $status;
 
-    die "missing core file" unless -f "core";
-    unlink("core");
+    die "missing core file" unless -f "core" || -f "core.$pid";
+    unlink("core", "core.$pid");
     
     print "Core dump masking test passed\n";
 }
