@@ -1,5 +1,16 @@
 package Lintel::ProcessManager;
 
+use strict;
+use warnings;
+use vars qw/@EXPORT_OK/;
+
+use Exporter 'import';
+@EXPORT_OK = qw/maskCoredump/;
+
+use Carp;
+use POSIX qw(:sys_wait_h setpgid);
+use Time::HiRes 'time';
+
 # TODO: write better tests for this module (test-lintel-processmanager only covers a little of the
 # functionality).
 
@@ -11,7 +22,7 @@ Lintel::ProcessManager - library for dealing with sub-processes
 
 =head1 SYNOPSIS
 
-    use Lintel::ProcessManager;
+    use Lintel::ProcessManager; # 'wcoredump'
 
     my $process_manager 
         = new Lintel::ProcessManager([debug => 0|1],
@@ -36,19 +47,10 @@ Lintel::ProcessManager - library for dealing with sub-processes
 
     my $nchildren = $process_manager->nChildren();
 
+    my $new_status = Lintel::ProcessManger::wcoredump($status); # mask out core dump status
+
 =head1 FUNCTIONS
     
-=cut
-
-use strict;
-use warnings;
-
-use Carp;
-use POSIX qw(:sys_wait_h setpgid);
-use Time::HiRes 'time';
-
-=pod
-
 =head2 my $mgr = new Lintel::ProcessManager(%options)
 
 Create a new process manager.  You can pass a list of options to
@@ -262,6 +264,28 @@ sub fork {
 
 =pod
 
+=head2 my $new_status = maskCoredump($status)
+
+The maskCcoredump function will mask out the core dump status from the $status variable, returning
+the revised status.  If possible, it attempts to use the POSIX::WCOREDUMP function, but since that
+function is often not present, it has hardcoded the flag value for masking.
+
+=cut
+
+sub maskCoredump {
+    confess "wcoredump called incorrectly; first argument should be defined"
+        unless defined $_[0];
+    my $ret = eval q!&POSIX::WCOREDUMP($_[0]);!;
+    if ($@ || !defined $ret) { # Assume it was function not found.
+        # TODO: use a binary module to get this out of C
+        return $_[0] & ~0x80;
+    } else {
+        return $_[0] & ~$ret;
+    }
+}
+
+=pod
+
 =head2 my %pid_to_status = $mgr->wait([timeout])
 
 Wait for children to exit up to timeout seconds.  Return a map from
@@ -271,17 +295,6 @@ error to call this from within the process manager signal handler, or
 without any children.
 
 =cut
-
-sub posix_wcoredump {
-    confess "posix_wcoredump called incorrectly; first argument should be defined"
-        unless defined $_[0];
-    my $ret = eval q!&POSIX::WCOREDUMP($_[0]);!;
-    if ($@ || !defined $ret) { # Assume it was function not found.
-        return $_[0] & 0x80;
-    } else {
-        return $ret;
-    }
-}
 
 sub wait {
     my ($this, $timeout) = @_;
@@ -299,7 +312,6 @@ sub wait {
 	    my $status = $?;
             # TODO: add a test where we exit with lots of different status; it's possible
             # we need to set $SIG{CHLD} = 'IGNORE' or something, but it seems to be working.
-	    $status = $status & ~posix_wcoredump($status); # WCOREDUMP not defined often
 	    print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
 
 	    $exited{$child} = $status;

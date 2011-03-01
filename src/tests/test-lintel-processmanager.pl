@@ -1,12 +1,14 @@
 #!/usr/bin/perl -w
 use strict;
 use Time::HiRes 'time';
-use Lintel::ProcessManager;
+use Lintel::ProcessManager 'maskCoredump';
 
 my $process_manager = new Lintel::ProcessManager();
 
-eval { use BSD::Resource };
+eval "use BSD::Resource";
 unless ($@) {
+    testCoreDump();
+
     memtest(1024*1024, 0);
     memtest(100*1024*1024, 1);
 }
@@ -19,14 +21,16 @@ test(64);
 sub memtest {
     my ($objsize, $expect_error) = @_;
     print "Expect an \"Out of memory\" error to be printed next, verifying it is caught\n"
-        if ($expect_error);
+        if $expect_error;
     my $pid = $process_manager->fork(
 	cmd => "perl -e 'BEGIN { my \$foo = \".\"x$objsize; } exit(0);'",
         # limit of 25 MB does not work on centos5 chroot (1 MB size does not succeed)
 	max_mem_bytes => 50*1024*1024); 
     my $ecode = $process_manager->waitPid($pid);
-    die "unexpected error $ecode on memtest $objsize" if ($ecode && !$expect_error);
-    die "unexpected completion $ecode on memtest $objsize" if (!$ecode && $expect_error);
+    die "unexpected error $ecode on memtest $objsize" if $ecode && !$expect_error;
+    die "unexpected completion $ecode on memtest $objsize" if !$ecode && $expect_error;
+
+    print "Memory test passed\n";
 }
 
 sub test {
@@ -56,6 +60,32 @@ sub test {
         warn "Fork rate abnormally low for try $tries; sleep(5)";
         sleep(5);
     }
+}
+
+sub testCoreDump {
+    if (-f "core") {
+        unlink("core");
+    }
+    eval q{ setrlimit(RLIMIT_CORE, 0, 4096) or die "setrlimit: $!"; }; die $@ if $@;
+    my $pid = $process_manager->fork(cmd => sub { kill 'SEGV', $$ });
+    my $status = $process_manager->waitPid($pid);
+
+    die "? $status" unless $status == 11;
+    
+    eval q{ setrlimit(RLIMIT_CORE, 4096, 4096) or die "setrlimit(core-4k): $!"; }; die $@ if $@;
+
+    $pid = $process_manager->fork(cmd => sub { kill 'SEGV', $$ });
+    my $core_status = $process_manager->waitPid($pid);
+
+    die "? $core_status" unless $core_status == (11 | 0x80);
+
+    my $mask_status = maskCoredump($core_status);
+    die "? $mask_status != $status" unless $mask_status == $status;
+
+    die "missing core file" unless -f "core";
+    unlink("core");
+    
+    print "Core dump masking test passed\n";
 }
 
 exit(0);
