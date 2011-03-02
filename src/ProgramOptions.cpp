@@ -86,8 +86,16 @@ namespace lintel {
     }
 
     namespace detail {
+        // TODO-nitin: 1) need a test.  2) Need a way to set this in the caller; the natural
+        // choice is to set it to the terminal width.  I'm fine with not doing that initially and
+        // just having a default (100 because of 100 column coding convention?  I'd slightly 
+        // prefer 80 since that is actually the standard and let the users of this library, e.g.
+        // SimReal just change it)
+        // Add a setHelpWidth() function to make sure that it can be changed inside a program.
+        // These static variables will be created before main() since program options appear then.
+
         // sets the line length for help on program options
-        uint32_t default_line_length = 160;
+        uint32_t default_line_length = 100;
 	po::options_description &programOptionsDesc(bool is_hidden) {
 	    static po::options_description desc("Allowed options", default_line_length);
 	    static po::options_description hidden("Allowed options (hidden)", default_line_length);
