@@ -137,6 +137,18 @@ void read_config_file_test(int argc, char *argv[]) {
     exit(0);
 }
 
+void helpWidthTest(int argc, char *argv[]) {
+    lintel::ProgramOption<string> po_program_option_help_width_test
+        ("program-option-help-width-test", "This is a program option test. This program option is"
+         " used to verify, while displaying program option help, width of program option "
+         "description is appropriately set according to LINTEL_PO_HELP_WIDTH environment variable."
+         " If LINTEL_PO_HELP_WIDTH environment variable is not set then default value of 80 is "
+         "used as program option help width. Description of this program option is big, "
+         "so that program option help description width can be verfied for larger range.");
+    lintel::parseCommandLine(argc, argv, true);
+    FATAL_ERROR("This test is to verify help description for program option.");
+}
+
 // TODO: with options like --foo bar -- baz; if you call parseCommandLine,
 // you will not get the baz option back in the array.
 
@@ -160,6 +172,8 @@ int main(int argc, char *argv[]) {
 	sixth(argc, argv);
     } else if (mode == "stream_read" || mode == "file_read") {
 	read_config_file_test(argc, argv);
+    } else if (mode == "help-width-test") {
+        helpWidthTest(argc, argv);
     }
     // TODO: add test for duplicate program option, should probably abort
     // if the user tries to do that.

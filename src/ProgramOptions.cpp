@@ -5,9 +5,10 @@
 */
 
 #include <inttypes.h>
-#include <Lintel/ProgramOptions.hpp>
 #include <fstream>
 #include <boost/program_options/errors.hpp>
+#include <Lintel/ProgramOptions.hpp>
+#include <Lintel/StringUtil.hpp>
 
 using namespace std;
 namespace po = boost::program_options;
@@ -86,17 +87,20 @@ namespace lintel {
     }
 
     namespace detail {
-        // TODO-nitin: 1) need a test.  2) Need a way to set this in the caller; the natural
-        // choice is to set it to the terminal width.  I'm fine with not doing that initially and
-        // just having a default (100 because of 100 column coding convention?  I'd slightly 
-        // prefer 80 since that is actually the standard and let the users of this library, e.g.
-        // SimReal just change it)
-        // Add a setHelpWidth() function to make sure that it can be changed inside a program.
-        // These static variables will be created before main() since program options appear then.
 
-        // sets the line length for help on program options
-        uint32_t default_line_length = 100;
+        uint32_t getHelpWidth() {
+            if (const char *env = getenv("LINTEL_PO_HELP_WIDTH")) {
+                return stringToInteger<uint32_t>(env);
+            } else {
+                // TODO-sprint: could decide to use ioct to determine terminal width and use it as
+                // default value.
+                return 80;
+            }
+        }
+
 	po::options_description &programOptionsDesc(bool is_hidden) {
+            // sets the line length for help on program options
+            static const uint32_t default_line_length = getHelpWidth();
 	    static po::options_description desc("Allowed options", default_line_length);
 	    static po::options_description hidden("Allowed options (hidden)", default_line_length);
 	    return is_hidden ? hidden : desc;
