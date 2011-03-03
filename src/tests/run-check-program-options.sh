@@ -20,7 +20,7 @@ output_file="/tmp/`whoami`.po_help_width";
 # boost1.35, run up to 250 with a variety of sizes, 80, 100, 120 are "expected" values.  Would like
 # to use random sizes, but that isn't in POSIX shells.  Interestingly, boost 1.35 will loop
 # indefinitely for a help_width of 40.
-for help_width in 41 80 100 113 120 159 181 211 231 250; do
+for help_width in 41 80 100 113 120 140 159 181 211 231 250; do
     echo "Testing with help-width = $help_width"
     # Prune out blank lines
     COLUMNS=$help_width LINTEL_PO_TEST=help-width-test ./program_options --help | sed '/^$/d' >| $output_file || exit 1
@@ -28,9 +28,11 @@ for help_width in 41 80 100 113 120 159 181 211 231 250; do
     max=`expr $num_of_lines - 1` # last line can have arbitrary size.
     for j in `seq 4 $max`; do
         length=`head -$j $output_file | tail -1 | wc -c`
-        lower_bound=`expr $help_width - 20`; # 20 is max length word # TODO-nitin: explain more
+        # boost prints description as paragraph and does not chop words if they start in second
+        # half of line. Max word length in po description is 20.
+        lower_bound=`expr $help_width - 20`;
         # check all lengths in [$lower_bound .. $help_width], ignoring blank lines
-        if [ "$length" -gt "$help_width" -o "$length" -lt "$lower_bound" -a "$length" -ne "0" ]; then
+        if [ "$length" -gt "$help_width" -o "$length" -lt "$lower_bound" ]; then
             echo "Test failed " $length $help_width;
             exit 1
         fi
