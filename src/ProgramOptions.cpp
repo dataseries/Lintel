@@ -89,10 +89,14 @@ namespace lintel {
     namespace detail {
 
         uint32_t getHelpWidth() {
-            if (const char *env = getenv("LINTEL_PO_HELP_WIDTH")) {
+            // COLUMNS is automatically in environment, but isn't exported by default.  Would
+            // prefer to have a way to set the help width in callers, but we can't find a boost
+            // program_options way to do so.  Since the options are constructed before main(); this
+            // is the best fallback alternative.
+            if (const char *env = getenv("COLUMNS")) {
                 return stringToInteger<uint32_t>(env);
             } else {
-                // TODO-sprint: could decide to use ioct to determine terminal width and use it as
+                // TODO: could decide to use ioctl to determine terminal width and use it as
                 // default value.
                 return 80;
             }
