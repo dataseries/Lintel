@@ -34,6 +34,7 @@ SET(INCLUDE_FILES
 	PriorityQueue.hpp
 	RotatingHashMap.hpp
 	SimpleMutex.hpp
+	StatM.hpp
 	Stats.hpp
 	StatsCube.hpp
 	StatsEMA.hpp
