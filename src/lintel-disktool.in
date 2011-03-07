@@ -100,12 +100,12 @@ sub usage {
     print STDERR "Error: @_\n" if @_;
     die "Usage: $0 (list)|(partition)|(format)|(mount)|(fsck)|(umount)|(fail path)|(scan)";
 }
-	
+
 sub bydriveorder {
-    return -1 if length $a < length $b; 
-    return 1 if length $a > length $b; 
+    return -1 if length $a < length $b;
+    return 1 if length $a > length $b;
     return $a cmp $b;
-} 
+}
 
 =pod
 

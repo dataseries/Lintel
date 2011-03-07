@@ -27,6 +27,7 @@ use File::Find;
 use File::stat;
 use FileHandle;
 use Getopt::Long;
+use IPC::Open3;
 use MIME::Base64;
 use POSIX 'ceil';
 use Pod::Usage;
@@ -4090,15 +4091,25 @@ sub readMtnOptions {
 sub getCmdOutput {
     my($cmd, $pre_close_fn) = @_;
 
-    # TODO: use open3 or processmanager to capture stdout/stderr separately 2>&1 is potentially
-    # unsafe.
-    my $fh = new FileHandle "$cmd 2>&1 |"
-        or die "Unable to run $cmd: $!";
-    my @ret = <$fh>;
-    &$pre_close_fn(\@ret) if defined $pre_close_fn;
-    close($fh) or confess "close failed: $!\ncommand is $cmd";
-    die "$cmd failed" unless $? == 0;
-    return @ret;
+    my ($write, $read, $error) = (new FileHandle, new FileHandle, new FileHandle);
+    my $pid = open3($write, $read, $error, $cmd);
+
+    # TODO: write the select loop that can handle unbounded output.  The following is unsafe
+    # because it assumes the stderr output is small enough that it can be entirely buffered.
+
+    close($write) or die "close failed: $!";
+    my @stdout = <$read>;
+    my @stderr = <$error>;
+
+    my $kid = waitpid($pid, 0);
+    my $status = $?;
+    die "? $kid $pid" unless $kid == $pid;
+
+    &$pre_close_fn(\@stdout, \@stderr) if defined $pre_close_fn;
+    close($read) or confess "close failed: $!\ncommand is $cmd";
+    close($error) or confess "close failed: $!\ncommand is $cmd";
+    die "$cmd failed" unless $status == 0;
+    return @stdout;
 }
 
 sub simpleParse {
@@ -4177,9 +4188,9 @@ sub vcLogRevision {
     if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
 	my ($major, $minor) = ($1,$2);
         my $check_fn = sub {
-            my ($lines) = @_;
+            my ($out, $err) = @_;
 
-            if (grep(/no match for selection/o, @{$lines}) > 0) {
+            if (grep(/no match for selection/o, @{$err}) > 0) {
                 die "Revision '$revision' not found. Did you specify the correct revision?";
             }
         };
