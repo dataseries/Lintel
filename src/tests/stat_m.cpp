@@ -27,8 +27,8 @@ using boost::format;
 
 int main() {
     StatM statm;
-    int64_t initial_resident = statm.getStatM().resident;
-    int64_t initial_size = statm.getCached().size;
+    size_t initial_resident = statm.getStatM().resident;
+    size_t initial_size = statm.getCached().size;
     LintelLog::info(format("initially %d/%d") % initial_size % initial_resident);
 
     char * trash = static_cast<char *>(malloc(4096 * 10000));

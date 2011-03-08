@@ -4,6 +4,12 @@
 #include <sys/types.h>
 #include <string>
 
+// TODO-joe: We may need to chat, but I think we would be better off making this class a general
+// interface that will get resource usage and will do it the right way on various platforms, i.e.
+// make this class ResourceUsage, and probably use the private implementation pattern to do
+// the actual implementations.  We can of course only do the linux one for now, but this approach
+// will let us accept patches for other OSs, e.g freebsd, solaris.
+
 namespace lintel {
 
     /// Encapsulates reading things from /proc/pid/statm
@@ -11,6 +17,7 @@ namespace lintel {
     public:
 	/// Parsed statm file; all numbers are in pages
 	typedef struct {
+            // TODO-joe: can we use size_t for all of these?
 	    long long unsigned int size;
 	    long long unsigned int resident;
 	    long long unsigned int share;
