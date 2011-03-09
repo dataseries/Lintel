@@ -862,6 +862,11 @@ sub failDrives {
 	$destroy = 1;
 	shift @which;
     }
+    my $mangle = 0;
+    if ($which[0] eq 'mangle') {
+        $mangle = 1;
+        shift @which;
+    }
 
     readConfig();
     grep(s!^$config{mount_path}/!!o, @which);
@@ -894,18 +899,20 @@ sub failDrives {
     }
 
     foreach my $mountpoint (@which) {
-	if ($destroy) {
+	if ($destroy || $mangle) {
 	    my $device = $device{$mountpoint};
 	    print "Destroying $mountpoint ($device)\n";
-	    
+
 	    my $ret = system("dd if=/dev/zero of=$device bs=1024k count=10 oflag=direct,sync >/tmp/lintel-disktool.log 2>&1");
 	    die "dd failed ($ret)" unless $ret == 0;
 	}
 
-	print "Failing $mountpoint ($scsiadd_args{$mountpoint})\n";
-	my $cmd = "scsiadd -r $scsiadd_args{$mountpoint} >/tmp/lintel-disktool.log 2>&1";
-	my $ret = system($cmd);
-	die "$cmd failed ($ret)" unless $ret == 0;
+        if (!$mangle) {
+            print "Failing $mountpoint ($scsiadd_args{$mountpoint})\n";
+            my $cmd = "scsiadd -r $scsiadd_args{$mountpoint} >/tmp/lintel-disktool.log 2>&1";
+            my $ret = system($cmd);
+            die "$cmd failed ($ret)" unless $ret == 0;
+        }
     }
 }
 
