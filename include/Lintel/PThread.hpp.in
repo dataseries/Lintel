@@ -266,6 +266,8 @@ public:
 };
 #endif
 
+// TODO: figure out how to make condition variables interact properly with lock ordering.
+
 class PThreadCond : boost::noncopyable {
 public:
     PThreadCond() {
