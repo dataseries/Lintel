@@ -98,7 +98,7 @@ exit(0);
 sub usage {
     my($msg) = @_;
     print STDERR "Error: @_\n" if @_;
-    die "Usage: $0 (list)|(partition)|(format)|(mount)|(fsck)|(umount)|(fail path)|(scan)";
+    die "Usage: $0 (list)|(partition)|(format)|(mount)|(fsck)|(umount)|(fail (destroy|mangle)? path)|(scan)";
 }
 
 sub bydriveorder {
@@ -854,6 +854,19 @@ sub get_drive_sizes {
     return %$sizes;
 }
 
+=pod
+
+=head2 fail [destroy | mangle] <path>
+
+Fails one or more of the drives by removing the device.
+
+    destroy: It will destroy the device before removing it. Used only with ssci disks.
+
+    mangle: It will mangle starting 10KB of device which will destroy the filesystem on device.
+            Useful for cciss device since they can not be removed.
+
+=cut
+
 sub failDrives {
     my (@which) = @_;
 
@@ -875,27 +888,42 @@ sub failDrives {
     my %mounted = getMounted();
 
     map { die "$_ is not mounted" unless $mounted{$_};
-	  die "can only handle sd[a-z]+1 paritions" unless $mounted{$_} =~ m!^/dev/sd[a-z]+1!o; 
+	  die "can only handle sd[a-z]+1 and  cciss/c\d+d\d+p1 paritions" 
+              unless $mounted{$_} =~ m!^/dev/sd[a-z]+1!o
+                  || $mounted{$_} =~ m!^/dev/cciss/c\d+d\d+p1!o;
       } @which;
     
     my %scsiadd_args;
     my %device;
     foreach my $mountpoint (@which) {
 	my $partition = $mounted{$mountpoint};
-	
-	$partition =~ s!^/dev/(sd[a-z]+)1$!$1!o;
+	my $scsi_disk = 0;
+        if ($partition =~ m!^/dev/sd[a-z]+1$!) {
+            scsi_disk = 1;
+            $partition =~ s!^/dev/(sd[a-z]+)1$!$1!o;
+        } else {
+            # TODO-nitin-review: Not sure if following is correct?
+            $partition =~ s!^/dev/cciss/c(\d+d\d+)p1$!cciss\!$1!o;
+            scsi_disk = 0;
+        }
+
 	$device{$mountpoint} = "/dev/$partition";
-	my $dev_path = readlink("/sys/block/$partition/device")
-	    or die "Can't readlink /sys/block/$partition/device: $!";
 
-	die "duplicate $mountpoint"
-	    if defined $scsiadd_args{$mountpoint};
-	die "can't parse $dev_path"
-	    unless $dev_path =~ m!/target\d+:\d+:\d+/(\d+):(\d+):(\d+):(\d+)$!o;
-	$scsiadd_args{$mountpoint} = "$1 $2 $3 $4";
+        if (scsi_disk) {
+            my $dev_path = readlink("/sys/block/$partition/device")
+                or die "Can't readlink /sys/block/$partition/device: $!";
 
-	print "scsi-info: $partition -> $dev_path -> $scsiadd_args{$mountpoint}\n"
-	    if $config{debug};
+            die "duplicate $mountpoint"
+                if defined $scsiadd_args{$mountpoint};
+            die "can't parse $dev_path"
+                unless $dev_path =~ m!/target\d+:\d+:\d+/(\d+):(\d+):(\d+):(\d+)$!o;
+            $scsiadd_args{$mountpoint} = "$1 $2 $3 $4";
+
+            print "scsi-info: $partition -> $dev_path -> $scsiadd_args{$mountpoint}\n"
+                if $config{debug};
+        } else {
+            die "Can not remove ccssi disk" if ($mangle != 1);
+        }
     }
 
     foreach my $mountpoint (@which) {
