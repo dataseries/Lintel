@@ -860,12 +860,22 @@ sub get_drive_sizes {
 
 Fails one or more of the drives by removing the device.
 
-    destroy: It will destroy the device before removing it. Used only with ssci disks.
+    mangle: Will overwrite the first 100MB of the device with zeros, but will not try to remove
+            the drive.  Useful for cciss device since we do not know how to remove them.  Note
+            that it can take many (hundreds?) of operations to the device before the filesystem
+            detects that the data has been mangled and fails.
 
-    mangle: It will mangle starting 10KB of device which will destroy the filesystem on device.
-            Useful for cciss device since they can not be removed.
+    destroy: Will mangle the drive and then remove it.  Will only work on SCSI drives.
 
 =cut
+
+# TODO: we should probably re-think this code.  There are multiple ways to "fail" a drive: you can
+# remove the drive, you can force it to be read only, you can mangle the contents of the drive,
+# etc.  Usage something like: fail [--zero-prefix] [--remove] [--read-only] <path> with at least
+# one of the "how to fail" options would probably be better; perhaps fail
+# --how=zero[=100MB],read-only would be better syntax.  Regardless, there has to be something
+# better that the current approach which uses different words to indicate that it's ok that we
+# can't remove the drive (mangle) since we don't know how to force remove a cciss drive.
 
 sub failDrives {
     my (@which) = @_;
@@ -888,7 +898,7 @@ sub failDrives {
     my %mounted = getMounted();
 
     map { die "$_ is not mounted" unless $mounted{$_};
-	  die "can only handle sd[a-z]+1 and  cciss/c\d+d\d+p1 paritions" 
+	  die "can only handle sd[a-z]+1 and  cciss/c\\d+d\\d+p1 paritions" 
               unless $mounted{$_} =~ m!^/dev/sd[a-z]+1!o
                   || $mounted{$_} =~ m!^/dev/cciss/c\d+d\d+p1!o;
       } @which;
@@ -899,17 +909,18 @@ sub failDrives {
 	my $partition = $mounted{$mountpoint};
 	my $scsi_disk = 0;
         if ($partition =~ m!^/dev/sd[a-z]+1$!) {
-            scsi_disk = 1;
+            $scsi_disk = 1;
             $partition =~ s!^/dev/(sd[a-z]+)1$!$1!o;
         } else {
-            # TODO-nitin-review: Not sure if following is correct?
-            $partition =~ s!^/dev/cciss/c(\d+d\d+)p1$!cciss\!$1!o;
-            scsi_disk = 0;
+            $scsi_disk = 0;
+            $partition =~ s!^/dev/(cciss/c\d+d\d+)p1$!$1!o;
         }
 
 	$device{$mountpoint} = "/dev/$partition";
 
-        if (scsi_disk) {
+        if ($scsi_disk) { 
+            # The below won't work for cciss both because the scsiadd cmd doesn't work and
+            # because under /sys cciss is named cciss!c#d# and under /dev is is cciss/c#d#
             my $dev_path = readlink("/sys/block/$partition/device")
                 or die "Can't readlink /sys/block/$partition/device: $!";
 
@@ -922,7 +933,7 @@ sub failDrives {
             print "scsi-info: $partition -> $dev_path -> $scsiadd_args{$mountpoint}\n"
                 if $config{debug};
         } else {
-            die "Can not remove ccssi disk" if ($mangle != 1);
+            die "Can not remove cciss disk" if ($mangle != 1);
         }
     }
 
@@ -931,7 +942,7 @@ sub failDrives {
 	    my $device = $device{$mountpoint};
 	    print "Destroying $mountpoint ($device)\n";
 
-	    my $ret = system("dd if=/dev/zero of=$device bs=1024k count=10 oflag=direct,sync >/tmp/lintel-disktool.log 2>&1");
+	    my $ret = system("dd if=/dev/zero of=$device bs=1024k count=100 oflag=direct,sync >/tmp/lintel-disktool.log 2>&1");
 	    die "dd failed ($ret)" unless $ret == 0;
 	}
 
