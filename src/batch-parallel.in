@@ -349,8 +349,14 @@ sub write_joblist {
 	}
     } else {
 	unless (defined $batch_maxgroups) {
-	    $batch_maxgroups = $batch_jobwidth * 5;
-	    $batch_maxgroups = 2000 if $batch_maxgroups > 2000;
+	    $batch_maxgroups = $batch_jobwidth * 5;  # Target having 5 * width # jobs
+
+            my $lsf_params = `bparams -l lsb.params 2>&1`;
+            if ($lsf_params =~ /MAX_JOB_ARRAY_SIZE\s*=\s*(\d+)\b/o) {
+                $batch_maxgroups = $1 if $batch_maxgroups > $1; # Infer from LSF if we can
+            } else {
+                $batch_maxgroups = 1000 if $batch_maxgroups > 1000; # Guess at default size
+            }
 	}
 	if (@things_to_build >= $batch_maxgroups) {
 	    $batch_size = ceil((scalar @things_to_build) / $batch_maxgroups);
