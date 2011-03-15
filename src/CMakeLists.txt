@@ -33,6 +33,7 @@ ENDIF (THREADS_ENABLED)
 SET(LIBLINTEL_SOURCES
 	AssertBoost.cpp
 	AssertException.cpp
+	BoyerMooreHorspool.cpp
 	ConstantString.cpp
 	Deque.cpp
 	Double.cpp
@@ -45,7 +46,6 @@ SET(LIBLINTEL_SOURCES
 	Matrix.cpp
 	MersenneTwisterRandom.cpp
 	PriorityQueue.cpp
-	StatM.cpp
 	Stats.cpp
 	StatsEMA.cpp
 	StatsHistogram.cpp
@@ -56,8 +56,8 @@ SET(LIBLINTEL_SOURCES
 	StatsSeries.cpp
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
-	BoyerMooreHorspool.cpp
 	${LIBLINTEL_THREAD_SOURCES}
+	unstable/ProcessStatistics.cpp
 )
 
 SET(LINTEL_FEATURES boost)

@@ -66,7 +66,7 @@ ENDIF(LINTEL_DBI_ENABLED)
 
 ADD_TEST(byte_buffer byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
 
-LINTEL_SIMPLE_TEST(stat_m)
+LINTEL_SIMPLE_TEST(process_statistics)
 
 ################################## CONDITIONAL BITS
 

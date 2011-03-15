@@ -9,6 +9,7 @@ SET(INCLUDE_FILES
 	AssertBoost.hpp
 	AssertException.hpp
 	Base64.hpp
+	BoyerMooreHorspool.hpp
 	ByteBuffer.hpp
 	Clock.hpp
 	CompilerMarkup.hpp
@@ -34,7 +35,7 @@ SET(INCLUDE_FILES
 	PriorityQueue.hpp
 	RotatingHashMap.hpp
 	SimpleMutex.hpp
-	StatM.hpp
+	STLUtility.hpp
 	Stats.hpp
 	StatsCube.hpp
 	StatsEMA.hpp
@@ -48,8 +49,6 @@ SET(INCLUDE_FILES
 	StringUtil.hpp
 	TestUtil.hpp
 	Tuples.hpp
-	BoyerMooreHorspool.hpp
-	STLUtility.hpp
 )
 
 SET(TRANSITIONAL_INCLUDE_FILES
@@ -106,3 +105,5 @@ ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
 
 INSTALL(FILES ${INCLUDE_FILES} ${TRANSITIONAL_INCLUDE_FILES}
 	DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Lintel)
+
+ADD_SUBDIRECTORY(unstable)
