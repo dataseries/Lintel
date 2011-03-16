@@ -30,14 +30,17 @@ int main() {
     const size_t page_size = 4096;
     ProcessStatistics proc_stats;
     size_t initial_resident = proc_stats.get(ResidentSize);
-    // <= as getOnce may allocate
-    SINVARIANT(initial_resident <= ProcessStatistics::getOnce(ResidentSize)); 
-    // second getOnce shouldn't.
-    SINVARIANT(initial_resident == ProcessStatistics::getOnce(ResidentSize, getpid()));
+    SINVARIANT(fabs(initial_resident - ProcessStatistics::getOnce(ResidentSize)) 
+               < 100*page_size); 
+    size_t once_resident_pid = ProcessStatistics::getOnce(ResidentSize, getpid());
+    INVARIANT(abs(initial_resident - once_resident_pid) < 100*page_size,
+              format("%d %d %.0f\n") % initial_resident % once_resident_pid
+              % abs(initial_resident - once_resident_pid));
 
     size_t initial_size = proc_stats.getCached(AddressSize);
-    SINVARIANT(initial_size == ProcessStatistics::getOnce(AddressSize));
-    SINVARIANT(initial_size == ProcessStatistics::getOnce(AddressSize, getpid()));
+    SINVARIANT(abs(initial_size - ProcessStatistics::getOnce(AddressSize)) < 100*page_size);
+    SINVARIANT(abs(initial_size - ProcessStatistics::getOnce(AddressSize, getpid())) 
+               < 100*page_size);
 
     LintelLog::info(format("initially %d/%d") % initial_size % initial_resident);
 
@@ -50,15 +53,15 @@ int main() {
 		    % proc_stats.getCached(AddressSize) % proc_stats.getCached(ResidentSize));
 
     // Resident shouldn't change until we touch it.    
-    SINVARIANT(fabs(proc_stats.getCached(ResidentSize) - initial_resident) < 100*page_size); 
+    SINVARIANT(abs(proc_stats.getCached(ResidentSize) - initial_resident) < 100*page_size); 
     
     // But size should have changed    
-    SINVARIANT(fabs(proc_stats.getCached(AddressSize) - initial_size) > 9000*page_size);
+    SINVARIANT(abs(proc_stats.getCached(AddressSize) - initial_size) > 9000*page_size);
     memset(trash, 1, page_size * 10000);
     proc_stats.invalidate();
     LintelLog::info(format("after memset %d/%d") 
 		    % proc_stats.getCached(AddressSize) % proc_stats.getCached(ResidentSize));
     
     // And now resident should change
-    SINVARIANT(fabs(proc_stats.get(ResidentSize) - initial_resident) > 9000 * page_size);     
+    SINVARIANT(abs(proc_stats.get(ResidentSize) - initial_resident) > 9000 * page_size);     
 }
