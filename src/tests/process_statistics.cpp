@@ -22,6 +22,7 @@
 #include <Lintel/unstable/ProcessStatistics.hpp>
 
 using namespace lintel;
+using namespace lintel::process_statistics;
 
 using boost::format;
 
@@ -29,7 +30,15 @@ int main() {
     const size_t page_size = 4096;
     ProcessStatistics proc_stats;
     size_t initial_resident = proc_stats.get(ResidentSize);
+    // <= as getOnce may allocate
+    SINVARIANT(initial_resident <= ProcessStatistics::getOnce(ResidentSize)); 
+    // second getOnce shouldn't.
+    SINVARIANT(initial_resident == ProcessStatistics::getOnce(ResidentSize, getpid()));
+
     size_t initial_size = proc_stats.getCached(AddressSize);
+    SINVARIANT(initial_size == ProcessStatistics::getOnce(AddressSize));
+    SINVARIANT(initial_size == ProcessStatistics::getOnce(AddressSize, getpid()));
+
     LintelLog::info(format("initially %d/%d") % initial_size % initial_resident);
 
     char * trash = static_cast<char *>(malloc(page_size * 10000));

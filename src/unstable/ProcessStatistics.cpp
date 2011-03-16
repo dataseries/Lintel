@@ -9,6 +9,7 @@
 
 using boost::format;
 using namespace lintel;
+using namespace lintel::process_statistics;
 
 ProcessStatistics::ProcessStatistics(pid_t p) : pid(p) {
     if (pid==0) {
@@ -23,16 +24,15 @@ ProcessStatistics::ProcessStatistics(pid_t p) : pid(p) {
 }
 
 ProcessStatistics::~ProcessStatistics() {
-    SINVARIANT(fclose(fp)==0);
+    CHECKED(fclose(fp)==0, format("fclose() failed: %s") % strerror(errno));
 }
 
 const size_t ProcessStatistics::getCached(StatType which) {
-    const size_t page_size = 4096; // Assumes 4K pages size... is there a good way to get page size?
     switch (which) {
     case AddressSize:
-	return res.size * page_size;
+	return res.size * res.page_size;
     case ResidentSize:
-	return res.resident * page_size;
+	return res.resident * res.page_size;
     default:
 	FATAL_ERROR(format("%d is an invalid type of statistic to ask for") % which);
     }
@@ -54,6 +54,7 @@ bool ProcessStatistics::supported(StatType which) {
 }
 
 void ProcessStatistics::invalidate() {
+    res.page_size = getpagesize();  // or sysconf(_SC_PAGESIZE);
     CHECKED(fseek(fp, 0, SEEK_SET)==0, format("Can't seek %s: %s") % file_name % strerror(errno));
     // format is size resident share text lib data dt
     // lib and dt are not filled in in modern kernels; data is data + stack
