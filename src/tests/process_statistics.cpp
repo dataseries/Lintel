@@ -19,6 +19,7 @@
 
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/LintelLog.hpp>
+#define LINTEL_UNSTABLE_PROCESS_STATISTICS_NOWARN
 #include <Lintel/unstable/ProcessStatistics.hpp>
 
 using namespace lintel;
@@ -27,7 +28,7 @@ using namespace lintel::process_statistics;
 using boost::format;
 
 int main() {
-    const size_t page_size = 4096;
+    const ssize_t page_size = 4096;
     ProcessStatistics proc_stats;
     size_t initial_resident = proc_stats.get(ResidentSize);
     SINVARIANT(fabs(initial_resident - ProcessStatistics::getOnce(ResidentSize)) 

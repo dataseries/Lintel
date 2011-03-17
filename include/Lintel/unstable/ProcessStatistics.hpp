@@ -1,7 +1,9 @@
 #ifndef LINTEL_UNSTABLE_PROCESS_STATISTICS_HPP
 #define LINTEL_UNSTABLE_PROCESS_STATISTICS_HPP
 
+#ifndef LINTEL_UNSTABLE_PROCESS_STATISTICS_NOWARN
 #warning Including unstable header ProcessStatistics.hpp; liable to be changed without warning
+#endif
 
 #include <sys/types.h>
 #include <string>

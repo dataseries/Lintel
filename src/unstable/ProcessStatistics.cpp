@@ -5,6 +5,7 @@
 #include <boost/format.hpp>
 
 #include <Lintel/AssertBoost.hpp>
+#define LINTEL_UNSTABLE_PROCESS_STATISTICS_NOWARN
 #include <Lintel/unstable/ProcessStatistics.hpp>
 
 using boost::format;
