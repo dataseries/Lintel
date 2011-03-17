@@ -469,6 +469,11 @@ namespace lintel {
 	    rep->purge();
 	}
 
+	/// detaches itself from buffer and points to new default buffer
+        void detach() {
+            rep.reset(new NoCopyByteBuffer());
+        }
+
 	/// Copy the value in @param src into this ByteBuffer,
 	/// overwriting any prior contents.
 	void assign(const ByteBuffer &src) {
