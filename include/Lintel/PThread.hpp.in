@@ -267,7 +267,7 @@ public:
 #endif
 
 // TODO: figure out how to make condition variables interact properly with lock ordering.
-
+// TODO: Figure out how to test cond, mutex, etc in any semi-reliable way.
 class PThreadCond : boost::noncopyable {
 public:
     PThreadCond() {
@@ -305,7 +305,11 @@ public:
 	    abstime.tv_nsec -= 1000 * 1000 * 1000;
 	    SINVARIANT(abstime.tv_nsec < 1000 * 1000 * 1000);
 	}
-	
+        
+        return timedWaitAbs(m, abstime);
+    }
+    
+    bool timedWaitAbs(PThreadMutex &m, const struct timespec &abstime) {
         int ret = pthread_cond_timedwait(&c, &m.m, &abstime);
         using lintel::voidCast;
         INVARIANT(ret == 0 || ret == ETIMEDOUT, 
