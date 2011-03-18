@@ -18,6 +18,7 @@
 #include <vector>
 #include <Lintel/ByteBuffer.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
+#define LINTEL_UNSTABLE_PROCESS_STATISTICS_NOWARN
 #include <Lintel/unstable/ProcessStatistics.hpp>
 
 using namespace std;
@@ -435,7 +436,7 @@ void detachSecondTest() {
         LintelLog::info(format("after detaching original buffer %d/%d") 
                         % proc_stats.getCached(AddressSize) % proc_stats.getCached(ResidentSize));
         
-        // shouldnt' free up size and resident
+        // shouldn't free up size and resident
         SINVARIANT(fabs(proc_stats.getCached(AddressSize) - initial_size) > 9000*page_size);
         SINVARIANT(fabs(proc_stats.get(ResidentSize) - initial_resident) > 9000*page_size);
     }

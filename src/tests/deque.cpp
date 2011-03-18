@@ -127,10 +127,43 @@ void testAssign() {
     }
 }
 
+struct Thing {
+    Thing() { ++thing_count; }
+    ~Thing() { --thing_count; }
+
+    Thing(const Thing &from) { ++thing_count; }
+
+    Thing &operator =(const Thing &rhs) {
+        FATAL_ERROR("no");
+    }
+
+    static uint32_t thing_count;
+};
+
+uint32_t Thing::thing_count = 0;
+
+// verify that the destructor is called on pop_front.
+void testDestroy() {
+    Deque<Thing> things;
+
+    for(uint32_t i = 0; i < 10; ++i) {
+        INVARIANT(Thing::thing_count == i, format("%d != %d") % Thing::thing_count % i);
+        things.push_back(Thing());
+    }
+    
+    for(uint32_t i = 0; i < 10; ++i) {
+        SINVARIANT(Thing::thing_count == (10-i));
+        things.pop_front();
+    }
+    
+    SINVARIANT(Thing::thing_count == 0);
+}
+
 int main(int argc, char *argv[]) {
     testPushBack();
     testNoDefaultConstructor();
     testAssign();
+    testDestroy();
     cout << "deque tests passed.\n";
 }
 
