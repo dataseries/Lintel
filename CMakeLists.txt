@@ -22,6 +22,7 @@ ENDIF(COMMAND CMAKE_POLICY)
 
 SET(LINTEL_VERSION 0.0)
 SET(LINTEL_ABI_VERSION 0)
+SET(LINTELPTHREAD_ABI_VERSION 0)
 
 SET(CMAKE_MODULE_PATH "${Lintel_SOURCE_DIR}/cmake-modules" ${CMAKE_MODULE_PATH})
 
@@ -38,7 +39,7 @@ ADD_SUBDIRECTORY(cmake-modules)
 IF(LINTEL_FIND_ALL_NOTFOUND)
     MESSAGE("")
     MESSAGE("************************************")
-    MESSAGE("  Some optional dependency was not found.")
+    MESSAGE("  Some optional dependency was not found, see above warning messages.")
     MESSAGE("  ${CMAKE_CURRENT_SOURCE_DIR}/doc/dependencies.txt")
     MESSAGE("  may help identify the right packages")
     MESSAGE("************************************")

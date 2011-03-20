@@ -54,6 +54,12 @@
 # files is not, it will print out a message explaining that document_name
 # will not be built.
 
+############################################
+############### doxygen
+############################################
+
+# TODO: rename this to LINTEL_DOXYGEN_CONFIG and deprecate the old one.
+
 MACRO(LINTEL_DOCS_CONFIG in_package_name)
     SET(PACKAGE_NAME ${in_package_name})
 
@@ -62,20 +68,20 @@ MACRO(LINTEL_DOCS_CONFIG in_package_name)
 	MESSAGE(FATAL_ERROR "LINTEL_DOCS_CONFIG misuse, ${PACKAGE_NAME} does not find \${${PACKAGE_NAME}_BINARY_DIR}")
     ENDIF("${DOCS_TOP_BUILD_DIRECTORY}" STREQUAL "") 
 
-    OPTION(BUILD_DOCUMENTATION "Should we build/install the documentation" ON)
+    OPTION(BUILD_DOXYGEN_DOCUMENTATION "Should we build/install the doxygan documentation" ON)
 
-    IF(BUILD_DOCUMENTATION)
+    IF(BUILD_DOXYGEN_DOCUMENTATION)
         INCLUDE(FindDoxygen)
 
         IF(DOXYGEN_FOUND)
-	   SET(DOCUMENTATION_ENABLED ON)
+	   SET(DOXYGEN_DOCUMENTATION_ENABLED ON)
         ELSE(DOXYGEN_FOUND)
-           MESSAGE("Could NOT find doxygen program, documentation will not be built")
+           MESSAGE("Could NOT find doxygen program, doxygen documentation will not be built")
            LIST(APPEND LINTEL_FIND_ALL_NOTFOUND docs-${in_package_name})
         ENDIF(DOXYGEN_FOUND)
 
         FIND_PROGRAM(CMAKE_BINARY cmake)
-    ENDIF(BUILD_DOCUMENTATION)
+    ENDIF(BUILD_DOXYGEN_DOCUMENTATION)
 ENDMACRO(LINTEL_DOCS_CONFIG)
 
 MACRO(LDB_SETVAR_IFDIR var dir)
@@ -87,7 +93,7 @@ MACRO(LDB_SETVAR_IFDIR var dir)
 ENDMACRO(LDB_SETVAR_IFDIR)
 
 MACRO(LINTEL_DOCS_BUILD)
-    IF(DOCUMENTATION_ENABLED)
+    IF(DOXYGEN_DOCUMENTATION_ENABLED)
         LDB_SETVAR_IFDIR(DOXYGEN_DOTFILE_DIRS ${${PACKAGE_NAME}_SOURCE_DIR}/doc/doxygen-figures)
 	LDB_SETVAR_IFDIR(DOXYGEN_EXAMPLE_PATH ${${PACKAGE_NAME}_SOURCE_DIR}/src/example)
 
@@ -131,7 +137,7 @@ MACRO(LINTEL_DOCS_BUILD)
 	ENDIF(NOT LINTEL_DOCS_CMAKE)
 
         INSTALL(CODE "EXEC_PROGRAM(${CMAKE_BINARY} ARGS -DBUILDDOC=${CMAKE_CURRENT_BINARY_DIR} -DTARGET=\${CMAKE_INSTALL_PREFIX} -DPACKAGE=${PACKAGE_NAME} -P ${LINTEL_DOCS_CMAKE})")
-    ENDIF(DOCUMENTATION_ENABLED)
+    ENDIF(DOXYGEN_DOCUMENTATION_ENABLED)
 ENDMACRO(LINTEL_DOCS_BUILD)
 
 # For windows documentation install, see:
@@ -165,6 +171,9 @@ IF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
 	                 "$ENV{DESTDIR}${TARGET}/share/man/man3")
 ENDIF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
 
+############################################
+############### latex
+############################################
 
 # Set LINTEL_LATEX_REBUILD_REQUIRED to force this to be found
 MACRO(LINTEL_LATEX_CONFIG)
@@ -232,4 +241,96 @@ MACRO(LINTEL_LATEX_REQUIRES variable doc_name)
         ENDFOREACH(llr_filename)
     ENDIF(LINTEL_LATEX_REBUILD_ENABLED)
 ENDMACRO(LINTEL_LATEX_REQUIRES)            
+
+
+############################################
+############### pod2man
+############################################
+
+# LINTEL_POD2MAN will run pod2man on an input file, either in the current source or build
+# directory.  it will also install the manual page into
+# ${CMAKE_INSTALL_PREFIX}/share/man/man${section} The macro attempts to guess the appropriate
+# section type from the section number, but if it is unable to do so then the value can be maually
+# specified until LINTEL_POD2MAN is updated.  Similarly, the default output name is guessed
+# from the input name but may also be specified.
+
+# LINTEL_POD2MAN(input_file section release [section-type [output-name]])
+# The value "-" for section-type means take the default. "" does not seem to work in cmake 2.6; 
+# the argument is lost.
+#
+# LINTEL_POD2MAN(program 1 "Package ${PACKAGE_VERSION}")
+# LINTEL_POD2MAN(program 6 "Package ${PACKAGE_VERSION}" "Games/Shooter")
+# LINTEL_POD2MAN(program.cpp 1 "Package ${PACAKGE_VERSION}" "-" program.1)
+
+MACRO(LINTEL_POD2MAN_SETUP)
+    LINTEL_WITH_PROGRAM(POD2MAN pod2man)
+    FIND_PATH(LINTELDOCS_CMAKE LintelDocs.cmake PATHS ${CMAKE_MODULE_PATH} NO_DEFAULT_PATH)
+    IF(NOT LINTELDOCS_CMAKE)
+        MESSAGE(FATAL_ERROR "In LintelDocs.cmake, but can't find it in ${CMAKE_MODULE_PATH}?")
+    ENDIF(NOT LINTELDOCS_CMAKE)
+    LINTEL_REQUIRED_PROGRAM(CMAKE cmake) # We're running it, have to be able to find it.
+    SET(LINTEL_POD2MAN_ENABLED ${POD2MAN_ENABLED})
+ENDMACRO(LINTEL_POD2MAN_SETUP)
+
+MACRO(LINTEL_POD2MAN file section release)
+    IF(LINTEL_POD2MAN_ENABLED)
+        LINTEL_POD2MAN_ACTUAL(${file} ${section} ${release} ${ARGN})
+    ELSEIF(DEFINED LINTEL_POD2MAN_ENABLED)
+        MESSAGE("Warning: Missing pod2man (${POD2MAN_ENABLED}), unable to generate manpage for ${file}")
+    ELSE(LINTEL_POD2MAN_ENABLED)
+        MESSAGE(FATAL_ERROR "ERROR: Missing call to LINTEL_POD2MAN_SETUP() prior to call to LINTEL_POD2MAN")
+    ENDIF(LINTEL_POD2MAN_ENABLED)
+ENDMACRO(LINTEL_POD2MAN)
+ 
+MACRO(LINTEL_POD2MAN_ACTUAL file section release)
+    SET(cmake_bug ${ARGV3}) # ARGV3 is always "not defined"
+
+    IF(NOT DEFINED cmake_bug OR cmake_bug STREQUAL "-")
+        IF(0)
+        ELSEIF (${section} EQUAL 1) 
+            SET(lintel_pod2man_type "User Commands")
+        ELSE(0)
+            MESSAGE("Warning: Unknown section ${section}, using manual type 'Unknown'")
+            SET(lintel_pod2man_type Unknown)
+        ENDIF(0)
+    ELSE(NOT DEFINED cmake_bug OR cmake_bug STREQUAL "-")
+        SET(lintel_pod2man_type ${ARGV3})
+    ENDIF(NOT DEFINED cmake_bug OR cmake_bug STREQUAL "-")
+    
+    IF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+        SET(lintel_pod2man_input ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+    ELSE(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+        SET(lintel_pod2man_input ${CMAKE_CURRENT_BINARY_DIR}/${file})
+    ENDIF(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/${file})
+
+    SET(cmake_bug ${ARGV4})
+    IF(DEFINED cmake_bug)
+        SET(lintel_pod2man_output ${cmake_bug})
+    ELSE(DEFINED cmake_bug)
+        SET(lintel_pod2man_output ${file}.${section})
+    ENDIF(DEFINED cmake_bug)
+
+    ADD_CUSTOM_TARGET(${lintel_pod2man_output} ALL
+                      COMMAND ${CMAKE_PATH} -DPOD2MAN_PATH=${POD2MAN_PATH}
+                              -D LPA_IN=${lintel_pod2man_input} -D LPA_OUT=${lintel_pod2man_output}
+                              -D LPA_RELEASE=${release} -D LPA_TYPE=${lintel_pod2man_type}
+                              -P ${LINTELDOCS_CMAKE}/LintelDocs.cmake
+                      VERBATIM)
+    INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${lintel_pod2man_output}
+            DESTINATION ${CMAKE_INSTALL_PREFIX}/share/man/man${section})
+ENDMACRO(LINTEL_POD2MAN_ACTUAL)
+
+# Seems like there ought to be a way to call the command and redirect the output in the
+# custom target above, but at least in cmake 2.6 I can't figure out how.
+IF(0)
+ELSEIF(DEFINED POD2MAN_PATH AND DEFINED LPA_IN AND DEFINED LPA_OUT AND DEFINED LPA_RELEASE 
+       AND DEFINED LPA_TYPE)
+    FILE(REMOVE ${LPA_OUT})
+    EXECUTE_PROCESS(COMMAND ${POD2MAN_PATH} --release=${LPA_RELEASE} --center=${LPA_TYPE} ${LPA_IN}
+                    OUTPUT_FILE ${LPA_OUT} RESULT_VARIABLE LPA_SUCCESS)
+    IF(NOT ${LPA_SUCCESS} STREQUAL "0") 
+        MESSAGE(FATAL_ERROR "ERROR: Unable to create ${LPA_OUT}. Command ${POD2MAN_PATH} --release=${LPA_RELEASE} --center=${LPA_TYPE} ${LPA_IN} failed: ${LPA_SUCCESS}")
+    ENDIF(NOT ${LPA_SUCCESS} STREQUAL "0") 
+ENDIF(0)
+
 

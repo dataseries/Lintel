@@ -6,7 +6,7 @@
 #
 # script for rebuilding latex files
 
-usage() {
+usage() { # Full manpage is at the bottom
     [ "$1" != "" ] && echo "$@"
     echo "Usage: $0"
     echo "  [--tex <path>] [--bib <path>] [--bst <path>] [--paper <paper-size>]"
@@ -269,6 +269,76 @@ else
     cleanup_abort
 fi
 
+POD=<<EOF
 
-    
+=pod
+
+=head1 NAME
+
+lintel-latex-rebuild - a program to rebuild latex documents correctly
+
+=head1 DESCRIPTION
+
+lintel-latex-rebuild takes an input .tex file and generates the derived .dvi, .ps, and .pdf files.
+
+Rebuilding latex documents is surprisingly difficult.  latex and bibtex need to be run several
+times in order to guarantee they have stabilized; sundry specify options need to be provided to the
+converters to generate ps and pdf that are generally usable.  All of the options and techniques
+have been worked out as a result of working around issues when creating documents and/or submitting
+them to various conferences.
+
+=head1 SYNOPSIS
+
+ % lintel-latex-rebuild <options> <srcdir> <main-texfile-basename>
+
+=head1 OPTIONS
+
+=item --tex I<path>
+
+Specify a : separated list of paths for latex and tex to search for inputs
+
+=item --bib <path>
+
+Specify a : separated list of paths for bibtex to search for bibliography inputs
+
+=item --bst <path>
+
+Specify a : separated list of paths for bibtex to search for bibliography style inputs
+
+=item --paper <paper-size>
+
+Specify the paper size, i.e. letter or A4
+
+=item --error-on-warnings
+
+If latex or bibtex generate warnings, exit with an error.
+
+=item --latex-binary <path>
+
+Specify the latex binary to use, e.g. pdftex.
+
+=item --disable-flock
+
+Disable the code that automatically uses lintel-flock to take out a lock on a file in /tmp.
+This code avoids issues with parallel makes building the same document twice at the same time.
+
+=item --max-step-time <60 seconds>
+
+Specify the maximum time that an individual step can take.  pdftex has been seen to hang
+occasionally on centos.  This option at least causes the build to stop.
+
+=item <srcdir>
+
+Specify the directory containing the sources for the latex file.
+
+=item <main-texfile-basename>
+
+Specify the basename of the main texfile, i.e. if the file is C<my-paper.tex>, this option would be
+C<my-paper>.  The resulting output will be C<my-paper>.{dvi,ps,pdf}
+
+=back
+
+=cut
+
+EOF
 
