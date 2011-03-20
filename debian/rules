@@ -1,0 +1,91 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# TODO: once we stop supporting lenny, upgrade to using the dh command.
+
+#export DH_VERBOSE=1
+
+version=`ls src/libLintel.so.* | \
+   awk '{if (match($$0,/[0-9]+\.[0-9]+\.[0-9]+$$/)) print substr($$0,RSTART)}'`
+major=`ls src/libLintel.so.* | \
+   awk '{if (match($$0,/\.so\.[0-9]+$$/)) print substr($$0,RSTART+4)}'`
+
+debian/build/config-stamp: 
+	dh_testdir
+	mkdir -p debian/build
+	(cd debian/build; cmake -DCMAKE_INSTALL_PREFIX=/usr ../..)
+	touch $@
+#	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info CFLAGS="$(CFLAGS)" LDFLAGS="-Wl,-z,defs"
+
+
+build: build-stamp
+build-stamp:  debian/build/config-stamp
+	dh_testdir
+
+	(cd debian/build && $(MAKE) -j 4)
+
+	touch $@
+
+clean: 
+	dh_testdir
+	dh_testroot
+	rm -f build-stamp 
+
+	[ ! -d debian/build ] || rm -rf debian/build
+
+	dh_clean
+
+TMP_BIN=$(CURDIR)/debian/tmp/usr/bin
+install: build
+	dh_testdir
+	dh_testroot
+	dh_clean -k
+	dh_installdirs
+
+	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
+
+	chrpath -d $(TMP_BIN)/drawRandomLogNormal
+
+
+# Build architecture-independent files here.
+binary-indep: build install
+# We have nothing to do by default.
+
+# Build architecture-dependent files here.
+binary-arch: build install
+	dh_testdir
+	dh_testroot
+	# TODO: auto-make changelog from version control if needed
+	dh_installchangelogs 
+	dh_installdocs
+	dh_installexamples
+	dh_install
+#	dh_installmenu
+#	dh_installdebconf	
+#	dh_installlogrotate
+#	dh_installemacsen
+#	dh_installpam
+#	dh_installmime
+#	dh_installinit
+#	dh_installcron
+#	dh_installinfo
+	dh_installman
+	dh_link
+	dh_strip
+	dh_compress
+	dh_fixperms
+	dh_perl
+#	dh_python
+	dh_makeshlibs -v
+	dh_installdeb
+	# CMake seems to be forcing the linking with libraries that lintel depends on 
+	# for lintelpthread even though lintelpthread doesn't directly need it.  Similarly,
+	# it directly links to those libraries for the applications.
+	dh_shlibdeps
+	dh_gencontrol
+	dh_md5sums
+	dh_builddeb
+	# TODO: set up pbuilder for testing build.
+
+binary: binary-indep binary-arch
+.PHONY: build clean binary-indep binary-arch binary install 

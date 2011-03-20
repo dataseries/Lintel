@@ -6,7 +6,11 @@
 */
 
 /** @file
-    utility wrappers for POSIX functions
+    \brief utility wrappers for POSIX functions
+
+    This namespace contains wrappers for the POSIX functions to automatiacally check
+    the return codes.  This simplifies writing programs because users can assume the
+    calls were successful.
 */
 
 #ifndef LINTEL_POSIX_HPP

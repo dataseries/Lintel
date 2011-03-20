@@ -46,11 +46,38 @@
 // - 50 to generate a histogram of random numbers
 // Then recompile and run the resulting executable.
 
+// TODO: generalize this, fix up the regression test approach, improve the documentation.
+// Probably rename to the standard lowercase convention for commands.
+
 #include <math.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
+
+/*
+
+=pod
+
+=head1 NAME
+
+drawRandomLogNormal - a program to calculate truncated log-normal distributions.
+
+=head1 SYNOPSIS
+
+ % drawRandomLogNormal [-v] mean std_dev up_limit [rand_int]
+
+=head1 DESCRIPTION
+
+Generates a random number, distributed with a truncated log-normal distribution. You specify
+desired mean, std. deviation, upper limit, and a random integer.  The random number is printed on
+stdout.  If the parameters make no sense, an error message is printed on stderr.  Option -v also
+outputs the parameters of the distribution on stderr.
+
+=cut
+
+ */
+
 
 const double s2 = sqrt(2.);
 

@@ -1,0 +1,58 @@
+Source: lintel
+# Priority option; shouldn't conflict with anything else, could be extra since people are unlikely
+# to install it unless they know what it is.
+Priority: optional
+Maintainer: Eric Anderson <anderse@hpl.hp.com>
+# TODO: so much else is needed here...
+Build-Depends: debhelper (>= 7), cmake
+Standards-Version: 3.8.0.1
+Section: utils
+Homepage: http://tesla.hpl.hp.com/opensource/
+
+# Separate library packages because the SONAME is supposed to be in the library name,
+# but it may change separately for the different libraries.
+Package: liblintel0
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Miscellaneous utility library - development library
+ Lintel is the miscellaneous utility library for shared functions that are
+ individually valuable but are not valueable enough to form their own package.
+ It includes code for statistics, hashing, pointer utilities, assertions, etc.
+
+Package: liblintelpthread0
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, liblintel0
+Description: Miscellaneous utility library - pthread library
+ This is the pthread specific portion of the lintel library.  This library is
+ separated out from the standard lintel code so that libraries that do not link
+ with libpthread can avoid the overhead associated with pthreads.
+
+# Should deptool be part of liblintel-dev?
+Package: lintel-utils
+Section: utils
+Architecture: any
+Depends: ${shlibs:Depends}, liblintel0
+Description: Miscellaneous utility library - programs
+ Lintel is the miscellaneous utility library for shared functions that are
+ individually valuable but are not valueable enough to form their own package.
+ It includes code for statistics, hashing, pointer utilities, assertions, etc.
+
+Package: liblintel-dev
+Section: libdevel
+Architecture: any
+Depends: liblintel0 (= ${binary:Version}), liblintelpthread0 (= ${binary:Version})
+Description: Miscellaneous utility library - development library
+ Lintel is the miscellaneous utility library for shared functions that are
+ individually valuable but are not valueable enough to form their own package.
+ It includes code for statistics, hashing, pointer utilities, assertions, etc.
+
+# Looks like the convention is to not have the perl libraries versioned.  We could split out
+# the binary independent portions, but that doesn't seem worthwhile.
+Package: liblintel-perl
+Section: perl
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${perl:Depends}
+Description: Miscellaneous utility library - development library
+ This is the perl specific portion of the lintel library.

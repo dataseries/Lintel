@@ -22,12 +22,6 @@ Valid options:
 
   --libs	       show library link options
 
-  --libtool-libs       obsolete
-  --libtool-lintelgc   obsolete
-  --libtool-lintelpthread obsolete
-  --mustgclibs         obsolete
-  --nogclibs           obsolete
-
   --features           show the features this version of lintel was built with
   --has-feature <feature> exit true (has feature) or false (does not have feature)
   --datadir            show the share directory lintel used for installation
@@ -50,13 +44,6 @@ case "$1" in
         else
 	    echo "-L$libdir -lLintel"
 	fi
-	exit 0
-	;;
-    --libtool-libs)
-        $0 --libs
-	;;
-    --libtool-lintelpthread)
-        echo "`$0 --libs` -lLintelPThread"
 	exit 0
 	;;
     --features)
@@ -85,3 +72,53 @@ case "$1" in
 	usage
 	;;
 esac
+
+POD=<<EOF
+
+=pod
+
+=head1 NAME
+
+lintel-config - a program to report on various lintel configuration options
+
+=head1 SYNOPSIS
+
+ % lintel-config [options]
+
+=head1 OPTIONS
+
+=over 4
+
+=item --cflags
+
+show needed compiler flags
+
+=item --libs
+
+show library link options
+
+=item --features
+
+show the features this version of lintel was built with
+
+=item --has-feature <feature>
+
+exit true (has feature) or false (does not have feature)
+
+=item --datadir            
+
+show the share directory lintel used for installation
+
+=item --help               
+
+show these options
+
+=item --version            
+
+show lintel version
+
+=back
+
+=cut
+
+EOF

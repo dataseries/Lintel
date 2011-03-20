@@ -36,6 +36,18 @@ unless ($EUID == 0) {
 
 =pod
 
+=head1 NAME
+
+lintel-disktool - a program to simplify managing large numbers of individual drives
+
+=head1 SYNOPSIS
+
+ % lintel-disktool (list)|(partition)|(format)|(mount)|(fsck)|(umount)|(fail path)|(scan)
+
+=head1 COMMANDS
+
+TODO: fill in documentation...
+
 =head2 Options
 
 =over

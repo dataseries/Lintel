@@ -97,7 +97,7 @@ MACRO(LINTEL_FIND_HEADER variable header)
     # of a header in preference to the system one.
 
     FIND_PATH(${variable}_INCLUDE_DIR ${header}
-        ${CMAKE_INSTALL_PREFIX}/include
+        PATHS ${CMAKE_INSTALL_PREFIX}/include
         NO_DEFAULT_PATH
     )
     LINTEL_FIND_DEBUG("  install_prefix --> ${${variable}_INCLUDE_DIR}")
