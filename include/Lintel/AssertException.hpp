@@ -5,9 +5,13 @@
    See the file named COPYING for license details
 */
 
+// TODO: move this into unstable.
+
 /** @file
+    \brief An initial attempt at working out invariant handling through exceptions.  
+    
     A version of assertions that throws an exception so the assertions
-    can be caught.
+    can be caught.  This approach was incomplete, and may be deprecated.
 */
 
 #ifndef LINTEL_ASSERTEXCEPTION_HPP
@@ -16,6 +20,12 @@
 #include <string>
 #include <exception>
 
+/** \brief A class and macros for capturing assertions as exceptions.
+
+    A version of assertions that throws an exception so the assertions
+    can be caught.  This approach was incomplete, and may be deprecated.
+*/
+    
 class AssertExceptionT : public std::exception {
 public:
     AssertExceptionT(const std::string &_condition, 

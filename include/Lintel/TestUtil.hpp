@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Some help with testing things that throw invariants
+    \brief Some help with testing things that throw invariants
 */
 
 #ifndef LINTEL_TESTUTIL_HPP

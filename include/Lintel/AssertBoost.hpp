@@ -6,7 +6,13 @@
 */
 
 /** @file
-    assertion functionality using the boost formatting library
+    \brief assertion functionality using the boost formatting library
+
+    This library provides assertion functionality based on the boost formatting library.  This
+    usage provides type-safe error reporting with a variety of macros to put in useful code
+    information (file, line number, expression that failed).  The library also provides hooks for
+    controlling how the assertions are handled.  The default hook prints out an error message and
+    exits.  An optional hook turns the errors into exceptions.
 */
 
 #ifndef LINTEL_ASSERT_BOOST_HPP
@@ -18,6 +24,10 @@
 #include <Lintel/CompilerMarkup.hpp>
 #include <Lintel/DebugFlag.hpp>
 
+/** \brief Class for representing assertions as exceptions.  
+
+    This class stores the assertion information as a class so that it can be thrown as an
+    exception. */ 
 class AssertBoostException : public std::exception {
 public:
     const std::string expression;

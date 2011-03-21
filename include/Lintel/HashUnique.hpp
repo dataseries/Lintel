@@ -6,7 +6,7 @@
 */
 
 /** @file
-    hash implementation of uniqueifying a set of values
+    \brief header file for HashUnique class
 */
 
 #ifndef LINTEL_HASH_UNIQUE_HPP
@@ -14,6 +14,7 @@
 
 #include <Lintel/HashMap.hpp>
 
+/// \brief hash implementation of uniqueifying a set of values; no excess space used.
 template <class K,
           class KHash = HashMap_hash<const K>,
           class KEqual = std::equal_to<const K> >

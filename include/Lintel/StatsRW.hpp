@@ -6,7 +6,7 @@
 */
 
 /** @file
-    StatsRW class header
+    \brief StatsRW class header
 */
 
 #ifndef LINTEL_STATS_RW_HPP
@@ -15,6 +15,7 @@
 #include <Lintel/Stats.hpp>
 #include <Lintel/StatsSequence.hpp>
 
+/// Stats class that separates between reads and writes.
 class StatsRW {
 public:
     enum modeT { Read, Write, All };

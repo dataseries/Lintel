@@ -17,6 +17,8 @@
 
 /** @file 
 
+    \brief Extentions to boost tuples.
+
     Additional tuple bits to extend what is in the boost tuples.  We
     add in two new "types" of tuples, first AnyTuples, which is a
     tuple made of of pairs of booleans representing "any" and the
@@ -26,7 +28,9 @@
     types that interacts well with HashMap and friends.
 */
 
-namespace lintel { namespace tuples {
+namespace lintel { 
+/// \brief tuples namespace
+namespace tuples {
     // these types are so integral to the implementation of
     // lintel::tuples that it seems reasonable to pull them into
     // lintel tuples namespace.  Originally this code was just written
@@ -74,6 +78,7 @@ namespace lintel { namespace tuples {
 	return BobJenkinsHashMix3(a,b,c);
     }
 
+    /// \brief structure for hashing tuples
     template<class Tuple> struct TupleHash {
 	uint32_t operator()(const Tuple &a) const {
 	    return lintel::tuples::hash(a);
@@ -144,8 +149,9 @@ namespace lintel { namespace tuples {
 	bitset_any_print(to, v.get_tail(), any, cur_pos + 1);
     }
 
-    // Not a pair so we can have operators that behave differently, and
-    // to improve clarity.
+    /// \brief class that represents "any" or a value.
+    /// Not a pair so we can have operators that behave differently, and
+    /// to improve clarity.
     template<typename T> struct AnyPair {
 	bool any;
 	T val;
@@ -176,6 +182,7 @@ namespace lintel { namespace tuples {
 	}
     };
 
+    /// \cond SEMI_INTERNAL_CLASSES
     template<class T0, class T1> struct ConsToAnyPairCons {
 	typedef ConsToAnyPairCons<typename T1::head_type,
 				  typename T1::tail_type> tail;
@@ -185,11 +192,14 @@ namespace lintel { namespace tuples {
     template<class T0> struct ConsToAnyPairCons<T0, null_type> {
 	typedef boost::tuples::cons<AnyPair<T0>, null_type> type;
     };
+    /// \endcond
 
+    /// \brief CLass for converting a tuple to an any tuple.
     template<class T> struct TupleToAnyTuple 
 	: ConsToAnyPairCons<typename T::head_type, typename T::tail_type> 
     { };
 
+    /// \brief value or any Tuple represented by tuple + bitset for any booleans
     template<class Tuple> struct BitsetAnyTuple {
 	BOOST_STATIC_CONSTANT(uint32_t, length = boost::tuples::length<Tuple>::value);
 	
@@ -213,6 +223,7 @@ namespace lintel { namespace tuples {
 	}
     };
 
+    /// \brief class for hashing BitsetAnyTuple's
     template<class Tuple> struct BitsetAnyTupleHash {
 	uint32_t operator()(const BitsetAnyTuple<Tuple> &v) const {
 	    return lintel::tuples::bitset_any_hash(v.data, v.used, 0);

@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Stats class that does an exponential moving average.
+    \brief Stats class that does an exponential moving average.
 */
 
 #ifndef LINTEL_STATSEMA_HPP

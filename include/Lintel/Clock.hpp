@@ -5,7 +5,7 @@
 */
 
 /** @file
-    Header file for tod clock/cycle counter interactions
+    \brief Header file for tod clock/cycle counter interactions
 */
 
 #ifndef LINTEL_CLOCK_HPP

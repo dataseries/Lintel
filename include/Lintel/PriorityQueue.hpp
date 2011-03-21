@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Priority Queue Implementation as a heap
+    \brief Priority Queue Implementation as a heap
 */
 
 #ifndef LINTEL_PRIORITY_QUEUE_HPP
@@ -18,35 +18,37 @@
 
 #include <Lintel/AssertBoost.hpp>
 
-// The priority_queue in the HPUX STL is ~4x slower than this one on
-// small numbers of things in the queue, and ~1.2x slower with lots in
-// the queue for no apparent reason other than perhaps the code is way
-// too complex for the optimizer to handle.  The Linux STL with gcc
-// 2.95 shows the same behavior
+// TODO: performance test this to see if it is still needed.
 
-// LessImportant(a,b) === a less_important_than b -> true; it is best
-// if a is less_important_than a. priority queue returns the most
-// important item first, which is consistent with how the C++ pq
-// behaves
+/// \brief Priority queue implementation as a heap.
+/// The priority_queue in the HPUX STL is ~4x slower than this one on
+/// small numbers of things in the queue, and ~1.2x slower with lots in
+/// the queue for no apparent reason other than perhaps the code is way
+/// too complex for the optimizer to handle.  The Linux STL with gcc
+/// 2.95 shows the same behavior
 
-// Sample usage:
-//
-// struct priorityData {
-//     int key;
-//     double data;
-// };
-// 
-// struct priorityDataGeq {
-// bool operator()(const priorityData &a, const priorityData &b) const {
-//     return a.key >= b.key;
-// };
-//
-// PriorityQueue<priorityData,priorityDataGeq> pq;
-// 
-// The net effect of the above will be to return the data from smallest
-// key value to largest key value from the priority queue.
+/// LessImportant(a,b) === a less_important_than b -> true; it is best
+/// if a is less_important_than a. priority queue returns the most
+/// important item first, which is consistent with how the C++ pq
+/// behaves
 
-template<class T, class LessImportant = std::less_equal<T> >
+/// Sample usage:
+///
+/// struct priorityData {
+///     int key;
+///     double data;
+/// };
+/// 
+/// struct priorityDataGeq {
+/// bool operator()(const priorityData &a, const priorityData &b) const {
+///     return a.key >= b.key;
+/// };
+///
+/// PriorityQueue<priorityData,priorityDataGeq> pq;
+/// 
+/// The net effect of the above will be to return the data from smallest
+/// key value to largest key value from the priority queue.
+template<class T, class LessImportant = std::less_equal<T> > 
 class PriorityQueue : boost::noncopyable {
 public:
     PriorityQueue(int initial_size = 1024/sizeof(T)) 

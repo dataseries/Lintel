@@ -18,7 +18,9 @@
 #include <Lintel/AssertBoost.hpp>
 
 /** @file
-    
+ 
+    \brief Program options handling, wrapper around boost::program_options
+
     Program options handling; simplest usage is:
  
     @verbatim
@@ -124,6 +126,7 @@ namespace lintel {
     std::vector<std::string> parseCommandLine(const std::vector<std::string> &args,
 					      bool allow_unrecognized = false);
 
+    /// \brief Class for constructing program arguments more easily.
     class ProgramArguments {
     public:
 	ProgramArguments() { }
@@ -157,6 +160,8 @@ namespace lintel {
 	parseCommandLine(ProgramArguments(arg));
     }
 
+    /// \brief A single program option.
+    ///
     /// Generic template program option, you can use ProgramOption<
     /// vector<int> > to allow for multiple values to be specified, or
     /// just ProgramOption<int> for one value.
@@ -232,7 +237,7 @@ namespace lintel {
     };
 
 
-    /// Program option which won't appear in the usage unless in debug mode
+    /// \brief Program option which won't appear in the usage unless in debug mode
     template<typename T> class TestingOption : public ProgramOption<T> {
     public:	
 #if LINTEL_DEBUG
@@ -246,6 +251,8 @@ namespace lintel {
 	    : ProgramOption<T>(name, desc, in_default_val, show_description) { }
     };
 
+    /// \brief Special case boolean program option
+    ///
     /// Special case for program options without values, e.g.,
     /// "--help", which doesn't carry a value like "--seed=100"
     template<> class ProgramOption<bool> {
@@ -292,7 +299,7 @@ namespace lintel {
 	bool val;
     };
 
-    /// Hidden option which also doesn't take an argument
+    /// \brief Hidden option which also doesn't take an argument
     template<> class TestingOption<bool> : public ProgramOption<bool> {
     public:	
 	static const bool show_description = TestingOption<int>::show_description;

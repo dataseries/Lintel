@@ -5,7 +5,7 @@
 */
 
 /** @file
-    Utility functions for extending the STL.
+    \brief Utility functions for extending the STL.
 */
 
 #ifndef LINTEL_STLUTILITY_HPP

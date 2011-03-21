@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Various useful matrix manipulation functions
+    \brief header file for Matrix class
 */
 
 #ifndef LINTEL_MATRIX_HPP
@@ -19,6 +19,7 @@
 // performance is noticably slower for the table-based stuff.
 
 #define BELIEVE_INLINE 0
+/// \brief Various useful matrix manipulation functions
 class Matrix {
 public:
     Matrix(unsigned int rows, unsigned int cols);

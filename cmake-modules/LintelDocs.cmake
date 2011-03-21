@@ -109,6 +109,15 @@ MACRO(LINTEL_DOCS_BUILD)
         FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES1 ${CMAKE_HOME_DIRECTORY}/include/*.hpp)
         FILE(GLOB_RECURSE DOXYGEN_DEP_INCLUDES2 ${CMAKE_CACHEFILE_DIR}/include/*.hpp)
      
+        # TODO: figure out how to clean; the following doesn't work.
+        # SET_DIRECTORY_PROPERTIES(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES doxygen)
+	FIND_FILE(LINTEL_DOCS_CMAKE LintelDocs.cmake ${CMAKE_MODULE_PATH})
+	
+	IF(NOT LINTEL_DOCS_CMAKE)
+            MESSAGE(FATAL_ERROR "Huh, how can we not find LintelDocs.cmake when we are it")
+	ENDIF(NOT LINTEL_DOCS_CMAKE)
+
+        LIST(APPEND LDB_PATHFIX ${CMAKE_HOME_DIRECTORY} ${DOCS_TOP_BUILD_DIRECTORY})
 	# Create a clean directory for the output or if files are deleted the
 	# obsolete man/html pages will still be installed.
         ADD_CUSTOM_COMMAND(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html
@@ -119,6 +128,10 @@ MACRO(LINTEL_DOCS_BUILD)
 		      COMMAND mkdir ${CMAKE_CURRENT_BINARY_DIR}/doxygen
      	              COMMAND ${DOXYGEN_EXECUTABLE} 
      		   	      ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
+                      COMMAND ${CMAKE_BINARY} ARGS -D LDB_PATHFIX=${LDB_PATHFIX} 
+                              -D LDB_OUTDIR=${CMAKE_CURRENT_BINARY_DIR}/doxygen
+                              -D LDB_INSTALLTO=${CMAKE_INSTALL_PREFIX}
+                              -P ${LINTEL_DOCS_CMAKE}
       		      DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen.config
      		              ${DOXYGEN_DEP_INCLUDES1}
      			      ${DOXYGEN_DEP_INCLUDES2}
@@ -128,14 +141,6 @@ MACRO(LINTEL_DOCS_BUILD)
         ADD_CUSTOM_TARGET(doc ALL 
      	  	     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxygen/html/index.html)
      
-        # TODO: figure out how to clean; the following doesn't work.
-        # SET_DIRECTORY_PROPERTIES(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES doxygen)
-	FIND_FILE(LINTEL_DOCS_CMAKE LintelDocs.cmake ${CMAKE_MODULE_PATH})
-	
-	IF(NOT LINTEL_DOCS_CMAKE)
-            MESSAGE(FATAL_ERROR "Huh, how can we not find LintelDocs.cmake when we are it")
-	ENDIF(NOT LINTEL_DOCS_CMAKE)
-
         INSTALL(CODE "EXEC_PROGRAM(${CMAKE_BINARY} ARGS -DBUILDDOC=${CMAKE_CURRENT_BINARY_DIR} -DTARGET=\${CMAKE_INSTALL_PREFIX} -DPACKAGE=${PACKAGE_NAME} -P ${LINTEL_DOCS_CMAKE})")
     ENDIF(DOXYGEN_DOCUMENTATION_ENABLED)
 ENDMACRO(LINTEL_DOCS_BUILD)
@@ -170,6 +175,26 @@ IF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
     EXEC_PROGRAM(cp ARGS -rp "${BUILDDOC}/doxygen/man/man3/*" 
 	                 "$ENV{DESTDIR}${TARGET}/share/man/man3")
 ENDIF(DEFINED BUILDDOC AND DEFINED TARGET AND DEFINED PACKAGE)
+
+# Another "script" in cmake for doing more complex things
+IF(DEFINED LDB_PATHFIX AND DEFINED LDB_OUTDIR AND DEFINED LDB_INSTALLTO)
+    MESSAGE("Fixing up path information in doxygen docs for files under ${LDB_OUTDIR}")
+    FILE(GLOB_RECURSE FILES ${LDB_OUTDIR}/*.tex ${LDB_OUTDIR}/*.html ${LDB_OUTDIR}/*.[0-9])
+    FOREACH(FILE ${FILES})
+        FILE(READ ${FILE} IN_DATA NO_HEX_CONVERSION)
+        SET(OUT_DATA ${IN_DATA})
+        FOREACH(PATH ${LDB_PATHFIX})
+            STRING(REPLACE ${PATH} ${LDB_INSTALLTO} OUT_DATA ${OUT_DATA})
+        ENDFOREACH(PATH)
+        IF(IN_DATA STREQUAL OUT_DATA)
+#            MESSAGE("  unchanged: ${FILE}")
+        ELSE(IN_DATA STREQUAL OUT_DATA)
+#            MESSAGE("  fixed: ${FILE}")
+            FILE(WRITE ${FILE} ${OUT_DATA})
+        ENDIF(IN_DATA STREQUAL OUT_DATA)
+    ENDFOREACH(FILE)
+ENDIF(DEFINED LDB_PATHFIX AND DEFINED LDB_OUTDIR AND DEFINED LDB_INSTALLTO)
+
 
 ############################################
 ############### latex

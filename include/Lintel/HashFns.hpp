@@ -94,6 +94,7 @@ namespace lintel {
 	lintel_BobJenkinsHashMix(a,b,c);
 	return c;
     }
+    /// \cond SEMI_INTERNAL_CLASSES
     namespace detail {
 	// Overview of magic in here:
 	//
@@ -184,6 +185,7 @@ namespace lintel {
 	// uint32_t operator()(const V &v) const;
     };
 
+    /// \endcond
     template <typename T> inline uint32_t hash(const T &v) { 
 	return Hash<T>()(v);
 	
@@ -204,6 +206,8 @@ namespace lintel {
 	return hashBytes(a, strlen(a));
     }
 
+    /// \brief Hash objects by pointer
+    ///
     /// Object comparison by pointer, useful for making a hash
     /// structure on objects where each object instance is separate.
     /// Not a default implementation for pointers because that isn't
@@ -226,6 +230,8 @@ namespace lintel {
 	}
     };
     
+    /// \brief Compare objects by pointer
+    ///
     /// Object equality check -- unnecessary unless operators have been
     /// defined.
     template<typename T> struct PointerEqual {
@@ -234,7 +240,7 @@ namespace lintel {
 	}
     };
 
-    /// SharedPointerHashing, same as PointerHash
+    /// \brief SharedPointerHashing, same as PointerHash
     template<typename T> struct SharedPointerHash {
 	uint32_t operator()(const boost::shared_ptr<T> &a) const {
 	    BOOST_STATIC_ASSERT(sizeof(a.get()) == 4 || sizeof(a.get()) == 8);
@@ -250,7 +256,7 @@ namespace lintel {
 	}
     };
     
-    /// SharedPointerEqual; may always be needed as opposed to PointerEqual
+    /// \brief SharedPointerEqual; may always be needed as opposed to PointerEqual
     template<typename T> struct SharedPointerEqual {
 	bool operator()(const boost::shared_ptr<T> &a, 
 			const boost::shared_ptr<T> &b) const {

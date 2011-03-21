@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Lintel version #
+    \brief Lintel version #
 */
 
 // need the extern "C" to make the autoconf checks work easier; which

@@ -6,6 +6,8 @@
 */
 
 /** @file
+    \brief Header for the HashMap class.
+
     A "map" using the HashTable class.  You may want to read the warning in
     HashTable.H about the types of values that you can safely use.
 */
@@ -27,15 +29,19 @@
 #include <Lintel/HashTable.hpp>
 
 // propagate things into the global namespace
-
+/// \brief Base class for hash functions, intended to be overridden.
 template <class K> struct HashMap_hash : lintel::Hash<K> {
     //    uint32_t operator()(const K &a) const;
 };
 
+/// \cond DEPRECATED
+// TODO: deprecate these as obsolete relative to the lintel::Pointer* variants.
 template<typename T> struct PointerHashMapHash : lintel::PointerHash<T> { };
 template<typename T> struct PointerHashMapEqual : lintel::PointerEqual<T> { };
+/// \endcond
 
 // TODO: add test for proper destruction of things in the hash map.
+/// \brief The HashMap class, a std::map-like structure using an underlying HashTable.
 /// HashMap class; in our testing almost as fast as the google dense
 /// map, but uses almost as little memory as the sparse map.  Note
 /// that class K can't be const, see src/tests/hashmap.cpp for
@@ -89,6 +95,7 @@ template <class K, class V,
           class KEqual = std::equal_to<const K> >
 class HashMap {
 public:
+    /// \cond SEMI_INTERNAL_CLASSES
     typedef std::pair<K,V> value_type;
     struct value_typeHash {
 	KHash khash;
@@ -102,6 +109,7 @@ public:
 	    return kequal(a.first,b.first);
 	}
     };
+    /// \endcond
 
     V *lookup(const K &k) {
 	return internalLookup<V, value_type>(this, k);

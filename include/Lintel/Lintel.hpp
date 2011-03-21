@@ -5,8 +5,11 @@
    See the file named COPYING for license details
 */
 
+/** \file
+    \brief Lintel overview; see man Lintel */
+
 // TODO: complete the documentation
-/** \namespace Lintel
+/** \namespace lintel
     \brief a utility library 
 
     \section Data Structures
@@ -54,5 +57,10 @@
     \bug Missing references to lots of the other bits.
 */
 
-namespace Lintel {
+namespace lintel {
+    /** \namespace lintel::detail
+        \brief Internal implementation details
+    */
+    namespace detail {
+    }
 }

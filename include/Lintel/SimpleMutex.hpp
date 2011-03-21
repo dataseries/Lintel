@@ -4,6 +4,10 @@
    See the file named COPYING for license details
 */
 
+/** \file
+    \brief header file for simple mutex classes (usable with and without linking with pthread)
+*/
+
 #ifndef LINTEL_SIMPLEMUTEX_HPP
 #define LINTEL_SIMPLEMUTEX_HPP
 
@@ -11,6 +15,8 @@
 
 #include <boost/utility.hpp>
 
+/// \brief a simple mutex, creatable with and without linking with libpthread
+///
 /// Simple interface to a pthread mutex from C++; safe for use in
 /// potentially non-threaded programs.  The PThreadMutex class
 /// requires linking with libpthread. Should not be used for a file
@@ -29,6 +35,8 @@ private:
     pthread_mutex_t m;
 };
 
+/// \brief A simple scoped lock
+///
 /// Simple scoped lock, again valid for use in non-threaded programs
 /// slight overhead in those programs for the write and the function calls.
 class SimpleScopedLock : boost::noncopyable {

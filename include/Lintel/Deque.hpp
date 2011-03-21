@@ -6,9 +6,7 @@
 */
 
 /** @file
-    Deque implementation that has amortized constant-time performance,
-    rather than log(n); g++ deque looks better since it does the linked list
-    of multiple elements; performance comparison unclear.
+    \brief Header file for Deque class, a double-ended queue.
 */
 
 #ifndef LINTEL_DEQUE_HPP
@@ -34,6 +32,10 @@
     \param Alloc
     \par Type Requirements Alloc
         An allocator, defaults to std::allocator<T>
+
+    Deque implementation that has amortized constant-time performance,
+    rather than log(n); g++ deque looks better since it does the linked list
+    of multiple elements; performance comparison unclear.
 */
 template <class T, class Alloc = std::allocator<T> >
 class Deque : boost::noncopyable {
@@ -104,6 +106,7 @@ public:
 
     int capacity() const { return q_size - 1; }
 
+    /// \brief an iterator for Deque's
     class iterator {
     public:
 	typedef std::forward_iterator_tag iterator_category;

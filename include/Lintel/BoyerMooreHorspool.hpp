@@ -6,7 +6,7 @@
 */
 
 /** @file
-    A class for substring matching based on the Boyer-Moore-Horspool algorithm.
+    \brief A class for substring matching based on the Boyer-Moore-Horspool algorithm.
 */
 
 #ifndef LINTEL_BOYERMOOREHORSPOOL_HPP
@@ -25,6 +25,7 @@
 #include <limits>
 
 namespace lintel {
+    /** \brief A class that encapsulates the BoyerMooreHorspool string matching algorithm */
     class BoyerMooreHorspool {
     public:
 	/** Constructs a new @c BoyerMooreHorspool that is capable of searching for the specified

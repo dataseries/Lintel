@@ -5,7 +5,7 @@
 */
 
 /** @file
-    Simple chained hash table
+    \brief header file for Simple chained hash table
 */
 
 #ifndef LINTEL_HASH_TABLE_HPP
@@ -23,19 +23,20 @@
 
 extern uint32_t HashTable_prime_list[];
 
-/// This is out here because C++ templates are sub-optimal.  All
-/// existing examples of using templates do things the way the
-/// following is done.  To enable use of different allocators, the
-/// allocator has to be a parameter of the template, but all of the
-/// examples only show classes as arguments to a template and an
-/// allocator under the C++ STL specification is a template not a
-/// class.
-template <class D>
-struct HashTable_hte {
+// This is out here because C++ templates are sub-optimal.  All
+// existing examples of using templates do things the way the
+// following is done.  To enable use of different allocators, the
+// allocator has to be a parameter of the template, but all of the
+// examples only show classes as arguments to a template and an
+// allocator under the C++ STL specification is a template not a
+// class.
+/// \cond SEMI_INTERNAL_CLASSES
+template <class D> struct HashTable_hte {
     D data;
     int32_t next;
     HashTable_hte(const D &d, int32_t _next) : data(d), next(_next) {};
 };
+/// \endcond
 
 // TODO: fix this so that instead of using -1, it uses 0xFFFFFFFF as
 // the sentinal value, then make sure the use of uint32_t is proper
@@ -43,6 +44,8 @@ struct HashTable_hte {
 // 2^32-1 entries.  Consider writing a test (64bit only) that can
 // verify proper operation at that size.
 
+/// \brief HashTable class -- a low-level chained hashing class
+///
 /// The HashTable class is the low-level class for working with
 /// hash-tables.  For most uses you probably want to just use HashMap,
 /// or HashUnique.
@@ -364,6 +367,7 @@ private:
 	int32_t chain_loc;
     };
 public:
+    /// \brief HashTable iterator
     class iterator : public iterator_base<D, HashTable> {
     public:
 	iterator(const iterator &from) 
@@ -432,6 +436,7 @@ public:
 	free_list = cur;
     }
 
+    /// \brief Hash Table constant iterator
     class const_iterator : public iterator_base<const D, const HashTable> {
     public:
 	const_iterator(const HashTable &mytable, int32_t start_chain = 0,

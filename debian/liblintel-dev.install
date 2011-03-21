@@ -1,7 +1,5 @@
 usr/include/*
 usr/lib/lib*.so
 usr/share/cmake-modules
-usr/share/man/man3
-usr/share/doc/Lintel/html
 usr/share/Lintel/doxygen.config.in
 usr/share/packaging/redhat-rules

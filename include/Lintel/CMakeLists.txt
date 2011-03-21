@@ -23,7 +23,6 @@ SET(INCLUDE_FILES
 	HashTupleStats.hpp
 	HashUnique.hpp
 	LeastSquares.hpp
-	LintelAssert.hpp
 	LintelLog.hpp
 	LintelVersion.hpp
 	LockOrderingGroup.hpp
@@ -51,46 +50,14 @@ SET(INCLUDE_FILES
 	Tuples.hpp
 )
 
-SET(TRANSITIONAL_INCLUDE_FILES
-	AssertBoost.H
-	AssertException.H
-	Clock.H
-	CompilerMarkup.H
-	ConstantString.H
-	Deque.H
-	Double.H
-	HashMap.H
-	HashTable.H
-	HashUnique.H
-	LintelAssert.H
-	LintelVersion.H
-	MathSpecialFunctions.H
-	Matrix.H
-	MersenneTwisterRandom.H
-	Posix.H
-	PriorityQueue.H
-	Stats.H
-	StatsEMA.H
-	StatsHistogram.H
-	StatsMaker.H
-	StatsQuantile.H
-	StatsRW.H
-	StatsSequence.H
-	StatsSeries.H
-	StatsSeriesGroup.H
-	StringUtil.H
-)
-
 ################################## CONDITIONAL BITS
 
 IF(ENABLE_STDIO64) 
     LIST(APPEND INCLUDE_FILES stdio_64.hpp)
-    LIST(APPEND TRANSITIONAL_INCLUDE_FILES stdio_64.H)
 ENDIF(ENABLE_STDIO64)
 
 IF(THREADS_ENABLED)
     LIST(APPEND INCLUDE_FILES ${CMAKE_CURRENT_BINARY_DIR}/PThread.hpp AtomicCounter.hpp)
-    LIST(APPEND TRANSITIONAL_INCLUDE_FILES PThread.H)
 ENDIF(THREADS_ENABLED)
   
 IF(LIBXML2_ENABLED)
@@ -103,7 +70,6 @@ ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
 
 ################################## INSTALL
 
-INSTALL(FILES ${INCLUDE_FILES} ${TRANSITIONAL_INCLUDE_FILES}
-	DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Lintel)
+INSTALL(FILES ${INCLUDE_FILES} DESTINATION ${CMAKE_INSTALL_PREFIX}/include/Lintel)
 
 ADD_SUBDIRECTORY(unstable)

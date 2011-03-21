@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Utilities for dealing with strings
+    \brief Utilities for dealing with strings
 */
 
 #ifndef LINTEL_STRINGUTIL_HPP
@@ -39,8 +39,8 @@ split(const std::string &instr, const std::string &splitstr) {
 std::string join(const std::string &joinstr, const std::vector<std::string> &parts);
 
 /** escapes data for passing into MySQL; doesn't escape for string
-    comparison functions (e.g. the LIKE operator).  Produces \verbatim \0 \' \"
-    \b \n \r \t \Z (ASCII 26) and \\  \endverbatim
+    comparison functions (e.g. the LIKE operator).  Produces 
+    \verbatim \0 \' \" \b \n \r \t \Z (ASCII 26) and \\  \endverbatim
 
     See http://dev.mysql.com/doc/refman/5.0/en/string-syntax.html for
     further details on MySQL's string escaping requirements.
@@ -169,7 +169,7 @@ std::wstring string2wstring(const std::string &s,
 std::string wstring2string(const std::wstring &s, char dfault = 0,
 			   const std::locale &loc = std::locale());
 
-/** UCharStringAdaptor provides a method for getting an const unsigned
+/** \brief UCharStringAdaptor provides a method for getting an const unsigned
     data buffer pointer 'udata()' from a string.
  */
 class UCharStringAdaptor {

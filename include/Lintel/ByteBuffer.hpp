@@ -9,6 +9,8 @@
 
 /** @file 
 
+    \brief An efficient binary buffer representation class.
+
     A class that represents an array of bytes that can be efficiently
     initialized.  The main problem with strings is that there is no efficient
     way to read from a file into a string, the string has to be constructed by
@@ -48,6 +50,8 @@
 // is false. Permit variation on a per-instance basis.
 
 namespace lintel {
+    /// \brief Basic uncopyable buffer class, mainly for internal use.
+    ///
     /// Basic buffer class.  Copies are disabled because they would be
     /// painfully inefficient.  If you want a copyable buffer, then
     /// use the standard ByteBuffer that does copy on write similar to
@@ -154,6 +158,8 @@ namespace lintel {
 	size_t data_size, front, back;
     };
 
+    /// \brief Copy on write buffer of bytes.
+    ///
     /// Copy on write buffer of bytes.  Unlike C++ strings, data can be
     /// efficiently read into the buffer.  With a string, the data first has to
     /// be read into a separate buffer and then copied into the string.

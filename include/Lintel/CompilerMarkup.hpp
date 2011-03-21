@@ -10,7 +10,7 @@
 */
 
 /** @file
-    compiler markup operations (gcc and visual c++)
+    \brief compiler markup operations (gcc and visual c++)
 
     Function attribute usage: To specify an attribute on a function,
     either noreturn or deprecated, you have to put something at the

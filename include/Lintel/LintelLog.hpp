@@ -6,6 +6,7 @@
 */
 
 /** @file 
+    \brief header file for LintelLog class and macros
 
     Very low overhead logging support; disable debug level logging by
     adding -DDISABLE_DEBUG_LINTELLOG
@@ -112,6 +113,8 @@ do { \
 } while(0)
 #endif
 
+/// \brief LintelLog class
+///
 /// See file level documentation for overall documentation since the macros are
 /// an integral part of this class.
 class LintelLog {
@@ -135,6 +138,8 @@ public:
     typedef boost::function<void (const std::string &, const LogType)> 
         appender_fn;
 
+    /// \brief class for identifying debugging categories
+    ///
     /// Note that constructing these can be somewhat inefficient, hence
     /// you want to do it exactly once or you destroy the efficiency of
     /// the debugging code.

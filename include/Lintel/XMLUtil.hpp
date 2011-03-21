@@ -6,9 +6,9 @@
 */
 
 /** @file
+    \brief Utilities for dealing with libxml2 bits 
 
-    Utilities for dealing with libxml2 bits; using
-    lintel::strGetXMLAttr to pull it into your namespace.
+    using lintel::strGetXMLAttr to pull it into your namespace.
 */
 
 #ifndef LINTEL_XMLUTIL_HPP

@@ -7,6 +7,9 @@
 #ifndef LINTEL_HASH_TUPLE_STATS_HPP
 #define LINTEL_HASH_TUPLE_STATS_HPP
 
+/** \file
+    \brief header for HashTupleStats class
+*/
 #include <bitset>
 
 #include <boost/bind.hpp>
@@ -22,6 +25,7 @@
 // the initialization.
 
 namespace lintel {
+    /// \cond SEMI_INTERNAL_CLASSES
     namespace detail {
 	template<class T0, class T1> struct ConsToHashUniqueCons {
 	    typedef ConsToHashUniqueCons<typename T1::head_type, typename T1::tail_type> tail;
@@ -88,7 +92,10 @@ namespace lintel {
 	    return new T();
 	}
     }
+    /// \endcond
 
+    /// \brief A class for hashing from a tuple to some statistics class
+    /// 
     /// A hash table from tuples to "stats" Includes a bunch of
     /// additional functions that help tie this together with the cube
     /// operation; in particular the various walk functions.

@@ -6,7 +6,7 @@
 */
 
 /** @file
-    StatsSequence class header
+    \brief StatsSequence class header
 */
 
 #ifndef LINTEL_STATSSEQUENCE_HPP
@@ -15,6 +15,8 @@
 #include <vector>
 #include <Lintel/Stats.hpp>
 
+/// \brief Stats class that stores a sequence of values and merges values together when the count
+/// is too high.
 class StatsSequence : public Stats {
 public:
     enum mode { MergeSum, MergeMean, MergeMax };

@@ -1,6 +1,10 @@
 #ifndef LINTEL_BASE_64_HPP
 #define LINTEL_BASE_64_HPP
 
+/** @file
+    \brief Header for the ASCIIbeticalB64 class
+*/
+
 #include <sys/types.h>
 #include <stdint.h>
 
@@ -9,6 +13,12 @@
 // Consider replacing with: http://code.google.com/p/stringencoders/
 // TODO: add test cases, probably make a lot of this not inline.
 namespace lintel {
+    /** \brief A class for converting strings to an alphabetical base64 variant
+        
+        The default Base64 encoding does not preserve ordering, i.e. if I have a binary string x
+        and y such that x < y; then it is possible that Base64(x) > Base64(y).  The ASCIIBeticalB64
+        class preserves the ordering for all string x and y. */
+
     class ASCIIbeticalB64 {
     public:
 	static const char * translate() {

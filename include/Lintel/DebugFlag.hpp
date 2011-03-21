@@ -6,7 +6,7 @@
 */
 
 /** @file
-    simple debug flag LINTEL_DEBUG since DEBUG is used inconsistently.
+    \brief simple debug flag LINTEL_DEBUG since DEBUG is used inconsistently.
 */
 
 #ifndef LINTEL_DEBUGFLAG_HPP

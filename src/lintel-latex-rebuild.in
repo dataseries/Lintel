@@ -293,6 +293,8 @@ them to various conferences.
 
 =head1 OPTIONS
 
+=over 4
+
 =item --tex I<path>
 
 Specify a : separated list of paths for latex and tex to search for inputs

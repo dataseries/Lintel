@@ -6,9 +6,8 @@
 */
 
 /** @file
-    Calculate an ordinary least squares over a dataset, along with a
-    set of statistics. http://en.wikipedia.org/wiki/Least_squares
-    http://mathworld.wolfram.com/LeastSquaresFitting.html
+    \brief header file for LeastSquares class
+
 */
 
 #ifndef LINTEL_LEASTSQUARES_HPP
@@ -18,14 +17,21 @@
 #include <utility>
 #include <vector>
 
+/// \brief LeastSquares matrix implementation.
+///
+/// Calculate an ordinary least squares over a dataset, along with a
+/// set of statistics. http://en.wikipedia.org/wiki/Least_squares
+/// http://mathworld.wolfram.com/LeastSquaresFitting.html
 class LeastSquares {
 public:
+    /// \brief Return class for the least-squares fit
     struct Linear {
 	double intercept, slope;
 
 	double get(double x) const { return x * slope + intercept; }
 	// TODO: add in more statistics, e.g. R^2
     };
+    /// \brief Class for weighting the least-squares values.
     struct WeightedPoint { 
 	WeightedPoint(double _x, double _y, double _weight = 1.0) 
 	    : x(_x), y(_y), weight(_weight) { }

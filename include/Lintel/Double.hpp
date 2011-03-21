@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Some simple functions for handling doubles
+    \brief Some simple functions for handling doubles
 */
 
 #ifndef LINTEL_DOUBLE_HPP
@@ -29,6 +29,8 @@ inline bool isinf(double);
 //    v >= 0 for -inf is slightly faster than !isinf
 //    isnan(NaN) and isinf(INF) are about the same speed.
 
+/// \brief a class for storing static functions for dealing with doubles; probably should
+/// have used a namespace.
 class Double {
 public:
     static double default_epsilon; // relative to larger of two values.

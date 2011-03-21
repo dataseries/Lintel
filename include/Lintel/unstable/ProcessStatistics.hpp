@@ -5,10 +5,14 @@
 #warning Including unstable header ProcessStatistics.hpp; liable to be changed without warning
 #endif
 
+/** \file
+    \brief header file for ProcessStatistics class
+*/
 #include <sys/types.h>
 #include <string>
 
 namespace lintel {
+    /// \brief namespace for process statistics stat types.
     namespace process_statistics {
         enum StatType {
             Invalid = 0,
@@ -17,6 +21,8 @@ namespace lintel {
         };
     }
     
+    /// \brief class for fetching process statistics
+    ///
     /// Returns statistics about a process, of the sort you can get from /proc/pid on linux, or
     /// getrusage on some other unixes.  Note that the meaning of some fields may vary slightly
     /// from platform to platform; e.g. how to count shared pages in resident set size can be

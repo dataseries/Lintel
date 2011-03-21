@@ -1,6 +1,10 @@
 #ifndef LINTEL_ATOMIC_COUNTER_HPP
 #define LINTEL_ATOMIC_COUNTER_HPP
 
+/** @file
+    \brief Header file for lintel::AtomicCounter class
+*/
+
 #include <inttypes.h>
 
 namespace lintel {
@@ -32,6 +36,8 @@ namespace lintel {
 #error AtomicCounter does not have primitives for the detected platform
 #endif
 
+    /// \brief An atomic counter that avoids using locks.
+    ///
     /// Encapsulates an atomic counter.  Be wary when using it so as
     /// to not inadvertently introduce a race--the value may change at
     /// any time outside of the defined operations.

@@ -5,7 +5,7 @@
 */
 
 /** @file
-    String to small integer mapping
+    \brief StringId header file
 */
 
 #ifndef LINTEL_STRINGID_HPP
@@ -16,6 +16,7 @@
 
 #include <Lintel/HashTable.hpp>
 
+/// \brief String to small integer mapping
 class StringId {
 public:
     StringId();
@@ -23,6 +24,7 @@ public:
     const std::string &getString(unsigned int id);
     unsigned int maxId() { return nextid; }
 
+    /// \cond SEMI_INTERNAL_CLASSES
     struct HTE {
 	const std::string *str;
 	unsigned int id;
@@ -53,6 +55,7 @@ public:
 	    return a.id == b.id;
 	}
     };
+    /// \endcond
 
 private:
     HashTable<HTE, HTEHashStr, HTEEqualStr> idmap;

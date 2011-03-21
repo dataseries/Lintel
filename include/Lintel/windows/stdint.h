@@ -6,7 +6,7 @@
 */
 
 /** @file
-    More portable definitions of standard integer types (windows only)
+    \brief More portable definitions of standard integer types (windows only)
 */
 
 /*

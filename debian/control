@@ -39,10 +39,20 @@ Description: Miscellaneous utility library - programs
  individually valuable but are not valueable enough to form their own package.
  It includes code for statistics, hashing, pointer utilities, assertions, etc.
 
+Package: liblintel-dev-doc
+Section: doc
+Architecture: all
+Depends: 
+Recommends: liblintel-dev
+Description: Documentation for liblintel-dev
+ This package contains all of the documentation for liblintel-dev, mostly the 
+ auto-generated doxygen documentation.
+
 Package: liblintel-dev
 Section: libdevel
 Architecture: any
 Depends: liblintel0 (= ${binary:Version}), liblintelpthread0 (= ${binary:Version})
+Recommends: liblintel-dev-doc
 Description: Miscellaneous utility library - development library
  Lintel is the miscellaneous utility library for shared functions that are
  individually valuable but are not valueable enough to form their own package.

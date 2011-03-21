@@ -6,7 +6,7 @@
 */
 
 /** @file
-    mathematical functions not found in the standard math library.
+    \brief mathematical functions not found in the standard math library.
 */
 
 #ifndef LINTEL_MATHSPECIALFUNCTIONS_HPP

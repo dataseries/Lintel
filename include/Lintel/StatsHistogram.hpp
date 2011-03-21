@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Header file for a hisgtogram class.
+    \brief Header file for a histogram class.
 */
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -58,10 +58,7 @@
 #include <Lintel/Stats.hpp>
 
 
-//////////////////////////////////////////////////////////////////////////////
-// Base histogram classes
-//////////////////////////////////////////////////////////////////////////////
-
+/// \brief Histogram statistics class, interface
 class StatsHistogram : public Stats {
 
 public:
@@ -108,10 +105,7 @@ public:
 
 
 
-//////////////////////////////////////////////////////////////////////////////
-//----A kind of histogram that has uniformly-sized bins.
-//////////////////////////////////////////////////////////////////////////////
-
+/// \brief Histogram statistics class, uniformly-sized bins
 class StatsHistogramUniform : public StatsHistogram {
 protected:
     unsigned       num_bins;	// number of bins
@@ -169,10 +163,7 @@ public:
     virtual Stats *another_new() const;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-// StatsHistogramLog: a histogram that has exponentially-sized bins.
-//////////////////////////////////////////////////////////////////////////////
-
+/// \brief Histogram statistics class, exponentially-sized bins
 class StatsHistogramLog : public StatsHistogram {
 protected:
     unsigned	  num_bins;	// number of bins
@@ -227,20 +218,16 @@ public:
 
 
 
-
-
-
-//////////////////////////////////////////////////////////////////////////////
-// StatsHistogramLogAccum
-// a kind of histogram that has exponentially-sized bins, and that
-// accumulates a value in the bin as well as the hit count.
-//
-// The histogram can accumulate either the index value, using
-// the add(index_value) method, or some other data value associated
-// with the index value, using the add(index_value, data_value) method.  
-// For example, the latter form makes it possible to accumulate response 
-// times (data values) as a function of jump distance (index values).
-//////////////////////////////////////////////////////////////////////////////
+/// \brief Histogram statistics class, exponentially-sized bins, sum as well as count
+///
+/// a kind of histogram that has exponentially-sized bins, and that
+/// accumulates a value in the bin as well as the hit count.
+///
+/// The histogram can accumulate either the index value, using
+/// the add(index_value) method, or some other data value associated
+/// with the index value, using the add(index_value, data_value) method.  
+/// For example, the latter form makes it possible to accumulate response 
+/// times (data values) as a function of jump distance (index values).
 
 class StatsHistogramLogAccum : public StatsHistogramLog {
 private:
@@ -274,18 +261,16 @@ public:
 
 
 
-//////////////////////////////////////////////////////////////////////////////
-// StatsHistogramUniformAccum
-// a kind of histogram that has uniformly-sized bins, and that
-// accumulates a value in the bin as well as the hit count.
-//
-// The histogram can accumulate either the index value, using
-// the add(index_value) method, or some other data value associated
-// with the index value, using the add(index_value, data_value) method.  
-// For example, the latter form makes it possible to accumulate response 
-// times (data values) as a function of jump distance (index values).
-//////////////////////////////////////////////////////////////////////////////
-
+/// \brief Histogram statistics class, exponentially-sized bins, sum as well as count
+///
+/// a kind of histogram that has uniformly-sized bins, and that
+/// accumulates a value in the bin as well as the hit count.
+///
+/// The histogram can accumulate either the index value, using
+/// the add(index_value) method, or some other data value associated
+/// with the index value, using the add(index_value, data_value) method.  
+/// For example, the latter form makes it possible to accumulate response 
+/// times (data values) as a function of jump distance (index values).
 class StatsHistogramUniformAccum : public StatsHistogramUniform {
 private:
     double       *val_bins;
@@ -313,16 +298,15 @@ public:
     virtual Stats *another_new() const;
 };
 
-//////////////////////////////////////////////////////////////////////////////
-// StatsHistogramGroup: a collection of histograms, allowing multiple 
-// granularities of histograms over different ranges plus a low, high,
-// and overall stats.
-//
-// The histograms may be all the same type, or of different types,
-// depending on the constructor method chosen.
-//
-//////////////////////////////////////////////////////////////////////////////
-
+/// \brief Histogram with specified subranges and different histogram types for each range.
+/// 
+/// StatsHistogramGroup: a collection of histograms, allowing multiple 
+/// granularities of histograms over different ranges plus a low, high,
+/// and overall stats.
+///
+/// The histograms may be all the same type, or of different types,
+/// depending on the constructor method chosen. For example, a uniform histogram
+/// around 0 and exponential above 100.
 class StatsHistogramGroup : public Stats {
 public:
   // ranges=[0,1,10,100] => low, hist[0..1[, hist[1..10[, hist[10,100[, high

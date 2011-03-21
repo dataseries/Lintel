@@ -5,7 +5,7 @@
 */
 
 /** @file
-    Interface to ptheads from C++
+    \brief header file for LockOrderingGroup class
 */
 
 #ifndef LINTEL_LOCK_ORDERING_GROUP_HPP
@@ -14,6 +14,8 @@
 #include <boost/utility.hpp>
 #include <boost/thread/tss.hpp>
 
+/// \brief Class for defining and tracking the ordering across a group of locks
+///
 /// Use this class to define a set of related mutexes/locks that will
 /// be tested to verify that the locking is all globally ordered.
 /// Right now you can only use this with the ScopedLock/Unlock classes

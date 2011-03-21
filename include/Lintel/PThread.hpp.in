@@ -5,7 +5,7 @@
 */
 
 /** @file
-    Interface to ptheads from C++
+    \brief Interface to ptheads from C++
 */
 
 #ifndef LINTEL_PTHREAD_HPP
@@ -27,6 +27,7 @@ extern "C" {
 }
 #endif
 
+/// \brief Misc pthread-related functions
 class PThreadMisc { // should be a namespace if we believe everyone supports those
 public:
     static int getCurrentCPU(bool unknown_ok = false);
@@ -35,13 +36,14 @@ public:
     static int getNCpus(bool unknown_ok = false);
 };	   
 
-/** you can call the start function multiple times on this class, this
+/** \brief PThread abstraction class
+ *
+ * you can call the start function multiple times on this class, this
  * is potentially useful if your threads don't have any per-thread
  * state.  We don't bother to take out locks in these functions
  * because it's expected people will start all their threads from a
  * "master" thread, so the locking is unnecessary.  
  * technically this is copyable, but it's probably not what you wanted. */
-
 class PThread : boost::noncopyable { 
 public:
     PThread();
@@ -68,7 +70,9 @@ private:
     pthread_attr_t attr;
 };
 
-/** PThreadNoSignals is a sublcass of PThread that blocks all signals
+/** \brief PThread class that blocks signals
+ *
+ * PThreadNoSignals is a sublcass of PThread that blocks all signals
  * in created threads.  This is usually what you want -- it is often
  * best to let one thread (e.g. the master thread) take all signals.
  *
@@ -83,6 +87,7 @@ public:
     virtual pthread_t start();
 };
 
+/// \brief Mutex that can only be used in scoped locks
 class PThreadScopedOnlyMutex : boost::noncopyable {
 public:
 #if LINTEL_DEBUG
@@ -90,8 +95,7 @@ public:
 #else
 #define LINTEL_PTHREAD_DEFAULT_ERRORCHECK false
 #endif
-    PThreadScopedOnlyMutex(bool errorcheck 
-			   = LINTEL_PTHREAD_DEFAULT_ERRORCHECK);
+    PThreadScopedOnlyMutex(bool errorcheck = LINTEL_PTHREAD_DEFAULT_ERRORCHECK);
     ~PThreadScopedOnlyMutex();
 
     bool isLocked() const {
@@ -154,6 +158,7 @@ protected:
     pthread_mutex_t m;
 };
 
+/// \brief mutex class that can be manually locked and unlocked
 class PThreadMutex : public PThreadScopedOnlyMutex {
 public:
     PThreadMutex(bool errorcheck = LINTEL_PTHREAD_DEFAULT_ERRORCHECK)
@@ -182,6 +187,8 @@ public:
 
 };
 
+/// \brief Scoped locking class
+///
 /// Allocate this as an automatic in your stack frame.  It will
 /// lock the mutex on construction and unlock it on destruction,
 /// when the stack frame goes out of scope.
@@ -228,6 +235,8 @@ private:
     double old_level, mutex_level;
 };
 
+/// \brief Scoped unlocking class
+///
 /// Allocate this as an automatic in your stack frame, probabably
 /// within a sub-block to temporarily release a scoped lock that you
 /// had been holding.
@@ -255,7 +264,9 @@ private:
     PThreadScopedLock &parent;
 };
 
+/// \cond DEPRECATED
 #ifndef LINTEL_PTHREAD_DISABLE_NONORDERED_SCOPED_LOCK
+// TODO: work through deprecating this function
 /// Old name for PThreadScopedLock; it was renamed to match with the
 /// naming convention from the boost libraries.
 class PThreadAutoLocker : public PThreadScopedLock {
@@ -265,9 +276,11 @@ public:
     { }
 };
 #endif
+/// \endcond
 
 // TODO: figure out how to make condition variables interact properly with lock ordering.
 // TODO: Figure out how to test cond, mutex, etc in any semi-reliable way.
+/// \brief Condition variable wrapping class
 class PThreadCond : boost::noncopyable {
 public:
     PThreadCond() {

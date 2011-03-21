@@ -5,6 +5,8 @@
 */
 
 /** @file
+    \brief Constant strings (aka string pool)
+
     Constant Strings are encoded much more efficiently than string,
     but are not freeable after being allocated
 */
@@ -38,6 +40,13 @@ inline const uint32_t ConstantString_length(const ConstantStringValue *ptr) {
 inline const char *ConstantString_c_str(const ConstantStringValue *ptr) { 
     return reinterpret_cast<const char *>(ptr); 
 }
+
+/** \brief A class representing a constant string.
+ * 
+ * ConstantString is much like std::string except that only a single instance of each string
+ * will be stored.  Currently the implementation uses globals so there is only a single string
+ * pool.  This approach means that the memory allocated for constant string will never be freed. 
+ */
 
 class ConstantString {
 public:
@@ -105,6 +114,8 @@ public:
 	return data()[pos];
     }
 
+    /// \cond SEMI_INTERNAL_CLASSES
+
     struct buffer {
 	ConstantStringValue *data;
 	int size;
@@ -136,6 +147,7 @@ public:
 	    }
 	}
     };
+    /// \endcond
     bool equal(const ConstantString &to) const {
 	return myptr == to.myptr ? true : false;
     }
@@ -198,11 +210,12 @@ operator<< (std::ostream&o, const ConstantString&s) {
     return o;
 }
 
-template <>
-struct HashMap_hash<const ConstantString> {
+/// \cond SEMI_INTERNAL_CLASSES
+template <> struct HashMap_hash<const ConstantString> {
     unsigned operator()(const ConstantString &a) const {
 	return a.hash();
     }
 };
+/// \endcond
 
 #endif

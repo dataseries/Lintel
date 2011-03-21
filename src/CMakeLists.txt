@@ -40,7 +40,6 @@ SET(LIBLINTEL_SOURCES
 	HashFns.cpp
 	HashTable.cpp
 	LeastSquares.cpp
-	LintelAssert.cpp
 	LintelVersion.cpp
 	MathSpecialFunctions.cpp
 	Matrix.cpp

@@ -6,7 +6,7 @@
 */
 
 /** @file
-    XML parsing for logging
+    \brief XML parsing for logging
 */
 
 #ifndef LINTEL_LOG_XML_HPP
@@ -15,6 +15,7 @@
 #include <Lintel/LintelLog.hpp>
 #include <Lintel/XMLUtil.hpp>
 
+/// \brief Logging subclass that take XML as input to select log levels
 class LintelLogXML : public LintelLog {
 public:
     /// parse an XML element describing a debug logging level.

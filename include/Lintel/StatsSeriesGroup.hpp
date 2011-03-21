@@ -6,7 +6,7 @@
 */
 
 /** @file
-    A group of stats objects ordered by time
+    \brief header file for StatsSeriesGroup class
 */
 
 #ifndef LINTEL_STATSSERIESGROUP_HPP
@@ -16,9 +16,10 @@
 #include <Lintel/AssertBoost.hpp>
 #include <Lintel/Stats.hpp>
 
-// Each of the stats objects in the series will be created using
-// StatsMaker.  Each object will have a name of myname-<statnum>
-
+/// \brief A group of stats objects ordered by time
+///
+/// Each of the stats objects in the series will be created using
+/// StatsMaker.  Each object will have a name of myname-<statnum>
 class StatsSeriesGroup : public Stats {
 public:
     StatsSeriesGroup(const std::string &_myname, double interval);

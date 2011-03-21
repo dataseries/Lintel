@@ -6,7 +6,7 @@
 */
 
 /** @file
-    create stats objects
+    \brief create stats objects
 */
 
 #ifndef LINTEL_STATSMAKER_HPP
@@ -20,14 +20,15 @@
 #include <Lintel/StatsRW.hpp>
 #include <Lintel/StatsSequence.hpp>
 
-// make(RW) will create a stats object of the appropriate type based
-// on the name provided; It will check to see if the name was
-// registered (by the setMode* functions), and will then repeatedly
-// strip the rightmost group of -'s and everything after it from the
-// name and try the lookup again.  if it runs out of -'s to remove, it
-// will look up the name "default" to specify the default type of
-// object to create
-
+/// \brief Class for making statistics
+///
+/// make(RW) will create a stats object of the appropriate type based
+/// on the name provided; It will check to see if the name was
+/// registered (by the setMode* functions), and will then repeatedly
+/// strip the rightmost group of -'s and everything after it from the
+/// name and try the lookup again.  if it runs out of -'s to remove, it
+/// will look up the name "default" to specify the default type of
+/// object to create
 class StatsMaker {
 public:
     static void setModeSimple(const std::string &statname);
@@ -53,6 +54,7 @@ public:
     static Stats *make(const std::string &name);
     static StatsRW *makeRW(const std::string &name);
 
+    /// \cond SEMI_INTERNAL_CLASSES
     // Doesn't seem like these should have to be public, but aCC claims so.
     struct statDefT;
     typedef Stats * (*makeStatsFnType)(statDefT &def);
@@ -67,6 +69,8 @@ public:
 	makeStatsRWFnType makeStatsRWFn;
 	statDefT() { makeStatsFn = makeSimple; makeStatsRWFn = makeRWStats; }
     };
+    /// \endcond
+
     // g++ forces us to make these public also :(
     static Stats *makeSimple(statDefT &def);
     static StatsRW *makeRWStats(const std::string &name,statDefT &def);

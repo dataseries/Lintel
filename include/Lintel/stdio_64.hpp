@@ -5,7 +5,7 @@
 */
 
 /** @file
-    stdio routines for 64 bit files.
+    \brief stdio routines for 64 bit files.
 */
 
 #ifndef LINTEL_STDIO_64_HPP

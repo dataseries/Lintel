@@ -7,6 +7,8 @@
 
 /** @file
 
+    \brief Pointer utility classes
+
     Utilities for dealing with pointers; using lintel::safeDownCast or
     using lintel::safeCrossCast to put these into the current
     namespace.
@@ -101,7 +103,6 @@ namespace lintel {
 	INVARIANT(from != NULL, "source pointer is null");
 	return *from;
     }
-
 
     /// Convert a type into a void *
     template<typename T> void *voidCast(T p) {

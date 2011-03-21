@@ -4,7 +4,7 @@
  */
 
 /** @file
-    Mersenne Twister Randum Number Generator
+    \brief Mersenne Twister Randum Number Generator
 */
 
 #ifndef LINTEL_MERSENNE_TWISTER_RANDOM_HPP
@@ -22,6 +22,7 @@
 // figure out how to build the equivalent of the open53/closed53
 // functions and verify that the performance is comparable
 
+/// \brief Mersenne Twister random number generation class.
 class MersenneTwisterRandom {
 public:
     // 0=Defaults to seeding with various system parameters

@@ -25,6 +25,7 @@
 
 #include <Lintel/AssertBoost.hpp>
 
+/// \brief posix namespace
 namespace posix {
 
     inline void close(int fd) {

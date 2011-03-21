@@ -6,7 +6,7 @@
 */
 
 /** @file
-    Simple statistics functions for single variables
+    \brief Simple statistics functions for single variables
 */
 
 #ifndef LINTEL_STATS_HPP
@@ -17,6 +17,7 @@
 #include <iostream>
 #include <fstream>
 
+/// \brief Base statistics class, mostly virtual interface.
 class StatsBase {
 protected:
     unsigned      reset_count;	///< Number of time reset() called
@@ -47,6 +48,7 @@ public:
 // Stats proper
 //////////////////////////////////////////////////////////////////////////////
 
+/// \brief Basic (mean, stddev, min, max) statistics class
 class Stats : public StatsBase {
 protected:
     unsigned long long number;	///< How many calls to add() have occurred

@@ -6,7 +6,7 @@
 */
 
 /** @file
-    utility I/O - file decompression
+    \brief utility I/O - file decompression
 */
 
 

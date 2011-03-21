@@ -6,13 +6,7 @@
 
 /** @file
 
-    A rotating hash map.  The idea is that we want to store hash
-    entries and from time to time, flush the table of "old" values.
-    The clever optimization is to have two hash tables, and from time
-    to time, rotate the tables, deleting the old one.  If we get an
-    access to the old table, we move it to the recent one.
-    Eventually, we can have built-in rules for when to rotate can be
-    added, but for now just provide the help.
+    \brief header file for RotatingHashMap class
 */
 
 #ifndef LINTEL_ROTATING_HASHMAP_HPP
@@ -37,6 +31,15 @@
 // opened up the implementation a little more so we could (for
 // example) only calculate the hash once.
 
+/// \brief A rotating hash map
+///
+/// A rotating hash map.  The idea is that we want to store hash
+/// entries and from time to time, flush the table of "old" values.
+/// The clever optimization is to have two hash tables, and from time
+/// to time, rotate the tables, deleting the old one.  If we get an
+/// access to the old table, we move it to the recent one.
+/// Eventually, we can have built-in rules for when to rotate can be
+/// added, but for now just provide the help.
 template <class K, class V,
 	  class KHash = HashMap_hash<const K>,
 	  class KEqual = std::equal_to<const K> >

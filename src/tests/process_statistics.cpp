@@ -31,8 +31,8 @@ int main() {
     const ssize_t page_size = 4096;
     ProcessStatistics proc_stats;
     size_t initial_resident = proc_stats.get(ResidentSize);
-    SINVARIANT(fabs(initial_resident - ProcessStatistics::getOnce(ResidentSize)) 
-               < 100*page_size); 
+    size_t once_resident = ProcessStatistics::getOnce(ResidentSize);
+    SINVARIANT(abs(initial_resident - once_resident) < 100*page_size); 
     size_t once_resident_pid = ProcessStatistics::getOnce(ResidentSize, getpid());
     INVARIANT(abs(initial_resident - once_resident_pid) < 100*page_size,
               format("%d %d %.0f\n") % initial_resident % once_resident_pid
