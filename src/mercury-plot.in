@@ -8,15 +8,13 @@
 # Script for running batch processing type operations, extended
 # by a module that controls how the jobs are selected and executed
 use strict;
-use Carp 'confess';
-use Data::ShowTable;
+use Carp qw/confess cluck/;
 use DBI;
 use English;
 use Fcntl qw/F_GETFL F_SETFL O_NONBLOCK/;
 use File::Basename;
 use FileHandle;
 use Getopt::Long;
-use IO::Select;
 use Pod::Usage;
 use POSIX ":sys_wait_h";
 use Safe;
@@ -25,9 +23,6 @@ use Time::HiRes 'time';
 
 @PERL5_MODULES_INC_UNSHIFT@;
 use Plot::Mercury;
-# TODO: make it possible to run mercury without IO::Pty -- that module
-# isn't part of a standard RHEL4 install.
-
 # TODO: now that we can use a pty to talk to gnuplot, we need to
 # scatter calls to readinput throughout the code, for example without
 # the one in pngplot before the "Wait for stability on gnuplot writing
@@ -35,12 +30,11 @@ use Plot::Mercury;
 
 # TODO: switch from use of open(GLOBAL, "...") to new FileHandle
 # this caused nested includes to not work.
-use IO::Pty;
-my $using_pty = 1;
-
 
 eval "use Statistics::OLS;";
 my $missing_statistics_ols = $@;
+eval "use Data::ShowTable;";
+my $missing_data_showtable = $@;
 
 $|=1;
 my $gnuplot_fifo;
@@ -929,9 +923,16 @@ sub sqlselect {
     my $ret = GetOptions("format=s" => \$format,
 			 "filename=s" => \$filename);
     unless ($ret) {
-	print "select [--format={text-table,html}] [--filename=<path>] <sql select>\n";
+	print "select [--format={text-table,html,csv}] [--filename=<path>] <sql select>\n";
 	$command_error = 1;
 	return;
+    }
+    if ($format eq 'text-table' && $missing_data_showtable) {
+        print "Warning: missing Data::ShowTable, defaulting to csv output.
+Error was: $missing_data_showtable\n"
+            unless $missing_data_showtable eq '1';
+        $missing_data_showtable = '1';
+        $format = 'csv';
     }
     my $cmd = join(' ', @ARGV);
 
@@ -960,6 +961,8 @@ sub sqlselect {
 	sqlSelectTextTable($sth, ! defined $filename);
     } elsif ($format eq 'html') {
 	sqlSelectHtml($sth);
+    } elsif ($format eq 'csv') {
+        sqlSelectCsv($sth);
     } else {
 	$error = "Unknown format '$format', expected text-table or html\n";
     }
@@ -970,6 +973,15 @@ sub sqlselect {
     if (defined $error) {
 	print STDERR $error;
 	$command_error = 1;
+    }
+}
+
+sub sqlSelectCsv {
+    my ($sth) = @_;
+
+    print join(", ", @{$sth->{NAME}}), "\n";
+    while(my @row = $sth->fetchrow_array) {
+        print join(", ", @row), "\n";
     }
 }
 
@@ -1105,111 +1117,73 @@ sub removeWhitespace {
 sub start_gnuplot {
     return if defined $gnuplot_fifo;
     print "Starting Gnuplot...\n";
-    my $pty = new IO::Pty() or die "Unable to get a pty";
-    my $slave = $pty->slave;
-    my $pid = fork;
-    if ($pid == 0) {
-	  $pty->make_slave_controlling_terminal or die;
-	  close $pty;
-	  $slave->set_raw;
-	  close STDIN;
-	  open(STDIN, "<&".$slave->fileno) or die;
-	  close STDOUT;
-	  open(STDOUT, ">&".$slave->fileno) or die;
-	  close STDERR;
-	  open(STDERR, ">&".$slave->fileno) or die;
-	  eval {exec "@GNUPLOT_PATH@";};
-	  exit(1);
-    }
-    $pty->close_slave();
-    select(undef,undef,undef,0.25); # wait a little for it to start.
-    waitpid($pid,&WNOHANG);
-    unless (kill (0,$pid) == 1) {
-	  die "Unable to start gnuplot!\n";
-    }
-    print "done.\n";
-    my $flags = fcntl($pty, F_GETFL, 0) or die;
-    fcntl($pty, F_SETFL, $flags | O_NONBLOCK) or die;
-    $gnuplot_fifo = $pty;
+    $gnuplot_fifo = new FileHandle "| @GNUPLOT_PATH@"
+        or die "Unable to start @GNUPLOT_PATH@: $!";
     $gnuplot_fifo->autoflush(1);
-    # TODO: auto-detect if there is the wxt terminal and use that if possible;
-    # also need to fix other uses of set terminal x11
     print $gnuplot_fifo "set terminal $gnuplot_terminal_type\n";
+    syncToGnuplot();
 }
 
-# The idea here is that we keep reading from gnuplot until we are able
-# to send a return to it and have it "immediately" come back.  That
-# condition indicates that it is likely that gnuplot is now done
-# processing events.
+# The idea here is that we send a command to update a special file with an 
+# incrementing value.  When gnuplot executes that command, we know it's processed
+# all prior commands.  The gnuplot system command is present back to RHEL4.  Interestingly,
+# testing indicates that while the gnuplot interpret may be responding it can be several
+# seconds later that the plot actually appears.  Tested by plotting ~800k values multiple times
+# and then plotting 10 values with debugging on.  They sync would complete, and several seconds
+# later the new legend entry would appear.
 
 sub syncToGnuplot {
+    # TODO: we call this function a lot, seemingly unnecessarily in many cases.  We should be able
+    # to reduce the calls somehow, perhaps by knowing that we will call the sync command after
+    # each command or something like that.  The cluck helps you track down where the sync calls
+    # are coming from, and whether there could be a better place.
+    # cluck "sync";
     confess "gnuplot is not running" unless defined $gnuplot_fifo; 
-    my $select = IO::Select->new();
-    $select->add($gnuplot_fifo);
 
+    unless (defined $Global::sync_gnuplot_filename) {
+        $Global::sync_gnuplot_filename = "/tmp/mercury-gnuplot-sync." . getpwuid($UID);
+        $Global::sync_gnuplot_count = 0;
+    }
+
+    if (-f $Global::sync_gnuplot_filename) {
+        unlink($Global::sync_gnuplot_filename)
+            or die "Unable to rm $Global::sync_gnuplot_filename: $!";
+    }
+    ++$Global::sync_gnuplot_count;
+    print $gnuplot_fifo 
+        qq{system "echo $Global::sync_gnuplot_count >$Global::sync_gnuplot_filename"\n};
+    my $delay_time = 0.01; # 10ms shortest sleep old OS's support
     my $started = time;
     my $max_delay = 60;
     my $last_warn = time;
     while(1) {
-	my @ready = $select->can_read(0.1);
-	if (@ready == 0) {
-	    return if fastReplyFromGnuplot($select);
-	    die "Waited $max_delay seconds for gnuplot to finish, aborting"
-		if (time - $started) > $max_delay;
-	    if ((time - $last_warn) > ($max_delay/10)) {
-		my $waited = time - $started;
-		$last_warn = time;
-		warn "Warning, still waiting after $waited seconds for gnuplot to finish.\n";
-	    }
-	} else {
-	    while (my $line = <$gnuplot_fifo>) {
-		print $line;
-	    }
-	}
+        select(undef, undef, undef, $delay_time);
+        if (-f $Global::sync_gnuplot_filename) {
+            my $fh = new FileHandle $Global::sync_gnuplot_filename
+                or die "Can't open $Global::sync_gnuplot_filename for read: $!";
+            $_ = <$fh>;
+            chomp;
+            if ($_ eq $Global::sync_gnuplot_count) {
+                print "DEBUG: synced\n" if $debug;
+                last;
+            } else {
+                warn "Strange, $Global::sync_gnuplot_filename exists, but contains wrong contents";
+            }
+        } else {
+            print "DEBUG: no-file\n" if $debug;
+        }
+        die "Waited $max_delay seconds for gnuplot to finish, aborting"
+            if (time - $started) > $max_delay;
+        if ((time - $last_warn) > ($max_delay/10)) {
+            my $waited = time - $started;
+            $last_warn = time;
+            warn "Warning, still waiting after $waited seconds for gnuplot to finish.\n";
+        }
+        $delay_time *= 2; # backoff delay
+        $delay_time = 0.5 if $delay_time > 0.5;
     }
-}
-
-# We send a return, we should get at most an echoed return and the
-# next prompt.  We should get it quickly.  Anything else is wrong.
-sub fastReplyFromGnuplot {
-    my ($select) = @_;
-    confess "gnuplot isn't running" unless defined $gnuplot_fifo;
-
-    print "FRFG\n" if $debug;
-    print $gnuplot_fifo "\n";
-    my $max_reply_time = time + 0.05;
-    my $continue = 1;
-    while ($continue) {
-	my $delay = $max_reply_time - time;
-	if ($delay <= 0) { # we lose, too long waiting
-	    print "Waited too long\n" if $debug;
-	    return 0;
-	}
-
-	$select->can_read($delay);
-
-	while (1) {
-	    my $line = <$gnuplot_fifo>;
-	    last unless defined $line;
-	    print "Line\n" if $debug;
-	    if ($line =~ /\s*\n$/o) {
-		print $line;
-		# ok
-	    } elsif ($line =~ /^gnuplot> $/o) {
-		# what we want, hide prompt
-		$continue = 0;
-		last;
-	    } else {
-		warn "Unexpected '$line'\n";
-		return 0; # something else
-	    }
-	}
-    }
-    print "ExpectBlank\n" if $debug;
-    my $line = <$gnuplot_fifo>;
-    return 1 if ! defined $line; # and nothing after it, so we're good.
-    print $line;
-    return 0; # something else came in, not good.
+    unlink($Global::sync_gnuplot_filename)
+        or die "Unable to rm $Global::sync_gnuplot_filename: $!";
 }
 
 sub gnuplot {
@@ -1267,20 +1241,7 @@ sub pngplot {
 	return 0;
     }
     syncToGnuplot();
-    # Wait for stability on gnuplot writing the ps file...
-    unless ($using_pty) {
-	while(! -f "psplot-$$..ps") {
-	    print "waiting(nops psplot-$$..ps)... ";
-	    sleep(1);
-	}
-	my $cur_size = -s "psplot-$$..ps";
-	while(1) {
-	    print "waiting(size $cur_size)... ";
-	    sleep(5);
-	    last if $cur_size > 0 && $cur_size == -s "psplot-$$..ps";
-	    $cur_size = -s "psplot-$$..ps";
-	}
-    }
+
     print "pstopnm... ";
     my $dblw = $width * 2;
     my $dblh = $height * 2;

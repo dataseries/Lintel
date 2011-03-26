@@ -15,8 +15,6 @@ debian/build/config-stamp:
 	mkdir -p debian/build
 	(cd debian/build; cmake -DCMAKE_INSTALL_PREFIX=/usr ../..)
 	touch $@
-#	./configure $(CROSS) --prefix=/usr --mandir=\$${prefix}/share/man --infodir=\$${prefix}/share/info CFLAGS="$(CFLAGS)" LDFLAGS="-Wl,-z,defs"
-
 
 build: build-stamp
 build-stamp:  debian/build/config-stamp
@@ -44,10 +42,7 @@ install: build
 	dh_installdirs
 
 	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
-	# Unclear whether lexgrog or doxygen is wrong, but lexgrog does not accept spaces 
-	# on the left hand side of the NAME entry.
-	find $(CURDIR)/debian/tmp/usr/share/man/man3 -type f -print0 | xargs -0 perl -i -p -e 'if ($$fix) { ($$left, $$right) = /^(.+)( \\-.+)$$/; $$left =~ s/ //go; $$_ = "$$left$$right\n"; $$fix = 0; }; $$fix = 1 if /^.SH NAME/o;' 
-	chrpath -d $(TMP_USR)/bin/drawRandomLogNormal $(TMP_USR)/lib/libLintel.so.*.* $(TMP_USR)/lib/libLintelPThread.so.*.* $(TMP_USR)/lib/perl5/libLintelPerl.so
+	./debian/fix-install.sh $(CURDIR)/debian/tmp
 
 
 # Build architecture-independent files here.

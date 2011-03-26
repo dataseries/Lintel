@@ -1,5 +1,5 @@
 lintel (0.2011.03.12-1) unstable; urgency=low
 
-  * Initial debian packageing
+  * Initial dpkg packaging
 
  -- Eric Anderson <anderse@hpl.hp.com>  Sat, 12 Mar 2011 21:19:35 -0800

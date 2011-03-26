@@ -5,117 +5,132 @@ Name:           Lintel
 Version:        __VERSION__
 URL:            http://tesla.hpl.hp.com/opensource.html
 Source:         %{name}-%{version}.tar.gz
-Release:        1
+Release:        __RELEASE__
 Summary:        Support tools and library 
 Group:          Libraries
 License:        BSD
 Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-%description
-A collection of libraries and tools.
-
+# TODO: do we split shared libraries as in debian?
 %package	libs
 Summary:        Lintel library files
 Group:          Libraries
 Requires:       %{name}-libs = %{version}-%{release}
-Requires:       pkgconfig
 License:        BSD
 
 %package	devel
 Summary:        Lintel devel files
 Group:          Development/Libraries
-Requires:       %{name}-devel = %{version}-%{release}
-Requires:       pkgconfig
+Requires:       %{name}-libs = %{version}-%{release}
+Requires:       cmake
 License:        BSD
 
+%package	utils
+Summary:        Lintel devel files
+Group:          Development/Libraries
+Requires:       %{name}-libs = %{version}-%{release}, %{name}-perl
+License:        BSD
+
+%package	docs
+Summary:        Lintel devel files
+Group:          Development/Libraries
+Requires:       %{name}-libs = %{version}-%{release}
+License:        BSD
+
+%package        perl
+Summary:        Lintel perl files
+Group:          Development/Libraries
+Requires:       %{name}-libs = %{version}-%{release}
+License:        BSD
+
+%description
+This is the meta-package for Lintel, the -{libs,devel,utils,docs,perl} sub-packages contain
+the actual contents.
+
+__DESCRIPTION_liblintel-dev__
+
 %description	libs
-Lintel libraries
+The redhat packaging combinds the two Lintel C++ libraries into a single package.
+
+__DESCRIPTION_liblintel0__
+
+__DESCRIPTION_liblintelpthread0__
 
 %description	devel
-Lintel header files
+__DESCRIPTION_liblintel-dev__
+
+%description    utils
+__DESCRIPTION_lintel-utils__
+
+%description    docs
+__DESCRIPTION_liblintel-dev-doc__
+
+%description    perl
+__DESCRIPTION_liblintel-perl__
 
 %prep
 %setup -q
 
 %build
-autoreconf --install
-mkdir build
-cd build
-../configure --prefix=/usr --enable-optmode=optimize --libdir=%{_libdir}
-cp Makefile Makefile.old
-sed -e 's;^linteldocdir =.*;linteldocdir = %{_docdir}/Lintel-%{version};' Makefile.old > Makefile
-make
+mkdir rpm-build
+cd rpm-build
+cmake -D CMAKE_INSTALL_PREFIX=/usr ..
+make -j 6
 
 %install
-cd build
+cd rpm-build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
+pwd
+ls ..
+../debian/fix-install.sh $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
-cp ../Release.info $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}/Release.info
-cp ../Changelog.mtn $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}/Changelog.mtn
+cp ../Release.info ../Changelog.mtn ../COPYING $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
+# TODO: can we make cmake automatically figure out that centos wants libs in /usr/lib64
+if [ %{_libdir} != /usr/lib ]; then
+        mkdir -p $RPM_BUILD_ROOT%{_libdir}
+        mv $RPM_BUILD_ROOT/usr/lib/libLintel*so* $RPM_BUILD_ROOT%{_libdir}
+fi
 
 %clean
-rm -rf $RPM_BUILD_ROOT
+rm -rf $RPM_BUILD_ROOT rpm-build
 
-%files
-%{_bindir}/batch-parallel
-%{_bindir}/calcStats
-%{_bindir}/drawRandomLogNormal
-%{_bindir}/lintel-acinclude
-%{_bindir}/lintel-config
-%{_bindir}/mercury-plot
-/usr/share/bp_modules/BatchParallel/checksum.pm
-/usr/share/bp_modules/BatchParallel/common.pm
-/usr/share/bp_modules/BatchParallel/compress.pm
-/usr/share/bp_modules/BatchParallel/jobsfile.pm
-/usr/share/perl5/Lintel/Net/SSH/KnownHostsFile.pm
-/usr/share/perl5/Plot/Mercury.pm
-/usr/share/perl5/Plot/Mercury/Tics.pm
-/usr/share/perl5/Text/Expand.pm
-/usr/share/perl5/Text/ExpandInt.pm
+%files libs
+%{_libdir}/libLintel.so*
+%{_libdir}/libLintelPThread.so*
 %{_docdir}/Lintel-%{version}/COPYING
 %{_docdir}/Lintel-%{version}/Release.info
-%{_docdir}/Lintel-%{version}/Changelog.mtn
 
 %files devel
 %{_includedir}/Lintel/*
-/usr/share/aclocal/com_hp_hpl_lintel.m4
-%{_libdir}/Make.common
-%{_libdir}/Make.world
-%{_libdir}/libLintel.a
-%{_libdir}/libLintel.la
-%{_libdir}/libLintel.so.0.0.0
-%{_libdir}/libLintel.so.0
-%{_libdir}/libLintel.so
-%{_libdir}/libLintelPThread.a
-%{_libdir}/libLintelPThread.la
-/usr/share/cmake-modules/FindLibXmlpp.cmake
-/usr/share/cmake-modules/FindLintel.cmake
+%{_bindir}/lintel-config
+/usr/share/cmake-modules
 /usr/share/packaging/redhat-rules
+/usr/share/lintel-latex-rebuild
+/usr/share/Lintel/doxygen.config.in
 
-%files libs
-%{_libdir}/libLintel.so.0.0.0
-%{_libdir}/libLintel.so.0
-%{_libdir}/libLintel.so
-%{_libdir}/libLintelPThread.so.0.0.0
-%{_libdir}/libLintelPThread.so.0
-%{_libdir}/libLintelPThread.so
+%files utils
+%{_bindir}/batch-parallel
+%{_bindir}/deptool
+%{_bindir}/drawRandomLogNormal
+%{_bindir}/lintel-disktool
+%{_bindir}/lintel-flock
+%{_bindir}/lintel-latex-rebuild
+%{_bindir}/mercury-plot
+/usr/share/bp_modules/BatchParallel
+
+%files docs
+/usr/share/man
+/usr/share/doc/Lintel
+%{_docdir}/Lintel-%{version}/Changelog.mtn
+
+%files perl
+/usr/lib/perl5
+/usr/share/perl5
 
 %changelog
 
-* Thu Nov 15 2007 software@cello.hpl.hp.com
-- fixed up relocatable bits
+* Fri Mar 25 2011 anderse@hpl.hp.com 0.2011.03.12-1
+- Initial rpm packaging.
 
-*Wed Mar  28 2007 software@cello.hpl.hp.com
-- added .so symlinks
-
-* Thu Mar 22 2007 software@cello.hpl.hp.com
-- corrected license, changed version to datestamp
-
-* Fri Mar 02 2007 software@cello.hpl.hp.com
-- cmake modules added 
-
-* Wed Feb 14 2007 software@cello.hpl.hp.com
-- Initial RPM release.
-make
