@@ -5,6 +5,7 @@ Name:           Lintel
 Version:        __VERSION__
 URL:            http://tesla.hpl.hp.com/opensource.html
 Source:         %{name}-%{version}.tar.gz
+# TODO: can we have a no-release package?  We'll do a Lintel re-release on packaging glitches
 Release:        __RELEASE__
 Summary:        Support tools and library 
 Group:          Libraries
@@ -38,7 +39,7 @@ Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}
 License:        BSD
 
-%package        perl
+%package        -n perl-Lintel
 Summary:        Lintel perl files
 Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}
@@ -66,7 +67,7 @@ __DESCRIPTION_lintel-utils__
 %description    docs
 __DESCRIPTION_liblintel-dev-doc__
 
-%description    perl
+%description    -n perl-Lintel
 __DESCRIPTION_liblintel-perl__
 
 %prep
@@ -126,7 +127,7 @@ rm -rf $RPM_BUILD_ROOT rpm-build
 /usr/share/doc/Lintel
 %{_docdir}/Lintel-%{version}/Changelog.mtn
 
-%files perl
+%files -n perl-Lintel
 /usr/lib/perl5
 /usr/share/perl5
 

@@ -77,7 +77,6 @@ LINTEL_POD2MAN(drawRandomLogNormal.cpp 1 "Lintel ${LINTEL_VERSION}" "-" drawRand
 IF(PERL_ENABLED)
     LINTEL_INSTALL_FILE_PATH(${CMAKE_INSTALL_PREFIX}/share/perl5
     	Text/Expand.pm
-    	Text/ExpandInt.pm
     	Lintel/File/Lock.pm
 	Lintel/ProcessManager.pm
     )

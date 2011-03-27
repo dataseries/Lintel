@@ -39,7 +39,7 @@ TMP_USR=$(CURDIR)/debian/tmp/usr
 install: build
 	dh_testdir
 	dh_testroot
-	dh_clean -k
+	dh_prep
 	dh_installdirs
 
 	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
