@@ -613,31 +613,77 @@ void Clock::timingTest() {
     // (faster? but wrong)
 }
 
+namespace {
+// TODO: move the tests into clock.cpp
+    void nsCheck(uint32_t sec, uint32_t nsec) {
+        Clock::Tfrac tfrac = Clock::secNanoToTfrac(sec, nsec);
+        uint32_t sec_test = Clock::TfracToSec(tfrac);
+        uint32_t ns_test = Clock::TfracToNanoSec(tfrac);
+        if (!(sec_test == sec && ns_test == nsec)) {
+            uint32_t low_bits = tfrac & 0xFFFFFFFFULL;
+            double tmp_a = low_bits * 1.0e9;
+            double tmp_b = tmp_a / 4294967296.0;
+            FATAL_ERROR(format("s.ns <-> Tfrac failed: %d.%d -> %lld (lowbits %lld -> %.5f -> %.5f) -> %d.%d")
+                        % sec % nsec % tfrac % low_bits % tmp_a % tmp_b % sec_test % ns_test);
+        }
+    }
+
+    void usCheck(uint32_t sec, uint32_t usec) {
+	Clock::Tfrac tfrac = Clock::secMicroToTfrac(sec, usec);
+	uint32_t sec_test = Clock::TfracToSec(tfrac);
+	uint32_t us_test = Clock::TfracToMicroSec(tfrac);
+	INVARIANT(sec_test == sec && us_test == usec,
+		  format("s.us <-> Tfrac failed: %d.%d -> %lld (lowbits %lld) -> %d.%d")
+		  % sec % usec % tfrac % (tfrac & 0xFFFFFFFFULL) % sec_test % us_test);
+    }
+}
+        
 void Clock::selfCheck() {
-    cout << "Checking conversion from s.us <-> Tfrac" << endl;
+    LintelLog::parseEnv();
+    cout << "Checking conversion from s.us <-> Tfrac\n";
     
     MersenneTwisterRandom rand;
 
+    // A few hard coded checks from values that had shown bugs in older code.
+    usCheck(1242413341,1);
+    nsCheck(0, 500000007);
+
     for(uint32_t us = 0; us < 1000000; ++us) { // test all possible us values.
 	uint32_t sec = rand.randInt();
-	Clock::Tfrac tfrac = secMicroToTfrac(sec, us);
-	uint32_t sec_test = TfracToSec(tfrac);
-	uint32_t us_test = TfracToMicroSec(tfrac);
-	INVARIANT(sec_test == sec && us_test == us,
-		  format("s.us <-> Tfrac failed: %d.%d -> %lld (lowbits %lld) -> %d.%d")
-		  % sec % us % tfrac % (tfrac & 0xFFFFFFFFULL) % sec_test % us_test);
+
+        usCheck(sec, us);
     }
     
-    cout << "Checking conversion from s.ns <-> Tfrac" << endl;
-    for(uint32_t testnum = 0; testnum < 20000000; ++testnum) { // sample test 2% of possible values
+    if (LintelLog::wouldDebug("full_nsec")) {
+        cout << "Full check of {0, 2^31-1}.[0..10^9-1] <-> Tfrac\n";
+        uint32_t sec = (1UL << 31) - 1;
+        for(uint32_t nsec = 0; nsec < 1000*1000*1000; ++nsec) {
+            if ((nsec % 0x1000000) == 0) {
+                cout << format("  %d\n") % nsec;
+            }
+            nsCheck(0, nsec);
+            nsCheck(sec, nsec);
+        }
+    }
+
+    cout << "Sampling checking conversion from s.ns <-> Tfrac;\n"
+        "  LINTEL_LOG_DEBUG=full_nsec for full check.\n";
+    for(uint32_t testnum = 0; testnum < 10000000; ++testnum) { // sample test 1% of possible values
 	uint32_t sec = rand.randInt();
 	uint32_t ns = rand.randInt(1000000000);
-	Clock::Tfrac tfrac = secNanoToTfrac(sec, ns);
-	uint32_t sec_test = TfracToSec(tfrac);
-	uint32_t ns_test = TfracToNanoSec(tfrac);
-	INVARIANT(sec_test == sec && ns_test == ns,
-		  format("s.ns <-> Tfrac failed: %d.%d -> %lld (lowbits %lld) -> %d.%d")
-		  % sec % ns % tfrac % (tfrac & 0xFFFFFFFFULL) % sec_test % ns_test);
+        nsCheck(sec, ns);
+    }
+    
+    cout << "Checking conversion from s.ns <-> Tfrac at boundary\n";
+    uint64_t four_billion = 1ULL << 32;
+    for(uint64_t tfrac = four_billion - 1000; tfrac < four_billion + 1000; ++tfrac) {
+        uint32_t sec_test = TfracToSec(tfrac);
+        uint32_t ns_test = TfracToNanoSec(tfrac);
+        uint32_t us_test = TfracToMicroSec(tfrac);
+        INVARIANT(sec_test == static_cast<uint32_t>(tfrac < four_billion ? 0 : 1), 
+                  format("%d -> %d.%d") % tfrac % sec_test % ns_test);
+        INVARIANT(ns_test < 1000 * 1000 * 1000, format("%d -> %d.%d") % tfrac % sec_test % ns_test);
+        INVARIANT(us_test < 1000 * 1000, format("%d -> %d.%d") % tfrac % sec_test % us_test);
     }
 }
 

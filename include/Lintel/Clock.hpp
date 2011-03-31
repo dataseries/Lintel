@@ -188,6 +188,9 @@ public:
     //////////////////////////////////////////
     /// Tfrac conversion routines...
 
+    // Because static const double isn't standard C++, GRR
+#define DBL_TFRAC_PER_SECOND 4294967296.0
+
     static Tfrac secondsToTfrac(double seconds) {
 	INVARIANT(seconds < std::numeric_limits<uint32_t>::max(), 
 		  boost::format("seconds %g out of bounds for conversion")
@@ -200,20 +203,20 @@ public:
 	//             ~= round(lower * 1e9 * 2^32 / 1e9)
 	//             = round(lower * 2^32)
 	//             = round((now - secs) * 2^32) = tmp
-	double tmp = round((seconds - sec_only) * 4294967296.0);
+	double tmp = round((seconds - sec_only) * DBL_TFRAC_PER_SECOND);
 	uint32_t tfrac_lower = static_cast<uint32_t>(tmp);
 	return (static_cast<uint64_t>(sec_only) << 32) + tfrac_lower;	
     }
 
     static Tfrac secMicroToTfrac(uint32_t seconds, uint32_t micro_seconds) {
 	Tfrac ret = static_cast<Tfrac>(seconds) << 32;
-	ret += (static_cast<Tfrac>(micro_seconds) << 32) / 1000000;
+	ret += static_cast<Tfrac>(ceil(micro_seconds * DBL_TFRAC_PER_SECOND / 1.0e6));
 	return ret;
     }
 
     static Tfrac secNanoToTfrac(uint32_t seconds, uint32_t nano_seconds) {
 	Tfrac ret = static_cast<Tfrac>(seconds) << 32;
-	ret += (static_cast<Tfrac>(nano_seconds) << 32) / 1000000000;
+	ret += static_cast<Tfrac>(ceil((nano_seconds * DBL_TFRAC_PER_SECOND) / 1.0e9));
 	return ret;
     }
 
@@ -224,20 +227,20 @@ public:
 
     /// Extracts only the microseconds portion of in
     static uint32_t TfracToMicroSec(Tfrac in) {
-	in = in & 0xFFFFFFFFULL;
+	uint32_t low_bits = in & 0xFFFFFFFFULL;
 	// Have to convert through a double because the conversion is
 	// inexact, e.g.  1 us -> 4294 Tfrac units -> 0.99977 us
-	double tmp = static_cast<double>(in) * 1.0e6 / 4294967296.0;
-	return static_cast<uint32_t>(round(tmp));
+	double tmp = (static_cast<double>(low_bits) * 1.0e6) / DBL_TFRAC_PER_SECOND;
+	return static_cast<uint32_t>(floor(tmp));
     }
 
     /// Extracts only the nanoseconds portion of in
     static uint32_t TfracToNanoSec(Tfrac in) {
-	in = in & 0xFFFFFFFFULL;
+	uint32_t low_bits = in & 0xFFFFFFFFULL;
 	// Have to convert through a double because the conversion is
 	// inexact
-	double tmp = static_cast<double>(in) * 1.0e9 / 4294967296.0;
-	return static_cast<uint32_t>(round(tmp));
+	double tmp = (low_bits * 1.0e9) / DBL_TFRAC_PER_SECOND;
+	return static_cast<uint32_t>(floor(tmp));
     }
 
     static Tll TfracToTll(Tfrac in) {
@@ -247,7 +250,7 @@ public:
     // double in seconds
     static double TfracToDouble(Tfrac in) {
 	return TfracToSec(in) 
-	    + static_cast<uint32_t>(in & 0xFFFFFFFFULL) / 4294967296.0;
+	    + static_cast<uint32_t>(in & 0xFFFFFFFFULL) / DBL_TFRAC_PER_SECOND;
     }
 
     // double in seconds
