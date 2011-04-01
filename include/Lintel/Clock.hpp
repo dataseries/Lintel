@@ -188,7 +188,7 @@ public:
     //////////////////////////////////////////
     /// Tfrac conversion routines...
 
-    // Because static const double isn't standard C++, GRR
+    // Use define for double with balue 2^32 because static const double isn't standard C++.
 #define DBL_TFRAC_PER_SECOND 4294967296.0
 
     static Tfrac secondsToTfrac(double seconds) {
