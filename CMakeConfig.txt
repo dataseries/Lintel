@@ -37,10 +37,6 @@ INCLUDE(LintelFind)
 SET(BOOST_THREAD_FIND_REQUIRED ON)
 LINTEL_BOOST_EXTRA(BOOST_THREAD boost/thread/tss.hpp "boost_thread boost_thread-mt")
 
-IF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
-    MESSAGE(FATAL_ERROR "Huh? different boost-thread/boost include dirs '${BOOST_THREAD_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
-ENDIF(NOT "${BOOST_THREAD_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
-
 ##### Optional bits
 
 LINTEL_WITH_PROGRAM(PERL perl)

@@ -345,7 +345,7 @@ ENDMACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE)
 
 MACRO(LINTEL_BOOST_EXTRA variable header libname)
     IF("${Boost_INCLUDE_DIRS}" STREQUAL "")
-        MESSAGE("WARNING: Did not include FindBoost")
+        MESSAGE("WARNING: Did not include FindBoost, automatically including")
 	INCLUDE(FindBoost)
     ENDIF("${Boost_INCLUDE_DIRS}" STREQUAL "")
 
