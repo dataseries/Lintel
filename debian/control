@@ -58,7 +58,7 @@ Description: Documentation for liblintel-dev
  This package contains all of the documentation for liblintel-dev, mostly the 
  auto-generated doxygen documentation.  This package is only useful if you have
  already installed liblintel-dev since without that package, the documentation 
- in this one covers nothing.
+ in this one covers nothing that is installed.
 
 Package: liblintel-dev
 Section: libdevel
