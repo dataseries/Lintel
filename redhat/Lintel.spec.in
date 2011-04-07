@@ -28,13 +28,13 @@ Requires:       cmake
 License:        BSD
 
 %package	utils
-Summary:        Lintel devel files
+Summary:        Lintel utilities
 Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}, %{name}-perl
 License:        BSD
 
 %package	docs
-Summary:        Lintel devel files
+Summary:        Lintel development files documentation
 Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}
 License:        BSD
