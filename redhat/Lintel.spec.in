@@ -5,7 +5,7 @@ Name:           Lintel
 Version:        __VERSION__
 URL:            http://tesla.hpl.hp.com/opensource.html
 Source:         %{name}-%{version}.tar.gz
-# TODO: can we have a no-release package?  We'll do a Lintel re-release on packaging glitches
+# TODO-package-reviewer: can we have a no-release package?  We'll do a Lintel re-release on packaging glitches
 Release:        __RELEASE__
 Summary:        Support tools and library 
 Group:          Development/Libraries
@@ -13,7 +13,7 @@ License:        BSD
 Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
-# TODO: do we split shared libraries as in debian?
+# TODO-package-reviewer: do we split shared libraries as in debian?
 %package	libs
 Summary:        Lintel library files
 Group:          Development/Libraries
@@ -33,6 +33,7 @@ Group:          Development/Libraries
 Requires:       %{name}-libs = %{version}-%{release}, %{name}-perl
 License:        BSD
 
+# TODO-package-reviewer: how do we make this package architecture independent?
 %package	docs
 Summary:        Lintel development files documentation
 Group:          Development/Libraries
@@ -120,6 +121,7 @@ strip $RPM_BUILD_ROOT/usr/lib64/libLintel*.so.*.*
 
 %clean
 rm -rf $RPM_BUILD_ROOT rpm-build
+./redhat/rules clean
 
 # rpmlint complains about libLintel calling exit(), but that's intentional; 
 # libLintel includes the equivalent of assert().
