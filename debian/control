@@ -1,6 +1,6 @@
 Source: lintel
-# Priority option; shouldn't conflict with anything else, could be extra since people are unlikely
-# to install it unless they know what it is.
+# Priority optional; shouldn't conflict with anything else, could be extra since people are
+# unlikely to install it unless they know what it is.
 Priority: optional
 Maintainer: Eric Anderson <anderse@hpl.hp.com>
 Build-Depends: debhelper (>= 7), cmake, libboost-thread-dev | libboost-thread1.35-dev, 
@@ -36,11 +36,15 @@ Description: Miscellaneous utility library - pthread C++ library
  should probably be only installed as part of a dependency from some other
  package.
 
-# TODO: Should deptool be part of liblintel-dev?
+# TODO-package-reviewer: Should deptool be part of liblintel-dev?  It's used to 
+# build packages and their dependencies, and handle checkout/checkin/etc; so it's
+# somewhat a development tool, but it's also a utility.
 Package: lintel-utils
 Section: utils
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, liblintel0, liblintel-perl
+Depends: ${shlibs:Depends}, ${misc:Depends}, liblintel0, liblintel-perl,
+  texlive-latex-base, ghostscript, libboost-dev | libbost1.35-dev, 
+  libboost-program-options-dev | libboost-program-options1.35-dev
 Description: Miscellaneous utility library - programs
  Lintel is the miscellaneous utility library for shared functions that are
  individually valuable but are not valueable enough to form their own package.
@@ -71,6 +75,7 @@ Description: Miscellaneous utility library - development code
  It includes code for statistics, hashing, pointer utilities, assertions, etc.
  This package include all of the includes necessary to develop with libLintel.
 
+# TODO-package-reviewer: is the below correct?
 # Looks like the convention is to not have the perl libraries versioned.  We could split out
 # the binary independent portions, but that doesn't seem worthwhile.
 Package: liblintel-perl
