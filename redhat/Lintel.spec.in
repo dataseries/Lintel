@@ -12,6 +12,11 @@ Group:          Development/Libraries
 License:        BSD
 Packager:	HPL SSD Software <software@cello.hpl.hp.com>
 BuildRoot:      %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+# special extra packages on CentOS5, from EPEL or elsewhere
+BuildRequires: cmake, chrpath
+# Standard packages
+BuildRequires: boost-devel, chrpath, doxygen, sg3_utils, gnuplot, netpbm-progs, openssh-clients
+BuildRequires: perl-DBI, perl-DBD-MySQL, libxml2-devel, tetex-latex, tetex-dvips, ghostscript
 
 # TODO-package-reviewer: do we split shared libraries as in debian?
 %package	libs
