@@ -43,8 +43,7 @@ Package: lintel-utils
 Section: utils
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, liblintel0, liblintel-perl,
-  texlive-latex-base, ghostscript, libboost-dev | libbost1.35-dev, 
-  libboost-program-options-dev | libboost-program-options1.35-dev
+  texlive-latex-base, ghostscript 
 Description: Miscellaneous utility library - programs
  Lintel is the miscellaneous utility library for shared functions that are
  individually valuable but are not valueable enough to form their own package.
@@ -67,7 +66,10 @@ Description: Documentation for liblintel-dev
 Package: liblintel-dev
 Section: libdevel
 Architecture: any
-Depends: liblintel0 (= ${binary:Version}), liblintelpthread0 (= ${binary:Version}), ${misc:Depends}
+Depends: liblintel0 (= ${binary:Version}), liblintelpthread0 (= ${binary:Version}), 
+  ${misc:Depends}, libxml2-dev,
+  libboost-dev | libboost1.35-dev, libboost-program-options-dev | libboost-program-options1.35-dev
+  
 Recommends: liblintel-dev-doc
 Description: Miscellaneous utility library - development code
  Lintel is the miscellaneous utility library for shared functions that are
