@@ -23,6 +23,9 @@ use Lintel::ProcessManager;
 # TODO: think about the configuration a bit more, if we want to properly
 # support lvm and md configurations, then we need something more sophisticated.
 
+# TODO: need to be able to support not using partitions, and gpt partitions for
+# big (>2.2TB) drives
+
 my %config;
 
 my $config_path = "/etc/lintel-disktool.config";
