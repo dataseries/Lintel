@@ -191,14 +191,31 @@ FIND_PROGRAM(PS2PDF14_CONVERTER
 
 OPTION(WITH_LATEX "Include the latex rebuild script (requires latex, bibtex, dvips, ps2pdf14)" On)
 IF(WITH_LATEX)
-    IF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
-       AND PS2PDF14_CONVERTER)
+    IF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER AND PS2PDF14_CONVERTER)
         SET(LATEX_ENABLED ON)
-    ELSE(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
-         AND PS2PDF14_CONVERTER)
+    ELSE(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER AND PS2PDF14_CONVERTER)
         SET(LATEX_ENABLED OFF)
-    ENDIF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER 
-          AND PS2PDF14_CONVERTER)
+    ENDIF(LATEX_COMPILER AND BIBTEX_COMPILER AND DVIPS_CONVERTER AND PS2PDF14_CONVERTER)
+
+    IF(LATEX_ENABLED)
+        MACRO(CHECK_P_THING thing)
+            EXECUTE_PROCESS(COMMAND ${DVIPS_CONVERTER} -P ${thing}
+                            OUTPUT_VARIABLE dvips_${thing}_out ERROR_VARIABLE dvips_${thing}_err)
+            IF(dvips_${thing}_err MATCHES "no config file for .${thing}.")
+                SET(DVIPS_P_${thing})
+            ELSE(dvips_${thing}_err MATCHES "no config file for .${thing}.")
+                SET(DVIPS_P_${thing} "-P ${thing}")
+            ENDIF(dvips_${thing}_err MATCHES "no config file for .${thing}.")
+        ENDMACRO(CHECK_P_THING thing)
+        
+        CHECK_P_THING(pdf)
+        CHECK_P_THING(cmz)
+        CHECK_P_THING(amz)
+        IF(NOT DVIPS_P_pdf)
+            MESSAGE("WARNING: Can not find config file for pdf, disabling latex")
+            SET(LATEX_ENABLED NO)
+        ENDIF(NOT DVIPS_P_pdf)
+    ENDIF(LATEX_ENABLED)
 
     IF(NOT LATEX_ENABLED) 
         MESSAGE("WITH_LATEX on, but could not find latex, bibtex, dvips, ps2pdf14")
