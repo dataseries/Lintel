@@ -11,7 +11,7 @@ usage() { # Full manpage is at the bottom
     echo "Usage: $0"
     echo "  [--tex <path>] [--bib <path>] [--bst <path>] [--paper <paper-size>]"
     echo "  [--error-on-warnings] [--latex-binary <path>] [--disable-flock]"
-    echo "  [--max-step-time <60 seconds>]"
+    echo "  [--max-step-time <60 seconds>] [--max-retries <default 3>]"
     echo "  <srcdir> <main-texfile-basename>"
     echo "-----"
     echo "    <path> is a : separated sequence of paths"
@@ -37,6 +37,7 @@ ERROR_ON_WARNINGS=false
 MIN_CROSSREFS=9000
 USE_FLOCK=true
 MAX_STEP_TIME=60
+MAX_RETRIES=3
 while $CONTINUE; do
     case "$1" in
 	--tex)
@@ -77,12 +78,19 @@ while $CONTINUE; do
             shift
             USE_FLOCK=false;
             ;;
-	--max-step-time) # maximum amount of time any individual rebuild step may take, abort if reached.
+	--max-step-time) 
 	    shift
 	    [ $# != 0 ] || usage
 	    MAX_STEP_TIME="$1"
 	    shift
 	    ;;
+	--max-retries) 
+	    shift
+	    [ $# != 0 ] || usage
+	    MAX_RETRIES="$1"
+	    shift
+	    ;;
+
 	*)
 	    CONTINUE=false
 	    ;;
@@ -120,15 +128,26 @@ if $USE_FLOCK; then
 fi
 
 run_with_timeout() {
-    echo "Starting $* with timeout $MAX_STEP_TIME"
-    "$@" &
-    WORK_PID=$!
-    (sleep $MAX_STEP_TIME; kill -TERM $WORK_PID) >/dev/null 2>&1 &
-    KILL_PID=$!
-    wait $WORK_PID
-    return_code=$?
-    kill -INT $KILL_PID >/dev/null 2>&1
-    return $return_code
+    local retry_count=0
+    while [ $retry_count -lt $MAX_RETRIES ]; do
+        retry_count=`expr $retry_count + 1`
+        echo "$0: Starting $* with timeout $MAX_STEP_TIME, try $retry_count of $MAX_RETRIES"
+        "$@" &
+        WORK_PID=$!
+        (sleep $MAX_STEP_TIME; kill -TERM $WORK_PID; echo "Timeout on $*; killed" 1>&2) &
+        KILL_PID=$!
+        wait $WORK_PID
+        return_code=$?
+        if kill -TERM $KILL_PID >/dev/null 2>&1; then
+            : # normal completion
+            wait $KILL_PID
+            echo "$0: Finished $*, return code $return_code"
+            return $return_code
+        else
+            wait $KILL_PID
+            echo "$0: Timeout on $*, retrying"
+        fi
+    done
 }
 
 rebuild_latex() {
@@ -328,6 +347,12 @@ This code avoids issues with parallel makes building the same document twice at 
 
 Specify the maximum time that an individual step can take.  pdftex has been seen to hang
 occasionally on centos.  This option at least causes the build to stop.
+
+=item --max-retries <3 tries>
+
+Specify the maximum number of times to retry after a timeout.  This allows us to succeed in
+cases where the pdftex race condition would otherwise have caused failures.  After max-retries
+tries the build will stop.
 
 =item <srcdir>
 
