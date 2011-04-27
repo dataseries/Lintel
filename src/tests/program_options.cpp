@@ -131,9 +131,9 @@ void read_config_file_test(int argc, char *argv[]) {
     }	
 
     SINVARIANT(po_int.get() == 10);
-    SINVARIANT(po_str.get() == "test string");
+    INVARIANT(po_str.get() == "test string", boost::format("'%s'") % po_str.get());
     SINVARIANT(po_s1_int.get() == 20);
-    SINVARIANT(po_s2_str.get() == "test section");
+    INVARIANT(po_s2_str.get() == "test section", boost::format("'%s'") % po_s2_str.get());
     exit(0);
 }
 
