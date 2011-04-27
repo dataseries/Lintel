@@ -2415,23 +2415,20 @@ sub mtnServePushTo {
                                 chdir("$workdir/projects/$project")
                                     or die "chdir $workdir/projects/$project failed: $!";
                                 runCommand("deptool pull"); 
-                                $ENV{MTN_SERVER} = 'localhost';
-                                depWalk(sub { 
-                                    my @heads = getCurHeads();
-                                    my ($project, @rest) = divideDir(aliasGetCwd());
-                                    print "HEADS $project: @heads\n";
-                                    mtnOp("push"); # push anything we go to the untested server
-                                }, sub { }, 0);
-                                $ENV{MTN_SERVER} = $host;
-                                runCommand("deptool publish");
+				mtnServePushToBackpropagate($host);
+				# survive errors in publish
+                                eval { runCommand("deptool publish"); };
+				my $error = $@;
+				mtnServePushToBackpropagate($host);
+				die $error if $error;
                                 exit(0);
                             }, 'stdout' => "$workdir/push-one.log", 'stderr' => 'STDOUT');
         my %pid_to_status = $pm->waitAll();
         die "internal" unless defined $pid_to_status{$pid};
 
-
         my $output = readFile("$workdir/push-one.log");
         my @heads = grep(/^HEADS /o, split(/\n/o, $output));
+	die "Missing heads?" unless @heads > 0;
         my $new_heads = join('', @heads);
         if ($pid_to_status{$pid} == 0) {
             print "Success at $now\n";
@@ -2473,6 +2470,18 @@ END
         }
     }
     exit(0);
+}
+
+sub mtnServePushToBackpropagate {
+    my ($host) = @_;
+    $ENV{MTN_SERVER} = 'localhost';
+    depWalk(sub { 
+	my @heads = getCurHeads();
+	my ($project, @rest) = divideDir(aliasGetCwd());
+	print "HEADS $project: @heads\n";
+	mtnOp("push"); # push anything we got to the untested server
+    }, sub { }, 0);
+    $ENV{MTN_SERVER} = $host;
 }
 
 ##### depPublish
