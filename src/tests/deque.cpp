@@ -11,6 +11,7 @@
 
 // TODO: add performance comparison to this test
 #include <iostream>
+#include <inttypes.h>
 
 #include <Lintel/Deque.hpp>
 using namespace std;
