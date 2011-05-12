@@ -9,15 +9,24 @@
 
 namespace lintel {
 
+#if defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 401) // need at least gcc 4.1
+#    if defined(__i386__) // Pure __i386__ does not have a __sync_add_and_fetch that can return a value.
+#        if defined(__i486__) || defined(__i586__) || defined(__i686__)
+    
+#            define LINTEL_HAS_SYNC_ADD_AND_FETCH 1
+#        endif       
+#    else // Assume all non i386 archs have it
+#        define LINTEL_HAS_SYNC_ADD_AND_FETCH 1
+#    endif
+#endif
+
+
 #if defined(LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH)
     // pre-defined by user
-#elif defined (__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ >= 401)
-
-    // GCC 4.1 and up
+#elif defined(LINTEL_HAS_SYNC_ADD_AND_FETCH)
 #    define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(var, amount) \
             __sync_add_and_fetch(&(var), (amount))
-
-#elif defined (__GNUC__) && (defined(__i386__) || defined(__x86_64__))
+#elif defined(__GNUC__) && (defined(__i386__) || defined(__x86_64__))
     // Generates same assembly as __sync_add_and_fetch on lenny 64bit
     // (Except for the #APP #NO_APP bits)
     static inline int x86GccAddThenFetch(int *counter, int v) {
@@ -31,7 +40,7 @@ namespace lintel {
     }
 
 #    define LINTEL_ATOMIC_COUNTER_ADD_THEN_FETCH(counter, amount) \
-            x86GccAddThenFetch(&(counter), (amount))
+         lintel::x86GccAddThenFetch(&(counter), (amount))
 #else
 #error AtomicCounter does not have primitives for the detected platform
 #endif

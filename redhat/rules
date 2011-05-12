@@ -7,14 +7,56 @@ help:
 	@echo "redhat/rules repo # copy rpms to yum repo under $$REDHAT_REPO"
 	@echo "redhat/rules clean # clean up temporary files made during above steps"
 
+.SECONDARY:
+
+# Should we build against vault.centos.org for the older versions?  CentOS changes various things
+# so that it's not clear you can install an RPM built against 5.6 on 5.4.
+# See also: http://www.centos.org/modules/smartfaq/faq.php?faqid=34
+CENTOS_VERSIONS := 5 5.5 5.6
+
+MOCK_CENTOS := $(foreach version, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
+		    redhat/stamp/mock/centos-$(version)-$(arch)))
+
+FEDORA_VERSIONS := 13 14
+
+MOCK_FEDORA := $(foreach version, $(FEDORA_VERSIONS), $(foreach arch, x86_64 i386, \
+		    redhat/stamp/mock/fedora-$(version)-$(arch)))
+
+mock: mock-centos mock-fedora
+
+mock-centos: $(MOCK_CENTOS)
+
+mock-fedora: $(MOCK_FEDORA)
+
+redhat/stamp/mock/%: /var/cache/mock/lintel-%/root_cache/cache.tar.gz /etc/mock/lintel-%.cfg redhat/stamp/srpm
+	[ `whoami` = root ]
+	mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
+	    -r lintel-$* `redhat/get-lintel-srpm.sh $*`
+	mkdir -p `dirname $@`
+	touch $@
+
+/var/cache/mock/%/root_cache/cache.tar.gz: /etc/mock/%.cfg
+	[ `whoami` = root ]
+	[ ! -z "$$http_proxy" ]
+	ls -l /etc/mock/$*.cfg
+	sudo mock --init -r $*
+
+/etc/mock/lintel-%.cfg: 
+	[ `whoami` = root ]
+	./redhat/mock-cfg.pl $*
+	echo "made $@"
+
 tar: redhat/stamp/tar
 
 copy-tar: redhat/stamp/copy-tar
 
 rpm: redhat/stamp/rpm
 
-srpm: redhat/stamp/copy-tar
-	rpmbuild -bs redhat/Lintel.spec
+srpm: redhat/stamp/srpm
+
+redhat/stamp/srpm:
+	/bin/sh redhat/make-srpms.sh
+	touch $@
 
 repo: redhat/stamp/repo
 
