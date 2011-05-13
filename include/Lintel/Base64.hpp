@@ -41,10 +41,10 @@ namespace lintel {
 	}
 	
 	static std::string decode(std::string &data) {
-	    return encode(data.data(), data.size());
+	    return decode(data.data(), data.size());
 	}
 
-	static std::string decode(const char *data, int32_t size) {
+	static std::string decode(const char *data, size_t size) {
 	    const char *table = detranslate();
 	    int32_t ret_size = ((size*6)/8);
 	    std::string ret(ret_size, translate()[0]);
