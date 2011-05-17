@@ -35,7 +35,7 @@ my $out = new FileHandle ">redhat/Lintel.spec"
 while (<$in>) {
     s/__VERSION__/$version/o;
     s/__RELEASE__/$release/o;
-    s/^#patch-spec-if $os\s+//o;
+    s/^#if-$os\s+//o;
     if (/__DESCRIPTION_(\S+)__/o) {
         my $pkg = $1;
         die "missing description for $pkg" unless defined $descriptions{$pkg};

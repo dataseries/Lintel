@@ -79,8 +79,7 @@ build: build-stamp
 build-stamp:  debian/build/config-stamp
 	dh_testdir
 
-	# TODO: remove the -j6, also run tests.
-	(cd debian/build && $(MAKE) -j 6)
+	(cd debian/build && $(MAKE))
 	(cd debian/build && ctest)
 
 	touch $@

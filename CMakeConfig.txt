@@ -5,6 +5,9 @@
 #
 # All of the options and dependencies for the various cmake sub-bits
 
+# Try: -Wl,-as-needed
+# to remove unnecessary links and make lintian happier.
+
 INCLUDE(LintelCMakeUtil)
 
 LINTEL_RPATH_CONFIG()
