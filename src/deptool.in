@@ -2753,14 +2753,14 @@ Assuming you just want to continue reviewing.\n";
 
     if (! -d $basedir) {
         mkdir($basedir, 0755) or die "unable to mkdir $basedir: $!";
-        codeReviewSequence(\@revisions, \%parents, $branch, $basedir);
+        codeReviewSequence(\@revisions, \%parents, $basedir);
     } else {
         kdiffDirs($basedir, $original_dir, $final_dir, \@revisions);
     }
 }
 
 sub codeReviewSequence {
-    my ($revs, $parents, $branch, $basedir) = @_;
+    my ($revs, $parents, $basedir) = @_;
 
     die "no revisions?" unless @$revs > 0;
     my @revisions = grep(!/^merge:/o, @$revs);
@@ -2777,7 +2777,7 @@ sub codeReviewSequence {
             substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
                 "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
         
-        codeReviewCheckout($database, $branch, "$basedir/$start", $start);
+        codeReviewCheckout($database, "$basedir/$start", $start);
         
         $last = $start;
         while (@revisions > 0) {
@@ -3066,10 +3066,19 @@ sub markReviewed {
 }
 
 sub codeReviewCheckout {
-    my($database, $branch, $targetdir, $revision) = @_;
+    my($database, $targetdir, $revision) = @_;
 
-    quietRunCommand('mtn', 'checkout', '-d', $database, '-b', $branch, 
-                    '-r', $revision, $targetdir);
+    my $certs = vcGetCertificates($database, $revision);
+    $certs = $certs->{$revision};
+    die "no certificates on revision $revision?" unless defined $certs;
+    my @cmd = ('mtn', 'checkout', '-d', $database, '-r', $revision);
+    if (@{$certs->{branch}} == 2) {
+        my @values = sort { (length $a) <=> (length $b) } map { $_->{value} } @{$certs->{branch}};
+        push(@cmd, "-b", $values[0]);
+        print "Using shortest branch $values[0]\n";
+    }
+
+    quietRunCommand(@cmd, $targetdir);
 }
 
 sub codeReviewPatch {
