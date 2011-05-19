@@ -1,7 +1,8 @@
 #!/usr/bin/perl -w
 use strict;
-use Time::HiRes 'time';
+use FileHandle;
 use Lintel::ProcessManager 'maskCoredump';
+use Time::HiRes 'time';
 
 my $process_manager = new Lintel::ProcessManager();
 
@@ -71,16 +72,30 @@ sub testCoreDump {
     my $status = $process_manager->waitPid($pid);
 
     die "? $status" unless $status == 11;
-    
+
     eval q{ setrlimit(RLIMIT_CORE, 4096, 4096) or die "setrlimit(core-4k): $!"; }; die $@ if $@;
+
+    my $do_status_test = 1;
+    if (-f "/etc/SuSE-release") {
+        # openSUSE 11.2 does not properly return the core status.  Tested using a simple
+        # program that calls system("thing that aborts").  The core file is generated, the
+        # status is wrong.  The C equivalent works properly.
+        my $fh = new FileHandle "/etc/SuSE-release" or die "?";
+        $_ = <$fh>;
+        $do_status_test = 0 if / 11\.2 /o;
+    }
 
     $pid = $process_manager->fork(cmd => sub { kill 'SEGV', $$ });
     my $core_status = $process_manager->waitPid($pid);
 
-    die "? $core_status" unless $core_status == (11 | 0x80);
+    if ($do_status_test) {
+        die "? $core_status" unless $core_status == (11 | 0x80);
 
-    my $mask_status = maskCoredump($core_status);
-    die "? $mask_status != $status" unless $mask_status == $status;
+        my $mask_status = maskCoredump($core_status);
+        die "? $mask_status != $status" unless $mask_status == $status;
+    } else {
+        warn "Skipping core status test, it is broken on this platform; see test-lintel-processmanager for details";
+    }
 
     die "missing core file" unless -f "core" || -f "core.$pid";
     unlink("core", "core.$pid");

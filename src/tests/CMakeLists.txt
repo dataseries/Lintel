@@ -51,11 +51,11 @@ ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
-IF(PERL_ENABLED)
+IF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED)
     ADD_TEST(deptool-env env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
     ADD_TEST(deptool-help-init env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} ${CMAKE_CURRENT_BINARY_DIR}/../deptool help init)
     ADD_TEST(lintel-processmanager env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} perl ${CMAKE_CURRENT_SOURCE_DIR}/test-lintel-processmanager.pl)
-ENDIF(PERL_ENABLED)
+ENDIF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED)
 
 IF(LINTEL_DBI_ENABLED)
     ADD_TEST(test_lintel_dbi ${PERL_PATH} -I${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../perl/test_lintel_dbi.pl)

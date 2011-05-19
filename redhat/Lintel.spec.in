@@ -27,6 +27,9 @@ BuildRequires: boost-devel, doxygen, sg3_utils, gnuplot, perl-DBI, libxml2-devel
 #if-opensuse BuildRequires: netpbm, openssh, perl-DBD-mysql, ghostscript-library, texlive-latex
 #if-opensuse BuildRequires: perl-Data-ShowTable, perl-Digest-HMAC, perl-BSD-Resource
 
+#if-scilinux BuildRequires: perl-devel, netpbm-progs, openssh-clients, perl-Time-HiRes
+#if-scilinux BuildRequires: perl-DBD-MySQL, tetex-latex, tetex-dvips, ghostscript
+
 # TODO-package-reviewer: do we split shared libraries as in debian?
 %package	libs
 Summary:        Lintel library files
@@ -101,7 +104,6 @@ cd rpm-build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 pwd
-ls ..
 ../debian/fix-install.sh $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
 cp ../Release.info ../Changelog.mtn ../COPYING $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
