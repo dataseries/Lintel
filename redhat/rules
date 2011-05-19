@@ -6,6 +6,8 @@ help:
 	@echo "redhat/rules rpm # build rpms"
 	@echo "redhat/rules repo # copy rpms to yum repo under $$REDHAT_REPO"
 	@echo "redhat/rules clean # clean up temporary files made during above steps"
+	@echo "redhat/rules all-rpms # rebuild rpms on all the different platforms we support"
+	@echo "    # note you probably need lots of environment setup for this target to work"
 
 .SECONDARY:
 
@@ -24,16 +26,23 @@ MOCK_FEDORA := $(foreach version, $(FEDORA_VERSIONS), $(foreach arch, x86_64 i38
 
 # Supported releases: http://en.wikipedia.org/wiki/OpenSUSE
 OPENSUSE_VERSIONS := 11.2 11.3 11.4
+CHROOT_OPENSUSE := $(foreach version, $(OPENSUSE_VERSIONS), $(foreach arch, x86_64 i586, \
+			redhat/stamp/chroot/opensuse-$(version)-$(arch)))
 
-opensuse: 
-	# sudo ./redhat/opensuse-build.sh opensuse-11.4-x86_64
-	sudo ./redhat/opensuse-build.sh opensuse-11.4-i586
+SCILINUX_VERSIONS := 6.0
+MOCK_SCILINUX := $(foreach version, $(SCILINUX_VERSIONS), $(foreach arch, x86_64 i386, \
+		      redhat/stamp/mock/scilinux-$(version)-$(arch)))
 
-mock: mock-centos mock-fedora
+
+all-rpms: mock-centos mock-fedora chroot-opensuse mock-scilinux
 
 mock-centos: $(MOCK_CENTOS)
 
 mock-fedora: $(MOCK_FEDORA)
+
+chroot-opensuse: $(CHROOT_OPENSUSE)
+
+mock-scilinux: $(MOCK_SCILINUX)
 
 redhat/stamp/mock/%: /var/cache/mock/lintel-%/root_cache/cache.tar.gz /etc/mock/lintel-%.cfg redhat/stamp/srpm
 	[ `whoami` = root ]
@@ -45,6 +54,7 @@ redhat/stamp/mock/%: /var/cache/mock/lintel-%/root_cache/cache.tar.gz /etc/mock/
 /var/cache/mock/%/root_cache/cache.tar.gz: /etc/mock/%.cfg
 	[ `whoami` = root ]
 	[ ! -z "$$http_proxy" ]
+	echo $$http_proxy
 	ls -l /etc/mock/$*.cfg
 	sudo mock --init -r $*
 
@@ -52,6 +62,11 @@ redhat/stamp/mock/%: /var/cache/mock/lintel-%/root_cache/cache.tar.gz /etc/mock/
 	[ `whoami` = root ]
 	./redhat/mock-cfg.pl $*
 	echo "made $@"
+
+redhat/stamp/chroot/%: 
+	sudo ./redhat/opensuse-build.sh $*
+	mkdir -p `dirname $@`
+	touch $@
 
 tar: redhat/stamp/tar
 
@@ -61,7 +76,7 @@ rpm: redhat/stamp/rpm
 
 srpm: redhat/stamp/srpm
 
-redhat/stamp/srpm:
+redhat/stamp/srpm: redhat/stamp/copy-tar
 	/bin/sh redhat/make-srpms.sh
 	mkdir -p `dirname $@`
 	touch $@
@@ -74,11 +89,9 @@ clean:
 	rm -rf redhat/stamp
 	rm redhat/Lintel.spec
 
-redhat/stamp:
-	mkdir -p $@
-
-redhat/stamp/tar: redhat/stamp
+redhat/stamp/tar: 
 	./redhat/make-tar.sh
+	mkdir -p `dirname $@`
 	touch $@
 
 redhat/stamp/copy-tar: redhat/stamp/tar

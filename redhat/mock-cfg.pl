@@ -128,3 +128,64 @@ END_OF_FEDORA_CFG
     }
     writeConfig($cfg);
 }
+
+sub scilinux {
+    my $base_version = $version;
+    $base_version =~ s/\..*$//o;
+    my $mirror = "http://mirrors.200p-sf.sonic.net/scientific";
+    my $epel_mirror = "http://mirror.hmc.edu/epel";
+    my $cfg = <<"END_OF_SCILINUX_CFG";
+config_opts['root'] = 'lintel-scilinux-$version-$arch'
+config_opts['target_arch'] = '$arch'
+config_opts['chroot_setup_cmd'] = 'groupinstall buildsys-build'
+# mock 1.0.3 has an error trying to set the ccache maximum cache size on Scientific Linux 6
+config_opts['plugin_conf']['ccache_enable'] = False
+
+config_opts['yum.conf'] = """
+[main]
+cachedir=/var/cache/yum
+debuglevel=1
+logfile=/var/log/yum.log
+reposdir=/dev/null
+retries=20
+obsoletes=1
+gpgcheck=0
+assumeyes=1
+# grub/syslinux on x86_64 need glibc-devel.i386 which pulls in glibc.i386, need to exclude all
+# .i?86 packages except these.
+# exclude=[1-9A-Za-fh-z]*.i?86 g[0-9A-Za-km-z]*.i?86 gl[0-9A-Za-hj-z]*.i?86 gli[0-9A-Zac-z]*.i?86 glib[0-9A-Za-bd-z]*.i?86
+# repos
+
+[core]
+name=base
+baseurl=$mirror/$version/$arch/os/
+
+[updates-security]
+name=updates-security
+baseurl=$mirror/$version/$arch/updates/security
+
+[updates-fastbugs]
+name=updates-fastbugs
+baseurl=$mirror/$version/$arch/updates/fastbugs
+
+# [groups]
+# name=groups
+# baseurl=http://buildsys.fedoraproject.org/buildgroups/rhel$base_version/$arch/
+
+[extras]
+name=epel
+baseurl=$epel_mirror/$base_version/$arch
+
+[local]
+name=local
+baseurl=http://kojipkgs.fedoraproject.org/repos/dist-${base_version}E-epel-build/latest/$arch/
+cost=2000
+enabled=1
+
+"""
+END_OF_SCILINUX_CFG
+#    if ($arch eq 'i386') {
+#       $cfg =~ s/exclude=/\#exclude=/o;
+#    }
+    writeConfig($cfg);
+}
