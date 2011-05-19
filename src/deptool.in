@@ -2753,14 +2753,14 @@ Assuming you just want to continue reviewing.\n";
 
     if (! -d $basedir) {
         mkdir($basedir, 0755) or die "unable to mkdir $basedir: $!";
-        codeReviewSequence(\@revisions, \%parents, $basedir);
+        codeReviewSequence(\@revisions, \%parents, $branch, $basedir);
     } else {
         kdiffDirs($basedir, $original_dir, $final_dir, \@revisions);
     }
 }
 
 sub codeReviewSequence {
-    my ($revs, $parents, $basedir) = @_;
+    my ($revs, $parents, $branch, $basedir) = @_;
 
     die "no revisions?" unless @$revs > 0;
     my @revisions = grep(!/^merge:/o, @$revs);
@@ -2777,7 +2777,7 @@ sub codeReviewSequence {
             substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
                 "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
         
-        codeReviewCheckout($database, "$basedir/$start", $start);
+        codeReviewCheckout($database, $branch, "$basedir/$start", $start);
         
         $last = $start;
         while (@revisions > 0) {
@@ -3066,9 +3066,9 @@ sub markReviewed {
 }
 
 sub codeReviewCheckout {
-    my($database, $targetdir, $revision) = @_;
+    my($database, $branch, $targetdir, $revision) = @_;
 
-    quietRunCommand('mtn', 'checkout', '-d', $database, 
+    quietRunCommand('mtn', 'checkout', '-d', $database, '-b', $branch, 
                     '-r', $revision, $targetdir);
 }
 
