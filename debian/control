@@ -8,10 +8,11 @@ Maintainer: Eric Anderson <anderse@hpl.hp.com>
 Build-Depends: debhelper (>= 6), cmake, gnuplot, netpbm, ssh, sg3-utils, libdata-showtable-perl,
   libdigest-hmac-perl, libdbi-perl, libdbd-mysql-perl, libbsd-resource-perl, libxml2-dev, chrpath,
   texlive-latex-base, doxygen, ghostscript,
-  libboost-thread-dev | libboost-thread1.35-dev | libboost-thread1.42-dev, 
+  libboost-thread-dev | libboost-thread1.35-dev | libboost-thread1.38-dev
+    | libboost-thread1.42-dev, 
   libboost-program-options-dev | libboost-program-options1.35-dev 
-    | libboost-program-options1.42-dev, 
-  libboost-dev | libboost1.35-dev | libboost1.42-dev,
+    | libboost-program-options1.38-dev | libboost-program-options1.42-dev, 
+  libboost-dev | libboost1.35-dev | libboost1.38-dev | libboost1.42-dev,
   texlive-base-bin | texlive-binaries
 Standards-Version: 3.9.1
 Section: utils

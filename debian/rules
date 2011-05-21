@@ -8,66 +8,30 @@
 help:
 	echo "fakeroot ./debian/rules binary"
 	echo "fakeroot ./debian/rules debian/stamp/pbuilder/debian-lenny-amd64"
+	echo "sudo ./debian/rules tars | pbuilder"
+
+/var/www/localpkgs/%/re-archive.dep: /var/www/localpkgs/force-rebuild
+	[ -d /var/cache/pbuilder/result/$* ] || mkdir /var/cache/pbuilder/result/$*
+	[ -L /var/www/localpkgs/$* ] || ln -s /var/cache/pbuilder/result/$* /var/www/localpkgs/$*
+	touch $@
+
+/var/www/localpkgs/force-rebuild: 
+	touch $@
 
 VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <debian/changelog)
 
-DEBIAN_VERSIONS := lenny squeeze sid
-PBUILDER_DEBIAN := $(foreach dist, $(DEBIAN_VERSIONS), \
-	               $(foreach arch, amd64 i386, debian/stamp/pbuilder/debian-$(dist)-$(arch)))
-
-# Ubuntu releases(EOL): dapper(2011-06) hardy (2013-04) karmic (2011-04) lucid (2015-04) 
-#                       maverick(2012-04) natty (2012-10) oneiric (2011-10 .. 2013-04)
-# Not going to support dapper, it's about to expire and it has a Release format old enough
-# that lenny debootstrap doesn't recognize it.
-UBUNTU_VERSIONS := hardy karmic lucid maverick natty
-PBUILDER_UBUNTU := $(foreach dist, $(UBUNTU_VERSIONS), \
-		       $(foreach arch, amd64 i386, debian/stamp/pbuilder/ubuntu-$(dist)-$(arch)))
-
-.PRECIOUS: %.tgz
-.SECONDARY:
-
-tars: tars-debian tars-ubuntu
-
-tars-debian: $(foreach dist,$(DEBIAN_VERSIONS), \
-	         $(foreach arch, amd64 i386, /var/cache/pbuilder/debian-$(dist)-$(arch).tgz))
-
-tars-ubuntu: $(foreach dist,$(UBUNTU_VERSIONS), \
-	         $(foreach arch, amd64 i386, /var/cache/pbuilder/ubuntu-$(dist)-$(arch).tgz))
-
-pbuilder: pbuilder-debian pbuilder-ubuntu
-
-pbuilder-debian: $(PBUILDER_DEBIAN)
-
-pbuilder-ubuntu: $(PBUILDER_UBUNTU)
+PARALLELISM=6
+include debian/pkg-targets.mk
 
 debian/stamp/pbuilder/%: /var/cache/pbuilder/%.tgz
 	[ -f ../lintel_$(VERSION).dsc ]
 	touch /var/cache/pbuilder
 	perl debian/fixup-dsc.pl $* < ../lintel_$(VERSION).dsc >../lintel_$(VERSION)-$*.dsc
-	pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz \
+	pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
 	    --buildresult /var/cache/pbuilder/result/$* ../lintel_$(VERSION)-$*.dsc
 	rm ../lintel_$(VERSION)-$*.dsc
 	mkdir -p debian/stamp/pbuilder
 	touch $@
-
-DMIRROR=http://mirrors2.kernel.org/debian
-/var/cache/pbuilder/debian-%.tgz:
-	touch /var/cache/pbuilder
-	pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
-	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` \
-	    --mirror $(DMIRROR)
-	mv $@-new $@
-
-UMIRROR=http://mirrors2.kernel.org/ubuntu/
-/var/cache/pbuilder/ubuntu-%.tgz:
-	[ ! -z "$$http_proxy" ]
-	touch /var/cache/pbuilder
-	# cdebootstrap does not work for maverick
-	pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
-	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` --debootstrap debootstrap \
-	    --othermirror "deb $(UMIRROR) `echo $* | sed 's/-.*//'` universe" \
-	    --mirror $(UMIRROR)
-	mv $@-new $@
 
 debian/build/config-stamp: 
 	dh_testdir
@@ -165,9 +129,6 @@ binary-arch: build install
 #	dh_python
 	dh_makeshlibs -a -v
 	dh_installdeb -a
-	# CMake seems to be forcing the linking with libraries that lintel depends on 
-	# for lintelpthread even though lintelpthread doesn't directly need it.  Similarly,
-	# it directly links to those libraries for the applications.
 	dh_shlibdeps -a
 	dh_gencontrol -a
 	dh_md5sums -a

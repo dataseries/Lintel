@@ -1,0 +1,13 @@
+#!/bin/sh
+if [ "$1" = config ]; then
+   cat <<EOF
+APT::FTPArchive::Release {
+    Origin "local-packages";
+    Label "local-packages";
+    Suite "custom";
+    Architectures "amd64 i386";
+    Description "Local rebuild packages";
+}
+EOF
+   exit 0
+fi
