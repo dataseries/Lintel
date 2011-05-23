@@ -8,34 +8,8 @@
 # to use this submake bit; see Lintel/debian/rules for an example of how to do this
 # if 
 
-DEBIAN_VERSIONS := lenny squeeze wheezy
-PBUILDER_DEBIAN := $(foreach dist, $(DEBIAN_VERSIONS), \
-	               $(foreach arch, amd64 i386, debian/stamp/pbuilder/debian-$(dist)-$(arch)))
-
-# Ubuntu releases(EOL): dapper(2011-06) hardy (2013-04) karmic (2011-04) lucid (2015-04) 
-#                       maverick(2012-04) natty (2012-10) oneiric (2011-10 .. 2013-04)
-# Not going to support dapper, it's about to expire and it has a Release format old enough
-# that lenny debootstrap doesn't recognize it.
-UBUNTU_VERSIONS := hardy karmic lucid maverick natty
-PBUILDER_UBUNTU := $(foreach dist, $(UBUNTU_VERSIONS), \
-		       $(foreach arch, amd64 i386, debian/stamp/pbuilder/ubuntu-$(dist)-$(arch)))
-
 .PRECIOUS: %.tgz %.gpg Release Sources Packages Release.config
 .SECONDARY:
-
-tars: tars-debian tars-ubuntu
-
-tars-debian: $(foreach dist,$(DEBIAN_VERSIONS), \
-	         $(foreach arch, amd64 i386, /var/cache/pbuilder/debian-$(dist)-$(arch).tgz))
-
-tars-ubuntu: $(foreach dist,$(UBUNTU_VERSIONS), \
-	         $(foreach arch, amd64 i386, /var/cache/pbuilder/ubuntu-$(dist)-$(arch).tgz))
-
-pbuilder: pbuilder-debian pbuilder-ubuntu
-
-pbuilder-debian: $(PBUILDER_DEBIAN)
-
-pbuilder-ubuntu: $(PBUILDER_UBUNTU)
 
 DMIRROR=http://mirrors2.kernel.org/debian
 /var/cache/pbuilder/debian-%.tgz: /var/www/localpkgs/debian-%/Release.gpg
@@ -44,9 +18,6 @@ DMIRROR=http://mirrors2.kernel.org/debian
 	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` \
 	    --othermirror "deb http://localhost/localpkgs/debian-$* ./" --mirror $(DMIRROR)
 	mv $@-new $@
-
-/tmp/ubuntu-%: /var/www/localpkgs/ubuntu-%/Release.gpg
-	echo xit
 
 UMIRROR=http://mirrors2.kernel.org/ubuntu/
 /var/cache/pbuilder/ubuntu-%.tgz: /var/www/localpkgs/ubuntu-%/Release.gpg

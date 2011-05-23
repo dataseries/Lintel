@@ -23,15 +23,13 @@ VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$
 PARALLELISM=6
 include debian/pkg-targets.mk
 
-debian/stamp/pbuilder/%: /var/cache/pbuilder/%.tgz
+pbuilder-%: /var/cache/pbuilder/%.tgz
 	[ -f ../lintel_$(VERSION).dsc ]
 	touch /var/cache/pbuilder
 	perl debian/fixup-dsc.pl $* < ../lintel_$(VERSION).dsc >../lintel_$(VERSION)-$*.dsc
 	pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
 	    --buildresult /var/cache/pbuilder/result/$* ../lintel_$(VERSION)-$*.dsc
 	rm ../lintel_$(VERSION)-$*.dsc
-	mkdir -p debian/stamp/pbuilder
-	touch $@
 
 debian/build/config-stamp: 
 	dh_testdir

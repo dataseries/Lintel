@@ -66,10 +66,7 @@ baseurl=$epel_mirror/$base_version/$arch
 
 [local]
 name=local
-baseurl=http://kojipkgs.fedoraproject.org/repos/dist-${base_version}E-epel-build/latest/$arch/
-cost=2000
-enabled=0
-
+baseurl=http://localhost/localpkgs/centos-$version-$arch
 """
 END_OF_CENTOS_CFG
     if ($arch eq 'i386') {
@@ -118,9 +115,8 @@ baseurl=$mirror/updates/$version/$arch
 
 [local]
 name=local
-baseurl=http://kojipkgs.fedoraproject.org/repos/dist-f$version-build/latest/$arch/
-cost=2000
-enabled=0
+baseurl=http://localhost/localpkgs/fedora-$version-$arch
+
 """
 END_OF_FEDORA_CFG
     if ($arch eq 'i386') {
@@ -153,7 +149,7 @@ gpgcheck=0
 assumeyes=1
 # grub/syslinux on x86_64 need glibc-devel.i386 which pulls in glibc.i386, need to exclude all
 # .i?86 packages except these.
-# exclude=[1-9A-Za-fh-z]*.i?86 g[0-9A-Za-km-z]*.i?86 gl[0-9A-Za-hj-z]*.i?86 gli[0-9A-Zac-z]*.i?86 glib[0-9A-Za-bd-z]*.i?86
+exclude=[1-9A-Za-fh-z]*.i?86 g[0-9A-Za-km-z]*.i?86 gl[0-9A-Za-hj-z]*.i?86 gli[0-9A-Zac-z]*.i?86 glib[0-9A-Za-bd-z]*.i?86
 # repos
 
 [core]
@@ -178,14 +174,12 @@ baseurl=$epel_mirror/$base_version/$arch
 
 [local]
 name=local
-baseurl=http://kojipkgs.fedoraproject.org/repos/dist-${base_version}E-epel-build/latest/$arch/
-cost=2000
-enabled=1
+baseurl=http://localhost/localpkgs/scilinux-$version-$arch
 
 """
 END_OF_SCILINUX_CFG
-#    if ($arch eq 'i386') {
-#       $cfg =~ s/exclude=/\#exclude=/o;
-#    }
+    if ($arch eq 'i386') {
+       $cfg =~ s/exclude=/\#exclude=/o;
+    }
     writeConfig($cfg);
 }

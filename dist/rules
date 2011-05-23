@@ -1,0 +1,164 @@
+#!/usr/bin/make -f
+
+# TODO: move the remainder of the package building code out of the {debian,redhat}/rules files
+# and into here.  That makes the distribution of work -- code for local rebuild in those files,
+# code for global multi-os-version in here.
+
+MAKE_DIST := $(HOME)/tmp/make-dist
+SRC_LINTEL := $(HOME)/projects/Lintel
+SRC_DATASERIES := $(HOME)/projects/DataSeries
+
+# lenny EOL 2012-02-06
+DEBIAN_VERSIONS := lenny squeeze wheezy
+PBUILDER_DEBIAN := $(foreach dist, $(DEBIAN_VERSIONS), \
+	               $(foreach arch, amd64 i386, $(MAKE_DIST)/pbuilder/debian-$(dist)-$(arch)))
+
+# Ubuntu releases(EOL): dapper(2011-06) hardy (2013-04) karmic (2011-04) lucid (2015-04) 
+#                       maverick(2012-04) natty (2012-10) oneiric (2011-10 .. 2013-04)
+# Not going to support dapper, it's about to expire and it has a Release format old enough
+# that lenny debootstrap doesn't recognize it.
+UBUNTU_VERSIONS := hardy karmic lucid maverick natty
+PBUILDER_UBUNTU := $(foreach dist, $(UBUNTU_VERSIONS), \
+		       $(foreach arch, amd64 i386, $(MAKE_DIST)/pbuilder/ubuntu-$(dist)-$(arch)))
+
+# Should we build against vault.centos.org for the older versions?  CentOS changes various things
+# so that it's not clear you can install an RPM built against 5.6 on 5.4.
+# 2011-05-22 -- mirror only has 5.6 which has 5 as a symlink
+# See also: http://www.centos.org/modules/smartfaq/faq.php?faqid=34
+CENTOS_VERSIONS := 5
+
+MOCK_CENTOS := $(foreach version, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
+		    $(MAKE_DIST)/mock/centos-$(version)-$(arch)))
+
+FEDORA_VERSIONS := 13 14
+
+MOCK_FEDORA := $(foreach version, $(FEDORA_VERSIONS), $(foreach arch, x86_64 i386, \
+		    $(MAKE_DIST)/mock/fedora-$(version)-$(arch)))
+
+# Supported releases: http://en.wikipedia.org/wiki/OpenSUSE
+OPENSUSE_VERSIONS := 11.2 11.3 11.4
+CHROOT_OPENSUSE := $(foreach version, $(OPENSUSE_VERSIONS), $(foreach arch, x86_64 i586, \
+			$(MAKE_DIST)/chroot/opensuse-$(version)-$(arch)))
+
+SCILINUX_VERSIONS := 6.0
+MOCK_SCILINUX := $(foreach version, $(SCILINUX_VERSIONS), $(foreach arch, x86_64 i386, \
+		      $(MAKE_DIST)/mock/scilinux-$(version)-$(arch)))
+
+packages: pbuilder-debian pbuilder-ubuntu mock-centos mock-fedora chroot-opensuse mock-scilinux
+
+pbuilder-debian: $(PBUILDER_DEBIAN)
+
+pbuilder-ubuntu: $(PBUILDER_UBUNTU)
+
+mock-centos: $(MOCK_CENTOS)
+
+mock-fedora: $(MOCK_FEDORA)
+
+chroot-opensuse: $(CHROOT_OPENSUSE)
+
+mock-scilinux: $(MOCK_SCILINUX)
+
+.SECONDARY:
+
+$(MAKE_DIST)/lintel.dsc:
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_LINTEL) && dpkg-buildpackage -rfakeroot -us -uc -S) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_LINTEL) && debian/rules pbuilder-$*) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/lintel.srpm:
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_LINTEL) && redhat/make-tar.sh && redhat/copy-tar.sh) >$@-new 2>&1
+	(cd $(SRC_LINTEL) && dist/make-srpms.sh Lintel) >>$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_LINTEL) && redhat/rules mock-$*) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/lintel/chroot/%: $(MAKE_DIST)/lintel.srpm
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_LINTEL) && redhat/rules chroot-$*) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries.dsc:
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_DATASERIES) && dpkg-buildpackage -rfakeroot -us -uc -j6 -S) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries.srpm:
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_DATASERIES) && redhat/make-tar.sh && redhat/copy-tar.sh) >$@-new 2>&1
+	(cd $(SRC_DATASERIES) && $(SRC_LINTEL)/dist/make-srpms.sh DataSeries) >>$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/dataseries.dsc
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(HOME)/projects/DataSeries && debian/rules pbuilder-$*) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/mock/%.repo: $(MAKE_DIST)/lintel/mock/%
+	[ `id -u` = 0 ]
+	[ -d /var/lib/mock/result/$* ]
+	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
+	mkdir -p `dirname $@`
+	(cd /var/www/localpkgs/$* && createrepo .) >$@-new 2>&1
+	for i in `cd /var/www/localpkgs; find $*/ -type f`; do curl http://localhost/localpkgs/$$i >/dev/null 2>&1; done
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/chroot/%.repo: $(MAKE_DIST)/lintel/chroot/%
+	[ `id -u` = 0 ]
+	[ -d /var/lib/mock/result/$* ]
+	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
+	mkdir -p `dirname $@`
+	createrepo /var/www/localpkgs/$* >$@-new 2>&1
+	for i in `cd /var/www/localpkgs; find $*/ -type f`; do curl http://localhost/localpkgs/$$i >/dev/null 2>&1; done
+	mv $@-new $@
+
+/etc/mock/lintel-%.cfg: $(SRC_LINTEL)/redhat/mock-cfg.pl
+	[ `id -u` = 0 ]
+	$(SRC_LINTEL)/redhat/mock-cfg.pl $*
+	echo "made $@"
+
+/var/cache/mock/lintel-%/root_cache/cache.tar.gz: $(MAKE_DIST)/dataseries/mock/%.repo /etc/mock/lintel-%.cfg
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	echo $$http_proxy
+	ls -l /etc/mock/lintel-$*.cfg
+	mock --init -r lintel-$* 
+
+$(MAKE_DIST)/dataseries/mock/%: $(MAKE_DIST)/lintel/mock/% /var/cache/mock/lintel-%/root_cache/cache.tar.gz $(MAKE_DIST)/dataseries.srpm
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	mkdir -p `dirname $@`
+	(mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
+	    -r lintel-$* `cd $(SRC_DATASERIES) && ./redhat/get-srpm.sh $*`) \
+	    >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/chroot/%: $(MAKE_DIST)/lintel/chroot/% $(MAKE_DIST)/dataseries.srpm $(MAKE_DIST)/dataseries/chroot/%.repo
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_DATASERIES) && $(SRC_LINTEL)/redhat/opensuse-build.sh $*) \
+	    >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/%: $(MAKE_DIST)/dataseries/%
+	echo $@
+

@@ -46,8 +46,11 @@ License:        BSD
 %package	utils
 Summary:        Lintel utilities
 Group:          Development/Libraries
-Requires:       %{name}-libs = %{version}-%{release}, perl-Lintel, tetex-latex, tetex-dvips
-Requires:       ghostscript
+Requires:       %{name}-libs = %{version}-%{release}, perl-Lintel
+#if-fedora Requires: ghostscript, tetex-dvips, tetex-latex
+#if-centos Requires: ghostscript, tetex-dvips, tetex-latex
+#if-scilinux Requires: ghostscript, tetex-dvips, tetex-latex
+#if-opensuse Requires: ghostscript-library, texlive-latex
 License:        BSD
 
 # TODO-package-reviewer: how do we make this package architecture independent?

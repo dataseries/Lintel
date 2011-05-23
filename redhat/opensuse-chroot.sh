@@ -27,5 +27,5 @@ done
 uname -a
 chown root /usr/src/packages/*/*
 chgrp root /usr/src/packages/*/*
-rpmbuild -ba /usr/src/packages/SPECS/Lintel.spec
+rpmbuild -ba /usr/src/packages/SPECS/*.spec
 echo "Successful build!"
