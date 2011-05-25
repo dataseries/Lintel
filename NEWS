@@ -2,6 +2,76 @@ This file lists major changes to Lintel.  The full reverse-chronological change
 log (without the merge revisions) can be found in the Changelog.mtn file in the
 tar releases, or by using mtn log if you got the sources via version control.
 
+2011-05-19:
+   * Package building on scilinux and opensuse working.
+
+2011-05-12:
+   * Package building on centos and fedora working.
+
+2011-05-03:
+   * Package building on all currently supported debian versions and most
+     ubuntu ones working.
+
+2011-03-20:
+   * Add manpages to everything to meet packaging guidelines.
+
+2011-03-14:
+   * Add support to lintel-disktool to be able to "fail" drives by scribbling
+     over their contents.
+
+2011-03-04:
+   * Add new class for getting process statistics.  Currently under unstable
+     because we are unclear if it is the right interface.
+
+2011-03-03:
+   * Add support to automatically work out width of terminal for program
+     options (to the extent allowed by boost), and to use that width when
+     generating the help output.
+
+2010-11-12:
+   * Add support for untested repositories to deptool.  The untested repo 
+     will automatically build, run tests and push the result if it passes
+     tests to a new server.
+
+2010-08-26:
+   * openSuSE os detection added to deptool.
+
+2010-08-02:
+   * CentOS os detection added to deptool.
+
+2010-07-23:
+   * Switch deptool OS variable to be BUILD_OS to avoid conflicts in existing
+     env vars.
+
+2010-07-14:
+   * Add support for erase(iterator) on a HashMap/HashTable.
+
+2010-07-01:
+   * Add an option to the make batch-parallel module that does not expand
+     out listed directories, e.g. for running parallel tars.
+
+2010-06-27:
+   * Support batch mode for mercury-plot, also add cleaner support for
+     running select to a file and html.
+
+2010-06-19:
+   * Add support for deptool to track which revisions have been reviewed.
+
+2010-04-27:
+   * Add support for LintelLog to use * in categories to select a prefix of
+     categories.
+
+2010-03-30:
+   * Add a Base64 encoder class.  Key feature is a different ordering for the
+     characters that preserves alphabetical ordering.
+   * HashTable will now auto-generate a hash function for pairs if both types
+     in the pair are hashable.
+
+2010-03-13:
+   * Add --unclean option to deppull so that people can run pulls even if
+     everything isn't committed.  Also add code to support multiple sequential
+     tests and recording of the time that tests take.
+
 2010-02-15:
    * Release
 

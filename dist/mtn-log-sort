@@ -1,0 +1,41 @@
+#!/usr/bin/perl -w
+use strict;
+my $extra_args = join(" ", @ARGV);
+open(MTN, "mtn log --no-merges --no-graph --no-format-dates $extra_args |")
+    || die "Can't run mtn: $!";
+
+my @entries;
+while (1) {
+    my $ent = getEnt();
+    last unless defined $ent;
+    next unless defined $ent->{date};
+    push(@entries, $ent);
+}
+
+@entries = sort { $b->{date} cmp $a->{date} } @entries;
+
+foreach my $ent (@entries) {
+    print "-----------------------------------------------------------------\n";
+    print $ent->{data};
+}
+
+sub getEnt {
+    my $date;
+    my @data;
+    while(<MTN>) {
+#	print "$_";
+	last if /^------/o;
+        if (/^Date:\s+(\S+)$/o) {
+            $date = $1;
+        } elsif (/^Date: /o) {
+            warn "? $_ ?";
+        }
+
+	push(@data, $_);
+    }
+    return undef if @data == 0 && ! defined $_;
+    return {} unless defined $date;
+    die "@data ??" unless defined $date;
+    return { 'date' => $date, 'data' => join('', @data) };
+}
+

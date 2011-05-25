@@ -5,6 +5,4 @@ cd $1
 echo "Monotone-Revision: `mtn automate get_base_revision_id`" >Release.info
 echo "Creation-Date: $NOW" >>Release.info
 echo "   current revision is `grep Monotone-Revision Release.info | awk '{print $2}'`"
-mtn-log-sort >Changelog.mtn
-
-
+`dirname $0`/mtn-log-sort >Changelog.mtn
