@@ -1,0 +1,7 @@
+keyvalue-debian-x86-2.u.hpl.hp.com # Debian Etch 32bit
+keyvalue-debian-x86-alfa-tunnel.u.hpl.hp.com # Debian Lenny 32bit
+keyvalue-d64-frieght-1.u.hpl.hp.com # Debian Lenny 64bit
+hplxc.hpl.hp.com # RHEL4.5 x86_64
+ts-rhel5.hpl.hp.com # RHEL5.6 x86_64
+endpin.cs.hmc.edu # OpenSuSE 11.2 x86_64
+martenot.hpl.hp.com # Debian Lenny/Sid 64bit

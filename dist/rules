@@ -162,3 +162,78 @@ $(MAKE_DIST)/dataseries/chroot/%: $(MAKE_DIST)/lintel/chroot/% $(MAKE_DIST)/data
 $(MAKE_DIST)/%: $(MAKE_DIST)/dataseries/%
 	echo $@
 
+# ------------------------------------------------------------------------
+# Testing on existing systems...
+
+TEST_HOSTS = $(shell awk '{print $$1}' < dist/remote-host-list)
+NOW := $(shell date +%Y-%m-%d)
+BUILD := $(MAKE_DIST)/build
+REMOTE_TMP := /var/tmp
+
+test-hosts: $(foreach host, $(TEST_HOSTS), $(MAKE_DIST)/host/$(host))
+
+$(BUILD)/tmp.db:
+	mkdir -p `dirname $@`
+	cp $(HOME)/.monotone/ssd.db $@-new
+	# mtn -d $@-new db init
+	# mtn -d $@-new pull $(MTN_PULL_FROM) ssd.hpl.hp.com/Lintel
+	# mtn -d $@-new pull $(MTN_PULL_FROM) ssd.hpl.hp.com/DataSeries
+# TODO: if we do a pull, do the check here also
+#    HEAD="`mtn -d tmp.db automate heads ssd.hpl.hp.com/$i`"
+#    REF_HEAD="`cd ~/projects/$i; mtn automate heads`"
+#    if [ "$HEAD" != "$REF_HEAD" ]; then 
+#	echo "Weird, heads differ between synced ($HEAD) and ~/projects/$i ($REF_HEAD)"
+#	exit 1
+#    fi
+
+	mv $@-new $@
+
+$(BUILD)/localhost/%/Changelog.mtn: $(BUILD)/tmp.db
+	(cd $(BUILD) && $(SRC_LINTEL)/dist/checkout.sh $*) >$(BUILD)/localhost/checkout.$* 2>&1
+
+$(BUILD)/localhost/%.tar.bz2: $(BUILD)/localhost/%/Changelog.mtn
+	(cd $(BUILD) && tar cvvfj $@-new --exclude=_MTN $*)
+	mv $@-new $@
+
+$(BUILD)/localhost/deptool-bootstrap-local: $(BUILD_OPT)/Lintel/src/deptool-bootstrap
+	cp $< $@-new
+	chmod +x $@-new
+	mv $@-new $@
+
+LOCAL_DEPS := $(BUILD)/localhost/Lintel-$(NOW).tar.bz2 \
+	$(BUILD)/localhost/DataSeries-$(NOW).tar.bz2 $(BUILD)/localhost/deptool-bootstrap-local
+$(BUILD)/localhost/done: $(LOCAL_DEPS)
+	mkdir -p `dirname $@`
+	$(SRC_LINTEL)/dist/test-local.sh $(BUILD) $(NOW) >$@-new 2>&1
+	mv $@-new $@
+
+$(BUILD)/localhost/build/Lintel/src/deptool-bootstrap: $(BUILD)/localhost/done
+	[ -e $@ ]
+
+LR_DEPS := $(BUILD)/localhost/Lintel-$(NOW).tar.bz2 $(BUILD)/localhost/DataSeries-$(NOW).tar.bz2
+$(BUILD)/latest-release: $(LR_DEPS)
+	echo "Lintel-$(NOW).tar.bz2" >$@-new
+	echo "DataSeries-$(NOW).tar.bz2" >>$@-new
+	mv $@-new $@
+
+$(BUILD)/tesla: $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap $(BUILD)/latest-release
+	rsync -av --progress $(LR_DEPS) $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap \
+	    $(BUILD)/latest-release tesla.hpl.hp.com:opensource/tmp # >$@-new 2>&1
+	mv $@-new $@
+
+$(BUILD)/remote-host/%/build: $(SRC_LINTEL)/dist/test-remote.sh $(BUILD)/tesla
+	mkdir -p `dirname $@`
+	scp $(SRC_LINTEL)/dist/test-remote.sh $*:$(REMOTE_TMP)/test-remote.sh >$@-new 2>&1
+	ssh $* /bin/sh $(REMOTE_TMP)/test-remote.sh $(NOW) $*  >>$@-new 2>&1
+	mv $@-new $@
+
+$(BUILD)/remote-host/%/result: $(BUILD)/remote-host/%/build
+	scp $*:$(REMOTE_TMP)/test-remote/result-$* $@-new
+	[ "`cat $@-new`" = $(NOW) ]
+	mv $@-new $@
+
+bar: $(BUILD)/remote-host/endpin.cs.hmc.edu/result
+	echo endpin
+
+foo: $(foreach host, $(TEST_HOSTS), $(BUILD)/remote-host/$(host)/build)
+	echo $(TEST_HOSTS)

@@ -3748,7 +3748,10 @@ sub operatingSystem {
 	    } else {
 		$Cache::operating_system = "unknown-lsb";
 	    }
-	} elsif (-f "/etc/debian_version") {
+            return $Cache::operating_system unless $Cache::operating_system =~ /^unknown/o;
+	}
+
+        if (-f "/etc/debian_version") {
             my $debver = new FileHandle("/etc/debian_version")
                 or die "Can't open /etc/debian_version for read: $!";
             $_ = <$debver>;
