@@ -30,7 +30,10 @@ CENTOS_VERSIONS := 5
 MOCK_CENTOS := $(foreach version, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
 		    $(MAKE_DIST)/mock/centos-$(version)-$(arch)))
 
-FEDORA_VERSIONS := 13 14
+# Fedora 15 2011-05-24 .. 
+# Fedora 14 2010-11-02 .. 
+# Fedora 13 2010-05-25 .. 2011-06-24
+FEDORA_VERSIONS := 13 14 15
 
 MOCK_FEDORA := $(foreach version, $(FEDORA_VERSIONS), $(foreach arch, x86_64 i386, \
 		    $(MAKE_DIST)/mock/fedora-$(version)-$(arch)))
@@ -60,6 +63,8 @@ mock-scilinux: $(MOCK_SCILINUX)
 
 .SECONDARY:
 
+# ----- debian/ubuntu rules -----
+
 $(MAKE_DIST)/lintel.dsc:
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
@@ -72,31 +77,25 @@ $(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc
 	(cd $(SRC_LINTEL) && debian/rules pbuilder-$*) >$@-new 2>&1
 	mv $@-new $@
 
+$(MAKE_DIST)/dataseries.dsc:
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_DATASERIES) && dpkg-buildpackage -rfakeroot -us -uc -j6 -S) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/dataseries.dsc
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	(cd $(HOME)/projects/DataSeries && debian/rules pbuilder-$*) >$@-new 2>&1
+	mv $@-new $@
+
+# ----- srpm rules (centos, fedora, scilinux, opensuse) -----
+
 $(MAKE_DIST)/lintel.srpm:
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
 	(cd $(SRC_LINTEL) && redhat/make-tar.sh && redhat/copy-tar.sh) >$@-new 2>&1
 	(cd $(SRC_LINTEL) && dist/make-srpms.sh Lintel) >>$@-new 2>&1
-	mv $@-new $@
-
-$(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm
-	[ `id -u` = 0 ]
-	[ ! -z "$$http_proxy" ]
-	mkdir -p `dirname $@`
-	(cd $(SRC_LINTEL) && redhat/rules mock-$*) >$@-new 2>&1
-	mv $@-new $@
-
-$(MAKE_DIST)/lintel/chroot/%: $(MAKE_DIST)/lintel.srpm
-	[ `id -u` = 0 ]
-	[ ! -z "$$http_proxy" ]
-	mkdir -p `dirname $@`
-	(cd $(SRC_LINTEL) && redhat/rules chroot-$*) >$@-new 2>&1
-	mv $@-new $@
-
-$(MAKE_DIST)/dataseries.dsc:
-	[ `id -u` = 0 ]
-	mkdir -p `dirname $@`
-	(cd $(SRC_DATASERIES) && dpkg-buildpackage -rfakeroot -us -uc -j6 -S) >$@-new 2>&1
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries.srpm:
@@ -106,28 +105,22 @@ $(MAKE_DIST)/dataseries.srpm:
 	(cd $(SRC_DATASERIES) && $(SRC_LINTEL)/dist/make-srpms.sh DataSeries) >>$@-new 2>&1
 	mv $@-new $@
 
-$(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/dataseries.dsc
-	[ `id -u` = 0 ]
-	mkdir -p `dirname $@`
-	(cd $(HOME)/projects/DataSeries && debian/rules pbuilder-$*) >$@-new 2>&1
-	mv $@-new $@
+# ----- centos/fedora/scilinux rules -----
 
-$(MAKE_DIST)/dataseries/mock/%.repo: $(MAKE_DIST)/lintel/mock/%
+repo-%:
 	[ `id -u` = 0 ]
-	[ -d /var/lib/mock/result/$* ]
+	cd /var/www/localpkgs/$* && createrepo .
+	for i in `cd /var/www/localpkgs; find $*/ -type f`; do curl http://localhost/localpkgs/$$i >/dev/null 2>&1; done
+
+$(MAKE_DIST)/lintel/mock/%.repo: 
+	[ `id -u` = 0 ]
+	mkdir -p /var/lib/mock/result/$*
+	chown anderse /var/lib/mock/result/$*
+	chgrp mock /var/lib/mock/result/$*
+	chmod 2775 /var/lib/mock/result/$*
 	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
 	mkdir -p `dirname $@`
-	(cd /var/www/localpkgs/$* && createrepo .) >$@-new 2>&1
-	for i in `cd /var/www/localpkgs; find $*/ -type f`; do curl http://localhost/localpkgs/$$i >/dev/null 2>&1; done
-	mv $@-new $@
-
-$(MAKE_DIST)/dataseries/chroot/%.repo: $(MAKE_DIST)/lintel/chroot/%
-	[ `id -u` = 0 ]
-	[ -d /var/lib/mock/result/$* ]
-	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
-	mkdir -p `dirname $@`
-	createrepo /var/www/localpkgs/$* >$@-new 2>&1
-	for i in `cd /var/www/localpkgs; find $*/ -type f`; do curl http://localhost/localpkgs/$$i >/dev/null 2>&1; done
+	./dist/rules repo-$* >$@-new 2>&1
 	mv $@-new $@
 
 /etc/mock/lintel-%.cfg: $(SRC_LINTEL)/redhat/mock-cfg.pl
@@ -135,20 +128,53 @@ $(MAKE_DIST)/dataseries/chroot/%.repo: $(MAKE_DIST)/lintel/chroot/%
 	$(SRC_LINTEL)/redhat/mock-cfg.pl $*
 	echo "made $@"
 
-/var/cache/mock/lintel-%/root_cache/cache.tar.gz: $(MAKE_DIST)/dataseries/mock/%.repo /etc/mock/lintel-%.cfg
+RCGZ := root_cache/cache.tar.gz
+/var/cache/mock/lintel-%/$(RCGZ): $(MAKE_DIST)/lintel/mock/%.repo /etc/mock/lintel-%.cfg
 	[ `id -u` = 0 ]
 	[ ! -z "$$http_proxy" ]
 	echo $$http_proxy
 	ls -l /etc/mock/lintel-$*.cfg
-	mock --init -r lintel-$* 
+	mkdir -p $(MAKE_DIST)/logs
+	mock --init -r lintel-$* > $(MAKE_DIST)/lintel/mock/cache-$*
 
-$(MAKE_DIST)/dataseries/mock/%: $(MAKE_DIST)/lintel/mock/% /var/cache/mock/lintel-%/root_cache/cache.tar.gz $(MAKE_DIST)/dataseries.srpm
+$(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm /var/cache/mock/lintel-%/$(RCGZ)
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	mkdir -p `dirname $@`
+	mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
+	    -r lintel-$* `cd $(SRC_LINTEL) && redhat/get-srpm.sh $*` >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/mock/%.repo: $(MAKE_DIST)/lintel/mock/%
+	[ `id -u` = 0 ]
+	mkdir -p `dirname $@`
+	./dist/rules repo-$* >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/mock/%: $(MAKE_DIST)/dataseries/mock/%.repo $(MAKE_DIST)/dataseries.srpm
 	[ `id -u` = 0 ]
 	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
 	(mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
 	    -r lintel-$* `cd $(SRC_DATASERIES) && ./redhat/get-srpm.sh $*`) \
 	    >$@-new 2>&1
+	mv $@-new $@
+
+# ----- openSuSE rules -----
+
+$(MAKE_DIST)/lintel/chroot/%: $(MAKE_DIST)/lintel.srpm
+	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
+	mkdir -p `dirname $@`
+	(cd $(SRC_LINTEL) && redhat/opensuse-build.sh $*) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/chroot/%.repo: $(MAKE_DIST)/lintel/chroot/%
+	[ `id -u` = 0 ]
+	[ -d /var/lib/mock/result/$* ]
+	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
+	mkdir -p `dirname $@`
+	./dist/rules repo-$* >$@-new 2>&1
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/chroot/%: $(MAKE_DIST)/lintel/chroot/% $(MAKE_DIST)/dataseries.srpm $(MAKE_DIST)/dataseries/chroot/%.repo
@@ -159,8 +185,12 @@ $(MAKE_DIST)/dataseries/chroot/%: $(MAKE_DIST)/lintel/chroot/% $(MAKE_DIST)/data
 	    >$@-new 2>&1
 	mv $@-new $@
 
+# ----- generic target rules ----
+
 $(MAKE_DIST)/%: $(MAKE_DIST)/dataseries/%
-	echo $@
+	@mkdir -p `dirname $@`
+	touch $@
+	@echo "Done with $@"
 
 # ------------------------------------------------------------------------
 # Testing on existing systems...

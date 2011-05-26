@@ -11,27 +11,6 @@ help:
 
 .SECONDARY:
 
-mock-%: /var/cache/mock/lintel-%/root_cache/cache.tar.gz /etc/mock/lintel-%.cfg
-	[ `whoami` = root ]
-	mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
-	    -r lintel-$* `redhat/get-srpm.sh $*`
-
-/var/cache/mock/%/root_cache/cache.tar.gz: /etc/mock/%.cfg
-	[ `whoami` = root ]
-	[ ! -z "$$http_proxy" ]
-	echo $$http_proxy
-	ls -l /etc/mock/$*.cfg
-	mock --init -r $*
-
-/etc/mock/lintel-%.cfg: 
-	[ `whoami` = root ]
-	./redhat/mock-cfg.pl $*
-	echo "made $@"
-
-chroot-%: 
-	[ `whoami` = root ]
-	./redhat/opensuse-build.sh $*
-
 tar: redhat/stamp/tar
 
 copy-tar: redhat/stamp/copy-tar
