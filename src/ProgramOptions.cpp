@@ -114,6 +114,45 @@ namespace lintel {
 	    static vector<ProgramOptionPair> po_pairs;
 	    return po_pairs;
 	}
+
+        // Not very efficient or pretty, but it is better than not wrapping at all, and boost for
+        // some reason lacks a good word-wrapping routine; the one that program_options uses is
+        // internal to the detailed implementation (and not really as good as this).
+        string basicWordWrap(string in) {
+            string res = in;
+            uint32_t processed_to = 0;
+
+            do {
+                size_t pos = res.find("\n", processed_to);
+                if (pos == string::npos) { // No more \ns
+                    if ((res.length() - processed_to) < getHelpWidth()) {
+                        break; // We fit anyway, so stop.  Usual exit point of the loop
+                    }
+                    // Fallthough; common with case just below
+                } else if (pos - processed_to > getHelpWidth()) {
+                    // Fallthough; common with the non-break case just above
+                } else { // We had a \n on our own before we needed to wrap
+                    processed_to = pos + 1;
+                    continue;
+                }
+                // Look for a natural spot to break, but output at least half a line.
+                uint32_t where = processed_to + getHelpWidth()/2;
+                uint32_t old_where = processed_to + getHelpWidth();
+                do {
+                    where = res.find(" ", where) + 1;
+                    if (where - processed_to >= getHelpWidth()) {
+                        // The next " " is too late, so wrap at the last spot we had decided was OK
+                        res.insert(old_where, "\n");
+                        processed_to = old_where+1;
+                        break;
+                    } else {
+                        // We found a " " closer to where we need to wrap.
+                        old_where = where;
+                    }                   
+                } while(1);                
+            } while (processed_to < res.length());
+            return res;
+        }        
     }
 
     void programOptionsHelp(const string &to_add) {
@@ -125,7 +164,7 @@ namespace lintel {
     }
 
     void programOptionsUsage(const string &_argv0) {
-	cout << boost::format("Usage: %s [options] %s\n") % _argv0 % extra_help
+	cout << boost::format("Usage: %s [options] %s\n") % _argv0 % basicWordWrap(extra_help)
 	     << programOptionsDesc() << "\n";
     }
     
