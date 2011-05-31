@@ -102,6 +102,15 @@ namespace lintel {
     /// add string to help message, should be called before a call to
     /// parseCommandLine.  Will be printed after the 'Usage: argv[0]' bit.
     void programOptionsHelp(const std::string &to_add);
+    
+    /// Adds the string to the help message; since it is in the constructor it can be done as a
+    /// global variable and hence happen before main().
+    class OptionsHelpAdder {
+    public:
+        OptionsHelpAdder(const std::string &to_add) {
+            programOptionsHelp(to_add);
+        }
+    };
 
     /// print out the usage information. Uses value set by setArgvZero or by
     /// parseCommandLine(argc,argv) for program name.
