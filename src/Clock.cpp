@@ -72,14 +72,16 @@ namespace {
 	return string(buf);
     }
 
-    void checkForPossibleFrequencyScaling() {
 #ifdef __linux__
+    bool doCFPFS() {
 	const string cpu_dir("/sys/devices/system/cpu");
 	DIR *dir = opendir(cpu_dir.c_str());
+        if (dir == NULL) {
+            return true;
+        }
 	INVARIANT(dir != NULL, 
 		  format("can't opendir %s(%s), so can't check for frequency scaling")
 		  % cpu_dir % strerror(errno));
-	bool all_ok = true;
 	unsigned cpu_count = 0;
 	struct dirent *ent;
 	while((ent = readdir(dir)) != NULL) {
@@ -94,19 +96,22 @@ namespace {
 		    || (!min_freq.empty() && min_freq == max_freq)) {
 		    // ok
 		} else {
-		    all_ok = false;
-		    break;
+                    return true;
 		}
 	    }
 	}
 	INVARIANT(closedir(dir) == 0, "closedir failed");
 	INVARIANT(cpu_count > 0, "can't check frequency scaling, no cpus found?");
-	if (all_ok) {
-	    may_have_frequency_scaling = false;
-	}
+
+        return false;
+    }
 #else
-	may_have_frequency_scaling = true;
+    bool doCFPFS() {
+        return true;
+    }
 #endif
+    void checkForPossibleFrequencyScaling() {
+        may_have_frequency_scaling = doCFPFS();
 
 	if (!may_have_frequency_scaling) {
 	    // great.
