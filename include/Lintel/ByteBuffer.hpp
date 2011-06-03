@@ -325,6 +325,8 @@ namespace lintel {
 	    rep->extend(amt);
 	}
 
+        /// Remove readable values from the end of the readable area, invalid
+        /// to call with amt > readAvailable()
 	void unextend(size_t amt) {
             uniqueify();
             rep->unextend(amt);

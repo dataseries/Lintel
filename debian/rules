@@ -8,28 +8,6 @@
 help:
 	echo "fakeroot ./debian/rules binary"
 	echo "fakeroot ./debian/rules debian/stamp/pbuilder/debian-lenny-amd64"
-	echo "sudo ./debian/rules tars | pbuilder"
-
-/var/www/localpkgs/%/re-archive.dep: /var/www/localpkgs/force-rebuild
-	[ -d /var/cache/pbuilder/result/$* ] || mkdir /var/cache/pbuilder/result/$*
-	[ -L /var/www/localpkgs/$* ] || ln -s /var/cache/pbuilder/result/$* /var/www/localpkgs/$*
-	touch $@
-
-/var/www/localpkgs/force-rebuild: 
-	touch $@
-
-VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <debian/changelog)
-
-PARALLELISM=6
-include debian/pkg-targets.mk
-
-pbuilder-%: /var/cache/pbuilder/%.tgz
-	[ -f ../lintel_$(VERSION).dsc ]
-	touch /var/cache/pbuilder
-	perl debian/fixup-dsc.pl $* < ../lintel_$(VERSION).dsc >../lintel_$(VERSION)-$*.dsc
-	pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
-	    --buildresult /var/cache/pbuilder/result/$* ../lintel_$(VERSION)-$*.dsc
-	rm ../lintel_$(VERSION)-$*.dsc
 
 debian/build/config-stamp: 
 	dh_testdir

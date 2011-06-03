@@ -30,6 +30,7 @@ CENTOS_VERSIONS := 5
 MOCK_CENTOS := $(foreach version, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
 		    $(MAKE_DIST)/mock/centos-$(version)-$(arch)))
 
+# Support for 2 releases + 1 month
 # Fedora 15 2011-05-24 .. 
 # Fedora 14 2010-11-02 .. 
 # Fedora 13 2010-05-25 .. 2011-06-24
@@ -38,7 +39,10 @@ FEDORA_VERSIONS := 13 14 15
 MOCK_FEDORA := $(foreach version, $(FEDORA_VERSIONS), $(foreach arch, x86_64 i386, \
 		    $(MAKE_DIST)/mock/fedora-$(version)-$(arch)))
 
-# Supported releases: http://en.wikipedia.org/wiki/OpenSUSE
+# Support for two releases + 2 months; see http://en.wikipedia.org/wiki/OpenSUSE
+# 11.4: 2011-03-10 ..
+# 11.3: 2010-07-15 ..
+# 11.2: 2009-09-12 .. 2011-05-10
 OPENSUSE_VERSIONS := 11.2 11.3 11.4
 CHROOT_OPENSUSE := $(foreach version, $(OPENSUSE_VERSIONS), $(foreach arch, x86_64 i586, \
 			$(MAKE_DIST)/chroot/opensuse-$(version)-$(arch)))
@@ -46,6 +50,39 @@ CHROOT_OPENSUSE := $(foreach version, $(OPENSUSE_VERSIONS), $(foreach arch, x86_
 SCILINUX_VERSIONS := 6.0
 MOCK_SCILINUX := $(foreach version, $(SCILINUX_VERSIONS), $(foreach arch, x86_64 i386, \
 		      $(MAKE_DIST)/mock/scilinux-$(version)-$(arch)))
+
+PARALLELISM=6
+DEBIAN_MIRROR=http://mirrors2.kernel.org/debian
+UBUNTU_MIRROR=http://mirrors2.kernel.org/ubuntu/
+
+# -- local and remote host build vaiables --
+
+TEST_HOSTS = $(shell awk '{print $$1}' < dist/remote-host-list)
+NOW := $(shell date +%Y-%m-%d)
+BUILD := $(MAKE_DIST)/build
+REMOTE_TMP := /var/tmp
+
+help:
+	@echo "./dist/rules packages"
+	@echo "./dist/rules remote-hosts"
+	@echo "./dist/rules endpin-mtn"
+	@echo "./dist/rules martenot-copy"
+	@echo "./dist/rules clean"
+
+endpin-mtn:
+	cd ~/projects/Lintel && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/Lintel\*
+	cd ../DataSeries && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/DataSeries\*
+
+
+martenot-copy: $(BUILD)/remote-host/martenot/result
+	ssh martenot $(REMOTE_TMP)/make_dist/projects/dist/martenot-copy $(REMOTE_TMP)
+
+clean:
+	sudo rm -rf $(MAKE_DIST)
+	sudo rm -rf /var/lib/mock/result/*-*-*
+	sudo rm -rf /var/cache/pbuilder/result/*-*-*
+
+# ------------ Packages -------------
 
 packages: pbuilder-debian pbuilder-ubuntu mock-centos mock-fedora chroot-opensuse mock-scilinux
 
@@ -57,13 +94,49 @@ mock-centos: $(MOCK_CENTOS)
 
 mock-fedora: $(MOCK_FEDORA)
 
-chroot-opensuse: $(CHROOT_OPENSUSE)
-
 mock-scilinux: $(MOCK_SCILINUX)
 
+chroot-opensuse: $(CHROOT_OPENSUSE)
+
+.PRECIOUS: %.tgz %.gpg Release Sources Packages Release.config
 .SECONDARY:
 
 # ----- debian/ubuntu rules -----
+
+# next bit through to $(MAKE_DIST)/pbuilder/cache-% is a hack to make sure that the files exist but
+# not to rebuild them unless the stamp file is missing because if we do then we end up with a
+# circular dependency -- lintel/pbuilder/% depends on %/Release.gpg, but making the lintel target
+# will recreate the Release.gpg.
+/var/www/localpkgs/%/Release.gpg:
+	$(SRC_LINTEL)/dist/debian-localpkgs.sh $*
+
+/var/cache/pbuilder/debian-%.tgz: 
+	[ -f /var/www/localpkgs/debian-%/Release.gpg ]
+	[ ! -z "$$http_proxy" ]
+	[ `id -u` = 0 ]
+	pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
+	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` \
+	    --othermirror "deb http://localhost/localpkgs/debian-$* ./" --mirror $(DEBIAN_MIRROR)
+	mv $@-new $@
+
+/var/cache/pbuilder/ubuntu-%.tgz: 
+	[ -f /var/www/localpkgs/ubuntu-%/Release.gpg ]
+	[ ! -z "$$http_proxy" ]
+	[ `id -u` = 0 ]
+	# cdebootstrap does not work for maverick
+	(pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
+	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` --debootstrap debootstrap \
+	    --othermirror "deb $(UBUNTU_MIRROR) `echo $* | sed 's/-.*//'` universe |deb http://localhost/localpkgs/ubuntu-$* ./" \
+	    --mirror $(UBUNTU_MIRROR)) >$@-new 2>&1
+	mv $@-new $@
+
+# Always rebuild if the stamp file is missing -- new run of the release process.
+$(MAKE_DIST)/pbuilder/cache-%:
+	mkdir -p `dirname $@`
+	( $(SRC_LINTEL)/dist/rules /var/www/localpkgs/$*/Release.gpg \
+	  $(SRC_LINTEL)/dist/rules /var/cache/pbuilder/$*.tgz ) >$@-new 2>&1
+	mv $@-new $@
+
 
 $(MAKE_DIST)/lintel.dsc:
 	[ `id -u` = 0 ]
@@ -71,14 +144,27 @@ $(MAKE_DIST)/lintel.dsc:
 	(cd $(SRC_LINTEL) && dpkg-buildpackage -rfakeroot -us -uc -S) >$@-new 2>&1
 	mv $@-new $@
 
-$(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc
+LINTEL_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_LINTEL)/debian/changelog)
+$(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc $(MAKE_DIST)/pbuilder/cache-%
 	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
-	(cd $(SRC_LINTEL) && debian/rules pbuilder-$*) >$@-new 2>&1
+
+	[ -f ../lintel_$(LINTEL_VERSION).dsc ]
+	perl debian/fixup-dsc.pl $* < ../lintel_$(LINTEL_VERSION).dsc >../lintel_$(LINTEL_VERSION)-$*.dsc
+	(pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
+	    --buildresult /var/cache/pbuilder/result/$* ../lintel_$(LINTEL_VERSION)-$*.dsc ) \
+	    >$@-new 2>&1
+	rm ../lintel_$(LINTEL_VERSION)-$*.dsc
+	echo "---- rebuild package info ---" >>$@-new
+	$(SRC_LINTEL)/dist/debian-localpkgs.sh $* >>$@-new
 	mv $@-new $@
+
+DATASERIES_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_DATASERIES)/debian/changelog)
 
 $(MAKE_DIST)/dataseries.dsc:
 	[ `id -u` = 0 ]
+	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
 	(cd $(SRC_DATASERIES) && dpkg-buildpackage -rfakeroot -us -uc -j6 -S) >$@-new 2>&1
 	mv $@-new $@
@@ -86,7 +172,13 @@ $(MAKE_DIST)/dataseries.dsc:
 $(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/dataseries.dsc
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
-	(cd $(HOME)/projects/DataSeries && debian/rules pbuilder-$*) >$@-new 2>&1
+	[ -f ../dataseries_$(DATASERIES_VERSION).dsc ]
+	for i in /var/www/localpkgs/$*/*; do curl http://localhost/localpkgs/$*/./`basename $$i` >/dev/null 2>&1; done
+	perl debian/fixup-dsc.pl $* < ../dataseries_$(DATASERIES_VERSION).dsc >../dataseries_$(DATASERIES_VERSION)-$*.dsc
+	(pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
+	    --buildresult /var/cache/pbuilder/result/$* \
+            ../dataseries_$(DATASERIES_VERSION)-$*.dsc ) >$@-new 2>&1
+	rm ../dataseries_$(DATASERIES_VERSION)-$*.dsc
 	mv $@-new $@
 
 # ----- srpm rules (centos, fedora, scilinux, opensuse) -----
@@ -195,12 +287,7 @@ $(MAKE_DIST)/%: $(MAKE_DIST)/dataseries/%
 # ------------------------------------------------------------------------
 # Testing on existing systems...
 
-TEST_HOSTS = $(shell awk '{print $$1}' < dist/remote-host-list)
-NOW := $(shell date +%Y-%m-%d)
-BUILD := $(MAKE_DIST)/build
-REMOTE_TMP := /var/tmp
-
-test-hosts: $(foreach host, $(TEST_HOSTS), $(MAKE_DIST)/host/$(host))
+remote-hosts: $(foreach host, $(TEST_HOSTS), $(BUILD)/remote-host/$(host)/result)
 
 $(BUILD)/tmp.db:
 	mkdir -p `dirname $@`
@@ -261,9 +348,3 @@ $(BUILD)/remote-host/%/result: $(BUILD)/remote-host/%/build
 	scp $*:$(REMOTE_TMP)/test-remote/result-$* $@-new
 	[ "`cat $@-new`" = $(NOW) ]
 	mv $@-new $@
-
-bar: $(BUILD)/remote-host/endpin.cs.hmc.edu/result
-	echo endpin
-
-foo: $(foreach host, $(TEST_HOSTS), $(BUILD)/remote-host/$(host)/build)
-	echo $(TEST_HOSTS)
