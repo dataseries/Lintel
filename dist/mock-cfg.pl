@@ -26,7 +26,7 @@ sub writeConfig {
 sub centos {
     my $base_version = $version;
     $base_version =~ s/\..*$//o;
-    my $mirror = "http://mirrors2.kernel.org/centos";
+    my $mirror = "http://mirrors1.kernel.org/centos";
     my $epel_mirror = "http://mirror.hmc.edu/epel";
     my $cfg = <<"END_OF_CENTOS_CFG";
 config_opts['root'] = 'lintel-centos-$version-$arch'
@@ -76,7 +76,7 @@ END_OF_CENTOS_CFG
 }
 
 sub fedora {
-    my $mirror = "http://mirrors2.kernel.org/fedora";
+    my $mirror = "http://mirrors1.kernel.org/fedora";
     my $cfg = <<"END_OF_FEDORA_CFG";
 config_opts['root'] = 'lintel-fedora-$version-$arch'
 config_opts['target_arch'] = '$arch'

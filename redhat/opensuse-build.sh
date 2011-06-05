@@ -34,7 +34,7 @@ export ZYPP_LOCKFILE_ROOT
 mkdir -p $HOME
 echo "%_topdir /usr/src/packages" >$HOME/.rpmmacros
 
-$ZYPPER -R $ROOT addrepo http://mirrors2.kernel.org/opensuse/distribution/$VERSION/repo/oss/ "$VERSION-$ARCH-OSS"
+$ZYPPER -R $ROOT addrepo http://mirrors1.kernel.org/opensuse/distribution/$VERSION/repo/oss/ "$VERSION-$ARCH-OSS"
 if [ ! -d /var/www/localpkgs/$1 ]; then
     echo "Missing /var/www/localpkgs/$1"
 fi

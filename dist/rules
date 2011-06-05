@@ -52,8 +52,8 @@ MOCK_SCILINUX := $(foreach version, $(SCILINUX_VERSIONS), $(foreach arch, x86_64
 		      $(MAKE_DIST)/mock/scilinux-$(version)-$(arch)))
 
 PARALLELISM=6
-DEBIAN_MIRROR=http://mirrors2.kernel.org/debian
-UBUNTU_MIRROR=http://mirrors2.kernel.org/ubuntu/
+DEBIAN_MIRROR=http://mirrors1.kernel.org/debian/
+UBUNTU_MIRROR=http://mirrors1.kernel.org/ubuntu/
 
 # -- local and remote host build vaiables --
 
@@ -71,16 +71,19 @@ help:
 
 endpin-mtn:
 	cd ~/projects/Lintel && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/Lintel\*
-	cd ../DataSeries && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/DataSeries\*
+	cd ~/projects/DataSeries && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/DataSeries\*
 
 
 martenot-copy: $(BUILD)/remote-host/martenot/result
+	rsync -Lav /var/www/localpkgs/* martenot:/var/www/external/tesla.hpl.hp.com/opensource/repositories
 	ssh martenot $(REMOTE_TMP)/make_dist/projects/dist/martenot-copy $(REMOTE_TMP)
 
 clean:
 	sudo rm -rf $(MAKE_DIST)
 	sudo rm -rf /var/lib/mock/result/*-*-*
 	sudo rm -rf /var/cache/pbuilder/result/*-*-*
+	sudo rm -rf /var/cache/pbuilder/*.tgz
+	sudo rm -rf /var/www/localpkgs/*-*-*
 
 # ------------ Packages -------------
 
@@ -107,33 +110,38 @@ chroot-opensuse: $(CHROOT_OPENSUSE)
 # not to rebuild them unless the stamp file is missing because if we do then we end up with a
 # circular dependency -- lintel/pbuilder/% depends on %/Release.gpg, but making the lintel target
 # will recreate the Release.gpg.
-/var/www/localpkgs/%/Release.gpg:
-	$(SRC_LINTEL)/dist/debian-localpkgs.sh $*
+
+debian-localpkgs-%:
+	$(SRC_LINTEL)/dist/debian-localpkgs.sh $* $(MAKE_DIST)/pbuilder/hooks
+
+/var/www/localpkgs/%/dists/sid/Release.gpg:
+	./dist/rules debian-localpkgs-$*
 
 /var/cache/pbuilder/debian-%.tgz: 
-	[ -f /var/www/localpkgs/debian-%/Release.gpg ]
+	[ -f /var/www/localpkgs/debian-$*/dists/sid/Release.gpg ]
 	[ ! -z "$$http_proxy" ]
 	[ `id -u` = 0 ]
 	pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
 	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` \
-	    --othermirror "deb http://localhost/localpkgs/debian-$* ./" --mirror $(DEBIAN_MIRROR)
+	    --othermirror "deb http://localhost/localpkgs/debian-$* sid main" \
+	    --mirror $(DEBIAN_MIRROR)
 	mv $@-new $@
 
 /var/cache/pbuilder/ubuntu-%.tgz: 
-	[ -f /var/www/localpkgs/ubuntu-%/Release.gpg ]
+	[ -f /var/www/localpkgs/ubuntu-$*/dists/sid/Release.gpg ]
 	[ ! -z "$$http_proxy" ]
 	[ `id -u` = 0 ]
 	# cdebootstrap does not work for maverick
-	(pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
+	pbuilder --create --basetgz $@-new --distribution `echo $* | sed 's/-.*//'` \
 	    --debootstrapopts --arch=`echo $* | sed 's/.*-//'` --debootstrap debootstrap \
-	    --othermirror "deb $(UBUNTU_MIRROR) `echo $* | sed 's/-.*//'` universe |deb http://localhost/localpkgs/ubuntu-$* ./" \
-	    --mirror $(UBUNTU_MIRROR)) >$@-new 2>&1
+	    --othermirror "deb $(UBUNTU_MIRROR) `echo $* | sed 's/-.*//'` universe |deb http://localhost/localpkgs/ubuntu-$* sid main" \
+	    --mirror $(UBUNTU_MIRROR)
 	mv $@-new $@
 
 # Always rebuild if the stamp file is missing -- new run of the release process.
 $(MAKE_DIST)/pbuilder/cache-%:
 	mkdir -p `dirname $@`
-	( $(SRC_LINTEL)/dist/rules /var/www/localpkgs/$*/Release.gpg \
+	( $(SRC_LINTEL)/dist/rules /var/www/localpkgs/$*/dists/sid/Release.gpg && \
 	  $(SRC_LINTEL)/dist/rules /var/cache/pbuilder/$*.tgz ) >$@-new 2>&1
 	mv $@-new $@
 
@@ -152,12 +160,14 @@ $(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc $(MAKE_DIST)/pbuilder/ca
 
 	[ -f ../lintel_$(LINTEL_VERSION).dsc ]
 	perl debian/fixup-dsc.pl $* < ../lintel_$(LINTEL_VERSION).dsc >../lintel_$(LINTEL_VERSION)-$*.dsc
+	[ ! -d /var/cache/pbuilder/result/$*/incoming ] \
+	    || rm -rf /var/cache/pbuilder/result/$*/incoming
 	(pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
-	    --buildresult /var/cache/pbuilder/result/$* ../lintel_$(LINTEL_VERSION)-$*.dsc ) \
-	    >$@-new 2>&1
+	    --buildresult /var/cache/pbuilder/result/$*/incoming \
+	    --hookdir $(MAKE_DIST)/pbuilder/hooks ../lintel_$(LINTEL_VERSION)-$*.dsc ) >$@-new 2>&1
 	rm ../lintel_$(LINTEL_VERSION)-$*.dsc
 	echo "---- rebuild package info ---" >>$@-new
-	$(SRC_LINTEL)/dist/debian-localpkgs.sh $* >>$@-new
+	./dist/rules debian-localpkgs-$*
 	mv $@-new $@
 
 DATASERIES_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_DATASERIES)/debian/changelog)
@@ -173,11 +183,11 @@ $(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
 	[ -f ../dataseries_$(DATASERIES_VERSION).dsc ]
-	for i in /var/www/localpkgs/$*/*; do curl http://localhost/localpkgs/$*/./`basename $$i` >/dev/null 2>&1; done
 	perl debian/fixup-dsc.pl $* < ../dataseries_$(DATASERIES_VERSION).dsc >../dataseries_$(DATASERIES_VERSION)-$*.dsc
 	(pbuilder --build --basetgz /var/cache/pbuilder/$*.tgz --debbuildopts "-j$(PARALLELISM)" \
-	    --buildresult /var/cache/pbuilder/result/$* \
-            ../dataseries_$(DATASERIES_VERSION)-$*.dsc ) >$@-new 2>&1
+	    --buildresult /var/cache/pbuilder/result/$*/incoming \
+	     --hookdir $(MAKE_DIST)/pbuilder/hooks \
+            ../dataseries_$(DATASERIES_VERSION)-$*.dsc ) >>$@-new 2>&1
 	rm ../dataseries_$(DATASERIES_VERSION)-$*.dsc
 	mv $@-new $@
 
@@ -215,9 +225,9 @@ $(MAKE_DIST)/lintel/mock/%.repo:
 	./dist/rules repo-$* >$@-new 2>&1
 	mv $@-new $@
 
-/etc/mock/lintel-%.cfg: $(SRC_LINTEL)/redhat/mock-cfg.pl
+/etc/mock/lintel-%.cfg: $(SRC_LINTEL)/dist/mock-cfg.pl
 	[ `id -u` = 0 ]
-	$(SRC_LINTEL)/redhat/mock-cfg.pl $*
+	$(SRC_LINTEL)/dist/mock-cfg.pl $*
 	echo "made $@"
 
 RCGZ := root_cache/cache.tar.gz
@@ -287,10 +297,15 @@ $(MAKE_DIST)/%: $(MAKE_DIST)/dataseries/%
 # ------------------------------------------------------------------------
 # Testing on existing systems...
 
-remote-hosts: $(foreach host, $(TEST_HOSTS), $(BUILD)/remote-host/$(host)/result)
+remote-hosts: 
+	./dist/rules $(BUILD)/localhost/done
+	# lots of parallelism for remote host build, it's all different machines
+	./dist/rules -j 16 $(foreach host, $(TEST_HOSTS), $(BUILD)/remote-host/$(host)/result)
 
 $(BUILD)/tmp.db:
-	mkdir -p `dirname $@`
+	[ `id -u` != 0 ]
+	sudo mkdir -p `dirname $@`
+	sudo chown `whoami` `dirname $@`
 	cp $(HOME)/.monotone/ssd.db $@-new
 	# mtn -d $@-new db init
 	# mtn -d $@-new pull $(MTN_PULL_FROM) ssd.hpl.hp.com/Lintel
@@ -306,6 +321,7 @@ $(BUILD)/tmp.db:
 	mv $@-new $@
 
 $(BUILD)/localhost/%/Changelog.mtn: $(BUILD)/tmp.db
+	mkdir -p `dirname $@`
 	(cd $(BUILD) && $(SRC_LINTEL)/dist/checkout.sh $*) >$(BUILD)/localhost/checkout.$* 2>&1
 
 $(BUILD)/localhost/%.tar.bz2: $(BUILD)/localhost/%/Changelog.mtn
@@ -321,7 +337,7 @@ LOCAL_DEPS := $(BUILD)/localhost/Lintel-$(NOW).tar.bz2 \
 	$(BUILD)/localhost/DataSeries-$(NOW).tar.bz2 $(BUILD)/localhost/deptool-bootstrap-local
 $(BUILD)/localhost/done: $(LOCAL_DEPS)
 	mkdir -p `dirname $@`
-	$(SRC_LINTEL)/dist/test-local.sh $(BUILD) $(NOW) >$@-new 2>&1
+	$(SRC_LINTEL)/dist/test-local.sh $(BUILD)/localhost $(NOW) >$@-new 2>&1
 	mv $@-new $@
 
 $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap: $(BUILD)/localhost/done
@@ -335,7 +351,7 @@ $(BUILD)/latest-release: $(LR_DEPS)
 
 $(BUILD)/tesla: $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap $(BUILD)/latest-release
 	rsync -av --progress $(LR_DEPS) $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap \
-	    $(BUILD)/latest-release tesla.hpl.hp.com:opensource/tmp # >$@-new 2>&1
+	    $(BUILD)/latest-release tesla.hpl.hp.com:opensource/tmp  >$@-new 2>&1
 	mv $@-new $@
 
 $(BUILD)/remote-host/%/build: $(SRC_LINTEL)/dist/test-remote.sh $(BUILD)/tesla
