@@ -73,10 +73,16 @@ endpin-mtn:
 	cd ~/projects/Lintel && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/Lintel\*
 	cd ~/projects/DataSeries && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/DataSeries\*
 
+# sudo HOME=/var/www/localpkgs gpg --gen-key
+# Real name: Local packages signing key
+# Email address: na@example.com
+# Comment: local package signing key
+# empty passphrase (or use gnupg-agent)
 
-martenot-copy: $(BUILD)/remote-host/martenot/result
-	rsync -Lav /var/www/localpkgs/* martenot:/var/www/external/tesla.hpl.hp.com/opensource/repositories
-	ssh martenot $(REMOTE_TMP)/make_dist/projects/dist/martenot-copy $(REMOTE_TMP)
+martenot-copy: $(BUILD)/remote-host/martenot.hpl.hp.com/result
+#	rsync -Lav --exclude=dists --exclude=lists --exclude=pool --exclude=db \
+#	    /var/www/localpkgs/* $(MARTENOT_REPOS)
+#	ssh martenot $(REMOTE_TMP)/make_dist/projects/dist/martenot-copy $(REMOTE_TMP)
 
 clean:
 	sudo rm -rf $(MAKE_DIST)
@@ -243,7 +249,7 @@ $(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm /var/cache/mock/lintel-%/$(
 	[ `id -u` = 0 ]
 	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
-	mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
+	mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$*/rpms \
 	    -r lintel-$* `cd $(SRC_LINTEL) && redhat/get-srpm.sh $*` >$@-new 2>&1
 	mv $@-new $@
 
@@ -257,7 +263,7 @@ $(MAKE_DIST)/dataseries/mock/%: $(MAKE_DIST)/dataseries/mock/%.repo $(MAKE_DIST)
 	[ `id -u` = 0 ]
 	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
-	(mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$* \
+	(mock --rebuild --cleanup-after --resultdir=/var/lib/mock/result/$*/rpms \
 	    -r lintel-$* `cd $(SRC_DATASERIES) && ./redhat/get-srpm.sh $*`) \
 	    >$@-new 2>&1
 	mv $@-new $@

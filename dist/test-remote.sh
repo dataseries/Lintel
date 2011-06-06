@@ -1,6 +1,7 @@
 #!/bin/sh
 REMOTE_TMP=/var/tmp
 set -e
+set -x
 NOW=$1
 HOST=$2
 

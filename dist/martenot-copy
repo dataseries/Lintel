@@ -1,10 +1,75 @@
 #!/bin/sh
-REMOTE_TMP=$1
-PROJ=$REMOTE_TMP/make-dist/projects
-WWW=/var/www/external/tesla.hpl.hp.com/opensource
+if [ "$1" = "--diff" ]; then
+    shift
+    IN=$2
+    OUT=$3
+    BASE=`basename $IN`
+    REF=$1/`echo $BASE | sed 's/i386/amd64/'`
+    if [ ! -f $IN ]; then
+        exit 1
+    fi
+    case $REF in
+        *debian-lenny*.tar.gz) REF=`dirname $OUT`/../`basename $REF`-norsyncable ;;
+    esac
+    if [ ! -f $REF ]; then
+        exit 1
+    fi
 
-cp $REMOTE_TMP/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
-cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
-cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
-cp $PROJ/Lintel-$2.tar.bz2 $WWW/Lintel-$2.tar.bz2
-cp $PROJ/DataSeries-$2.tar.bz2 $WWW/DataSeries-$2.tar.bz2
+    case $BASE in
+        *.deb) debdelta $REF $IN $OUT ;;
+        *) bsdiff $REF $IN $OUT ;;
+    esac
+    exit 0
+elif [ "$1" = "--martenot" ]; then
+    shift
+    REMOTE_TMP=$1
+    PROJ=$REMOTE_TMP/make-dist/projects
+    WWW=/var/www/external/tesla.hpl.hp.com/opensource
+
+    cp $REMOTE_TMP/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
+    cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
+    cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
+    cp $PROJ/Lintel-$2.tar.bz2 $WWW/Lintel-$2.tar.bz2
+    cp $PROJ/DataSeries-$2.tar.bz2 $WWW/DataSeries-$2.tar.bz2
+elif [ "$1" = "--diff-localhost" ]; then
+    shift
+    set -e
+    set -x
+    [ `id -u` != 0 ]
+    [ -d "$1" ]
+    WORKDIR=$1/tesla
+    MARTENOT_REPOS=martenot:/var/www/external/tesla.hpl.hp.com/opensource/repositories
+    DEB_REFERENCE=debian-wheezy-amd64
+    RPM_REFERENCE=centos-5-x86_64
+    LOCALPKGS=/var/www/localpkgs
+    sudo mkdir -p $WORKDIR
+    sudo chown `whoami` $WORKDIR
+#    (rsync -av --progress --partial $DEB_REFERENCE/incoming $MARTENOT_REPOS/$DEB_REFERENCE;
+#     rsync -av --progress --partial $RPM_REFERENCE/rpms $MARTENOT_REPOS/$RPM_REFERENCE) \
+#         >$WORKDIR/rsync.initial 2>&1 &
+    
+#    [ ! -d $WORKDIR/transfer ] || rm -rf $WORKDIR/transfer
+    mkdir -p $WORKDIR/transfer
+    for i in /var/www/localpkgs/$DEB_REFERENCE/incoming/*.tar.gz; do
+        echo "rezip $i"
+        gunzip -c <$i | gzip -9v >$WORKDIR/transfer/`basename $i`-norsyncable
+    done
+    REFDIR=$LOCALPKGS/$DEB_REFERENCE/incoming
+    for i in $LOCALPKGS/{debian,ubuntu}*; do
+        OSVERARCH=`basename $i`
+        mkdir -p $WORKDIR/transfer/$OSVERARCH
+        sudo rm $i/incoming/*$OSVERARCH.dsc || true
+    done
+    batch-parallel make transform="s!^.*/([^/]+)/incoming/(.+)!$WORKDIR/transfer/\$1/\$2!" \
+        command="$0 --diff $LOCALPKGS/$DEB_REFERENCE/incoming \$< \$@" \
+        -- $LOCALPKGS/{debian,ubuntu}*/incoming
+#
+#        for j in $i/incoming/*; do
+#            FILE=`basename $j`
+#            REFFILE=`echo $FILE | sed 's/amd64/i386/'`
+#            [ -f $REFDIR/$REFFILE ]
+#            echo "$OSVERARCH/$FILE"
+#        done
+#    done
+    wait
+fi

@@ -75,7 +75,7 @@ cp `dirname $0`/opensuse-chroot.sh $ROOT/root/opensuse-chroot.sh
 cd /
 chroot $ROOT $LINUX32 /root/opensuse-chroot.sh
 
-RESULT=/var/lib/mock/result/$1
+RESULT=/var/lib/mock/result/$1/rpms
 mkdir -p $RESULT
 rm $RESULT/*.rpm || true
 cp $ROOT/usr/src/packages/RPMS/*/*.rpm $RESULT
