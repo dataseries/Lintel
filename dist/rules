@@ -21,11 +21,14 @@ UBUNTU_VERSIONS := hardy karmic lucid maverick natty
 PBUILDER_UBUNTU := $(foreach dist, $(UBUNTU_VERSIONS), \
 		       $(foreach arch, amd64 i386, $(MAKE_DIST)/pbuilder/ubuntu-$(dist)-$(arch)))
 
-# Should we build against vault.centos.org for the older versions?  CentOS changes various things
-# so that it's not clear you can install an RPM built against 5.6 on 5.4.
-# 2011-05-22 -- mirror only has 5.6 which has 5 as a symlink
+# We are building against vault.centos.org for the older versions; note that they
+# are no longer receiving updates from centos.  We build against older versions because
+# if we don't then we can't install on older versions, e.g. centos 5.6 has boost 1.41, but
+# centos 5.5 has 1.33
 # See also: http://www.centos.org/modules/smartfaq/faq.php?faqid=34
-CENTOS_VERSIONS := 5 5.6
+# RHEL5 2007-03-15 (5.0) .. 2007-11-07 (5.1) .. 2008-05-21 (5.2) .. 2009-01-20 (5.3)
+#       .. 2009-09-02 (5.4) .. 2010-03-30 (5.5) .. 2011-01-12 (5.6) .. 2014-03-31 (EOL)
+CENTOS_VERSIONS := 5 5.3 5.4 5.5 5.6
 
 MOCK_CENTOS := $(foreach version, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
 		    $(MAKE_DIST)/mock/centos-$(version)-$(arch)))

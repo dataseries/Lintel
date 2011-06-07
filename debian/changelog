@@ -1,3 +1,9 @@
+lintel (0.2011.06.07) unstable; urgency=low
+
+  * Release.  See NEWS for major changes.
+
+ -- Eric Anderson <anderse@hpl.hp.com>  Tue, 07 Jun 2011 13:15:46 -0700
+
 lintel (0.2011.03.12) unstable; urgency=low
 
   * Initial dpkg packaging

@@ -46,11 +46,11 @@ elif [ "$1" = "--on-martenot-source" ]; then
     shift
     REMOTE_TMP=$1
     DATE=$2
-    PROJ=$REMOTE_TMP/make-dist/projects
+    PROJ=$REMOTE_TMP/test-remote/projects
     WWW=/var/www/external/tesla.hpl.hp.com/opensource
     [ "`hostname`" = martenot ]
 
-    cp $REMOTE_TMP/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
+    cp $REMOTE_TMP/test-remote/deptool-bootstrap $WWW/deptool-bootstrap
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
     cp $PROJ/Lintel-DATE.tar.bz2 $WWW/Lintel-DATE.tar.bz2

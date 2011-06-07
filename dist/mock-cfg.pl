@@ -28,6 +28,7 @@ sub centos {
     my $base_version = $version;
     $base_version =~ s/\..*$//o;
     my $mirror = "http://mirrors1.kernel.org/centos";
+    $mirror = "http://vault.centos.org" if $version =~ /^5\.[0-5]$/o;
     my $epel_mirror = "http://mirror.hmc.edu/epel";
     my $cfg = <<"END_OF_CENTOS_CFG";
 config_opts['root'] = 'lintel-centos-$version-$arch'
