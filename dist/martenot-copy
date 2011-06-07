@@ -1,4 +1,5 @@
 #!/bin/sh
+MARTENOT_REPO_DIR=/var/www/external/tesla.hpl.hp.com/opensource/repositories
 if [ "$1" = "--diff" ]; then
     shift
     IN=$2
@@ -20,18 +21,84 @@ if [ "$1" = "--diff" ]; then
         *) bsdiff $REF $IN $OUT ;;
     esac
     exit 0
-elif [ "$1" = "--martenot" ]; then
+elif [ "$1" = "--to-martenot" ]; then
+    [ `id -u` != 0 ]
+    [ $# = 2 ]
+    REMOTE_TMP=$2
+    DATE=$3
+    set -e
+    set -x
+    MARTENOT_REPOS=martenot:$MARTENOT_REPO_DIR
+    LOCALPKGS=/var/www/localpkgs
+    for i in $LOCALPKGS/*-*-*; do
+        DIR=/unknown
+        [ -d $i/rpms ] && DIR=$i/rpms
+        [ -d $i/incoming ] && DIR=$i/incoming
+        [ -d $DIR ]
+        rsync -av --exclude=\*.log $DIR $MARTENOT_REPOS/`basename $i`
+    done
+    rsync -av $0 martenot:$REMOTE_TMP/martenot-copy
+    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-source $DATE
+    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-binaries
+elif [ "$1" = "--on-martenot-source" ]; then
+    set -e
+    set -x
     shift
     REMOTE_TMP=$1
+    DATE=$2
     PROJ=$REMOTE_TMP/make-dist/projects
     WWW=/var/www/external/tesla.hpl.hp.com/opensource
+    [ "`hostname`" = martenot ]
 
     cp $REMOTE_TMP/make-dist/deptool-bootstrap $WWW/deptool-bootstrap
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
-    cp $PROJ/Lintel-$2.tar.bz2 $WWW/Lintel-$2.tar.bz2
-    cp $PROJ/DataSeries-$2.tar.bz2 $WWW/DataSeries-$2.tar.bz2
+    cp $PROJ/Lintel-DATE.tar.bz2 $WWW/Lintel-DATE.tar.bz2
+    cp $PROJ/DataSeries-DATE.tar.bz2 $WWW/DataSeries-DATE.tar.bz2
+elif [ "$1" = "--on-martenot-binaries" ]; then
+    while killall -u `whoami` -TERM gpg-agent; do 
+        echo killing gpg-agent...
+        sleep 1
+    done
+    trap 'killall -TERM gpg-agent' 0
+    eval `gpg-agent --daemon --no-grab`
+    set -e
+    for i in $MARTENOT_REPO_DIR/*-*-*; do
+        echo "Processing $i..."
+        (
+            cd $i;
+            if [ -d incoming ]; then
+                [ -d conf ] || mkdir conf
+                cat >conf/distributions <<EOF
+Origin: Eric Anderson
+Label: localpkgs
+Suite: unstable
+Codename: sid
+Architectures: i386 amd64 all source
+Components: main
+Description: Local Packages
+SignWith: Tesla_Software_Signing_Key
+EOF
+                # Simpler to just regenerate from scratch.
+                rm -rf dists lists pool db
+                for i in incoming/*changes; do
+                    reprepro include sid $i
+                done
+            elif [ -d rpms ]; then
+                rm -rf repodata
+                createrepo .
+                gpg --use-agent --batch --no-tty --display $DISPLAY -a --detach-sign --default-key Tesla_Software_Signing_Key repodata/repomd.xml
+            else
+                echo "Do not know how to handle $i"
+                exit 1
+            fi
+        )
+    done
 elif [ "$1" = "--diff-localhost" ]; then
+    # TODO: decide if we care about fixing the below; it's mainly useful for doing a release when
+    # on a poorly connected network.  The idea is to compute a local diff, move the diff, 
+    # recompute on the far side and rsync to fix any glitches.
+    exit 1
     shift
     set -e
     set -x
@@ -72,4 +139,7 @@ elif [ "$1" = "--diff-localhost" ]; then
 #        done
 #    done
     wait
+else
+    echo "? $1"
+    exit 1
 fi

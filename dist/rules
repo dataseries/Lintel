@@ -25,7 +25,7 @@ PBUILDER_UBUNTU := $(foreach dist, $(UBUNTU_VERSIONS), \
 # so that it's not clear you can install an RPM built against 5.6 on 5.4.
 # 2011-05-22 -- mirror only has 5.6 which has 5 as a symlink
 # See also: http://www.centos.org/modules/smartfaq/faq.php?faqid=34
-CENTOS_VERSIONS := 5
+CENTOS_VERSIONS := 5 5.6
 
 MOCK_CENTOS := $(foreach version, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
 		    $(MAKE_DIST)/mock/centos-$(version)-$(arch)))
@@ -47,7 +47,7 @@ OPENSUSE_VERSIONS := 11.2 11.3 11.4
 CHROOT_OPENSUSE := $(foreach version, $(OPENSUSE_VERSIONS), $(foreach arch, x86_64 i586, \
 			$(MAKE_DIST)/chroot/opensuse-$(version)-$(arch)))
 
-SCILINUX_VERSIONS := 6.0
+SCILINUX_VERSIONS := 6 6.0 
 MOCK_SCILINUX := $(foreach version, $(SCILINUX_VERSIONS), $(foreach arch, x86_64 i386, \
 		      $(MAKE_DIST)/mock/scilinux-$(version)-$(arch)))
 
@@ -55,12 +55,16 @@ PARALLELISM=6
 DEBIAN_MIRROR=http://mirrors1.kernel.org/debian/
 UBUNTU_MIRROR=http://mirrors1.kernel.org/ubuntu/
 
+LINTEL_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_LINTEL)/debian/changelog)
+DATASERIES_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_DATASERIES)/debian/changelog)
+
+NOW := $(shell date +%Y-%m-%d)
+REMOTE_TMP := /var/tmp
+
 # -- local and remote host build vaiables --
 
 TEST_HOSTS = $(shell awk '{print $$1}' < dist/remote-host-list)
-NOW := $(shell date +%Y-%m-%d)
 BUILD := $(MAKE_DIST)/build
-REMOTE_TMP := /var/tmp
 
 help:
 	@echo "./dist/rules packages"
@@ -77,19 +81,21 @@ endpin-mtn:
 # Real name: Local packages signing key
 # Email address: na@example.com
 # Comment: local package signing key
-# empty passphrase (or use gnupg-agent)
+# empty passphrase (or use gpg-agent)
 
 martenot-copy: $(BUILD)/remote-host/martenot.hpl.hp.com/result
-#	rsync -Lav --exclude=dists --exclude=lists --exclude=pool --exclude=db \
-#	    /var/www/localpkgs/* $(MARTENOT_REPOS)
-#	ssh martenot $(REMOTE_TMP)/make_dist/projects/dist/martenot-copy $(REMOTE_TMP)
+	dist/rules martenot-copy --to-martenot $(REMOTE_TMP) $(NOW)
 
 clean:
 	sudo rm -rf $(MAKE_DIST)
 	sudo rm -rf /var/lib/mock/result/*-*-*
+	sudo rm -rf /var/cache/mock/lintel-*-*-*
 	sudo rm -rf /var/cache/pbuilder/result/*-*-*
 	sudo rm -rf /var/cache/pbuilder/*.tgz
 	sudo rm -rf /var/www/localpkgs/*-*-*
+	-sudo rm ../*$(LINTEL_VERSION)* ../*$(DATASERIES_VERSION)*
+	-(. redhat/get-version.sh; sudo rm $$rpm_topdir/SRPMS/{Lintel,DataSeries}*)
+	-[ -d _MTN ] && sudo rm Release.info Changelog.mtn ../DataSeries/Release.info ../DataSeries/Changelog.mtn
 
 # ------------ Packages -------------
 
@@ -106,6 +112,29 @@ mock-fedora: $(MOCK_FEDORA)
 mock-scilinux: $(MOCK_SCILINUX)
 
 chroot-opensuse: $(CHROOT_OPENSUSE)
+
+sources: $(MAKE_DIST)/lintel.dsc $(MAKE_DIST)/dataseries.dsc \
+	 $(MAKE_DIST)/lintel.srpm $(MAKE_DIST)/dataseries.srpm \
+	 $(BUILD)/localhost/sources
+
+# TODO: add support for caching of opensuse.
+cache: cache-debian cache-ubuntu cache-centos cache-fedora cache-scilinux
+
+cache-debian: $(foreach dist, $(DEBIAN_VERSIONS), $(foreach arch, amd64 i386, \
+		    $(MAKE_DIST)/pbuilder/cache-debian-$(dist)-$(arch)))
+
+cache-ubuntu: $(foreach dist, $(UBUNTU_VERSIONS), $(foreach arch, amd64 i386, \
+		    $(MAKE_DIST)/pbuilder/cache-ubuntu-$(dist)-$(arch)))
+
+# TODO: unify the naming convention (/pbuilder/cache-* vs /lintel/mock/cache-*)
+cache-centos: $(foreach dist, $(CENTOS_VERSIONS), $(foreach arch, x86_64 i386, \
+		    $(MAKE_DIST)/lintel/mock/cache-centos-$(dist)-$(arch)))
+
+cache-fedora: $(foreach dist, $(FEDORA_VERSIONS), $(foreach arch, x86_64 i386, \
+		    $(MAKE_DIST)/lintel/mock/cache-fedora-$(dist)-$(arch)))
+
+cache-scilinux: $(foreach dist, $(SCILINUX_VERSIONS), $(foreach arch, x86_64 i386, \
+		    $(MAKE_DIST)/lintel/mock/cache-scilinux-$(dist)-$(arch)))
 
 .PRECIOUS: %.tgz %.gpg Release Sources Packages Release.config
 .SECONDARY:
@@ -151,14 +180,15 @@ $(MAKE_DIST)/pbuilder/cache-%:
 	  $(SRC_LINTEL)/dist/rules /var/cache/pbuilder/$*.tgz ) >$@-new 2>&1
 	mv $@-new $@
 
-
-$(MAKE_DIST)/lintel.dsc:
+$(MAKE_DIST)/lintel.rc:
 	[ `id -u` = 0 ]
-	mkdir -p `dirname $@`
-	(cd $(SRC_LINTEL) && dpkg-buildpackage -rfakeroot -us -uc -S) >$@-new 2>&1
+	(cd $(SRC_LINTEL) && dist/make-release-changelog.sh) >$@-new
 	mv $@-new $@
 
-LINTEL_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_LINTEL)/debian/changelog)
+$(MAKE_DIST)/lintel.dsc: $(MAKE_DIST)/lintel.rc
+	(cd $(SRC_LINTEL) && dpkg-buildpackage -us -uc -S -ILintel/_MTN) >$@-new 2>&1
+	mv $@-new $@
+
 $(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc $(MAKE_DIST)/pbuilder/cache-%
 	[ `id -u` = 0 ]
 	[ ! -z "$$http_proxy" ]
@@ -173,16 +203,17 @@ $(MAKE_DIST)/lintel/pbuilder/%: $(MAKE_DIST)/lintel.dsc $(MAKE_DIST)/pbuilder/ca
 	    --hookdir $(MAKE_DIST)/pbuilder/hooks ../lintel_$(LINTEL_VERSION)-$*.dsc ) >$@-new 2>&1
 	rm ../lintel_$(LINTEL_VERSION)-$*.dsc
 	echo "---- rebuild package info ---" >>$@-new
-	./dist/rules debian-localpkgs-$*
+	./dist/rules debian-localpkgs-$* >>$@-new 2>&1
 	mv $@-new $@
 
-DATASERIES_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_DATASERIES)/debian/changelog)
-
-$(MAKE_DIST)/dataseries.dsc:
+$(MAKE_DIST)/dataseries.rc:
 	[ `id -u` = 0 ]
-	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
-	(cd $(SRC_DATASERIES) && dpkg-buildpackage -rfakeroot -us -uc -j6 -S) >$@-new 2>&1
+	(cd $(SRC_DATASERIES) && $(SRC_LINTEL)/dist/make-release-changelog.sh) >$@-new
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries.dsc: $(MAKE_DIST)/dataseries.rc
+	(cd $(SRC_DATASERIES) && dpkg-buildpackage -us -uc -S -IDataSeries/_MTN) >$@-new 2>&1
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/dataseries.dsc
@@ -199,17 +230,17 @@ $(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/
 
 # ----- srpm rules (centos, fedora, scilinux, opensuse) -----
 
-$(MAKE_DIST)/lintel.srpm:
+$(MAKE_DIST)/lintel.srpm: $(MAKE_DIST)/lintel.rc
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
-	(cd $(SRC_LINTEL) && redhat/make-tar.sh && redhat/copy-tar.sh) >$@-new 2>&1
+	(cd $(SRC_LINTEL) && redhat/make-tar.sh ) >$@-new 2>&1
 	(cd $(SRC_LINTEL) && dist/make-srpms.sh Lintel) >>$@-new 2>&1
 	mv $@-new $@
 
-$(MAKE_DIST)/dataseries.srpm:
+$(MAKE_DIST)/dataseries.srpm: $(MAKE_DIST)/dataseries.rc
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
-	(cd $(SRC_DATASERIES) && redhat/make-tar.sh && redhat/copy-tar.sh) >$@-new 2>&1
+	(cd $(SRC_DATASERIES) && redhat/make-tar.sh) >$@-new 2>&1
 	(cd $(SRC_DATASERIES) && $(SRC_LINTEL)/dist/make-srpms.sh DataSeries) >>$@-new 2>&1
 	mv $@-new $@
 
@@ -243,9 +274,14 @@ RCGZ := root_cache/cache.tar.gz
 	echo $$http_proxy
 	ls -l /etc/mock/lintel-$*.cfg
 	mkdir -p $(MAKE_DIST)/logs
-	mock --init -r lintel-$* > $(MAKE_DIST)/lintel/mock/cache-$*
+	mock --init -r lintel-$* 
 
-$(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm /var/cache/mock/lintel-%/$(RCGZ)
+$(MAKE_DIST)/lintel/mock/cache-%:
+	mkdir -p `dirname $@`
+	./dist/rules /var/cache/mock/lintel-$*/$(RCGZ) >$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm $(MAKE_DIST)/lintel/mock/cache-%
 	[ `id -u` = 0 ]
 	[ ! -z "$$http_proxy" ]
 	mkdir -p `dirname $@`
@@ -253,7 +289,7 @@ $(MAKE_DIST)/lintel/mock/%: $(MAKE_DIST)/lintel.srpm /var/cache/mock/lintel-%/$(
 	    -r lintel-$* `cd $(SRC_LINTEL) && redhat/get-srpm.sh $*` >$@-new 2>&1
 	mv $@-new $@
 
-$(MAKE_DIST)/dataseries/mock/%.repo: $(MAKE_DIST)/lintel/mock/%
+$(MAKE_DIST)/dataseries/mock/%.repo: $(MAKE_DIST)/lintel/mock/% $(MAKE_DIST)/lintel/mock/%.repo
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
 	./dist/rules repo-$* >$@-new 2>&1
@@ -339,9 +375,11 @@ $(BUILD)/localhost/deptool-bootstrap-local: $(BUILD_OPT)/Lintel/src/deptool-boot
 	chmod +x $@-new
 	mv $@-new $@
 
-LOCAL_DEPS := $(BUILD)/localhost/Lintel-$(NOW).tar.bz2 \
-	$(BUILD)/localhost/DataSeries-$(NOW).tar.bz2 $(BUILD)/localhost/deptool-bootstrap-local
-$(BUILD)/localhost/done: $(LOCAL_DEPS)
+$(BUILD)/localhost/sources: $(BUILD)/localhost/Lintel-$(NOW).tar.bz2 \
+    $(BUILD)/localhost/DataSeries-$(NOW).tar.bz2 $(BUILD)/localhost/deptool-bootstrap-local
+	touch $@
+
+$(BUILD)/localhost/done: $(BUILD)/localhost/sources
 	mkdir -p `dirname $@`
 	$(SRC_LINTEL)/dist/test-local.sh $(BUILD)/localhost $(NOW) >$@-new 2>&1
 	mv $@-new $@

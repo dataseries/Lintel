@@ -2,6 +2,7 @@
 use strict;
 
 my ($os, $version, $arch) = split(/-/o, $ARGV[0]);
+die "? $ARGV[0]" unless $ARGV[0] =~ /^.+-.+-.+$/o;
 
 eval "$os()";
 die $@ if $@;

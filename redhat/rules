@@ -2,7 +2,6 @@
 
 help:
 	@echo "redhat/rules tar # make ../Lintel-<version>.tar.gz"
-	@echo "redhat/rules copy-tar # copy ../Lintel-<version>.tar.gz to rpm_topdir"
 	@echo "redhat/rules rpm # build rpms"
 	@echo "redhat/rules repo # copy rpms to yum repo under $$REDHAT_REPO"
 	@echo "redhat/rules clean # clean up temporary files made during above steps"
@@ -13,26 +12,28 @@ help:
 
 tar: redhat/stamp/tar
 
-copy-tar: redhat/stamp/copy-tar
-
 rpm: redhat/stamp/rpm
+
+spec: redhat/stamp/spec
 
 repo: redhat/stamp/repo
 
 clean:
 	-if [ -d _MTN ]; then rm Release.info Changelog.mtn; fi
-	-. redhat/get-version.sh && rm ../Lintel-$$VERSION.tar.gz
+	-. redhat/get-version.sh; rm ../Lintel-$$VERSION.tar.gz
 	rm -rf redhat/stamp
-	rm redhat/Lintel.spec
+	[ ! -f redhat/Lintel.spec ] || rm redhat/Lintel.spec
 
 redhat/stamp/tar: 
+	[ ! -f redhat/Lintel.spec ] || rm redhat/Lintel.spec
 	./redhat/make-tar.sh
 	mkdir -p `dirname $@`
 	touch $@
 
-redhat/stamp/copy-tar: redhat/stamp/tar
-	./redhat/copy-tar.sh
+# separate from tar so that we don't get the spec file in the tarball
+redhat/stamp/spec: redhat/stamp/tar
+	./redhat/make-spec.sh
 	touch $@
 
-redhat/stamp/rpm: redhat/stamp/copy-tar
+redhat/stamp/rpm: redhat/stamp/spec
 	rpmbuild -ba redhat/Lintel.spec
