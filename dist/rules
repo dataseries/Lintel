@@ -1,5 +1,7 @@
 #!/usr/bin/make -f
 
+# Consider migrating to project builder http://www.project-builder.org/
+
 # TODO: move the remainder of the package building code out of the {debian,redhat}/rules files
 # and into here.  That makes the distribution of work -- code for local rebuild in those files,
 # code for global multi-os-version in here.
@@ -87,7 +89,7 @@ endpin-mtn:
 # empty passphrase (or use gpg-agent)
 
 martenot-copy: $(BUILD)/remote-host/martenot.hpl.hp.com/result
-	dist/rules martenot-copy --to-martenot $(REMOTE_TMP) $(NOW)
+	dist/martenot-copy --to-martenot $(REMOTE_TMP) $(NOW)
 
 clean:
 	sudo rm -rf $(MAKE_DIST)
@@ -260,7 +262,7 @@ $(MAKE_DIST)/lintel/mock/%.repo:
 	chown anderse /var/lib/mock/result/$*
 	chgrp mock /var/lib/mock/result/$*
 	chmod 2775 /var/lib/mock/result/$*
-	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
+	ln -sf /var/lib/mock/result/$* /var/www/localpkgs/$*
 	mkdir -p `dirname $@`
 	./dist/rules repo-$* >$@-new 2>&1
 	mv $@-new $@
@@ -319,7 +321,7 @@ $(MAKE_DIST)/lintel/chroot/%: $(MAKE_DIST)/lintel.srpm
 $(MAKE_DIST)/dataseries/chroot/%.repo: $(MAKE_DIST)/lintel/chroot/%
 	[ `id -u` = 0 ]
 	[ -d /var/lib/mock/result/$* ]
-	[ -L /var/www/localpkgs/$* ] || ln -s /var/lib/mock/result/$* /var/www/localpkgs/$*
+	ln -sf /var/lib/mock/result/$* /var/www/localpkgs/$*
 	mkdir -p `dirname $@`
 	./dist/rules repo-$* >$@-new 2>&1
 	mv $@-new $@
@@ -387,16 +389,13 @@ $(BUILD)/localhost/done: $(BUILD)/localhost/sources
 	$(SRC_LINTEL)/dist/test-local.sh $(BUILD)/localhost $(NOW) >$@-new 2>&1
 	mv $@-new $@
 
-$(BUILD)/localhost/build/Lintel/src/deptool-bootstrap: $(BUILD)/localhost/done
-	[ -e $@ ]
-
 LR_DEPS := $(BUILD)/localhost/Lintel-$(NOW).tar.bz2 $(BUILD)/localhost/DataSeries-$(NOW).tar.bz2
 $(BUILD)/latest-release: $(LR_DEPS)
 	echo "Lintel-$(NOW).tar.bz2" >$@-new
 	echo "DataSeries-$(NOW).tar.bz2" >>$@-new
 	mv $@-new $@
 
-$(BUILD)/tesla: $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap $(BUILD)/latest-release
+$(BUILD)/tesla: $(BUILD)/localhost/done
 	rsync -av --progress $(LR_DEPS) $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap \
 	    $(BUILD)/latest-release tesla.hpl.hp.com:opensource/tmp  >$@-new 2>&1
 	mv $@-new $@

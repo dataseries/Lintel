@@ -23,11 +23,11 @@ if [ "$1" = "--diff" ]; then
     exit 0
 elif [ "$1" = "--to-martenot" ]; then
     [ `id -u` != 0 ]
-    [ $# = 2 ]
-    REMOTE_TMP=$2
-    DATE=$3
     set -e
     set -x
+    [ $# = 3 ]
+    REMOTE_TMP=$2
+    DATE=$3
     MARTENOT_REPOS=martenot:$MARTENOT_REPO_DIR
     LOCALPKGS=/var/www/localpkgs
     for i in $LOCALPKGS/*-*-*; do
@@ -38,12 +38,13 @@ elif [ "$1" = "--to-martenot" ]; then
         rsync -av --exclude=\*.log $DIR $MARTENOT_REPOS/`basename $i`
     done
     rsync -av $0 martenot:$REMOTE_TMP/martenot-copy
-    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-source $DATE
+    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-source $REMOTE_TMP $DATE
     ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-binaries
 elif [ "$1" = "--on-martenot-source" ]; then
     set -e
     set -x
     shift
+    [ $# = 2 ]
     REMOTE_TMP=$1
     DATE=$2
     PROJ=$REMOTE_TMP/test-remote/projects
@@ -53,8 +54,8 @@ elif [ "$1" = "--on-martenot-source" ]; then
     cp $REMOTE_TMP/test-remote/deptool-bootstrap $WWW/deptool-bootstrap
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
-    cp $PROJ/Lintel-DATE.tar.bz2 $WWW/Lintel-DATE.tar.bz2
-    cp $PROJ/DataSeries-DATE.tar.bz2 $WWW/DataSeries-DATE.tar.bz2
+    cp $PROJ/Lintel-$DATE.tar.bz2 $WWW/Lintel-$DATE.tar.bz2
+    cp $PROJ/DataSeries-$DATE.tar.bz2 $WWW/DataSeries-$DATE.tar.bz2
 elif [ "$1" = "--on-martenot-binaries" ]; then
     while killall -u `whoami` -TERM gpg-agent; do 
         echo killing gpg-agent...
