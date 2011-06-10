@@ -49,7 +49,7 @@ Package: lintel-utils
 Section: utils
 Architecture: any
 Depends: ${shlibs:Depends}, ${misc:Depends}, liblintel0, liblintel-perl,
-  texlive-latex-base, ghostscript 
+  texlive-latex-base, ghostscript, libdigest-sha1-perl
 Description: Miscellaneous utility library - programs
  Lintel is the miscellaneous utility library for shared functions that are
  individually valuable but are not valueable enough to form their own package.

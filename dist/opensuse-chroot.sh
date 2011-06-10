@@ -25,7 +25,16 @@ for i in *.dump; do
 done
 
 uname -a
-chown root /usr/src/packages/*/*
-chgrp root /usr/src/packages/*/*
-rpmbuild -ba /usr/src/packages/SPECS/*.spec
-echo "Successful build!"
+
+if [ "$1" = "--check" ]; then
+    /check-packages.sh --zypper
+elif [ "$1" = "--build" ]; then
+    chown root /usr/src/packages/*/*
+    chgrp root /usr/src/packages/*/*
+    rpmbuild -ba /usr/src/packages/SPECS/*.spec
+    echo "Successful build!"
+else
+    echo "? '$1'"
+    exit 1
+fi
+

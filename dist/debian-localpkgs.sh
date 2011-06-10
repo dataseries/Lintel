@@ -12,7 +12,7 @@ set -e
 PBR=/var/cache/pbuilder/result/$VERSION_REL
 [ -d $PBR ] || mkdir $PBR
 LP=/var/www/localpkgs/$VERSION_REL
-[ -L $LP ] || ln -s $PBR $LP
+ln -snf $PBR $LP
 
 cd $LP
 HOME=/var/www/localpkgs

@@ -1,0 +1,9 @@
+#!/bin/sh
+if [ ! -d $1/var/lib/rpm ]; then
+   echo "Usage: $0 <chroot-base>"
+   exit 1
+fi
+for i in `file $1/var/lib/rpm/* | grep 'Berkeley DB' | grep -v .orig | awk '{print $1}' | sed 's/:$//'`; do
+    echo "Dumping $i..."
+    db4.6_dump $i >$i.dump
+done

@@ -130,7 +130,8 @@ END_OF_FEDORA_CFG
 sub scilinux {
     my $base_version = $version;
     $base_version =~ s/\..*$//o;
-    my $mirror = "http://mirrors.200p-sf.sonic.net/scientific";
+#    my $mirror = "http://mirrors.200p-sf.sonic.net/scientific";
+    my $mirror = "http://ftp.scientificlinux.org/linux/scientific";
     my $epel_mirror = "http://mirror.hmc.edu/epel";
     my $cfg = <<"END_OF_SCILINUX_CFG";
 config_opts['root'] = 'lintel-scilinux-$version-$arch'
