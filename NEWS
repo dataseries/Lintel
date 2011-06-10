@@ -2,7 +2,7 @@ This file lists major changes to Lintel.  The full reverse-chronological change
 log (without the merge revisions) can be found in the Changelog.mtn file in the
 tar releases, or by using mtn log if you got the sources via version control.
 
-2011-06-09:
+2011-06-13:
    * Release.  Repositories with packages seem to be functional for the few OSs I can easily test.
 
 2011-05-19:
