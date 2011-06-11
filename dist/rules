@@ -71,6 +71,18 @@ REMOTE_TMP := /var/tmp
 TEST_HOSTS = $(shell awk '{print $$1}' < dist/remote-host-list)
 BUILD := $(MAKE_DIST)/build
 
+# Steps for a release:
+# ./dist/rules prep-release
+# edit version.tmp if we aren't doing a same-day release
+# ./dist/rules remote-hosts # runs pretty fast, checks on lots of variety hosts
+# export http_proxy=http://localhost:3128/
+# ./dist/rules packages # painful, takes forever, exciting chances for failure
+#   rm /var/cache/mock/lintel*/yum_cache on yum checksum failures
+#   rm /var/cache/*.tgz on apt checksum failures
+#   probably restart the squid cache also
+# ./dist/rules martenot-copy
+# edit the files on cello to note the new release, and any major announcements
+# run the copy from cello to tesla to make the release public
 help:
 	@echo "./dist/rules packages"
 	@echo "./dist/rules remote-hosts"
@@ -81,8 +93,13 @@ help:
 
 prep-release:
 	mkdir -p $(MAKE_DIST)
-	echo "RELEASE_DATE=`date +%Y-%m-%d`" >$(MAKE_DIST)/version.tmp
-	echo "RELEASE_VERSION=0.`date +%Y.%m.%d`" >>$(MAKE_DIST)/version.tmp
+	[ ! -f $(MAKE_DIST)/version ]
+	if [ -f $(MAKE_DIST)/version.tmp ]; then \
+		echo "Using existing version.tmp"; \
+	else \
+		echo "RELEASE_DATE=`date +%Y-%m-%d`" >$(MAKE_DIST)/version.tmp; \
+		echo "RELEASE_VERSION=0.`date +%Y.%m.%d`" >>$(MAKE_DIST)/version.tmp; \
+	fi
 	. $(MAKE_DIST)/version.tmp \
 	    && [ `head -1 debian/changelog | grep $$RELEASE_VERSION | wc -l` = 1 ]
 	. $(MAKE_DIST)/version.tmp \
@@ -260,7 +277,7 @@ $(MAKE_DIST)/dataseries/pbuilder/%: $(MAKE_DIST)/lintel/pbuilder/% $(MAKE_DIST)/
 $(MAKE_DIST)/check/pbuilder/%: $(MAKE_DIST)/dataseries/pbuilder/%
 	[ `id -u` = 0 ]
 	mkdir -p `dirname $@`
-	./dist/rules debian-localpkgs-$* >$@-new
+	./dist/rules debian-localpkgs-$* >$@-new 2>&1
 	echo "--------------------------" >>$@-new
 	(pbuilder --execute --basetgz /var/cache/pbuilder/$*.tgz \
 	    --hookdir $(MAKE_DIST)/pbuilder/hooks -- dist/check-packages.sh --debian) >>$@-new 2>&1

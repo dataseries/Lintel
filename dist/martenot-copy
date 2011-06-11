@@ -56,6 +56,8 @@ elif [ "$1" = "--on-martenot-source" ]; then
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
     cp $PROJ/Lintel-$DATE.tar.bz2 $WWW/Lintel-$DATE.tar.bz2
     cp $PROJ/DataSeries-$DATE.tar.bz2 $WWW/DataSeries-$DATE.tar.bz2
+    ln -sf Lintel-$DATE.tar.bz2 $WWW/Lintel-latest.tar.bz2
+    ln -sf DataSeries-$DATE.tar.bz2 $WWW/DataSeries-latest.tar.bz2
 elif [ "$1" = "--on-martenot-binaries" ]; then
     while killall -u `whoami` -TERM gpg-agent; do 
         echo killing gpg-agent...

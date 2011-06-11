@@ -1242,14 +1242,24 @@ sub dbpStartBuild {
 sub dbpGetCTestInfo {
     my $tests = new FileHandle "ctest -N |"
 	or die "Can't run ctest -N";
-    $_ = <$tests>; die "?" unless /^Start processing tests$/o;
-    $_ = <$tests>; die "?" unless /^Test project \S+$/o;
+    $_ = <$tests>;
+    $_ = <$tests> if /^Start processing tests$/o; # cmake 2.4, 2.6 line
+    die "unexpected line from ctest" unless /^Test project \S+$/o;
 
     my $maxtest = 0;
     my @testlist;
     while(<$tests>) {
-	die "?" unless m!^\s*\d+/\s*(\d+)\s* Testing (\S+)\s*$!o;
+        next if /^\s*$/o;
+        if (/^Total Tests: (\d+)$/o) {
+            die "$maxtest != $1" unless $maxtest == $1;
+            $_ = <$tests>;
+            last unless defined $_;
+            die "Unexpected ctest output";
+        }
+	die "?" unless m!^\s*\d+/\s*(\d+)\s* Testing (\S+)\s*$!o
+            || /^  Test\s+\#(\d+): (.+)$/o;
 	push(@testlist, $2);
+        die "$1 < $maxtest" if $1 < $maxtest;
 	$maxtest = $1;
     }
     close($tests);
@@ -1262,14 +1272,33 @@ sub dbpGetTestStatus {
 
     my $file = "Testing/Parallel/$num/handler_output";
     my $fh = new FileHandle($file) or die "can't read $file: $!";
-    $_ = <$fh>; die "?" unless /^Test project \S+$/o;
-    $_ = <$fh>; die "?" unless /^$/o;
-    $_ = <$fh>; die "?" unless m!^\s*(\d+)/$!o;
-    my $tnum = $1;
-    chomp;
-    my $tnum_line = $_;
+    $_ = <$fh>;
+    die "unexpected ctest handler_output" unless /^Test project \S+$/o;
+    $_ = <$fh>;
+    die "unexpected ctest handler_output" unless /^$/o;
+    $_ = <$fh>;
+    my ($tnum, $tnum_line, $test_name, $status);
+    if (m!^\s*(\d+)/$!o) { # ctest 2.4, 2.6
+        ($tnum, $tnum_line) = ($1, $_);
+        $_ = <$fh>;
+        chomp;
+        die "$file missing test status '$_'?" 
+            unless m!^\s*\d+ Testing (.*?)\s+(\S+)\s*$!o;
+        ($test_name, $status) = ($1, $2);
+    } elsif (m!^\s+Start (\d+): !o) { # ctest 2.8
+        ($tnum, $tnum_line) = ($1, $_);
+        $_ = <$fh>;
+        die "unexpected ctest handler_output" unless /^$/o;
+        $_ = <$fh>;
+        die "unexpected ctest handler_output" unless m!^\s*(\d+)/$!o;
+        $_ = <$fh>;
+        die "unexpected ctest output '$_'" 
+            unless m!^\s*\d+ Test #\d+: (\S+)\s+.+\s(\w+)\s+\d+\.\d+ sec$!o;
+        ($test_name, $status) = ($1, $2);
+    } else {
+        die "unexpected line from ctest '$_'";
+    }
     die "internal $tnum $num" unless $tnum == $num;
-    $_ = <$fh>; 
 # TODO: handle file like:
 #Test project /.home-bill-h/anderse/build/opt-debian-4.0-i686/KeyValue
 #
@@ -1281,9 +1310,6 @@ sub dbpGetTestStatus {
 #
 #        110 - fs-disk-converge-retrieve-fail (SEGFAULT)
 
-    die "$file missing test status?" 
-	unless m!^\s*\d+ Testing (.*?)\s+(\S+)\s*$!o;
-    my ($test_name, $status) = ($1, $2, $3);
     return ("${tnum_line}$_", $test_name, $status);
 }
 
@@ -1430,9 +1456,9 @@ sub dbpDoParallelTest {
 	my ($line, $testname, $status) = dbpGetTestStatus($i);
 	push (@all, $line);
 	if ($status eq 'Passed') {
-	    die "status mismatch" unless $status[$i] == 0;
+	    die "status mismatch ($status[$i]) != 0" unless $status[$i] == 0;
 	} else {
-	    die "status mismatch" unless $status[$i] == 3 << 8;
+	    die "status mismatch ($status, $status[$i])" unless $status[$i] == 3 << 8;
 	    push(@failed, [$testname, "Testing/Parallel/$i/failure_output"] );
 	}
     }
