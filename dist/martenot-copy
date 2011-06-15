@@ -54,10 +54,14 @@ elif [ "$1" = "--on-martenot-source" ]; then
     cp $REMOTE_TMP/test-remote/deptool-bootstrap $WWW/deptool-bootstrap
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
-    cp $PROJ/Lintel-$DATE.tar.bz2 $WWW/Lintel-$DATE.tar.bz2
-    cp $PROJ/DataSeries-$DATE.tar.bz2 $WWW/DataSeries-$DATE.tar.bz2
-    ln -sf Lintel-$DATE.tar.bz2 $WWW/Lintel-latest.tar.bz2
-    ln -sf DataSeries-$DATE.tar.bz2 $WWW/DataSeries-latest.tar.bz2
+    cp $PROJ/Lintel-$DATE.tar.bz2 $WWW/sources/Lintel-$DATE.tar.bz2
+    cp $PROJ/DataSeries-$DATE.tar.bz2 $WWW/sources/DataSeries-$DATE.tar.bz2
+    ln -sf Lintel-$DATE.tar.bz2 $WWW/sources/Lintel-latest.tar.bz2
+    ln -sf DataSeries-$DATE.tar.bz2 $WWW/sources/DataSeries-latest.tar.bz2
+    cat >$WWW/sources/latest-release <<EOF
+Lintel-$DATE.tar.bz2
+DataSeries-$DATE.tar.bz2
+EOF
 elif [ "$1" = "--on-martenot-binaries" ]; then
     while killall -u `whoami` -TERM gpg-agent; do 
         echo killing gpg-agent...
