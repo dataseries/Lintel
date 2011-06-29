@@ -162,10 +162,6 @@ void testDestroy() {
     SINVARIANT(Thing::thing_count == 0);
 }
 
-// TODO-nitin: add some explicit tests for iterator::operator+,-; especially the boundary cases
-// where the iterator is at the end and beginning.  It appears they are being implicitly tested by
-// the sort (change the <= in operator+ to < and the sort fails in debug mode), but having explicit
-// tests is better.
 void performSortingTest(int seed = 0) {
     MersenneTwisterRandom rng(seed);
     deque<int> std_deq;
@@ -208,12 +204,55 @@ void testSorting() {
     }
 }
 
+void testIteratorOperations() {
+    Deque<int> deque;
+    MersenneTwisterRandom rng;
+    int n_ops = rng.randInt(100);
+    for (int i = 0; i < n_ops; ++i) {
+        if (rng.randInt(10) < 3 && !deque.empty()) {
+            deque.pop_front();
+        } else {
+            deque.push_back(rng.randInt());
+        }
+    }
+
+    Deque<int>::iterator it_a = deque.begin();
+    Deque<int>::iterator it_b = deque.end();
+    ptrdiff_t ptr_diff = deque.end() - deque.begin();
+    ptrdiff_t count = 0;
+    for (; it_a != deque.end(); ++count, ++it_a, --it_b, --ptr_diff) {
+        SINVARIANT(it_b - it_a == ptr_diff - count);
+
+        SINVARIANT(it_a + ptr_diff == deque.end());
+        SINVARIANT(it_b - ptr_diff == deque.begin());
+
+        SINVARIANT(it_a < it_b || ptr_diff <= count);
+        SINVARIANT(it_a <= it_b || ptr_diff < count);
+
+        SINVARIANT(it_b > it_a || ptr_diff <= count);
+        SINVARIANT(it_b >= it_a || ptr_diff < count);
+
+        Deque<int>::iterator temp_a(it_a);
+        Deque<int>::iterator temp_b;
+        temp_b = it_b;
+        SINVARIANT(temp_b - temp_a == ptr_diff - count);
+
+        temp_a += ptr_diff;
+        SINVARIANT(temp_a == deque.end());
+        temp_b -= ptr_diff;
+        SINVARIANT(temp_b == deque.begin());
+    }
+    SINVARIANT(it_b == deque.begin());
+    SINVARIANT(static_cast<size_t>(count) == deque.size());
+}
+
 int main(int argc, char *argv[]) {
     testPushBack();
     testNoDefaultConstructor();
     testAssign();
     testDestroy();
     testSorting();
+    testIteratorOperations();
     cout << "deque tests passed.\n";
 }
 

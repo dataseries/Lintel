@@ -107,14 +107,6 @@ public:
     /// \brief an iterator for Deque's
     class iterator {
     public:
-        // TODO-reviewer: I have defined minimum set of operator to make Deque functional with
-        // std::sort function. Should we define remaining interface (as assignment operator) of
-        // Random access iterators
-        //
-        // TODO-nitin: Eric: Yes, seems worth doing, best case is we find something in the stl
-        // algorithms that requires it; also please add the doxygen documentation to all of the
-        // new operations (and any old ones you feel like doing), even though said documentation
-        // is mostly boilerplate.
 	typedef std::forward_iterator_tag iterator_category;
 
 	typedef T value_type;
@@ -122,60 +114,105 @@ public:
 	typedef T *pointer;
 	typedef ptrdiff_t difference_type;
 
-	iterator(Deque *_mydeque, size_t pos) 
+        iterator(Deque *_mydeque, size_t pos) 
 	    : mydeque(_mydeque), cur_pos(pos)
 	{ }
+        iterator() : mydeque(NULL), cur_pos(-1)
+        { }
+        iterator(const iterator &it) : mydeque(it.mydeque), cur_pos(it.cur_pos)
+        { }
+
+        /// compares two iterators for equality
+	bool operator==(const iterator &y) const {
+	    DEBUG_SINVARIANT(mydeque == y.mydeque);
+	    return cur_pos == y.cur_pos;
+	}
+        /// compares two iterators for inequality
+	bool operator!=(const iterator &y) const {
+	    DEBUG_SINVARIANT(mydeque == y.mydeque);
+	    return cur_pos != y.cur_pos;
+	}
+        /// dereference the iterator
+	T &operator *() {
+	    DEBUG_INVARIANT(cur_pos < mydeque->q_size, "invalid use of iterator");
+	    return mydeque->deque[cur_pos];
+	}
+        /// dereference the iterator
+	T *operator ->() {
+	    return &(operator *());
+	}
+        /// pre-increments the iterator
 	iterator &operator++() { increment(); return *this; }
+        /// post-increments the iterator
 	iterator operator++(int) {
 	    iterator tmp = *this;
 	    increment();
 	    return tmp;
 	}
-	bool operator==(const iterator &y) const {
-	    DEBUG_SINVARIANT(mydeque == y.mydeque);
-	    return cur_pos == y.cur_pos;
-	}
-	bool operator!=(const iterator &y) const {
-	    DEBUG_SINVARIANT(mydeque == y.mydeque);
-	    return cur_pos != y.cur_pos;
-	}
-	T &operator *() {
-	    DEBUG_INVARIANT(cur_pos < mydeque->q_size, "invalid use of iterator");
-	    return mydeque->deque[cur_pos];
-	}
-	T *operator ->() {
-	    return &(operator *());
-	}
-
+        /// pre-decrement the iterator
         iterator &operator--() { decrement(); return *this; }
+        /// post-decrement the iterator
         iterator operator--(int) {
             iterator tmp = *this;
             decrement();
             return tmp;
         }
 
+        // TODO: We are missing (n + a) variant of + and - operator, as defined by
+        // RandomAccessIterator characteristics, where a is iterator type and n is integral type.
+        /// adds diff and returns the iterator
         iterator operator+(ptrdiff_t diff) {
             DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
                              && logicalOffset(*this) + diff <= mydeque->size());
             return iterator(mydeque, static_cast<size_t>(cur_pos + diff) % mydeque->q_size);
         }
-
+        /// subtracts diff and returns the iterator
         iterator operator-(ptrdiff_t diff) {
             DEBUG_SINVARIANT(logicalOffset(*this) - diff >= 0 // <= size iterator at ::end is ok
                              && logicalOffset(*this) - diff <= mydeque->size());
             return iterator(mydeque, static_cast<size_t>(cur_pos + mydeque->q_size 
                                                          - diff) % mydeque->q_size);
         }
-
+        /// compares if lhs iterator is smaller than rhs iterator
+        bool operator<(const iterator &rhs) {
+            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
+            return logicalOffset(*this) < logicalOffset(rhs);
+        }
+        /// compares if lhs iterator is greater than rhs iterator
+        bool operator>(const iterator &rhs) {
+            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
+            return logicalOffset(*this) > logicalOffset(rhs);
+        }
+        /// compares if lhs iterator is smaller than and equal to rhs iterator
+        bool operator<=(const iterator &rhs) {
+            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
+            return logicalOffset(*this) <= logicalOffset(rhs);
+        }
+        /// compares if lhs iterator is greater than and equal to rhs iterator
+        bool operator>=(const iterator &rhs) {
+            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
+            return logicalOffset(*this) >= logicalOffset(rhs);
+        }
+        /// adds diff to the iterator and returns the reference
+        iterator &operator+=(ptrdiff_t diff) {
+            DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
+                             && logicalOffset(*this) + diff <= mydeque->size());
+            cur_pos = static_cast<size_t>(cur_pos + diff) % mydeque->q_size;
+            return *this;
+        }
+        /// subtracts diff to the iterator and returns the reference
+        iterator &operator-=(ptrdiff_t diff) {
+            DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
+                             && logicalOffset(*this) + diff <= mydeque->size());
+            cur_pos = static_cast<size_t>(cur_pos + mydeque->q_size - diff) % mydeque->q_size;
+            return *this;
+        }
+        /// returns difference between two iterators
         ptrdiff_t operator-(const iterator &rhs) const {
             DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
             return logicalOffset(*this) - logicalOffset(rhs);
         }
 
-        bool operator<(const iterator &rhs) {
-            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
-            return logicalOffset(*this) < logicalOffset(rhs);
-        }
 
     private:
 	void increment() {
