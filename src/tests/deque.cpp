@@ -12,8 +12,10 @@
 // TODO: add performance comparison to this test
 #include <iostream>
 #include <inttypes.h>
+#include <deque>
 
 #include <Lintel/Deque.hpp>
+#include <Lintel/MersenneTwisterRandom.hpp>
 using namespace std;
 using boost::format;
 
@@ -160,11 +162,54 @@ void testDestroy() {
     SINVARIANT(Thing::thing_count == 0);
 }
 
+void performSortingTest(int seed = 0) {
+    MersenneTwisterRandom rng(seed);
+    deque<int> std_deq;
+    Deque<int> lintel_deq;
+
+    // Note: In this test we can not use reserve, since std::deque.reserve is different from
+    // Deque.reserve. Former will also push back the default values to deque.
+
+    int n_ops = rng.randInt(100);
+    // perform random push_back(70%) and pop_front(30%) operations. These numbers are arbitrary.
+    for (int i = 0; i < n_ops; ++i) {
+        if (rng.randInt(10) < 3 && !std_deq.empty()) {
+            SINVARIANT(!lintel_deq.empty());
+            std_deq.pop_front();
+            lintel_deq.pop_front();
+        } else {
+            int rand_num = rng.randInt();
+            std_deq.push_back(rand_num);
+            lintel_deq.push_back(rand_num);
+        }
+    }
+    sort(std_deq.begin(), std_deq.end());
+    sort(lintel_deq.begin(), lintel_deq.end());
+
+    deque<int>::iterator s_it = std_deq.begin();
+    Deque<int>::iterator l_it = lintel_deq.begin();
+
+    for ( ; s_it != std_deq.end(); ++s_it, ++l_it) {
+        INVARIANT(*s_it == *l_it, format("%d != %d") % *s_it % *l_it);
+    }
+    SINVARIANT(l_it == lintel_deq.end());
+}
+
+void testSorting() {
+    // magical seed to test for q_front > q_back and partially filled deque.
+    performSortingTest(1090728558);
+    for (int i = 0; i < 100; ++i) {
+        // test with random seeds
+        performSortingTest();
+    }
+}
+
 int main(int argc, char *argv[]) {
     testPushBack();
     testNoDefaultConstructor();
     testAssign();
     testDestroy();
+    testSorting();
     cout << "deque tests passed.\n";
 }
 

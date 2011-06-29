@@ -109,14 +109,17 @@ public:
     /// \brief an iterator for Deque's
     class iterator {
     public:
+        // TODO-reviewer: I have defined minimum set of operator to make Deque functional with
+        // std::sort function. Should we define remaining interface (as assignment operator) of
+        // Random access iterators
 	typedef std::forward_iterator_tag iterator_category;
 
 	typedef T value_type;
 	typedef T &reference;
 	typedef T *pointer;
 	typedef ptrdiff_t difference_type;
-	
-	iterator(Deque &_mydeque, unsigned pos) 
+
+	iterator(Deque *_mydeque, unsigned pos) 
 	    : mydeque(_mydeque), cur_pos(pos)
 	{ }
 	iterator &operator++() { increment(); return *this; }
@@ -126,36 +129,68 @@ public:
 	    return tmp;
 	}
 	bool operator==(const iterator &y) const {
-	    DEBUG_SINVARIANT(&mydeque == &y.mydeque);
+	    DEBUG_SINVARIANT(mydeque == y.mydeque);
 	    return cur_pos == y.cur_pos;
 	}
 	bool operator!=(const iterator &y) const {
-	    DEBUG_SINVARIANT(&mydeque == &y.mydeque);
+	    DEBUG_SINVARIANT(mydeque == y.mydeque);
 	    return cur_pos != y.cur_pos;
 	}
 	T &operator *() {
-	    DEBUG_INVARIANT(cur_pos < mydeque.q_size, "invalid use of iterator");
-	    return mydeque.deque[cur_pos];
+	    DEBUG_INVARIANT(cur_pos < mydeque->q_size, "invalid use of iterator");
+	    return mydeque->deque[cur_pos];
 	}
 	T *operator ->() {
 	    return &(operator *());
 	}
 
+        iterator &operator--() { decrement(); return *this; }
+        iterator operator--(int) {
+            iterator tmp = *this;
+            decrement();
+            return tmp;
+        }
+
+        iterator operator+(ptrdiff_t diff) {
+            return iterator(mydeque, (cur_pos + static_cast<unsigned>(diff)) % mydeque->q_size);
+        }
+
+        iterator operator-(ptrdiff_t diff) {
+            return iterator(mydeque, (cur_pos + mydeque->q_size - static_cast<unsigned>(diff)) % mydeque->q_size);
+        }
+
+        int operator-(const iterator &rhs) {
+            DEBUG_INVARIANT(mydeque == i.mydeque, "invalid use of iterator");
+            return cursorLength(*this) - cursorLength(rhs);
+        }
+
+        bool operator<(const iterator &rhs) {
+            DEBUG_INVARIANT(mydeque == i.mydeque, "invalid use of iterator");
+            return cursorLength(*this) < cursorLength(rhs);
+        }
+
     private:
 	void increment() {
-	    DEBUG_INVARIANT(cur_pos < mydeque.q_size, "invalid use of iterator");
-	    cur_pos = (cur_pos + 1) % mydeque.q_size;
+	    DEBUG_INVARIANT(cur_pos < mydeque->q_size, "invalid use of iterator");
+	    cur_pos = (cur_pos + 1) % mydeque->q_size;
 	}
-	Deque &mydeque;
+        void decrement() {
+            DEBUG_INVARIANT(cursorLength(*this) > 0, "invalid use of iterator");
+            cur_pos = (cur_pos + mydeque->q_size - 1) % mydeque->q_size;
+        }
+        inline unsigned cursorLength(const iterator &i) {
+            return (i.cur_pos - i.mydeque->q_front + i.mydeque->q_size) % i.mydeque->q_size;
+        }
+	Deque *mydeque;
 	unsigned cur_pos;
     };
 
     iterator begin() {
-	return iterator(*this, q_front);
+	return iterator(this, q_front);
     }
 
     iterator end() {
-	return iterator(*this, q_back);
+	return iterator(this, q_back);
     }
 
     void clear() {
