@@ -40,7 +40,7 @@
 template <class T, class Alloc = std::allocator<T> >
 class Deque : boost::noncopyable {
 public:
-    Deque(unsigned default_size = 8) 
+    Deque(size_t default_size = 8) 
 	: q_front(0), q_back(0), q_size(default_size) {
 	INVARIANT(q_size > 1, "Must have size at least 2\n");
 	deque = allocator.allocate(q_size);
@@ -69,7 +69,7 @@ public:
 	q_front = (q_front + 1) % q_size;
     }
     void push_back(const T &val) { 
-	unsigned back_next = (q_back + 1) % q_size; 
+	size_t back_next = (q_back + 1) % q_size; 
 	if (back_next != q_front) {
 	    allocator.construct(deque + q_back, val);
 	    q_back = back_next;
@@ -88,11 +88,13 @@ public:
     }
 
     bool empty() const { return q_front == q_back;} ;
-    unsigned size() const { return (q_back + q_size - q_front) % q_size; }
+    size_t size() const { return (q_back + q_size - q_front) % q_size; }
 
-    void resize(int new_size) {
+    // TODO: Implement correct resize (reserve + push_back's, or pop_back's if we handle non-empty)
+    void reserve(size_t new_size) {
 	INVARIANT(empty(),"Lame implementation only does reserve when empty");
-	INVARIANT(new_size > 0, "Must have size at least 1");
+	INVARIANT(new_size > 0 && new_size < std::numeric_limits<size_t>::max(), 
+                  "Must have size at least 1, and at most size_t::max() - 1");
 	new_size += 1; // for the empty entry that always exists
 	q_front = q_back = 0;
 	allocator.deallocate(deque, q_size);
@@ -100,11 +102,7 @@ public:
 	deque = allocator.allocate(q_size);
     }
 
-    void reserve(unsigned new_size) {
-	resize(new_size);
-    }
-
-    int capacity() const { return q_size - 1; }
+    size_t capacity() const { return q_size - 1; }
 
     /// \brief an iterator for Deque's
     class iterator {
@@ -112,6 +110,11 @@ public:
         // TODO-reviewer: I have defined minimum set of operator to make Deque functional with
         // std::sort function. Should we define remaining interface (as assignment operator) of
         // Random access iterators
+        //
+        // TODO-nitin: Eric: Yes, seems worth doing, best case is we find something in the stl
+        // algorithms that requires it; also please add the doxygen documentation to all of the
+        // new operations (and any old ones you feel like doing), even though said documentation
+        // is mostly boilerplate.
 	typedef std::forward_iterator_tag iterator_category;
 
 	typedef T value_type;
@@ -119,7 +122,7 @@ public:
 	typedef T *pointer;
 	typedef ptrdiff_t difference_type;
 
-	iterator(Deque *_mydeque, unsigned pos) 
+	iterator(Deque *_mydeque, size_t pos) 
 	    : mydeque(_mydeque), cur_pos(pos)
 	{ }
 	iterator &operator++() { increment(); return *this; }
@@ -152,21 +155,26 @@ public:
         }
 
         iterator operator+(ptrdiff_t diff) {
-            return iterator(mydeque, (cur_pos + static_cast<unsigned>(diff)) % mydeque->q_size);
+            DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
+                             && logicalOffset(*this) + diff <= mydeque->size());
+            return iterator(mydeque, static_cast<size_t>(cur_pos + diff) % mydeque->q_size);
         }
 
         iterator operator-(ptrdiff_t diff) {
-            return iterator(mydeque, (cur_pos + mydeque->q_size - static_cast<unsigned>(diff)) % mydeque->q_size);
+            DEBUG_SINVARIANT(logicalOffset(*this) - diff >= 0 // <= size iterator at ::end is ok
+                             && logicalOffset(*this) - diff <= mydeque->size());
+            return iterator(mydeque, static_cast<size_t>(cur_pos + mydeque->q_size 
+                                                         - diff) % mydeque->q_size);
         }
 
-        int operator-(const iterator &rhs) {
-            DEBUG_INVARIANT(mydeque == i.mydeque, "invalid use of iterator");
-            return cursorLength(*this) - cursorLength(rhs);
+        ptrdiff_t operator-(const iterator &rhs) const {
+            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
+            return logicalOffset(*this) - logicalOffset(rhs);
         }
 
         bool operator<(const iterator &rhs) {
-            DEBUG_INVARIANT(mydeque == i.mydeque, "invalid use of iterator");
-            return cursorLength(*this) < cursorLength(rhs);
+            DEBUG_INVARIANT(mydeque == rhs.mydeque, "invalid use of iterator");
+            return logicalOffset(*this) < logicalOffset(rhs);
         }
 
     private:
@@ -175,14 +183,15 @@ public:
 	    cur_pos = (cur_pos + 1) % mydeque->q_size;
 	}
         void decrement() {
-            DEBUG_INVARIANT(cursorLength(*this) > 0, "invalid use of iterator");
+            DEBUG_INVARIANT(logicalOffset(*this) > 0, "invalid use of iterator");
             cur_pos = (cur_pos + mydeque->q_size - 1) % mydeque->q_size;
         }
-        inline unsigned cursorLength(const iterator &i) {
+        // The logical offset in the deque, as if the deque was a vector starting at 0.
+        inline size_t logicalOffset(const iterator &i) const {
             return (i.cur_pos - i.mydeque->q_front + i.mydeque->q_size) % i.mydeque->q_size;
         }
 	Deque *mydeque;
-	unsigned cur_pos;
+	size_t cur_pos;
     };
 
     iterator begin() {
@@ -217,7 +226,7 @@ private:
     friend class iterator;
     void push_expand(const T &val) {
 	T *new_deque = allocator.allocate(q_size * 2);
-	unsigned i = 0;
+	size_t i = 0;
 	// copy back to 0 offset
 	if (q_front == 0) {
 	    // special case if it's already 0 offset
@@ -226,20 +235,19 @@ private:
 		allocator.destroy(deque + i);
 	    }
 	} else {
-	    for(unsigned j=q_front; j<q_size;++j) {
+	    for(size_t j=q_front; j<q_size;++j) {
 		allocator.construct(new_deque + i, deque[j]);
 		allocator.destroy(deque + j);
 		++i;
 	    }
-	    for(unsigned j=0;j<q_back;++j) {
+	    for(size_t j=0;j<q_back;++j) {
 		allocator.construct(new_deque + i, deque[j]);
 		allocator.destroy(deque + j);
 		++i;
 	    }
 	}
-	INVARIANT(i == q_size-1,
-		  boost::format("internal %u %u %u %u")
-		  % i % q_size % q_front % q_back);
+	INVARIANT(i == q_size-1, boost::format("internal %u %u %u %u")
+                  % i % q_size % q_front % q_back);
 	q_front = 0;
 	allocator.construct(new_deque + i, val);
 	q_back = i + 1;

@@ -162,13 +162,17 @@ void testDestroy() {
     SINVARIANT(Thing::thing_count == 0);
 }
 
+// TODO-nitin: add some explicit tests for iterator::operator+,-; especially the boundary cases
+// where the iterator is at the end and beginning.  It appears they are being implicitly tested by
+// the sort (change the <= in operator+ to < and the sort fails in debug mode), but having explicit
+// tests is better.
 void performSortingTest(int seed = 0) {
     MersenneTwisterRandom rng(seed);
     deque<int> std_deq;
     Deque<int> lintel_deq;
 
-    // Note: In this test we can not use reserve, since std::deque.reserve is different from
-    // Deque.reserve. Former will also push back the default values to deque.
+    // Note: In this test we do not reserve the Deque because std::deque doesn't have such
+    // an operation and resize will put values in.
 
     int n_ops = rng.randInt(100);
     // perform random push_back(70%) and pop_front(30%) operations. These numbers are arbitrary.
