@@ -216,34 +216,59 @@ void testIteratorOperations() {
         }
     }
 
-    Deque<int>::iterator it_a = deque.begin();
-    Deque<int>::iterator it_b = deque.end();
-    ptrdiff_t ptr_diff = deque.end() - deque.begin();
-    ptrdiff_t count = 0;
-    for (; it_a != deque.end(); ++count, ++it_a, --it_b, --ptr_diff) {
-        SINVARIANT(it_b - it_a == ptr_diff - count);
-
-        SINVARIANT(it_a + ptr_diff == deque.end());
-        SINVARIANT(it_b - ptr_diff == deque.begin());
-
-        SINVARIANT(it_a < it_b || ptr_diff <= count);
-        SINVARIANT(it_a <= it_b || ptr_diff < count);
-
-        SINVARIANT(it_b > it_a || ptr_diff <= count);
-        SINVARIANT(it_b >= it_a || ptr_diff < count);
-
-        Deque<int>::iterator temp_a(it_a);
-        Deque<int>::iterator temp_b;
-        temp_b = it_b;
-        SINVARIANT(temp_b - temp_a == ptr_diff - count);
-
-        temp_a += ptr_diff;
-        SINVARIANT(temp_a == deque.end());
-        temp_b -= ptr_diff;
-        SINVARIANT(temp_b == deque.begin());
+    // Test iterator unary operators
+    {
+        for (Deque<int>::iterator it = deque.begin(); it != deque.end(); ) {
+            Deque<int>::iterator it1 = it;
+            Deque<int>::iterator it2 = it;
+            SINVARIANT(it1 == it2);
+            Deque<int>::iterator it3 = it1++;
+            INVARIANT(it3 == it && it3 != it1 && it1 != it2,
+                      "return unchanged && return different from iterator && iterator changed");
+            Deque<int>::iterator it4 = ++it2;
+            INVARIANT(it4 != it && it4 == it1 && it2 == it1,
+                      "return changed && return == updated && two updates same");
+            it = it4;
+        }
     }
-    SINVARIANT(it_b == deque.begin());
-    SINVARIANT(static_cast<size_t>(count) == deque.size());
+
+    // Test distance operators
+    Deque<int>::iterator it_forward = deque.begin();
+    Deque<int>::iterator it_backward = deque.end();
+    ptrdiff_t dist_from_start = 0; // start can be .begin() or .end()
+    ptrdiff_t dist_from_finish = deque.end() - deque.begin(); // finish can be .end() or .begin()
+    for (; it_forward != deque.end(); ++dist_from_start, --dist_from_finish) {
+        SINVARIANT(it_backward - it_forward == dist_from_finish - dist_from_start);
+
+        SINVARIANT(it_forward + dist_from_finish == deque.end());
+        SINVARIANT(it_backward - dist_from_finish == deque.begin());
+
+        SINVARIANT((it_forward < it_backward) == (dist_from_start < dist_from_finish));
+        SINVARIANT((it_forward <= it_backward) == (dist_from_start <= dist_from_finish));
+
+        SINVARIANT((it_forward > it_backward) == (dist_from_start > dist_from_finish));
+        SINVARIANT((it_forward >= it_backward) == (dist_from_start >= dist_from_finish));
+
+        Deque<int>::iterator temp_a(it_forward);
+        Deque<int>::iterator temp_b;
+        temp_b = it_backward;
+        SINVARIANT(temp_b - temp_a == dist_from_finish - dist_from_start);
+
+        temp_a += dist_from_finish;
+        SINVARIANT(temp_a == deque.end());
+        temp_b -= dist_from_finish;
+        SINVARIANT(temp_b == deque.begin());
+        if (rng.randBool()) { // Exercise both variants of the increment/decrement operators
+            ++it_forward;
+            --it_backward;
+        } else {
+            it_forward++;
+            it_backward--;
+        }
+    }
+    SINVARIANT(it_backward == deque.begin());
+    SINVARIANT(static_cast<size_t>(dist_from_start) == deque.size());
+    SINVARIANT(dist_from_finish == 0);
 }
 
 int main(int argc, char *argv[]) {

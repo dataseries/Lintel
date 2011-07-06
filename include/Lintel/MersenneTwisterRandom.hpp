@@ -55,6 +55,7 @@ public:
 	ret = ret | randInt();
 	return ret;
     }
+    // TODO: decide if we care, but below is slightly non-uniform
     inline uint32_t randInt(uint32_t max) {
 	return randInt() % max;
     }
@@ -89,6 +90,10 @@ public:
     inline double randDoubleClosed53() { // in [0,1]
 	uint32_t a=randInt()>>5, b=randInt()>>6;
 	return MTR_53bits_to_closed(a,b);
+    }
+
+    inline bool randBool() {
+        return (randInt() & 0x1) ? true : false;
     }
 
     uint32_t seed_used; 
