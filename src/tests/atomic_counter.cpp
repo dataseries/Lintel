@@ -75,8 +75,8 @@ int main () {
     // benefit since our races are entirely from running threads.
     // on very few cpus, having one extra thread increases our chance of a race
     int32_t num_threads = PThreadMisc::getNCpus(true) + 1;
-    if (num_threads == -1) {
-        num_threads = 32; // guess -- highish for circa 2009
+    if (num_threads <= 1) {
+        num_threads = 4; // should be enough to get some races
     }
     int32_t num_iters = 1000 * 1000; // 1 million chances to screw up.
     if (num_threads == 1) {
