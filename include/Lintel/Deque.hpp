@@ -202,8 +202,8 @@ public:
         }
         /// subtracts diff to the iterator and returns the reference
         iterator &operator-=(ptrdiff_t diff) {
-            DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
-                             && logicalOffset(*this) + diff <= mydeque->size());
+            DEBUG_SINVARIANT(logicalOffset(*this) - diff >= 0 // <= size iterator at ::end is ok
+                             && logicalOffset(*this) - diff <= mydeque->size());
             cur_pos = static_cast<size_t>(cur_pos + mydeque->q_size - diff) % mydeque->q_size;
             return *this;
         }
