@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include <boost/function.hpp>
 #include <boost/utility.hpp>
 
 #include <Lintel/AssertBoost.hpp>
@@ -85,6 +86,20 @@ private:
 class PThreadNoSignals : public PThread {
 public:
     virtual pthread_t start();
+};
+
+/** \brief PThread class that will execute a boost function to start.  For classes that want worker
+    threads, this provides a simple way to make them without having a helper class, e.g. they can
+    write pthread_worker = new PThreadFunction(boost::bind(&Class::worker, this));
+    pthread_worker->start() */
+
+class PThreadFunction : public PThreadNoSignals {
+public:
+    PThreadFunction(const boost::function<void * ()> &fn) : fn(fn) { }
+
+    virtual void *run();
+private:
+    boost::function<void * ()> fn;
 };
 
 /// \brief Mutex that can only be used in scoped locks

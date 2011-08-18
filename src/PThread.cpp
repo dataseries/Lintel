@@ -246,3 +246,7 @@ pthread_t PThreadNoSignals::start() {
     pthread_sigmask(SIG_SETMASK, &oldset, 0);
     return tid;
 }
+
+void *PThreadFunction::run() {
+    return fn();
+}
