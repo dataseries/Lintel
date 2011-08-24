@@ -75,6 +75,10 @@ void LintelLog::setKnownCategories(const vector<string> &categories) {
 void LintelLog::setDebugLevel(const string &category, uint8_t level) {
     maybeInitInstance();
 
+    // TODO: we now do lock on the read path, so it seems this comment is now obsolete, and
+    // we can remove the memory_barrier stuff that's down below.  Figure out if that is correct
+    // and implement if so.
+
     // Assuming that readers will either see the old or the new value, and
     // hence we won't have to lock the read path.  This is why the strings are
     // stored in a pointer.
@@ -91,6 +95,14 @@ void LintelLog::setDebugLevel(const string &category, uint8_t level) {
 	memory_barrier.lock();
 	memory_barrier.unlock();
 	instance->complex_matches.push_back(tmp);
+
+        // update any categories we have already setup.
+	for(HashMap<string, uint32_t>::iterator i = instance->category2id.begin(); 
+	    i != instance->category2id.end(); ++i) {
+	    if (prefixequal(i->first, tmp->first)) {
+                instance->debug_levels[i->second] = level;
+            }
+	}
 	instance->mutex.unlock();
     } else {
 	uint32_t id = lockedCategoryToId(category);
@@ -107,23 +119,20 @@ void LintelLog::debugMessagesInitial() {
 	vector<string> debug_names;
 
 	instance->mutex.lock();
-	for(HashMap<string, uint32_t>::iterator i 
-		= instance->category2id.begin(); 
+	for(HashMap<string, uint32_t>::iterator i = instance->category2id.begin(); 
 	    i != instance->category2id.end(); ++i) {
 	    debug_names.push_back(i->first);
 	}
 	instance->mutex.unlock();
 	sort(debug_names.begin(), debug_names.end());
 
-	LintelLogDebugLevelVariable
-	    (help, 1, format("known debugging options: %s")
-	     % join(", ", debug_names));
+	LintelLogDebugLevelVariable(help, 1, format("known debugging options: %s")
+                                    % join(", ", debug_names));
     }
 }
 
 void LintelLog::debugMessagesFinal() {
-    LintelLogDebug("LintelLog::stats", 
-		   format("%d calls to slow wouldDebug path")
+    LintelLogDebug("LintelLog::stats", format("%d calls to slow wouldDebug path")
 		   % slow_woulddebug_calls);
 }
 

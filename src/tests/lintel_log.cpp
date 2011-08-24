@@ -47,9 +47,10 @@ void testBasic() {
 }
 
 void testComplexMatch() {
+    LintelLog::Category complex_foo("complex-foo");
     LintelLog::setDebugLevel("complex*", 1);
 
-    SINVARIANT(LintelLog::wouldDebug("complex-foo"));
+    SINVARIANT(LintelLog::wouldDebug(complex_foo));
     LintelLogDebug("complex-bar", "complex-match");
     LintelLogDebug("env-foo", "env-complex-match");
     LintelLog::info("complex-match-ok");
@@ -133,7 +134,7 @@ void testMisc() {
 
     LintelLog::parseDebugString("LintelLog::stats");
     LintelLog::debugMessagesFinal();
-    INVARIANT(last_message == "3 calls to slow wouldDebug path", last_message);
+    INVARIANT(last_message == "2 calls to slow wouldDebug path", last_message);
 }
 
 void testOverflow() {
