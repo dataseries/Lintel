@@ -173,6 +173,57 @@ string maybehexstring(const string &a) {
     return a;
 }
 
+string escapestring(const string &a) {
+    string ret;
+    unsigned int done = 0;
+    for(unsigned int i=0; i<a.size(); ++i) {
+        unsigned int c = (unsigned char)(a[i]); //Avoid cast issues below
+	if (!isprint(c) || c=='%') {
+            if (done < i) {
+                ret.append(a, done, i-done);
+                done = i;
+            }
+            ++done;
+            if (c=='%') {
+                ret.append("%%");
+            } else {
+                ret.push_back('%');
+                ret.push_back(hextable[(c >> 4) & 0xF]);
+                ret.push_back(hextable[c & 0xF]);
+            }
+	} else {
+            // We're saving up the work via the delta between we are and done.  The alternative
+            // escapestring_slow below doesn't save up work. In the case of nothing being escaped,
+            // this doubles the speed, and is still a win for "little" being escaped.  For almost
+            // every thing escaped it is the same speed.
+        }
+    }
+    if (done < a.size()) {
+        ret.append(a, done, a.size() - done);
+    }
+    return ret;
+}
+
+
+string escapestring_slow(const string &a) {
+    string ret;
+    for(unsigned int i=0; i<a.size(); ++i) {
+        unsigned int c = (unsigned char)(a[i]); //Avoid cast issues below
+	if (!isprint(c) || c=='%') {
+            if (c=='%') {
+                ret.append("%%");
+            } else {
+                ret.push_back('%');
+                ret.push_back(hextable[(c >> 4) & 0xF]);
+                ret.push_back(hextable[c & 0xF]);
+            }
+	} else {
+            ret.push_back(c);
+        }
+    }
+    return ret;
+}
+
 // writes a char string in CSV form (as it is accepted by Excel)
 // if the string has commas then we need to use "" around the string
 // if the string has " then we need to double the existent quotes 
