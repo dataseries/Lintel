@@ -173,54 +173,51 @@ string maybehexstring(const string &a) {
     return a;
 }
 
-string escapestring(const string &a) {
-    string ret;
-    unsigned int done = 0;
-    for(unsigned int i=0; i<a.size(); ++i) {
-        unsigned int c = (unsigned char)(a[i]); //Avoid cast issues below
-	if (!isprint(c) || c=='%') {
-            if (done < i) {
-                ret.append(a, done, i-done);
-                done = i;
-            }
-            ++done;
-            if (c=='%') {
-                ret.append("%%");
-            } else {
-                ret.push_back('%');
-                ret.push_back(hextable[(c >> 4) & 0xF]);
-                ret.push_back(hextable[c & 0xF]);
-            }
-	} else {
-            // We're saving up the work via the delta between we are and done.  The alternative
-            // escapestring_slow below doesn't save up work. In the case of nothing being escaped,
-            // this doubles the speed, and is still a win for "little" being escaped.  For almost
-            // every thing escaped it is the same speed.
-        }
+namespace {
+    inline bool heu_escape(char c) {
+        return !isprint(c) || c == '%';
     }
-    if (done < a.size()) {
-        ret.append(a, done, a.size() - done);
-    }
-    return ret;
 }
 
-
-string escapestring_slow(const string &a) {
+string htmlEscapeUnprintable(const string &a) {
     string ret;
-    for(unsigned int i=0; i<a.size(); ++i) {
-        unsigned int c = (unsigned char)(a[i]); //Avoid cast issues below
-	if (!isprint(c) || c=='%') {
-            if (c=='%') {
-                ret.append("%%");
-            } else {
+    // ~990 nanos/call -> ~720 nanos/call w/ limit = rand(5)
+    // ~1580 -> ~1180 w/limit = rand(20)
+
+    // Explicitly calculating the size is a performance disaster
+    // Simple testing:
+    // limit5, size+0 --> 630 nanos
+    // limit5, size+10 --> 530 nanos
+    // limit5, size+20 --> 506 nanos
+    // limit20, size+0 --> 1004 nanos
+    // limit20, size+10 --> 907 nanos
+    // limit20, size+20 --> 858 nanos
+    if (a.size() <= 12) {
+        // Short string, only give 2 escapeable things for free
+        ret.reserve(a.size() + 6);
+    } else {
+        // Decide on size + 12, give people 4 escapeable things for free
+        ret.reserve(a.size() + 12); 
+    }
+    string::const_iterator end = a.end();
+    for (string::const_iterator i = a.begin(); i != end; ) {
+        string::const_iterator j(i); // next unprintable character
+        for (; j != end && !heu_escape(*j); ++j) { }
+        ret.append(i,j);
+        if (j != end) { // something to escape
+            unsigned c = static_cast<unsigned char>(*j); // For currectness in shifts below
+            ret.push_back('%');
+            if (c == '%') {
                 ret.push_back('%');
+            } else {
                 ret.push_back(hextable[(c >> 4) & 0xF]);
                 ret.push_back(hextable[c & 0xF]);
             }
-	} else {
-            ret.push_back(c);
-        }
+            ++j;
+        } 
+        i = j;
     }
+
     return ret;
 }
 
