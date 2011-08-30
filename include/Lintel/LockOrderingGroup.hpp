@@ -40,6 +40,7 @@ public:
     }
 
     double curLevel() const {
+        SINVARIANT(cur_level.get() != NULL);
 	return *cur_level;
     }
 
