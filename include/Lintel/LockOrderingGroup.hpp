@@ -40,7 +40,7 @@ public:
     }
 
     double curLevel() const {
-        SINVARIANT(cur_level.get() != NULL);
+        INVARIANT(cur_level.get() != NULL, "cur_level==null; likely that prepare() wasn't called");
 	return *cur_level;
     }
 
