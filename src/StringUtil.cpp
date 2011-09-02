@@ -174,12 +174,12 @@ string maybehexstring(const string &a) {
 }
 
 namespace {
-    inline bool heu_escape(char c) {
+    inline bool eu_escape(char c) {
         return !isprint(c) || c == '%';
     }
 }
 
-string htmlEscapeUnprintable(const string &a) {
+string escapeUnprintable(const string &a) {
     string ret;
     // ~990 nanos/call -> ~720 nanos/call w/ limit = rand(5)
     // ~1580 -> ~1180 w/limit = rand(20)
@@ -202,10 +202,10 @@ string htmlEscapeUnprintable(const string &a) {
     string::const_iterator end = a.end();
     for (string::const_iterator i = a.begin(); i != end; ) {
         string::const_iterator j(i); // next unprintable character
-        for (; j != end && !heu_escape(*j); ++j) { }
+        for (; j != end && !eu_escape(*j); ++j) { }
         ret.append(i,j);
         if (j != end) { // something to escape
-            unsigned c = static_cast<unsigned char>(*j); // For currectness in shifts below
+            unsigned c = static_cast<unsigned char>(*j); // For correctness in shifts below
             ret.push_back('%');
             if (c == '%') {
                 ret.push_back('%');
@@ -219,6 +219,10 @@ string htmlEscapeUnprintable(const string &a) {
     }
 
     return ret;
+}
+
+string htmlEscapeUnprintable(const string &in) {
+    return escapeUnprintable(in);
 }
 
 // writes a char string in CSV form (as it is accepted by Excel)

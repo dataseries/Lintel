@@ -90,7 +90,7 @@ void test_mysqlEscape() {
 }
 
 
-string htmlEscapeUnprintable_slow(const string &a) {
+string escapeUnprintable_slow(const string &a) {
     static char hextable[] = { '0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f' };
 
     string ret;
@@ -111,52 +111,52 @@ string htmlEscapeUnprintable_slow(const string &a) {
     return ret;
 }
 
-ProgramOption<uint32_t> po_heu_speed_test_iterations
-  ("heu-speed-test-iterations", "Number of iterations for the html escape unprintable speed test");
+ProgramOption<uint32_t> po_eu_speed_test_iterations
+  ("eu-speed-test-iterations", "Number of iterations for the escape unprintable speed test");
 
-ProgramOption<uint32_t> po_heu_random_seed
-  ("heu-random-seed", "Specify the random seed for the html escape unprintable test");
+ProgramOption<uint32_t> po_eu_random_seed
+  ("eu-random-seed", "Specify the random seed for the escape unprintable test");
 
-void test_htmlEscapeUnprintable() {
-    string pre_a("This has a few % characters, e.g. %20 in html.");
-    string post_a("This has a few %% characters, e.g. %%20 in html.");
-    SINVARIANT(htmlEscapeUnprintable(pre_a) == post_a);
+void test_escapeUnprintable() {
+    string pre_a("This has a few % characters, e.g. %20 in a URI.");
+    string post_a("This has a few %% characters, e.g. %%20 in a URI.");
+    SINVARIANT(escapeUnprintable(pre_a) == post_a);
 
     string pre_b("This is entirely printable");
     string post_b("This is entirely printable");
-    SINVARIANT(htmlEscapeUnprintable(pre_b) == post_b);
+    SINVARIANT(escapeUnprintable(pre_b) == post_b);
 
     string pre_c("XYasdXee");
     pre_c[0] = 0;
     pre_c[1] = 0xff;
     pre_c[5] = 0xfe;
     string post_c("%00%ffasd%feee");
-    SINVARIANT(htmlEscapeUnprintable(pre_c) == post_c);
+    SINVARIANT(escapeUnprintable(pre_c) == post_c);
 
     string pre_d("XYasdXee%");
     pre_d[0] = 0;
     pre_d[1] = 0xff;
     pre_d[5] = 0xfe;
     string post_d("%00%ffasd%feee%%");
-    SINVARIANT(htmlEscapeUnprintable(pre_d) == post_d);
+    SINVARIANT(escapeUnprintable(pre_d) == post_d);
 
     MersenneTwisterRandom rng;
 
-    if (po_heu_random_seed.used()) {
-        rng.init(po_heu_random_seed.get());
+    if (po_eu_random_seed.used()) {
+        rng.init(po_eu_random_seed.get());
     }
-    LintelLog::info(format("Using --heu-random-seed=%d") % rng.seed_used);
+    LintelLog::info(format("Using --eu-random-seed=%d") % rng.seed_used);
 
     for (uint32_t i = 0; i < 500; ++i) {
         string in;
         for (uint32_t j = 0; j < 100; ++j) {
             in.push_back(rng.randInt(256));
         }
-        SINVARIANT(htmlEscapeUnprintable_slow(in) == htmlEscapeUnprintable(in));
+        SINVARIANT(escapeUnprintable_slow(in) == escapeUnprintable(in));
     }
 
-    if (po_heu_speed_test_iterations.used()) {
-        uint32_t iters = po_heu_speed_test_iterations.get();
+    if (po_eu_speed_test_iterations.used()) {
+        uint32_t iters = po_eu_speed_test_iterations.get();
         vector<string> in, out;
         in.resize(iters);
         out.resize(iters);
@@ -172,7 +172,7 @@ void test_htmlEscapeUnprintable() {
         Clock::Tfrac start = Clock::todTfrac();
         int64_t count = 0;
         for (uint32_t i = 0; i<iters; ++i) {
-            out[i] = htmlEscapeUnprintable(in[i]);
+            out[i] = escapeUnprintable(in[i]);
             ++count;
         }
         Clock::Tfrac stop = Clock::todTfrac();
@@ -184,7 +184,7 @@ void test_htmlEscapeUnprintable() {
         }
 
         double elapsed = Clock::TfracToDouble(stop-start);
-        cout << format("heu: %f seconds, %d calls, %d nanos per call, checksum=%d\n") 
+        cout << format("eu: %f seconds, %d calls, %d nanos per call, checksum=%d\n") 
             % elapsed % count % (1.0e9 * elapsed/count) % checksum;
     }
 
@@ -231,7 +231,7 @@ int main(int argc, char *argv[]) {
 #endif
     test_mysqlEscape();
     test_hexstring();
-    test_htmlEscapeUnprintable();
+    test_escapeUnprintable();
     test_ucharstringadaptor();
 
     return 0;

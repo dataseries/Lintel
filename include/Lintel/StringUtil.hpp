@@ -74,7 +74,9 @@ std::string maybehexstring(const std::string &instr);
 /** escape the unprintable things (fails ctype::isprint(c)) as %xx, and % as %%.  Leave everything
     else alone, which means that this is not standard URI escaping because it does not escape
     spaces. */
-std::string htmlEscapeUnprintable(const std::string &instr);
+std::string escapeUnprintable(const std::string &instr);
+
+FUNC_DEPRECATED_PREFIX std::string htmlEscapeUnprintable(const std::string &in) FUNC_DEPRECATED;
 
 /** convert instr into a CSV form as accepted by Excel */
 std::string toCSVform(const std::string &instr); 
