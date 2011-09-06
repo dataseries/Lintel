@@ -25,4 +25,10 @@
 #    define LINTEL_DEBUG 0
 #endif
 
+#if LINTEL_DEBUG
+#define IF_LINTEL_DEBUG(x) x
+#else
+#define IF_LINTEL_DEBUG(x)
+#endif
+
 #endif
