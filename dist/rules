@@ -92,6 +92,8 @@ help:
 	@echo "release date $(RELEASE_DATE)"
 
 prep-release:
+	echo "Figure out how to make the perl stuff not include my path in the release"
+	exit 1
 	mkdir -p $(MAKE_DIST)
 	[ ! -f $(MAKE_DIST)/version ]
 	if [ -f $(MAKE_DIST)/version.tmp ]; then \
