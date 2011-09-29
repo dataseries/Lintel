@@ -1,0 +1,52 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Environment variables needed for zsh-buildfns, zsh-paths; sets everything reported by 
+# % deptool getenv for-sh
+#
+# If you want different locations, override them before including this file; otherwise deptool will
+# select them. 
+
+if [[ -z "$DEPTOOL" || "$DEPTOOL" = "false" ]]; then
+    DEPTOOL=`whence deptool`
+    [[ -z "$DEPTOOL" && -x $HOME/.monotone/deptool ]] && DEPTOOL=$HOME/.monotone/deptool
+    [[ -z "$DEPTOOL" ]] && DEPTOOL=`(echo $HOME/build/opt*/bin/deptool) 2>/dev/null | awk '{print $1}'`
+    if [[ -z "$DEPTOOL" || ! -x "$DEPTOOL" ]]; then
+	echo 
+	
+	echo "ERROR: deptool not in path, ~/.monotone/, or ~/build/opt*/bin/"
+	echo "Lots of things won't work right until this is fixed."
+	DEPTOOL=false
+    fi
+fi
+
+if [[ "$DEPTOOL" != false ]]; then
+    eval `$DEPTOOL getenv for-sh`
+    [[ -x $BUILD_OPT/bin/deptool ]] && DEPTOOL=$BUILD_OPT/bin/deptool
+
+    if [[ ! -d $BUILD_OPT/bin ]]; then
+        echo "WARNING: forcing creation of $BUILD_OPT/bin so it will be in \$PATH"
+        mkdir -p $BUILD_OPT/bin
+    fi
+
+    hash -d build=$BUILD_OPT
+    hash -d debug=$BUILD_DEBUG
+fi
+
+if [[ -z "$CCACHE_DIR" && -w /var/cache/ccache && -d /var/cache/ccache ]]; then
+   export CCACHE_DIR=/var/cache/ccache
+   export CCACHE_UMASK=002
+fi
+
+HOST_IP=`ifconfig eth0 | grep 'inet addr' | sed -e 's/^.*addr://' -e 's/ .*$//'`
+if [[ -z "$HOST_IP" ]]; then
+        HOST_IP=`ifconfig bond0 2>/dev/null | grep 'inet addr' | sed -e 's/^.*addr://' -e 's/ .*$//'`
+fi
+        
+case "$HOST_IP" in
+    15.184.*) MTN_SERVER=15.184.3.7
+esac
+
+

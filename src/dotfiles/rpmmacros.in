@@ -1,0 +1,13 @@
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# RPM macros file.  If it has HOME/... then this is the source file
+# otherwise it is the automatically generated variant since rpm don't have
+# support for variable substitution.
+#
+%_topdir HOME/projects/special-build/rpms
+%_tmppath /dev/shm/USER/rpm/tmp
+%_builddir /dev/shm/USER/rpm/build
+%_emacs_sitelispdir /usr/share/emacs/site-lisp
+%_emacs_sitestartdir /usr/share/emacs/site-lisp/site-start.d

@@ -1,0 +1,87 @@
+#!/bin/sh
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Setup the files for use; safely symlink them into the home directory.
+
+maybeLink() {
+    if [ -f $HOME/.$1 -a \! -h $HOME/.$1 ]; then
+	echo "Warning: $HOME/.$1 exists and not a symlink, skipping"
+    elif [ -L $HOME/.$1 -a "`readlink $HOME/.$1`" = .dotfiles/$1 ]; then
+        :
+    else
+        echo "Symlinking .dotfiles/$1 to $HOME/.$1"
+	rm $HOME/.$1 >/dev/null 2>&1
+	ln -sf .dotfiles/$1 $HOME/.$1
+    fi
+}
+
+linkFromDotfilesToHomedir() {
+    echo "Linking from $HOME/.dotfiles to $HOME"
+    for i in $HOME/.dotfiles/*; do
+        i=`basename $i`
+        j=`echo "$i" | grep '~$'`
+        case $i in
+           _MTN|setup|deptool.config|zsh-*|backup.*|README) : ;;
+           rpmmacros.in) 
+                sed -e "s,HOME,$HOME," -e "s,USER,$USER," \
+                    $HOME/.dotfiles/rpmmacros.in >$HOME/.dotfiles/rpmmacros
+                maybeLink rpmmacros
+                ;;
+           $j) : ;;
+           *) maybeLink $i ;;
+        esac
+    done
+}
+
+copyUpdate() {
+    if [ -f $2 ]; then
+        if cmp $1 $2 >/dev/null 2>&1; then
+            : # unchanged; do nothing
+        else
+            mv $2 $3
+            cp $1 $2
+            echo "diff -c $3 $2"
+        fi
+    else
+        cp $1 $2
+        echo "cat $2"
+    fi
+}
+
+# TODO-reviewer: we could instead symlink.  The advantage of symlinking is that
+# it would make sure that as soon as an update was applied to Lintel it was applied into
+# the user's environment.  The downside is that any bugs would get propagated quickly.
+# Unclear which approach is better, but in this case I chose stability over fast updates.
+# Is that the right choice?
+copyFromLintelToDotfiles() {
+    DOTFILES=$HOME/.dotfiles
+    mkdir -p $DOTFILES
+    echo "Copying from $SRCPATH to $DOTFILES; to see changes:"
+    BACKUPDIR=backup.`date +%Y-%m-%d`.$$
+    mkdir $DOTFILES/$BACKUPDIR
+    for i in $SRCPATH/*; do
+        BASE=`basename $i`
+        case $BASE in
+            *~) : ;;
+            \#*\#) : ;;
+            *) copyUpdate $i $DOTFILES/$BASE $DOTFILES/$BACKUPDIR/$BASE ;;
+        esac
+    done
+    # if we copied anything, this will just fail; otherwise we clean up the user's directory
+    rmdir $DOTFILES/$BACKUPDIR 2>/dev/null || true
+}
+
+case $0 in
+    /*) SRCPATH=`dirname $0` ;;
+    *) SRCPATH=`dirname $PWD/$0` ;;
+esac
+
+SRCPATH=`echo $SRCPATH | sed -e 's/\/\.$//g' -e 's/\/\.\//\//g'`
+
+case $SRCPATH in 
+    */.dotfiles) linkFromDotfilesToHomedir ;;
+    */Lintel*/src/dotfiles) copyFromLintelToDotfiles ;;
+    *) echo "ERROR: do not know how to operate from $SRCPATH"; exit 1 ;;
+esac

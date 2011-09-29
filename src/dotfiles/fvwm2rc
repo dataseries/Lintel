@@ -1,0 +1,332 @@
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Unclear whether this file should be included, but it's been part of our dotfiles collection
+# for a while, so I'm including it even though it's remarkably specific to Eric's usage.
+#
+# The correct order for inserting configurations is:
+# 1. Colors
+# 2. Assorted configuration paramters such as ClickToFocus, or MWMBorders
+# 3. Path setup (ModulePath, PixmapPath, IconPath)
+# 4. Style settings, including the default style Style "*" ...
+# 5. InitFunction and ResetFunction definitions.
+# 6. Other Functions. Functions cannot be forward referenced from
+#	other functions, but they can be backward referenced.
+# 7. Menus definitions. Same caveats about forward referencing
+# 8. Key and Mouse Bindings.
+# 9. Module options.
+
+# The order of steps 5, 6, and 7 is not critical, as long as there are
+# no forward references to functions or menus.
+
+# If you get it wrong, the most common problem is that color or font settings
+# are ignored
+
+ImagePath $HOME/.fvwmicons:+
+
+Read /etc/X11/fvwm/menudefs.hook Quiet
+Read menudefs.hook Quiet
+
+# set up the colors
+
+Style * HilightFore Black, HilightBack #eae15d
+# HilightColor   Black #5fc2ef
+
+MenuStyle * Foreground Black
+MenuStyle * Background grey
+MenuStyle * Greyed SlateGrey
+MenuStyle * Font  "fixed"
+
+BorderStyle -- HiddenHandles NoInset
+Style "*" BorderWidth 0, HandleWidth 3, Color Black/#60a0c0
+
+WindowFont	  5x7
+# WindowFont -*-helvetica-bold-r-normal-*-10-*-*-*-*-*-*-*
+
+# Make the focus mode stay with a window until another is entered
+Style "*" SloppyFocus
+Style "xlock" NeverFocus
+
+OpaqueMoveSize 100
+Style * ResizeOutline
+
+Style * SnapAttraction 25 All Screen
+EdgeScroll 0 0
+EdgeResistance 250 
+Style * EdgeMoveDelay 250
+Style * EdgeMoveResistance 50
+
+Style "*" NoIcon
+Style "*" HintOverride
+Style "*" SmartPlacement, CleverPlacement
+Style "*" DecorateTransient
+
+Style "perfmeter"   NoTitle, NoHandles, Sticky, WindowListSkip,BorderWidth 2, CirculateSkip
+Style "xconsole"   WindowListSkip
+Style "Fvwm*"      NoTitle, NoHandles, Sticky, WindowListSkip
+Style "FvwmPager"  NoTitle, NoHandles, Sticky, WindowListSkip, Layer 6
+Style "xclock"     NoTitle, NoHandles, Sticky, WindowListSkip, Layer 7
+Style "Battery"    NoTitle, NoHandles, Sticky, WindowListSkip, Layer 8
+Style "oneko"      Sticky
+Style "xloadimage" NoTitle
+# Style "xzgv*"	   NoTitle, NoHandles, BorderWidth 0
+
+ButtonStyle 1 Pixmap options-inactive.xpm -- flat
+AddButtonStyle 1 ActiveUp (Pixmap options-activeup.xpm -- flat) ActiveDown (Pixmap options-activedown.xpm -- flat)
+ButtonStyle 3 Pixmap fullscreen-inactive.xpm -- flat
+AddButtonStyle 3 ActiveUp (Pixmap fullscreen-activeup.xpm -- flat) ActiveDown (Pixmap fullscreen-activedown.xpm -- flat)
+ButtonStyle 5 Pixmap vertical-inactive.xpm -- flat
+AddButtonStyle 5 ActiveUp (Pixmap vertical-activeup.xpm -- flat) ActiveDown (Pixmap vertical-activedown.xpm -- flat)
+ButtonStyle 2 Pixmap close-inactive.xpm -- flat 
+AddButtonStyle 2 ActiveUp (Pixmap close-activeup.xpm -- flat) ActiveDown (Pixmap close-activedown.xpm -- flat)
+ButtonStyle 4 Pixmap options
+
+TitleStyle Pixmap titleleft-inactive.xpm -- left flat 
+AddTitleStyle ActiveUp Pixmap titleleft-active.xpm -- left flat 
+AddTitleStyle ActiveDown Pixmap titleleft-active.xpm -- left flat 
+AddTitleStyle Pixmap titleright-inactive.xpm -- right flat
+AddTitleStyle ActiveUp Pixmap titleright-active.xpm -- right flat 
+AddTitleStyle ActiveDown Pixmap titleright-active.xpm -- right flat 
+# Stuff to do at start-up
+
+AddToFunc "InitFunction" "I" Module FvwmPager 0 11
+AddToFunc "RestartFunction" "I" Module FvwmPager 0 11
+
+############################################################################
+# Now define some handy complex functions
+
+# This one moves and then raises the window if you drag the mouse,
+# only raises the window if you click,  or does a RaiseLower if you double 
+# click
+AddToFunc "Move-or-RaiseLower" "M" Move
++              "M" Raise
++              "C" RaiseLower
++	       "D" WindowShade
+
+# This one moves and then lowers the window if you drag the mouse,
+# only lowers the window if you click,  or does a RaiseLower if you double 
+# click
+AddToFunc "Move-or-Lower" "M" Move
++              "M" Lower
++              "C" Lower
++              "D" RaiseLower
+
+# This one resizes and then raises the window if you drag the mouse,
+# only raises the window if you click,  or does a RaiseLower if you double 
+# click
+AddToFunc "Resize-or-Raise" "M" Resize
++              "M" Raise
++              "C" Raise
++              "D" RaiseLower
+
+##############################################################################
+#now define the menus - defer bindings until later
+
+# Provides a list of modules to fire off
+AddToMenu "Module-Popup" "Modules" Title
++              "FvwmButtons" Module FvwmButtons
++              "Clean-Up" Module FvwmClean
++              "Identify" Module FvwmIdent
++              "SaveDesktop" Module FvwmSave
++              "Debug" Module FvwmDebug
++              "Pager" Module FvwmPager 0 7
++              "FvwmWinList" Module FvwmWinList
+
+AddToMenu "Hosts-Menu2" "Hosts" Title
++	       "keyvalue-2" Exec exec xterm -T keyvalue-debian-x86-2 -e /bin/sh -c 'slogin -A -t -e none keyvalue-debian-x86-2.u.hpl.hp.com' &
++	       "build-centos-1" Exec exec xterm -T build-centos-1 -e /bin/sh -c 'slogin -A -t -e none build-centos-1.u.hpl.hp.com' &
++	       "pa-install" Exec exec xterm -T pa-install -e /bin/sh -c 'slogin -e none -A -X pa-install.u' &
++	       "keyvalue-centos-build-6" Exec exec xterm -T keyvalue-centos-build-6 -e /bin/sh -c 'slogin -A -t -e none keyvalue-centos-build-6.u.hpl.hp.com' &
++	       "keyvalue-build-3" Exec exec xterm -T keyvalue-build-3 -e /bin/sh -c 'slogin -A -t -e none keyvalue-build-3.u.hpl.hp.com' &
++	       "ch-x86-deb1" Exec exec xterm -T ch-x86-debian-01 -e /bin/sh -c 'slogin -t -e none ch-x86-debian-01.u.hpl.hp.com' &
++	       "ers-gw" Exec exec xterm -T ers-gw-hp.hpl.hp.com -e /bin/sh -c 'slogin -A -e none -X ers-gw-hp.hpl.hp.com' &
++	       "ticoli-trace-2" Exec exec xterm -T ticoli-trace-2 -e /bin/sh -c 'slogin -t -e none -A -X ers-gw-hp slogin root@ticoli-trace-2' &
+#+	       "ticoli-trace-1" Exec exec xterm -T ticoli-trace-1.u.hpl.hp.com -e /bin/sh -c 'slogin -A -e none -X ticoli-trace-1.u.hpl.hp.com' &
++	       "batch-master-1" Exec exec xterm -T batch-master-1 -e /bin/sh -c 'slogin -e none -A -X batch-master-1.u' &
++	       "xc" Exec exec xterm -T xc -e /bin/sh -c 'slogin -e none -A -X xc' &
++	       "fileserver-1" Exec exec xterm -T fileserver-1 -e /bin/sh -c 'slogin -e none -A -X fileserver-1.u' &
++	       "fileserver-2" Exec exec xterm -T fileserver-2 -e /bin/sh -c 'slogin -e none -A -X fileserver-2.u' &
+
+AddToMenu "Hosts-Menu" "Hosts" Title
++	       "martenot" Exec exec xterm -T martenot.hpl.hp.com -e /bin/sh -c 'slogin -A -e none -X martenot.hpl.hp.com' &
++	       "batch-fe-2" Exec exec xterm -T batch-fe-2 -e /bin/sh -c 'slogin -e none -A -X batch-fe-2.u' &
++	       "tiger-trace" Exec exec xterm -T tiger-trace -e /bin/sh -c 'slogin -A -e none -X tiger-trace' &
++	       "root@eric-home" Exec exec xterm -T eric-home -e /bin/sh -c 'slogin -A -e none -X root@eric-home' &
++	       "eric-home" Exec exec xterm -T eric-home -e /bin/sh -c 'slogin -A -e none -X eric-home' &
++	       "usi" Exec exec xterm -T usi-vlan-test -e /bin/sh -c 'slogin -A -e none -X usi' &
++	       "usi-vlan-test" Exec exec xterm -T usi-vlan-test -e /bin/sh -c 'slogin -A -e none -X usi-vlan-test' &
++	       "root@trace-test" Exec exec xterm -T trace-test -e /bin/sh -c 'slogin -A -l root -e none -X trace-test' &
++	       "godi" Exec exec xterm -T godi.hpl.hp.com -e /bin/sh -c 'slogin -X godi.hpl.hp.com' &
++	       "hplssp1" Exec exec xterm -T hplssp1.hpl.hp.com -e /bin/sh -c 'slogin -X hplssp1.hpl.hp.com' &
++	       "spica" Exec exec xterm -T spica.hpl.hp.com -e /bin/sh -c 'tsocks slogin -p 1501 spica.hpl.hp.com' &
++	       "firewall" Exec exec xterm -T firewall -e /bin/sh -c 'slogin -X firewall' &
++	       "cello" Exec exec xterm -T cello.hpl.hp.com -e /bin/sh -c 'slogin -A -e none -X cello.hpl.hp.com' &
+
+# This menu will fire up some very common utilities
+AddToMenu "RootMenu" "Root Menu" Title
++              "Xterm" Exec exec xterm -n xterm@`/bin/hostname` &
++	       "Emacs" Exec exec emacs &
++	       "Hosts" Popup Hosts-Menu 
++	       "Hosts-2" Popup Hosts-Menu2
++	       "vncviewer" Exec exec xvncviewer rotonda:5 &
++	       "vmware" Exec exec /bin/sh -c 'vmware >.vmware.log 2>&1' &
++	       "konqueror" Exec exec /bin/sh -c 'konqueror >.konqueror.log 2>&1' &
++	       "cgoban" Exec exec xterm -T cgoban -geometry -0-0 -e /bin/sh -c 'tsocks cgoban -nostealth' &
++	       "mpgplay" Exec exec xterm -T mpgplay -e /bin/sh -c 'mpgplay.pl' &
++	       "akregator" Exec exec akregator &
++	       "WindowOps" Popup WindowOps
++	       "Debian" Popup /Debian
++              "" Nop
+# +              "Modules" Popup Module-Popup
+# +              "" Nop
++              "Restart fvwm2" Restart
++              "Screen lock" Exec exec /bin/sh -c 'xscreensaver-command -lock' &
++              "Hibernate" Exec exec /bin/sh -c 'sync; xscreensaver-command -lock && sudo hibernate-ram --force' &
+# +              "Yes, Really Quit" Quit
+
+# This defines the most common window operations
+AddToMenu "WindowOps" "Window Ops" Title
++		"Shade" WindowShade
++		"VMWare Position" Move +-257p +-69p
++              "Move" Function Move-or-RaiseLower
++              "Resize" Function Resize-or-Raise
++              "Raise" Raise
++              "Lower" Lower
++              "Identify" Module FvwmIdent
++              "(De)Iconify" Iconify
++              "(Un)Stick" Stick
++              "(Un)Maximize" Function maximize_func
++              "" Nop
++              "Destroy" Destroy
++              "Close" Close
++              "" Nop
++              "Refresh Screen" Refresh
++              "ScrollBar" Module FvwmScroll 2 2
+
+# single click bring up menu, double click closes
+AddToFunc "window_ops_func" "C" PopUp "WindowOps"
++              "M" PopUp WindowOps
++	       "D" Close
+
+##############################################################################
+# This defines the mouse bindings
+# Contexts:
+# W = window
+# R = root
+# T = Title
+# S = Sides
+# ...
+#
+# Modifiers
+# A = Any (don't care)
+# M = Meta
+# C = Control
+# ...
+
+## Root Definitions
+#     Button	Context Modifi 	Function
+Mouse 1		R   	A       Module FvwmWinList Transient
+Mouse 2		R    	A       Menu WindowOps Nop
+Mouse 3		R    	A       Menu RootMenu Nop
+
+## Window Definitions
+#     Button	Context Modifi 	Function
+Mouse 1		W	M	Function "Move-or-RaiseLower"
+Mouse 2		W	M	Resize
+Mouse 3		W	M	Function "window_ops_func"
+Mouse 1		W	MC	Raise
+Mouse 3		W	MC	Lower
+
+Mouse 1		T	A	Function "Move-or-RaiseLower"
+Mouse 3		T	A	Function "window_ops_func"
+Mouse 1		FS	A	Resize
+
+## Title bar buttons
+# Any button in the left title-bar button gives the window ops menu
+# Any button in the right title-bar button Iconifies the window
+# Any button in the rightmost title-bar button maximizes
+# Note the use of "Mouse 0" for AnyButton.
+
+#     Button	Context Modifi 	Function
+Mouse 0		1    	A      	Function "window_ops_func"
+Mouse 0		3	A	Maximize 100 100
+Mouse 0		5	A	Maximize 0 100
+Mouse 0		2	A	Close
+
+############################################################################
+# Now some keyboard shortcuts.
+
+Key F1		A	A	Desk 0 0 GotoPage 0 0
+Key F1		W	S	MoveToDesk 0 0
+Key F2		A	A	Desk 0 1 GotoPage 0 0
+Key F2		W	S	MoveToDesk 0 1
+Key F3		A	A	Desk 0 2 GotoPage 0 0
+Key F3		W	S	MoveToDesk 0 2
+Key F4		A	A	Desk 0 3 GotoPage 0 0
+Key F4		W	S	MoveToDesk 0 3
+Key F5		A	A	Desk 0 4 GotoPage 0 0
+Key F5		W	S	MoveToDesk 0 4
+Key F6		A	A	Desk 0 5 GotoPage 0 0
+Key F6		W	S	MoveToDesk 0 5
+Key F7		A	A	Desk 0 6 GotoPage 0 0
+Key F7		W	S	MoveToDesk 0 6
+Key F8		A	A	Desk 0 7 GotoPage 0 0
+Key F8		W	S	MoveToDesk 0 7
+Key F9		A	A	Desk 0 8 GotoPage 0 0
+Key F9		W	S	MoveToDesk 0 8
+Key F10		A	A	Desk 0 9 GotoPage 0 0
+Key F10		W	S	MoveToDesk 0 9
+Key F11		A	A	Desk 0 10 GotoPage 0 0
+Key F11		W	S	MoveToDesk 0 10
+Key F12		A	A	Desk 0 11 GotoPage 0 0
+Key F12		W	S	MoveToDesk 0 11
+
+Key Help	A	A	Popup "RootMenu"
+Key Help	A	S	Popup "Hosts-Menu"
+Key Help	A	C	Popup "Hosts-Menu2"
+
+########################## Window-Identifier ###############################
+# Just choose colors and a fonts
+*FvwmIdentBack MidnightBlue
+*FvwmIdentFore Yellow
+*FvwmIdentFont -adobe-helvetica-medium-r-*-*-12-*-*-*-*-*-*-*
+
+########################### Pager #########################################
+#*FvwmPagerBack #908090
+#*FvwmPagerFore #484048
+#*FvwmPagerHilight #cab3ca
+
+DeskTopSize 1x1
+
+*FvwmPagerHilight VioletRed1
+*FvwmPagerFore yellow1
+*FvwmPagerBack DarkOrchid4
+*FvwmPagerFont 5x7
+*FvwmPagerGeometry 290x30+1633+0
+#*FvwmPagerGeometry 580x88++0
+*FvwmPagerLabel 0 One
+*FvwmPagerLabel 1 Two
+*FvwmPagerLabel 2 Three
+*FvwmPagerLabel 3 Four
+*FvwmPagerLabel 4 Five
+*FvwmPagerLabel 5 Six
+*FvwmPagerLabel 6 Seven
+*FvwmPagerLabel 7 Eight
+*FvwmPagerLabel 8 Nine
+*FvwmPagerSmallFont 5x7
+
+##########################FvwmWinList##################################
+*FvwmWinListBack #908090
+*FvwmWinListFore Black
+*FvwmWinListFont -adobe-helvetica-bold-r-*-*-12-*-*-*-*-*-*-*
+
+*FvwmWinListAction Click1 Iconify -1,Focus
+*FvwmWinListAction Click2 Iconify
+*FvwmWinListAction Click3 Module "FvwmIdent" FvwmIdent
+*FvwmWinListUseSkipList
+*FvwmWinListGeometry +0-1
+
+*FvwmScrollFore White
+*FvwmScrollBack SkyBlue
+

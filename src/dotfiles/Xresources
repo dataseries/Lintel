@@ -1,0 +1,66 @@
+! (c) Copyright 2011, Hewlett-Packard Development Company, LP
+!
+! See the file named COPYING for license details
+!
+! Common X resource settings.  Mostly here for the vnc ones and because it's been part of our
+! standard set of available dotfiles.
+
+ghostview.reverseVideo: false
+! emacs*reverseVideo: true
+emacs*background: black
+emacs*foreground: gray90
+Emacs*menubar*font: fixed
+emacs*Font: -misc-fixed-medium-r-normal--10-70-*-*-c-60-iso8859-1
+XTerm*saveLines: 2000
+XTerm*boldFont: fixed-bold
+Xterm*utmpInhibit: true
+XTerm*scrollBar: true
+XTerm*scrollTtyOutput: false
+XTerm*scrollKey: true
+!XTerm*reverseVideo: true
+XTerm*foreground: gray90
+XTerm*background: black
+!XTerm*Font: fixed
+!XTerm*Font: -adobe-courier-medium-r-normal--11-80-100-100-m-60-iso8859-1
+XTerm*Font: -misc-fixed-medium-r-normal--10-70-*-*-c-60-iso8859-1
+!XTerm*Font: -misc-fixed-medium-r-normal--8-*-100-*-*-*-*-*
+Netscape.installColormap: Yes
+Netscape*encodingFilters: 
+*wmStartupCommand: /mount/ssp/anderse/.depot/bin/fvwm2
+XLock.mousemotion: on
+Netscape.userAgent: Mozilla/4.61 [en] (X11; I; Linux 2.2.12-20smp i686)
+! vnc settings
+*desktop.translations: #override\n\
+<Key>F8: SendRFBEvent()\n\
+<Key>F12: ShowPopup()
+*popupButtonCount: 9
+*popup*button7.label: ctrl-alt
+*popup*button7.translations: #override\n\
+  <Btn1Down>,<Btn1Up>: \
+    SendRFBEvent(keydown, Control_L) \
+    SendRFBEvent(keydown, Alt_L) \
+    SendRFBEvent(keyup, Control_L) \
+    SendRFBEvent(keyup, Alt_L)
+*popup*button8.label: send f1
+*popup*button8.translations: #override\n\
+  <Btn1Down>,<Btn1Up>: \
+    SendRFBEvent(key, F1) 
+*popup*button9.label: send f2
+*popup*button9.translations: #override\n\
+  <Btn1Down>,<Btn1Up>: \
+    SendRFBEvent(key, F2) 
+
+XTerm*VT100.translations:     #override\n\
+                              ~Shift <Key>Prior: scroll-back(1,halfpage)\n\
+                              ~Shift <Key>Next: scroll-forw(1,halfpage)\n\
+			      ~Ctrl ~Meta <Btn3Up>:insert-selection(PRIMARY, CLIPBOARD)\n\
+			      ~Ctrl ~Meta <Btn3Down>:ignore()\n\
+			      <Key>BackSpace: string(0x7F)\n\
+			      <Key>Delete:    string("\033[3~")\n\
+			      <Key>Home:      string("\033[1~")\n\
+			      <Key>End:       string("\033[4~")\n\
+			      <BtnUp>:select-end(PRIMARY, CLIPBOARD)
+
+*ttyModes: erase ^? 
+
+

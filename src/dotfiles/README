@@ -1,0 +1,15 @@
+If this README file is in ~/.dotfiles; then it was copied out of some Lintel version, you can
+update or initialize your dotfiles by running .../Lintel/src/dotfiles/setup; the commands to see
+what has changes will be printed to the screen.
+
+These dotfiles are the shared ones that part of our group has been using for several years.  They
+have many useful functions for interfacing between zsh and deptool, they also set up an environment
+which is relatively productive.  Because they are derived from one person's dotfiles, they also
+have some remaining cruft in them that was mostly cleaned up when they were incorportated into
+Lintel, there is likely some remaining bits needed.
+
+Customization is handled by creating the file ~/.<whatever>.{early,late}; the .early variant will
+be applied at the beginning of the .<whatever> file and can be used to set variables for
+customization.  The .late variant will be applied at the end of the .<whatever> file, and can be
+used to build additional customization and/or override decisions made in the common files.  This
+customization is currently present for emacs, zshrc, and zshenv.

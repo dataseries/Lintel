@@ -1,0 +1,14 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+# 
+# HP-UX specific fixups
+if [[ "$PROMPT" != "" ]]; then
+    stty intr \^c erase \^h susp \^z
+fi
+export MANPATH=/opt/local/man:/usr/share/man:/usr/contrib/man:/usr/man
+export CVS_RSH=remsh
+if [[ $TERM = linux ]]; then
+	TERM=vt100
+fi

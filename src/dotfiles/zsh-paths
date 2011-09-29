@@ -1,0 +1,32 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Bits for setting up paths.
+
+[[ -z "$BUILD_OPT" ]] && echo "ERROR: need zsh-buildenv first"
+
+export MANPATH=${BUILD_OPT}/share/man:/usr/share/man:/usr/man
+export PERL5LIB=$BUILD_OPT/lib/perl5:$BUILD_OPT/share/perl5
+
+PATH=
+for i in /opt/intel_cc_80/bin $BUILD_OPT/bin $HOME/.depot/$BUILD_OS-$UNAME_M/bin $HOME/.depot/generic/bin /usr/lib64/ccache /usr/local/bin /opt/local/bin /opt/hptc/bin /opt/hptc/lsf/top/6.2/linux2.6-glibc2.3-x86_64-slurm/etc /opt/hptc/lsf/top/6.2/linux2.6-glibc2.3-x86_64-slurm/bin /opt/java1.2/bin /usr/bin /bin /usr/X11R6/bin /usr/sbin /sbin; do
+    [[ -d $i ]] && PATH=$PATH:$i
+done
+if [[ -f /etc/profile.d/lsf.sh ]]; then
+	if [[ "${LSF_ENVDIR}" = "" ]]; then
+		. /etc/profile.d/lsf.sh
+	else
+		PATH=$LSF_BINDIR:$PATH
+	fi
+fi
+
+if [[ -f /etc/PATH ]]; then
+    PATH=$PATH:`cat /etc/PATH`
+fi
+
+# remove leading : if any
+PATH=${PATH//#:/}
+# remove any paired :'s
+PATH=${PATH//::/:}

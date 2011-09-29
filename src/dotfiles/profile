@@ -1,0 +1,6 @@
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# automatically switch into zsh if possible
+. $HOME/.bash_profile
