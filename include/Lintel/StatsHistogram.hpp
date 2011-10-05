@@ -133,6 +133,7 @@ public:
     //----Record a new value
     virtual void add(const double value);
     virtual void add(const double index_value, const double data_value);
+    using StatsHistogram::add;
 
     //----Histogram-wide access functions
     double binWidth() const { return bin_width; }
@@ -189,6 +190,7 @@ public:
     //----Record a new value
     virtual void add(const double value);
     virtual void add(const double index_value, const double data_value);
+    using StatsHistogram::add;
 
     //----Histogram-wide access functions
     double binWidth() const { return binOffset(1.0); }
@@ -243,6 +245,7 @@ public:
     //----Record a new value
     virtual void add(const double value);
     virtual void add(const double index_value, const double data_value);
+    using StatsHistogram::add;
 
     //----Histogram-wide access functions
     double value(unsigned index) const;	// value in a particular bin
@@ -287,6 +290,7 @@ public:
     //----Record a new value
     virtual void add(const double value);
     virtual void add(const double index_value, const double data_value);
+    using StatsHistogramUniform::add;
 
     //----Histogram-wide access functions
     double value(unsigned index) const;	// value in a particular bin
@@ -309,36 +313,37 @@ public:
 /// around 0 and exponential above 100.
 class StatsHistogramGroup : public Stats {
 public:
-  // ranges=[0,1,10,100] => low, hist[0..1[, hist[1..10[, hist[10,100[, high
-  StatsHistogramGroup(const StatsHistogram::HistMode mode, 
-		      const int sub_hist_buckets,
-		      const std::vector<double> &ranges); 
-  StatsHistogramGroup(const std::vector<StatsHistogram::HistMode> &_modes, 
-		      const std::vector<int> &sub_hist_buckets,
-		      const std::vector<double> &_ranges); 
-  virtual ~StatsHistogramGroup();
-  virtual void reset();	// Put everything back to initial values
+    // ranges=[0,1,10,100] => low, hist[0..1[, hist[1..10[, hist[10,100[, high
+    StatsHistogramGroup(const StatsHistogram::HistMode mode, 
+                        const int sub_hist_buckets,
+                        const std::vector<double> &ranges); 
+    StatsHistogramGroup(const std::vector<StatsHistogram::HistMode> &_modes, 
+                        const std::vector<int> &sub_hist_buckets,
+                        const std::vector<double> &_ranges); 
+    virtual ~StatsHistogramGroup();
+    virtual void reset();	// Put everything back to initial values
 
-  //----Record a new value
-  virtual void add(const double value);
-  virtual void add(const double index_value, const double data_value);
+    //----Record a new value
+    virtual void add(const double value);
+    virtual void add(const double index_value, const double data_value);
+    virtual void add(const Stats &stats);
   
-  const StatsHistogram &getHistogram(unsigned int n) const {
-      INVARIANT(n < histograms.size(),
-		boost::format("Requested out of bounds histogram %d valid range [%d .. %d]")
-		% n % 0 % histograms.size());
-    return *histograms[n];
-  }
+    const StatsHistogram &getHistogram(unsigned int n) const {
+        INVARIANT(n < histograms.size(),
+                  boost::format("Requested out of bounds histogram %d valid range [%d .. %d]")
+                  % n % 0 % histograms.size());
+        return *histograms[n];
+    }
 
-  const Stats &getLow() const { return low; }
-  const Stats &getHigh() const { return high; }
-  virtual void printRome(int depth, std::ostream &out) const;
+    const Stats &getLow() const { return low; }
+    const Stats &getHigh() const { return high; }
+    virtual void printRome(int depth, std::ostream &out) const;
   
 private:
-  std::vector<StatsHistogram *> histograms;
-  const std::vector<StatsHistogram::HistMode> modes;
-  const std::vector<double> ranges;
-  Stats low,high;
+    std::vector<StatsHistogram *> histograms;
+    const std::vector<StatsHistogram::HistMode> modes;
+    const std::vector<double> ranges;
+    Stats low,high;
 };
 
 #endif /* _LINTEL_HISTOGRAM_H_INCLUDED */

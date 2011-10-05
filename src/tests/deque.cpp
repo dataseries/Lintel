@@ -134,9 +134,9 @@ struct Thing {
     Thing() { ++thing_count; }
     ~Thing() { --thing_count; }
 
-    Thing(const Thing &from) { ++thing_count; }
+    Thing(const Thing &) { ++thing_count; }
 
-    Thing &operator =(const Thing &rhs) {
+    Thing &operator =(const Thing &) {
         FATAL_ERROR("no");
     }
 
@@ -271,7 +271,7 @@ void testIteratorOperations() {
     SINVARIANT(dist_from_finish == 0);
 }
 
-int main(int argc, char *argv[]) {
+int main(int, char **) {
     testPushBack();
     testNoDefaultConstructor();
     testAssign();

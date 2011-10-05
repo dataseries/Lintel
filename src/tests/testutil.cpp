@@ -11,7 +11,7 @@
 
 #include <Lintel/TestUtil.hpp>
 
-int main(int argc, char *argv[]) {
+int main(int, char **) {
     INVARIANT(true, "...");
     TEST_INVARIANTMSG(FATAL_ERROR("die now"), "die now");
     TEST_INVARIANTMSG(INVARIANT(false, boost::format("foo %s") % "bar"), "foo bar");

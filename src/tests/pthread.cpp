@@ -107,7 +107,7 @@ void test_doesNotCompile() {
     // m.lock(); // this is not.
 }
 
-int main(int argc, char *argv[]) {
+int main(int, char **) {
     test_isLocked();
     test_orderingGroup();
     return 0;

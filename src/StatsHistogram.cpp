@@ -21,23 +21,16 @@
 // Basic StatsHistogram base class
 //////////////////////////////////////////////////////////////////////////////
 
-StatsHistogram::StatsHistogram()
-: Stats()
-{}
+StatsHistogram::StatsHistogram() : Stats()
+{ }
 
-StatsHistogram::~StatsHistogram()
-{
-}
+StatsHistogram::~StatsHistogram() { }
 
-void
-StatsHistogram::add(const Stats &stat)
-{
+void StatsHistogram::add(const Stats &) {
     FATAL_ERROR("unimplemented");
 }
 
-void
-StatsHistogram::reset()
-{
+void StatsHistogram::reset() {
     Stats::reset();
 }
 
@@ -72,15 +65,13 @@ StatsHistogramUniform::StatsHistogramUniform(const unsigned bins_in,
 }
 
 
-StatsHistogramUniform::~StatsHistogramUniform()
-{
+StatsHistogramUniform::~StatsHistogramUniform() {
     delete[] bins;
     bins = NULL;
 }
 
 
-void StatsHistogramUniform::reset()
-{
+void StatsHistogramUniform::reset() {
     StatsHistogram::reset();	// This counts the resets for us
     for (unsigned bin=0; bin < num_bins; bin++)
 	bins[bin] = 0;
@@ -90,15 +81,13 @@ void StatsHistogramUniform::reset()
 
 
 
-unsigned long StatsHistogramUniform::operator[](unsigned index) const
-{
+unsigned long StatsHistogramUniform::operator[](unsigned index) const {
     SINVARIANT(checkInvariants());
-    SINVARIANT(0 <= index  &&  index <= num_bins);
+    SINVARIANT(index <= num_bins);
     return bins[index];
 }
 
-unsigned StatsHistogramUniform::sampleBin(const double value) const
-{
+unsigned StatsHistogramUniform::sampleBin(const double value) const {
     unsigned bin;		// Target bin for this number
     if (value <= bin_low)
 	bin = 0;
@@ -110,9 +99,7 @@ unsigned StatsHistogramUniform::sampleBin(const double value) const
     return bin;
 }
 
-void
-StatsHistogramUniform::add(const double value)
-{
+void StatsHistogramUniform::add(const double value) {
     Stats::add(value);	// Keep track of means, etc
 
     // Grow the number of bins?
@@ -189,9 +176,7 @@ StatsHistogramUniform::add(const double value)
     bins[bin]++;		// increment counts in bins
 }
 
-void
-StatsHistogramUniform::add(const double index_value, const double data_value)
-{
+void StatsHistogramUniform::add(const double index_value, const double data_value) {
     INVARIANT(index_value == data_value,
 	      "StatsHistogramUniform: attempted to add non-index value.");
     this->add(index_value);
@@ -200,9 +185,7 @@ StatsHistogramUniform::add(const double index_value, const double data_value)
 
 // The mode is the center of the most popular bin
 
-double
-StatsHistogramUniform::mode() const
-{
+double StatsHistogramUniform::mode() const {
     SINVARIANT(checkInvariants());
     unsigned long max = bins[0];
     unsigned long maxpos = 0;
@@ -216,9 +199,7 @@ StatsHistogramUniform::mode() const
 }
 
 
-double
-StatsHistogramUniform::percentile(double p) const
-{
+double StatsHistogramUniform::percentile(double p) const {
     SINVARIANT(checkInvariants());
     INVARIANT(0.0 <= p  && p <= 1.0, "argument is outside range");
 
@@ -252,9 +233,7 @@ StatsHistogramUniform::percentile(double p) const
 
 // Emit a string that summarizes the histogram data.
 
-std::string
-StatsHistogramUniform::debugString() const
-{
+std::string StatsHistogramUniform::debugString() const {
     SINVARIANT(checkInvariants());
 
     std::string stat = Stats::debugString();
@@ -268,9 +247,7 @@ StatsHistogramUniform::debugString() const
 };
 
 
-void
-StatsHistogramUniform::printRome(int depth, std::ostream &out) const
-{
+void StatsHistogramUniform::printRome(int depth, std::ostream &out) const {
     SINVARIANT(checkInvariants());
 
     std::string spaces;
@@ -303,9 +280,7 @@ StatsHistogramUniform::printRome(int depth, std::ostream &out) const
     out << " ) } } }\n"; 
 }
 
-void
-StatsHistogram::printTabular(int depth, std::ostream &out) const
-{
+void StatsHistogram::printTabular(int depth, std::ostream &out) const {
     SINVARIANT(checkInvariants());
 
     std::string spaces("");
@@ -344,8 +319,7 @@ StatsHistogram::printTabular(int depth, std::ostream &out) const
 }
 
 
-void StatsHistogram::printHistogramRandomInput(std::ostream& out) const
-{
+void StatsHistogram::printHistogramRandomInput(std::ostream& out) const {
     out << numBins() << std::endl;
     for(unsigned int j = 0; j < numBins(); j++) {
 	out << binhigh(j) << " " << (*this)[j] << std::endl;
@@ -353,9 +327,7 @@ void StatsHistogram::printHistogramRandomInput(std::ostream& out) const
 } 
 
 
-Stats *
-StatsHistogramUniform::another_new() const
-{
+Stats *StatsHistogramUniform::another_new() const {
     return new StatsHistogramUniform(num_bins, 
 				     bin_low, 
 				     bin_high,
@@ -405,15 +377,13 @@ StatsHistogramLog::StatsHistogramLog(const unsigned bins_in,
 }
 
 
-StatsHistogramLog::~StatsHistogramLog()
-{
+StatsHistogramLog::~StatsHistogramLog() {
     delete[] bins;
     bins = NULL;
 }
 
 
-void StatsHistogramLog::reset()
-{
+void StatsHistogramLog::reset() {
     StatsHistogram::reset();	// This counts the resets for us
     for (unsigned bin=0; bin < num_bins; bin++) {
 	bins[bin] = 0;
@@ -423,16 +393,14 @@ void StatsHistogramLog::reset()
 
 
 
-unsigned long StatsHistogramLog::operator[](unsigned index) const
-{
+unsigned long StatsHistogramLog::operator[](unsigned index) const {
     SINVARIANT(checkInvariants());
-    SINVARIANT(0 <= index  &&  index <= num_bins);
+    SINVARIANT(index <= num_bins);
     return bins[index];
 }
 
 
-unsigned StatsHistogramLog::sampleBin(double x) const
-{
+unsigned StatsHistogramLog::sampleBin(double x) const {
     if (x <= smallest_bin)
 	return 0;
     double d_bin = bin_scaling * log(x / smallest_bin);
@@ -445,17 +413,14 @@ unsigned StatsHistogramLog::sampleBin(double x) const
 
 // Given a fractional bin-index, return the value that would be "stored" there.
 //
-double StatsHistogramLog::binOffset(double index) const
-{
+double StatsHistogramLog::binOffset(double index) const {
     double ret = smallest_bin * exp(index/bin_scaling);
     return ret;
 };
 
 
 
-void
-StatsHistogramLog::add(const double value)
-{
+void StatsHistogramLog::add(const double value) {
     INVARIANT(value > 0.0, 
 	      "values must be greater than 0 for log histogram");
     Stats::add(value);		// Keep track of means, etc
@@ -487,9 +452,7 @@ StatsHistogramLog::add(const double value)
     bins[bin]++;
 }
 
-void
-StatsHistogramLog::add(const double index_value, const double data_value)
-{
+void StatsHistogramLog::add(const double index_value, const double data_value) {
     INVARIANT(index_value == data_value,
 	      "StatsHistogramLog: attempted to add non-index value.");
     this->add(index_value);
@@ -497,9 +460,7 @@ StatsHistogramLog::add(const double index_value, const double data_value)
 
 // The mode is the center of the most popular bin
 //
-double
-StatsHistogramLog::mode() const
-{
+double StatsHistogramLog::mode() const {
     SINVARIANT(checkInvariants());
     unsigned long max = bins[0];
     unsigned long maxpos = 0;
@@ -513,9 +474,7 @@ StatsHistogramLog::mode() const
 }
 
 
-double
-StatsHistogramLog::percentile(double p) const
-{
+double StatsHistogramLog::percentile(double p) const {
     SINVARIANT(checkInvariants());
     INVARIANT(0.0 <= p && p <= 1.0, "argument is outside range");
 
@@ -549,9 +508,7 @@ StatsHistogramLog::percentile(double p) const
 
 // Emit a string that summarizes the histogram data.
 //
-std::string
-StatsHistogramLog::debugString() const
-{
+std::string StatsHistogramLog::debugString() const {
     SINVARIANT(checkInvariants());
 
     std::string stat = Stats::debugString();
@@ -564,8 +521,7 @@ StatsHistogramLog::debugString() const
 			     % double(mode()));
 }
 
-void
-StatsHistogramLog::printRome(int depth, std::ostream &out)  const{
+void StatsHistogramLog::printRome(int depth, std::ostream &out)  const{
     SINVARIANT(checkInvariants());
 
     std::string spaces;
@@ -593,9 +549,7 @@ StatsHistogramLog::printRome(int depth, std::ostream &out)  const{
     out << " ) } } }\n";
 }
 
-Stats *
-StatsHistogramLog::another_new() const 
-{
+Stats * StatsHistogramLog::another_new() const {
     return new StatsHistogramLog(num_bins, 
 				 smallest_bin,
 				 bin_high,
@@ -625,23 +579,19 @@ StatsHistogramUniformAccum::StatsHistogramUniformAccum(const unsigned bins_in,
   reset();
 }
 
-StatsHistogramUniformAccum::~StatsHistogramUniformAccum()
-{
+StatsHistogramUniformAccum::~StatsHistogramUniformAccum() {
     delete[] val_bins;
     val_bins = NULL;
 }
 
-void StatsHistogramUniformAccum::reset()
-{
+void StatsHistogramUniformAccum::reset() {
     StatsHistogramUniform::reset();	// This counts the resets for us
     for (unsigned bin=0; bin < num_bins; bin++)
 	val_bins[bin] = 0.0;
 }
 
-void
-StatsHistogramUniformAccum::add(const double index_value, 
-				const double data_value)
-{
+void StatsHistogramUniformAccum::add(const double index_value, 
+                                     const double data_value) {
     Stats::add(data_value);		// Keep track of means, etc
 
     if (is_scalable  &&  (index_value < bin_low || index_value >= bin_high)) {
@@ -685,17 +635,14 @@ StatsHistogramUniformAccum::add(const double index_value,
     val_bins[bin] += data_value;		// add value 
 }
 
-void
-StatsHistogramUniformAccum::add(const double value)
-{
+void StatsHistogramUniformAccum::add(const double value) {
     add(value, value);
 }
 
 
-double StatsHistogramUniformAccum::value(unsigned index) const
-{
+double StatsHistogramUniformAccum::value(unsigned index) const {
     SINVARIANT(checkInvariants());
-    SINVARIANT(0 <= index  &&  index <= num_bins);
+    SINVARIANT(index <= num_bins);
     return val_bins[index];
 }
 
@@ -705,9 +652,7 @@ double StatsHistogramUniformAccum::value(unsigned index) const
 //----------------------------------------------------------------
 
 
-void
-StatsHistogramUniformAccum::printRome(int depth, std::ostream &out)  const
-{
+void StatsHistogramUniformAccum::printRome(int depth, std::ostream &out)  const {
     SINVARIANT(checkInvariants());
 
     std::string spaces;
@@ -752,9 +697,7 @@ StatsHistogramUniformAccum::printRome(int depth, std::ostream &out)  const
     out << " ) } } }\n";
 }
 
-Stats *
-StatsHistogramUniformAccum::another_new() const
-{
+Stats * StatsHistogramUniformAccum::another_new() const {
     return new StatsHistogramUniformAccum(num_bins, 
 				      bin_low,
 				      bin_high,
@@ -782,22 +725,18 @@ StatsHistogramLogAccum::StatsHistogramLogAccum(const unsigned bins_in,
   reset();
 }
 
-StatsHistogramLogAccum::~StatsHistogramLogAccum()
-{
+StatsHistogramLogAccum::~StatsHistogramLogAccum() {
     delete[] bins;
     bins = NULL;
 }
 
-void StatsHistogramLogAccum::reset()
-{
+void StatsHistogramLogAccum::reset() {
     StatsHistogramLog::reset();	// This counts the resets for us
     for (unsigned bin=0; bin < num_bins; bin++)
 	val_bins[bin] = 0.0;
 }
 
-void
-StatsHistogramLogAccum::add(const double value)
-{
+void StatsHistogramLogAccum::add(const double value) {
     Stats::add(value);		// Keep track of means, etc
     
     unsigned bin = sampleBin(value);
@@ -806,9 +745,7 @@ StatsHistogramLogAccum::add(const double value)
 }
 
 
-void
-StatsHistogramLogAccum::add(const double index_value, const double data_value)
-{
+void StatsHistogramLogAccum::add(const double index_value, const double data_value) {
     Stats::add(data_value);		// Keep track of means, etc
     
     unsigned bin = sampleBin(index_value);
@@ -816,10 +753,9 @@ StatsHistogramLogAccum::add(const double index_value, const double data_value)
     val_bins[bin] += data_value;
 }
 
-double StatsHistogramLogAccum::value(unsigned index) const
-{
+double StatsHistogramLogAccum::value(unsigned index) const {
     SINVARIANT(checkInvariants());
-    SINVARIANT(0 <= index  &&  index <= num_bins);
+    SINVARIANT(index <= num_bins);
     return val_bins[index];
 }
 
@@ -827,9 +763,7 @@ double StatsHistogramLogAccum::value(unsigned index) const
 // Printing functions
 //----------------------------------------------------------------
 
-void
-StatsHistogramLogAccum::printRome(int depth, std::ostream &out) const
-{
+void StatsHistogramLogAccum::printRome(int depth, std::ostream &out) const {
     SINVARIANT(checkInvariants());
 
     std::string spaces;
@@ -868,9 +802,7 @@ StatsHistogramLogAccum::printRome(int depth, std::ostream &out) const
     out << " ) } } } \n";
 }
 
-Stats *
-StatsHistogramLogAccum::another_new() const
-{
+Stats *StatsHistogramLogAccum::another_new() const {
     return new StatsHistogramLogAccum(num_bins, 
 				      smallest_bin,
 				      bin_high);
@@ -939,17 +871,14 @@ StatsHistogramGroup::StatsHistogramGroup(const std::vector<StatsHistogram::HistM
     }
 }
 
-StatsHistogramGroup::~StatsHistogramGroup()
-{
+StatsHistogramGroup::~StatsHistogramGroup() {
   for(unsigned int i=0;i<histograms.size();i++) {
     delete histograms[i];
     histograms[i] = NULL;
   }
 }
 
-void
-StatsHistogramGroup::reset()
-{
+void StatsHistogramGroup::reset() {
   Stats::reset();
   low.reset();
   high.reset();
@@ -958,9 +887,7 @@ StatsHistogramGroup::reset()
   }
 }
 
-void
-StatsHistogramGroup::add(const double value)
-{
+void StatsHistogramGroup::add(const double value) {
   Stats::add(value);
   if (value < ranges[0]) {
     low.add(value);
@@ -976,9 +903,7 @@ StatsHistogramGroup::add(const double value)
   return;
 }
 
-void
-StatsHistogramGroup::add(const double index_value, const double data_value)
-{
+void StatsHistogramGroup::add(const double index_value, const double data_value) {
   Stats::add(data_value);
   if (index_value < ranges[0]) {
     low.add(data_value);
@@ -994,10 +919,11 @@ StatsHistogramGroup::add(const double index_value, const double data_value)
   return;
 }
 
+void StatsHistogramGroup::add(const Stats &) {
+    FATAL_ERROR("unimplemented");
+}
     
-void
-StatsHistogramGroup::printRome(int depth, std::ostream &out)  const
-{
+void StatsHistogramGroup::printRome(int depth, std::ostream &out)  const {
   std::string spaces;
   for(int i = 0; i < depth; i++) {
     spaces += " ";

@@ -35,8 +35,9 @@ struct ConstantStringValue;
 // These functions are stored out here rather than as static inline
 // methods in the class because an old version of g++ doesn't seem to
 // succeed in inlining them otherwise; TODO: recheck this
-inline const uint32_t ConstantString_length(const ConstantStringValue *ptr) { 
-    return *(reinterpret_cast<const uint32_t *>(ptr) - 1); }
+inline uint32_t ConstantString_length(const ConstantStringValue *ptr) { 
+    return *(reinterpret_cast<const uint32_t *>(ptr) - 1); 
+}
 inline const char *ConstantString_c_str(const ConstantStringValue *ptr) { 
     return reinterpret_cast<const char *>(ptr); 
 }
@@ -82,7 +83,7 @@ public:
     bool empty() const { return size() == 0; }
     std::string str() const { return std::string(c_str(), size()); }
 
-    const uint32_t hash() const {
+    uint32_t hash() const {
 	BOOST_STATIC_ASSERT(sizeof(ConstantStringValue *) == 4 ||
 			    sizeof(ConstantStringValue *) == 8);
 	if (sizeof(ConstantStringValue *) == 4) {

@@ -29,7 +29,7 @@ public:
 
 class collisionHash {
 public:
-    unsigned int operator()(const int k) const {
+    unsigned int operator()(const int) const {
 	return 0;
     }
 };
@@ -292,7 +292,7 @@ void eraseTest() {
     cout << "erase test passed.\n";
 }
 
-int main(int argc, char *argv[]) {
+int main(int argc, char **) {
     SINVARIANT(argc == 1);
 
     collisionTest();

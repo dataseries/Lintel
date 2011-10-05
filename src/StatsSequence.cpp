@@ -89,7 +89,7 @@ StatsSequence::add(const double value)
 }
 
 void
-StatsSequence::add(const Stats &stat)
+StatsSequence::add(const Stats &)
 {
     FATAL_ERROR("unimplemented");
 }

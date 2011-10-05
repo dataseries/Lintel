@@ -105,7 +105,7 @@ StatsSeries::add(const double value)
 }
 
 void
-StatsSeries::add(const Stats &stat)
+StatsSeries::add(const Stats &)
 {
     FATAL_ERROR("unimplemented");
 }

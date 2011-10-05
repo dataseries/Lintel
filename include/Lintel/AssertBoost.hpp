@@ -35,14 +35,14 @@ public:
     unsigned line;
     const std::string msg;
 
-    virtual const char *what() throw ();
-    const std::string summary();
+    virtual const char *what() const throw ();
+    const std::string summary() const;
     AssertBoostException(const char *a, const char *b, unsigned c,
 			 const std::string &d)
 	: expression(a), filename(b), line(c), msg(d), save_what() { }
     virtual ~AssertBoostException() throw ();
 private:
-    std::string save_what;
+    mutable std::string save_what;
 };
 
 

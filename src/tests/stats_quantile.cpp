@@ -256,7 +256,6 @@ test_merge(MersenneTwisterRandom &mt,
 	}
 	cout << "checking... "; cout.flush();
 
-	Stats exact_error;
 	checkQuantiles(merge, sorted_list, exact_error, epsilon);
 	cout << "ok\n";
     }

@@ -53,9 +53,7 @@ StatsEMA::add(const double value)
     }
 }
 
-void
-StatsEMA::add(const Stats &stat)
-{
+void StatsEMA::add(const Stats &) {
     FATAL_ERROR("unimplemented");
 }
 
