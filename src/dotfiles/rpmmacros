@@ -1,5 +1,0 @@
-%_topdir /home/anderse/projects/special-build/centos5
-%_tmppath /dev/shm/rpm-tmp-anderse
-%_builddir /dev/shm/rpm-build-anderse
-%_emacs_sitelispdir /usr/share/emacs/site-lisp
-%_emacs_sitestartdir /usr/share/emacs/site-lisp/site-start.d

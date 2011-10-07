@@ -5,6 +5,7 @@
 #
 # Common zsh environment setup.
 
+IN_ZSHENV_COMMON=true
 LINTEL_ZSH_DEBUG=false
 TMP_TERM=`echo $TERM | cut -d, -f 1`
 if [[ "$TMP_TERM" != "$TERM" ]]; then
@@ -66,3 +67,4 @@ esac
 [[ -d /mount/cello/www ]] && hash -d www=/mount/cello/www
 
 $LINTEL_ZSH_DEBUG && status_echo -n "g"
+unset IN_ZSHENV_COMMON

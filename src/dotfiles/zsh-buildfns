@@ -115,53 +115,6 @@ valgrind() {
     command valgrind --suppressions=$HOME/.valgrind.suppressions "$@"
 }
 
-new-deptool-base () {
-    local BASE=$1
-    [[ -d $BASE ]] || mkdir -p $BASE
-    local CURREL=${PWD#$PROJECTS}
-    PROJECTS=$BASE/projects
-    BUILD_ROOT=$BASE
-    [[ "$BUILD_ROOT" = "$HOME" ]] && BUILD_ROOT=$HOME/build
-    BUILD_OPT=$BUILD_ROOT/opt-$BUILD_OS-$UNAME_M
-    BUILD_DEBUG=$BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M
-    # re-set path, and anything else depending on
-    # the above env variables
-    reload
-    [[ -d $PROJECTS ]] || mkdir -p $PROJECTS
-    cd $PROJECTS
-    [[ -d ./$CURREL ]] && cd ./$CURREL
-}
-
-# TODO-anderse: something got lost wrt tmp on build-1. You seem to know what it is so I won't dig futher now.
-
-mainline () {
-    new-deptool-base $HOME
-}
-
-code-review () {
-    new-deptool-base $HOME/code-review
-}
-
-release () {
-    new-deptool-base $HOME/release
-}
-
-testing () {
-    new-deptool-base $HOME/testing
-}
-
-ticoli () {
-    PROJECTS=$HOME/ticoli/projects
-    BUILD_ROOT=$HOME/ticoli
-    BUILD_OPT=$BUILD_ROOT/opt-$BUILD_OS-$UNAME_M
-    BUILD_DEBUG=$BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M
-    # re-set path, and anything else depending on
-    # the above env variables
-    reload
-    [[ -d $PROJECTS ]] || mkdir -p $PROJECTS
-    cd $PROJECTS
-}
-
 centos () {
     INSTANCE="`schroot -l -a | grep centos5-64bit-`"
     if [[ `echo $INSTANCE | wc -w` != 1 ]]; then

@@ -1,6 +1,8 @@
 If this README file is in ~/.dotfiles; then it was copied out of some Lintel version, you can
 update or initialize your dotfiles by running .../Lintel/src/dotfiles/setup; the commands to see
-what has changed will be printed to the screen.
+what has changed will be printed to the screen.  TODO-eric: note that if you already have a a file
+it won't overwrite, and you need to run setup in .dotfiles the first time to make it apply to your
+homedir (or make setup do that automatically?)
 
 These dotfiles are the shared ones that part of our group has been using for several years.  They
 have many useful functions for interfacing between zsh and deptool, they also set up an environment

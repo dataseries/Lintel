@@ -17,7 +17,6 @@ maybeLink() {
     fi
 }
 
-# TODO-anderse: Why is rpmmacros checked in as well as rpmmacros.in?
 linkFromDotfilesToHomedir() {
     echo "Linking from $HOME/.dotfiles to $HOME"
     for i in $HOME/.dotfiles/*; do
