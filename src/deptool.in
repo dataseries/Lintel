@@ -169,8 +169,9 @@ my $print_manpage = 0;
 my $noconfig = 0;
 my $time_log;
 my $debug = 0;
-my $monotone_dir = $ENV{MONOTONE_DIR};
-$monotone_dir ||= "$ENV{HOME}/.monotone";
+# TODO: fix this to work the same as the rest of the env vars; which involves fixing
+# all of the callers
+my $monotone_dir = $ENV{MONOTONE_DIR} || "$ENV{HOME}/.monotone";
 
 $Global::last_stamp_timestamp = time();
 
