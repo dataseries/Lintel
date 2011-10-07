@@ -132,6 +132,8 @@ new-deptool-base () {
     [[ -d ./$CURREL ]] && cd ./$CURREL
 }
 
+# TODO-anderse: something got lost wrt tmp on build-1. You seem to know what it is so I won't dig futher now.
+
 mainline () {
     new-deptool-base $HOME
 }

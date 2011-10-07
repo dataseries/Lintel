@@ -26,6 +26,7 @@ XTerm*Font: -misc-fixed-medium-r-normal--10-70-*-*-c-60-iso8859-1
 !XTerm*Font: -misc-fixed-medium-r-normal--8-*-100-*-*-*-*-*
 Netscape.installColormap: Yes
 Netscape*encodingFilters: 
+! TODO-anderse: is reference to anderse and a specific mount point OK?
 *wmStartupCommand: /mount/ssp/anderse/.depot/bin/fvwm2
 XLock.mousemotion: on
 Netscape.userAgent: Mozilla/4.61 [en] (X11; I; Linux 2.2.12-20smp i686)

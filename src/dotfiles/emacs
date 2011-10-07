@@ -2,6 +2,8 @@
 ;
 ; See the file named COPYING for license details
 
+; TODO-anderse : .emacs files are a very personal affair... I'd prefer this to just be the bare minimum for project compliance (e.g., just the fill-column definition).  I am open minded though. I'll see what happens when I try and use this setup.
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; default variables, you can override these in ~/.emacs.early
 ;;;; some of these are used in the below code to derive other values.

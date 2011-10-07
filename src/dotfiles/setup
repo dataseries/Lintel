@@ -17,6 +17,7 @@ maybeLink() {
     fi
 }
 
+# TODO-anderse: Why is rpmmacros checked in as well as rpmmacros.in?
 linkFromDotfilesToHomedir() {
     echo "Linking from $HOME/.dotfiles to $HOME"
     for i in $HOME/.dotfiles/*; do
@@ -55,6 +56,8 @@ copyUpdate() {
 # the user's environment.  The downside is that any bugs would get propagated quickly.
 # Unclear which approach is better, but in this case I chose stability over fast updates.
 # Is that the right choice?
+# Yes, stability is the right choice.
+# TODO-anderse: Any not-too-obtrusive way of hinting that new dotfiles are available upon log in? I.e., compare current dotfiles in home dir to what is in Lintel and hint to user ?
 copyFromLintelToDotfiles() {
     DOTFILES=$HOME/.dotfiles
     mkdir -p $DOTFILES

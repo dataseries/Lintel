@@ -5,6 +5,8 @@
 # Unclear whether this file should be included, but it's been part of our dotfiles collection
 # for a while, so I'm including it even though it's remarkably specific to Eric's usage.
 #
+# TODO-anderse: I am fine with stuff being included. I'll see what gets set up. I wonder if some included stuff just being copied in as a reference is auseful. E.g., for emacs and fvwm2rc, add a refernce or suggested profile...
+#
 # The correct order for inserting configurations is:
 # 1. Colors
 # 2. Assorted configuration paramters such as ClickToFocus, or MWMBorders
