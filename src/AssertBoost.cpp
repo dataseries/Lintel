@@ -27,7 +27,7 @@ string global_assertboost_no_details("No additional details provided");
 static const char *default_what = 
    "AssertBoostException: unable to use summary() to get full error -- out of memory?";
 
-const char * AssertBoostException::what() throw () {
+const char * AssertBoostException::what() const throw () {
     const char *ret = default_what;
     try { 
 	if (save_what.empty()) {
@@ -40,7 +40,7 @@ const char * AssertBoostException::what() throw () {
     return ret;
 }
 
-const std::string AssertBoostException::summary() {
+const std::string AssertBoostException::summary() const {
     return (format("AssertBoostException(%s,%s,%d,%s)")
 	    % expression % filename % line % msg).str();
 }

@@ -1,0 +1,185 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Primary zshrc file.  Can be customized by $HOME/.zshrc.{early,late}
+
+status_echo -n "zshrc: 1"
+
+source_and_status 1a $HOME/.zshrc.early
+# enscript color code
+# enscript -Ecpp -2 -r -C -d gaudi --color -DDuplex:true
+
+kwallet() {
+    qdbus org.kde.kwalletmanager /kwalletmanager/MainWindow_1 show
+}
+
+chtitle () {
+        echo '\033]0;'"$@"'\007\c'
+}
+
+# centos5 has /etc/profile.d/which-2.sh that sets up the wrong thing.
+unalias which >/dev/null 2>&1
+which () {
+        whence -p "$@"
+}
+
+valgrind() {
+    command valgrind --suppressions=$HOME/.valgrind.suppressions "$@"
+}
+
+procfind () {
+  if [[ $# = 0 ]]; then
+    search="."
+  elif [[ $# > 1 ]]; then
+    echo "Usage: $0 <agrep-expr>"
+    return
+  else
+    search=$1
+  fi
+  case $BUILD_OS in
+    debian*)
+      /bin/ps -efl | grep $search
+    ;;
+    *hpux*)
+      UNIX95=1 /bin/ps -e -o pid,ppid,user,group,nice,pri,vsz,sz,pcpu,etime,time,args | grep $search
+    ;;
+    *)
+      echo "Don't know how to procfind on a $BUILD_OS"
+    ;;
+  esac
+}
+
+myiostat() {
+  if [[ $# = 0 ]]; then
+     time="10"
+  else 
+     time="$1"
+  fi
+  iostat $time | grep -v '0.*0\.0.*1\.0'
+}
+
+alias pwd='echo $PWD'
+alias pd=pushd
+alias mt=mtn
+
+XTERM=`whence -p xterm`
+if [ -x /usr/contrib/bin/X11/xterm ]; then
+   XTERM=/usr/contrib/bin/X11/xterm
+fi
+xterm() {
+    $XTERM "$@" &
+}
+
+xsetbg() {
+	random-pics "$@"
+}
+reload() {
+	unfunction chpwd
+	source $HOME/.zshenv
+	source $HOME/.zshrc
+}
+
+status_echo -n " 2" 
+HISTFILE=~/.zhistory
+HISTSIZE=1000
+SAVEHIST=1000
+setopt appendhistory 
+setopt autolist automenu auto_param_slash rec_exact extended_glob 
+setopt hist_ignore_dups hist_allow_clobber hist_ignore_space 
+setopt long_list_jobs no_clobber notify interactive_comments
+setopt print_exit_value rc_quotes 
+setopt autopushd pushdminus pushdsilent pushdtohome pushd_ignore_dups
+unsetopt bgnice
+autoload -U promptinit
+promptinit
+case $ZSH_VERSION in
+    [45]*) setopt histfindnodups histsavenodups ;;
+esac
+
+alias dh='dirs -v'
+if [[ -x /usr/sww/bin/gls ]]; then
+    alias ls='/usr/sww/bin/gls -bFBk'
+fi
+alias e=emacs
+alias mv='mv -i'
+
+emacs() {
+        if [[ "$DISPLAY" = "" ]]; then
+            $EDITOR $@
+	elif [[ "$1" = "-nw" ]]; then
+	    $EDITOR $@
+        else
+	    # Parens make it leave bg jobs list
+            ($EDITOR $@ &)
+        fi
+}
+
+fignore=( '~' '.o' )
+
+if [[ -d $HOME/.zshfunctions ]]; then
+   case "$fpath" in
+	*$HOME/.zshfunctions*) : ;;
+	*) fpath=($HOME/.zshfunctions $fpath)
+   esac
+fi
+
+BASEHOSTNAME=`echo $HOSTNAME | tr 'A-Z' 'a-z' | sed 's/.hpl.hp.com//'`
+PROMPT_LOCATION=$BASEHOSTNAME
+if [[ "$PROMPT_LOCATION" = eric-eb8730w ]]; then
+    PROMPT_LOCATION=$BUILD_OS-$UNAME_M
+fi
+
+if [[ "$DISPLAY" = "" && "$BASEHOSTNAME" = eric-eb8730w ]]; then
+    export DISPLAY=:0.0
+fi
+
+if [[ `id -u` = 0 ]]; then
+	 PS1="[%~] %h #"
+else
+	 PS1="%h: "
+	 RPS1="[%~] $PROMPT_LOCATION"
+fi
+
+if [[ $TERM = 'dumb' ]]; then
+    PS1="%~: "
+fi
+status_echo -n " 3" 
+
+if [[ $TERM = 'xterm' ]]; then
+  chpwd() {
+    chtitle "$BASEHOSTNAME: $PWD"
+  }
+  chtitle "$BASEHOSTNAME: $PWD"
+fi
+
+openurl () {
+    KONQUEROR=`qdbus 'org.kde.konqueror-*' | head -1`
+    if [[ x$KONQUEROR = x ]]; then
+	  konqueror "$@"
+    else
+	qdbus $KONQUEROR /KonqMain openBrowserWindow "$@" ''
+    fi
+}
+
+svndiff () {
+    if [[ "$1" = "--bg" ]]; then
+	export SVNDIFFBG=yes
+	shift
+    else
+	SVNDIFFBG=no
+    fi
+    svn diff --diff-cmd svn-diff "$@"
+}
+
+wget () {
+    http_proxy=$X_http_proxy /usr/bin/wget "$@"
+}
+
+. $HOME/.dotfiles/zsh-buildfns
+
+source_and_status 4 $HOME/.zshrc.late
+
+echo ""
+

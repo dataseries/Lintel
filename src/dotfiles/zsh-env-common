@@ -1,0 +1,68 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Common zsh environment setup.
+
+LINTEL_ZSH_DEBUG=false
+TMP_TERM=`echo $TERM | cut -d, -f 1`
+if [[ "$TMP_TERM" != "$TERM" ]]; then
+   TERM=$TMP_TERM
+fi
+unset TMP_TERM
+
+[[ -f /tmp/.dbus.$USER ]] && eval `cat /tmp/.dbus.$USER`
+
+$LINTEL_ZSH_DEBUG && status_echo -n "a"
+export PILOTRATE=38400
+export PREPORT=18294
+umask 002
+limit coredumpsize 0 >/dev/null 2>&1
+limit corefilesize 0 >/dev/null 2>&1
+MAILCHECK=1000000
+export DIRSTACKSIZE=8
+export SCRUMTOOL_COLORS=bright
+export COLUMNS
+
+$LINTEL_ZSH_DEBUG && status_echo -n "b"
+export HASHCMDS=yes
+export TMPDIR=/tmp
+
+. $HOME/.dotfiles/zsh-buildenv
+
+$LINTEL_ZSH_DEBUG && status_echo -n "c"
+
+. $HOME/.dotfiles/zsh-paths
+
+$LINTEL_ZSH_DEBUG && status_echo -n "e"
+
+export SHELL=`whence -p zsh`
+export EDITOR=`whence -p emacs`
+export PAGER=`whence -p less`
+
+$LINTEL_ZSH_DEBUG && status_echo -n "f"
+
+export QT_XFT=1
+
+export LESS="-R -F -X"
+
+DEVICE=`cat /tmp/.network.device 2>/dev/null`
+if [[ "$DEVICE" != "" ]]; then
+   IPADDR=`ifconfig $DEVICE 2>/dev/null | grep Bcast | awk '{print $2}' | sed 's/addr://'`
+fi
+[[ "$IPADDR" == "" ]] && IPADDR=`hostname -i`
+case $HOSTNAME-$IPADDR in
+    *-1[56].*) 
+	# Don't export by default, sometimes works poorly with things like 
+	# yum because of caching issues
+        export X_http_proxy=http://web-proxy.corp.hp.com:8088/
+	export X_ftp_proxy=http://web-proxy.corp.hp.com:8088/
+ 	export no_proxy=localhost,zk3.dec.com,zko.dec.com,zko.hp.com,fc.hp.com,cpqcorp.net,hpqcorp.net,hpl.hp.com
+    ;;
+esac
+
+[[ -d /mount/src ]] && hash -d src=/mount/src
+[[ -d /mount/cello/www ]] && hash -d www=/mount/cello/www
+
+$LINTEL_ZSH_DEBUG && status_echo -n "g"

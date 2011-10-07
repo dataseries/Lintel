@@ -1,0 +1,215 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Functions for dealing with the build environment can be included from your zshrc
+
+[[ -z "$BUILD_OPT" ]] && echo "ERROR: need zsh-buildenv first"
+
+## Monotone functions...
+
+mtsync () {
+    $DEPTOOL mtnsync
+}
+
+mtpull () {
+    $DEPTOOL mtnpull
+}
+
+mtpush () {
+    $DEPTOOL mtnpush
+}
+
+mtremote() {
+    if [[ -z "$1" ]]; then
+	MTN_SERVER=usi.hpl.hp.com
+	return
+    fi
+
+    case "$1" in
+	fe1|batch-fe-1*) MTN_SERVER=batch-fe-1.u.hpl.hp.com ;;
+	fe2|batch-fe-2*) MTN_SERVER=batch-fe-2.u.hpl.hp.com ;;
+	kv2|keyvalue-debian-x86-2*) MTN_SERVER=keyvalue-debian-x86-2.u.hpl.hp.com ;;
+	india) MTN_SERVER=16.138.45.169 ;;
+	usi*) MTN_SERVER=usi.hpl.hp.com ;;
+        *) 
+	   if host "$1" >/dev/null 2>&1; then
+	       MTN_SERVER="$1"
+	   else
+	       echo "Unknown host $1, shortcuts are fe1, fe2, kv2, usi"
+	       return 1
+	   fi
+	   ;;
+    esac
+}
+
+mtserve() {
+    $DEPTOOL mtnserve
+}
+
+##### experimental functions to perform more of our workflow automatically
+
+depcheckout() {
+    $DEPTOOL checkout "$@"
+}
+
+deppin () {
+    $DEPTOOL setpin "$@"
+}
+
+deppull () {
+    $DEPTOOL pull "$@"
+}
+
+depbuild () {
+    $DEPTOOL build "$@"
+}
+
+depcommit () {
+    $DEPTOOL commit "$@"
+}
+
+deppublish() {
+    $DEPTOOL publish "$@"
+}
+
+rs() { 
+    $DEPTOOL review-status "$@"
+}
+
+cr() {
+    $DEPTOOL code-review "$@"
+}
+
+##### functions for moving around between source (s), build/optimize (b),
+##### and build/debug (d); you can use b "string" to make a build variant
+
+s () {
+    eval `$DEPTOOL cdsrc $PWD`
+}
+
+b () {
+    eval `$DEPTOOL cdopt $PWD "$@"`
+}
+
+d () {
+    eval `$DEPTOOL cddebug $PWD "$@"`
+}
+
+[[ -z "$MAKE_PARALLELISM" ]] && MAKE_PARALLELISM=1
+
+xmake () {
+    make -j $MAKE_PARALLELISM "$@"
+    # $DEPTOOL build -l "$@"
+}
+
+xcmake () {
+    $DEPTOOL cmake "$@"
+}
+
+## Misc functions
+
+valgrind() {
+    [[ -f $HOME/.valgrind.suppressions ]] || touch $HOME/.valgrind.suppressions
+    command valgrind --suppressions=$HOME/.valgrind.suppressions "$@"
+}
+
+new-deptool-base () {
+    local BASE=$1
+    [[ -d $BASE ]] || mkdir -p $BASE
+    local CURREL=${PWD#$PROJECTS}
+    PROJECTS=$BASE/projects
+    BUILD_ROOT=$BASE
+    [[ "$BUILD_ROOT" = "$HOME" ]] && BUILD_ROOT=$HOME/build
+    BUILD_OPT=$BUILD_ROOT/opt-$BUILD_OS-$UNAME_M
+    BUILD_DEBUG=$BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M
+    # re-set path, and anything else depending on
+    # the above env variables
+    reload
+    [[ -d $PROJECTS ]] || mkdir -p $PROJECTS
+    cd $PROJECTS
+    [[ -d ./$CURREL ]] && cd ./$CURREL
+}
+
+mainline () {
+    new-deptool-base $HOME
+}
+
+code-review () {
+    new-deptool-base $HOME/code-review
+}
+
+release () {
+    new-deptool-base $HOME/release
+}
+
+testing () {
+    new-deptool-base $HOME/testing
+}
+
+ticoli () {
+    PROJECTS=$HOME/ticoli/projects
+    BUILD_ROOT=$HOME/ticoli
+    BUILD_OPT=$BUILD_ROOT/opt-$BUILD_OS-$UNAME_M
+    BUILD_DEBUG=$BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M
+    # re-set path, and anything else depending on
+    # the above env variables
+    reload
+    [[ -d $PROJECTS ]] || mkdir -p $PROJECTS
+    cd $PROJECTS
+}
+
+centos () {
+    INSTANCE="`schroot -l -a | grep centos5-64bit-`"
+    if [[ `echo $INSTANCE | wc -w` != 1 ]]; then
+        echo "Incorrect number of instances"
+        return 1
+    fi
+
+    schroot -r -c $INSTANCE
+}
+
+package-build () {
+    case $BUILD_OS in
+       *debian*) package-build-debian "$@" ;;
+       *ubuntu*) package-build-debian "$@" ;;
+       *centos*) package-build-redhat "$@" ;;
+       *) echo "Do not know how to package-build on '$BUILD_OS'"; return 1;;
+    esac   
+}
+
+package-build-debian () {
+    if [[ "$1" = "-p" ]]; then	      
+        echo "***** PARALLELISM $MAKE_PARALLELISM *****"
+	dpkg-buildpackage -rfakeroot -us -uc -j$MAKE_PARALLELISM
+    else
+        echo "***** NO PARALLELISM *****"
+	dpkg-buildpackage -rfakeroot -us -uc 
+    fi
+}
+
+package-build-redhat () {
+    mkdir -p /dev/shm/rpm-tmp-$USER /dev/shm/rpm-build-$USER
+    case "$1" in
+	*.spec) 
+	    if [ -f "$1" ]; then
+		rpmbuild -ba "$1"
+	    else
+		echo "Can't find spec file $1"
+	    fi
+	    ;;
+	*) if [ -x redhat/rules ]; then
+                ./redhat/rules rpm
+           else
+                echo "unknown argument to package-build '$1'; expect either *.spec or to be in a directory with a redhat/rules file"
+                return 1
+           fi
+           ;;
+    esac
+}
+
+galtool() {
+    scrumtool --db=galway "$@"
+}
+

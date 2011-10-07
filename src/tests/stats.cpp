@@ -81,9 +81,7 @@ void testStatsMerging() {
     checkInRange(base_2.count(), n_random_values * 0.4, n_random_values * 0.6);
 }
 
-int
-main(int argc, char *argv[])
-{
+int main(int, char **) {
     // TODO: more tests
     testStatsMerging();
     return 0;

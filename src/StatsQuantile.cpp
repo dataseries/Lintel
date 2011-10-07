@@ -129,7 +129,7 @@ StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _pri
 }
 
 // fake Nbound, big enough for tests
-StatsQuantile::StatsQuantile(const string &type_disambiguate,
+StatsQuantile::StatsQuantile(const string &,
 			     int _nbuffers, int _buffer_size, int _print_nrange)
     : quantile_error(Double::NaN), Nbound(5000000), print_nrange(_print_nrange)
 {

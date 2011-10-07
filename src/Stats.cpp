@@ -113,7 +113,7 @@ void Stats::add(const Stats &stat) {
     }
 }
 
-void Stats::addTimeSeq(const double value, const double timeSeq) {
+void Stats::addTimeSeq(const double value, const double) {
     this->add(value);
 }
 

@@ -1,0 +1,198 @@
+; (c) Copyright 2011, Hewlett-Packard Development Company, LP
+;
+; See the file named COPYING for license details
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; default variables, you can override these in ~/.emacs.early
+;;;; some of these are used in the below code to derive other values.
+(setq inhibit-startup-screen t)
+(setq lintel-x11-font "-misc-fixed-medium-r-normal--10-70-*-*-c-60-iso8859-1")
+(setq lintel-window-width 100)
+(setq version-control t)
+(setq kept-old-versions 2)
+(setq kept-new-versions 5)
+(setq delete-old-versions t)
+(setq c-label-offset -1)
+(setq-default indent-tabs-mode nil)
+(setq cperl-indent-level 4)
+(setq cperl-continued-statement-offset 4)
+(setq x-select-enable-clipboard t)
+(setq tab-width 4)
+(setq bat-send-bcc t)
+(setq initial-major-mode default-major-mode)
+(setq line-number-mode t)
+(setq html-helper-do-write-file-hooks t)
+(setq html-helper-build-new-buffer t)
+(setq tempo-insert-string-functions 'upcase)
+(setq auto-raise-screen nil)
+(setq indent-tabs-mode nil)
+(setq ispell-program-name "ispell")
+(setq ispell-check-comments nil)
+(put 'downcase-region 'disabled nil)
+(put 'eval-expression 'disabled nil)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; early customization; useful if you want to override some of the above variables.
+
+(defun lintel-load-if-exists (filename)
+  "Load a file if it exists"
+  (if (file-exists-p filename)
+      (load filename)))
+
+(lintel-load-if-exists (concat (getenv "HOME") "/.emacs.early"))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; function definitions used in the remainder of the file.
+
+(defun delete-frame-or-exit () 
+  "Delete the current frame, or exit from emacs if there is only one frame"
+  (interactive)
+  (if (= (length (visible-frame-list)) 1)
+      (save-buffers-kill-emacs)
+    (delete-frame)))
+
+(defun copy-to-kill-and-clipboard (beg end)
+  "Copy both to kill and to clipboard"
+  (interactive "r")
+  (progn (let ((x-select-enable-clipboard nil))
+	   (copy-region-as-kill beg end))
+	 (let ((x-select-enable-clipboard t))
+	   (copy-region-as-kill beg end))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; global configuration
+
+(global-set-key "\C-x\C-c" 'delete-frame-or-exit)
+(global-set-key "\M-n" 'goto-line)
+(global-set-key "\C-z" 'copy-to-kill-and-clipboard)
+
+(setq-default fill-column (- lintel-window-width 1))
+
+(if (boundp 'x-display-name)
+    (progn
+      (set-face-foreground 'highlight "Yellow")
+      (set-face-background 'highlight "CornflowerBlue")
+      (set-face-font 'bold lintel-x11-font)
+      (set-face-font 'bold-italic lintel-x11-font)
+      (set-face-font 'default lintel-x11-font)
+      (set-face-font 'highlight lintel-x11-font)
+      (set-face-font 'italic lintel-x11-font)
+      (set-face-font 'modeline lintel-x11-font)
+      (setq default-frame-alist (list (cons 'width lintel-window-width)))
+))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; emacs version specific configuration
+
+(if (string-equal "22" (substring (emacs-version) 10 12)) 
+    (progn (blink-cursor-mode 0)
+	   (tool-bar-mode 0)
+	   (menu-bar-mode 0)
+))
+
+(if (string-equal "21" (substring (emacs-version) 10 12)) 
+    (progn (blink-cursor-mode 0)
+	   (tool-bar-mode 0)
+	   (menu-bar-mode 0)
+))
+
+(if (string-match "20." emacs-version)
+    (progn
+      (setq default-major-mode (quote paragraph-indent-text-mode))
+      (setq initial-major-mode (quote paragraph-indent-text-mode))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; filename-based mode selection and hooks for modes
+
+(defalias 'perl-mode 'cperl-mode)
+(load "ange-ftp")
+(autoload 'sml-mode "sml-mode")
+(autoload 'perl-mode "perl-mode")
+(autoload 'php-mode "php-mode")
+(autoload 'dkbtrace-mode "dkbtrace-mode")
+(autoload 'sather-mode "sather")
+(autoload 'html32-mode "html32-mode" "HTML major mode." t)
+(autoload 'vm "vm" "Start VM mail reader" t)
+(autoload 'vm-other-frame "vm" "Like `vm' but starts in another frame." t)
+(autoload 'vm-visit-folder "vm" "Start VM on an arbitrary folder." t)
+(autoload 'vm-visit-virtual-folder "vm" "Visit a VM virtual folder." t)
+(autoload 'vm-mode "vm" "Run VM major mode on a buffer" t)
+(autoload 'vm-mail "vm" "Send a mail message using VM." t)
+(autoload 'vm-submit-bug-report "vm" "Send a bug report about VM." t)
+(autoload 'calc "calc" "Start calc" t)
+(autoload 'html-helper-mode "html-helper-mode" "HTML helper mode." t)
+(autoload 'debian-changelog-mode "debian-changelog-mode" "Debian changelog mode." t)
+(autoload 'espresso-mode "espresso" "Start espresso-mode" t)
+
+(setq auto-mode-alist (append '(("\\.sml$" . sml-mode) 
+				("\\.pl$" . perl-mode)
+				("\\.pm$" . perl-mode)
+				("\\.cc$" . c++-mode)
+				("\\.sc$" . c-mode)
+				("\\.gwm$" . lisp-mode)
+				("\\.ray$" . dkbtrace-mode)
+				("\\.C$"  . c++-mode)
+				("\\.cc$" . c++-mode)
+				("\\.hh$" . c++-mode)
+				("\\.sa$" . sather-mode)
+				("\\.c$"  . c-mode)
+				("\\.mail$" . mail-mode)
+				("\\.h$"  . c++-mode)
+				("\\.html$" . html-helper-mode)
+				("\\.htm$" . html-helper-mode)
+                                ("\\.php$" . php-mode)
+                                ("\\.js$" . espresso-mode)
+                                ("\\.json$" . espresso-mode)
+				("^changelog$" . debian-changelog-mode)
+				("/debian/changelog" . debian-changelog-mode)
+				)
+			      auto-mode-alist))
+
+(add-hook 'html-helper-load-hook 
+          (function (lambda () 
+                      (progn
+                        (load "html-helper-tables.el")))))
+
+(add-hook 'html-helper-mode-hook 
+          (function (lambda () 
+                      (progn
+			(local-set-key "\C-cc" 'tempo-template-html-code)
+			(local-set-key "\C-ci" 'html-helper-smart-insert-item)
+                        (local-set-key "\C-cl" 'tempo-template-html-hyperlink)
+			(local-set-key "\C-cp" 'tempo-template-html-paragraph)
+                        (local-set-key "\C-cs" 'tempo-template-html-unordered-list)
+                        (local-set-key "\C-ch1" 'tempo-template-html-header-1)
+                        (local-set-key "\C-ch2" 'tempo-template-html-header-2)
+                        (local-set-key "\C-ch3" 'tempo-template-html-header-3)
+                        (local-set-key "\C-ch4" 'tempo-template-html-header-4)
+                        (local-set-key "\C-ch5" 'tempo-template-html-header-5)
+                        (local-set-key "\C-ch6" 'tempo-template-html-header-6)
+                        ))))
+
+(setq perl-mode-hook 
+      (function 
+       (lambda ()
+         (modify-syntax-entry ?\' " " perl-mode-syntax-table)
+	 (modify-syntax-entry ?\$ " " perl-mode-syntax-table)
+	 (modify-syntax-entry ?\# " " perl-mode-syntax-table))))
+
+(setq c++-mode-hook
+      (function
+       (lambda ()
+	 (if (string-match "/projects/thrift" buffer-file-name)
+	     (setq c-basic-offset 2))
+	 (font-lock-mode))))
+
+(setq c-mode-hook c++-mode-hook)
+
+(c-add-style "lintel-java" '("java" (c-basic-offset . 4)))
+(c-add-style "lintel-c" '("gnu" (c-basic-offset . 4)))
+(setq c-default-style "lintel")
+
+(setq java-mode-hook (function (lambda () (c-set-style "lintel-java"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;;; late customization; useful if you want to override some of the above decisions.
+;;;; in many cases those should become derived choices
+
+(lintel-load-if-exists (concat (getenv "HOME") "/.emacs.late"))

@@ -24,13 +24,13 @@ StatsSeriesGroup::StatsSeriesGroup(const std::string &_myname, double _interval)
 }
 
 void
-StatsSeriesGroup::add(const double value)
+StatsSeriesGroup::add(const double)
 {
     FATAL_ERROR("StatsSeriesGroup::add shouldn't be called.");
 }
 
 void
-StatsSeriesGroup::add(const Stats &stat)
+StatsSeriesGroup::add(const Stats &)
 {
     FATAL_ERROR("unimplemented");
 }
@@ -119,7 +119,7 @@ StatsSeriesGroup::printRome(int depth, std::ostream &out) const
 }
 
 void
-StatsSeriesGroup::printTabular(int depth, std::ostream &out) const
+StatsSeriesGroup::printTabular(int , std::ostream &) const
 {
     FATAL_ERROR("unimplemented");
 }

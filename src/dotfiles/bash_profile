@@ -1,0 +1,14 @@
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# automatically transition from bash into zsh
+if [ -f $HOME/.no-auto-zsh ]; then
+    :
+else
+    ZSH=/bin/zsh
+    [ -x $ZSH ] && exec $ZSH
+    ZSH=/usr/bin/zsh
+    [ -x $ZSH ] && exec $ZSH
+    echo "neither /bin/zsh nor /usr/bin/zsh are executable??"
+fi

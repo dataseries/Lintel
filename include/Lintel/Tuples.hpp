@@ -86,8 +86,8 @@ namespace tuples {
     };
 
     template<class BitSet>
-    inline bool bitset_any_equal(const null_type &lhs, const null_type &rhs,
-				 const BitSet &any, size_t cur_pos) {
+    inline bool bitset_any_equal(const null_type &, const null_type &,
+				 const BitSet &, size_t) {
 	return true;
     }
 
@@ -102,9 +102,9 @@ namespace tuples {
     }
 
     template<class BitSet>
-    inline bool bitset_any_strict_less_than(const null_type &lhs, const null_type &rhs,
-					    const BitSet &any_lhs, const BitSet &any_rhs,
-					    size_t cur_pos) {
+    inline bool bitset_any_strict_less_than(const null_type &, const null_type &,
+					    const BitSet &, const BitSet &,
+					    size_t) {
 	return false;
     }
 
@@ -130,11 +130,9 @@ namespace tuples {
     }
 
     template<class BitSet>
-    inline void bitset_any_print(std::ostream &to, const null_type &, const BitSet &, size_t) 
+    inline void bitset_any_print(std::ostream &, const null_type &, const BitSet &, size_t) 
     { }
 
-    // 0x8bc74d0b was sampled from /dev/random. It should be  better choice than
-    // 0, which is a more common value in variables.
     template<class Head, class Tail, class BitSet>
     inline void bitset_any_print(std::ostream &to, const cons<Head, Tail> &v,
 				 const BitSet &any, size_t cur_pos) {
@@ -260,6 +258,8 @@ namespace lintel {
 
     template<class T> inline uint32_t hashType(const tuples::AnyPair<T> &v) {
 	if (v.any) {
+            // 0x8bc74d0b was sampled from /dev/random. It should be better choice than
+            // 0, which is a more common value in variables.
 	    return 0x8bc74d0bU; 
 	} else {
 	    return hash(v.val);

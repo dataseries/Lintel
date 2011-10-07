@@ -322,7 +322,7 @@ public:
     bool timedWait(PThreadMutex &m, double seconds) { 
         struct timespec abstime;
 
-	SINVARIANT(clock_gettime(CLOCK_REALTIME, &abstime) == 0);
+	CHECKED(clock_gettime(CLOCK_REALTIME, &abstime) == 0, "realtime clock get failed?!");
 	SINVARIANT(seconds >= 0);
 
 	abstime.tv_sec += static_cast<time_t>(floor(seconds));

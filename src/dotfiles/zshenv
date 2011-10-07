@@ -1,0 +1,40 @@
+# -*- sh -*-
+# (c) Copyright 2011, Hewlett-Packard Development Company, LP
+#
+# See the file named COPYING for license details
+#
+# Primary zshenv file.  Two primary sources of customization:
+# 1) $HOME/.zshenv.early; run right after startup, allows you to set variables that
+# will be used later.
+# 2) $HOME/.zshenv.late; run right at the end, allows you to override any earlier settings.
+
+[[ x$PATH = x ]] && PATH=/usr/bin:/bin
+
+if [[ -z "$PROMPT" ]]; then
+	status_echo() { }
+else 
+        status_echo() { echo "$@" }
+fi
+status_echo -n "zshenv: 1"
+
+PATH=$PATH:/sbin:/usr/sbin:/bin
+UNAMES=`uname -s`
+HOSTNAME=`hostname`
+
+source_and_status() {
+    if [[ -f "$2" ]]; then
+        status_echo -n " $1"
+        source "$2"
+    fi
+}
+source_and_status 1a $HOME/.zshenv.early
+
+status_echo -n " 2"
+source_and_status 2a $HOME/.dotfiles/zsh-env-$UNAMES
+source_and_status 2b $HOME/.zshenv.$HOSTNAME
+source $HOME/.dotfiles/zsh-env-common
+
+status_echo -n " 3"
+source_and_status 3a $HOME/.zshenv.late
+
+status_echo " 4"
