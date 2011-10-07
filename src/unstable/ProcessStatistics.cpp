@@ -28,7 +28,7 @@ ProcessStatistics::~ProcessStatistics() {
     CHECKED(fclose(fp)==0, format("fclose() failed: %s") % strerror(errno));
 }
 
-const size_t ProcessStatistics::getCached(StatType which) {
+size_t ProcessStatistics::getCached(StatType which) {
     switch (which) {
     case AddressSize:
 	return res.size * res.page_size;

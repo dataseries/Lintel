@@ -1,5 +1,6 @@
 package BatchParallel::jobsfile;
 
+use Sys::Hostname;
 die "module version mismatch" 
     unless $BatchParallel::common::interface_version < 2;
 
@@ -129,11 +130,12 @@ sub rebuild_thing_do {
 
     my($outfile,$cmd) = @$thing_info;
 
-    # TODO: check to see of the final output file is present already, and if so assume
-    # we raced with another invocation and skip actually running the command.
+    if (-f $outfile) {
+        print "Skipping '$cmd'; $outfile already exists\n";
+        exit(0);
+    }
     $cmd = "($cmd)";
-    my $hostname = `hostname`;chomp($hostname);
-    my $tmpoutfile = "$outfile-$hostname-$$";
+    my $tmpoutfile = "$outfile-" . hostname() . "-$$";
     if ($this->{printcommand}) {
 	open(OUT,">$tmpoutfile") or die "Can't open $tmpoutfile for write: $!";
 	print OUT "command: $cmd\n" or die "print failed: $!";
@@ -145,8 +147,12 @@ sub rebuild_thing_do {
     print "Running '$cmd'\n";
     my $ret = system($cmd);
     if ($ret == 0) {
-	rename($tmpoutfile,$outfile)
-	    or die "Can't rename $tmpoutfile to $outfile: $!";
+        if (-f $outfile) {
+            print "WARNING: $outfile appeared while we were running '$cmd'; leaving around $tmpoutfile\n";
+        } else {
+            rename($tmpoutfile, $outfile)
+                or die "Can't rename $tmpoutfile to $outfile: $!";
+        }
 	exit(0);
     } else {
 	rename($tmpoutfile, "$tmpoutfile-err");

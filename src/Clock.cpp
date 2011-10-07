@@ -419,6 +419,8 @@ void Clock::bindToProcessor(unsigned proc) {
     ret = pthread_processor_bind_np(PTHREAD_BIND_FORCED_NP, &answer,
 				    answer, PTHREAD_SELFTID_NP);
     SINVARIANT(ret==0);
+#else
+    (void)proc;
 #endif
 }
 

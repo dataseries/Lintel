@@ -38,7 +38,7 @@ namespace lintel {
 
 	/// Get the value of StatType which; if it is expensive to do be fresh then it is
 	/// acceptible to return a stale result.
-	const size_t getCached(StatType which);
+	size_t getCached(StatType which);
 
 	/// Get the value of StatType which; make sure the result is fresh.
 	size_t get(StatType which);

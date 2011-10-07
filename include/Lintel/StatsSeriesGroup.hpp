@@ -19,7 +19,7 @@
 /// \brief A group of stats objects ordered by time
 ///
 /// Each of the stats objects in the series will be created using
-/// StatsMaker.  Each object will have a name of myname-<statnum>
+/// StatsMaker.  Each object will have a name of myname-statnum
 class StatsSeriesGroup : public Stats {
 public:
     StatsSeriesGroup(const std::string &_myname, double interval);
@@ -29,7 +29,7 @@ public:
 
     virtual void reset();
 
-    const int getSeriesLength() { return stats.size(); }
+    int getSeriesLength() { return stats.size(); }
     const Stats &getSeriesStat(const int statnum) {
 	INVARIANT(statnum >= 0 && static_cast<size_t>(statnum) < stats.size(),
 		  boost::format("statnum %d is out of bounds") % statnum);

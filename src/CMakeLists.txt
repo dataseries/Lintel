@@ -21,7 +21,11 @@ IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 ENDIF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
 		       
 IF(CMAKE_COMPILER_IS_GNUCXX)
-    ADD_DEFINITIONS(-Wall)
+# Note -Wextra warns about unused parameters in LintelPerl.cpp auto-generated code
+# See http://www.semantics.org/talknotes/SD2002W_HIERARCHY.pdf slide 10 about overloaded-virtual
+    ADD_DEFINITIONS(-Wall -Wextra -Woverloaded-virtual -Wpointer-arith -Wwrite-strings)
+# TODO: get these in and mostly cleaned up
+# -Wold-style-cast -Weffc++
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
 
 # these rely on threading support. Currently, Lintel only knows pthreads.

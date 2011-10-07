@@ -171,7 +171,7 @@ namespace lintel {
 	    uint32_t trans_buf = 0;
 	    uint32_t bits = 0;
 	    for(out_off=digits-1, in_off=size-1; 
-		in_off >= 0 && out_off >= 0; --out_off) {
+		out_off >= 0; --out_off) {
 		if (bits < 6) {
 		    trans_buf += ((uint32_t)cdata[in_off]) << bits;
 		    --in_off;

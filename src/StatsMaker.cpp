@@ -113,7 +113,7 @@ StatsMaker::makeRW(const std::string &name)
 }
 
 Stats *
-StatsMaker::makeSimple(statDefT &def)
+StatsMaker::makeSimple(statDefT &)
 {
   return new Stats();
 }
@@ -156,7 +156,7 @@ StatsMaker::makeSequence(statDefT &def)
 }
 
 StatsRW *
-StatsMaker::makeRWStats(const std::string &name, statDefT &def)
+StatsMaker::makeRWStats(const std::string &name, statDefT &)
 {
   return new StatsRW(name);
 }

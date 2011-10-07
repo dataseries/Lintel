@@ -7,7 +7,7 @@
 #include <Lintel/Clock.hpp>
 #include <Lintel/LintelLog.hpp>
 
-int main(int argc, char *argv[]) {
+int main(int, char **) {
     LintelLog::parseEnv();
 
     Clock::allowUnsafeFrequencyScaling(Clock::AUFSO_WarnFast);
