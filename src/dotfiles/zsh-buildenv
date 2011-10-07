@@ -9,7 +9,7 @@
 # If you want different locations, override them before including this file; otherwise deptool will
 # select them. 
 
-if [[ -z "$DEPTOOL" || "$DEPTOOL" = "false" ]]; then
+if [[ -z "$DEPTOOL" || "$DEPTOOL" = "false" || ! -x "$DEPTOOL" ]]; then
     DEPTOOL=`whence deptool`
     [[ -z "$DEPTOOL" && -x $HOME/.monotone/deptool ]] && DEPTOOL=$HOME/.monotone/deptool
     [[ -z "$DEPTOOL" ]] && DEPTOOL=`(echo $HOME/build/opt*/bin/deptool) 2>/dev/null | awk '{print $1}'`
@@ -22,8 +22,135 @@ if [[ -z "$DEPTOOL" || "$DEPTOOL" = "false" ]]; then
     fi
 fi
 
+new-deptool-base () {
+    local base=$1
+    local monotone_dir=$2
+    [[ -d $base ]] || mkdir -p $base
+    local CURREL=${PWD#$PROJECTS}
+    PROJECTS=$base/projects
+    BUILD_ROOT=$base
+    [[ "$BUILD_ROOT" = "$HOME" ]] && BUILD_ROOT=$HOME/build
+    local old_build_opt=$BUILD_OPT
+    BUILD_OPT=$BUILD_ROOT/opt-$BUILD_OS-$UNAME_M
+    BUILD_DEBUG=$BUILD_ROOT/dbg-$BUILD_OS-$UNAME_M
+
+    if [[ ! -z "$monotone_dir" ]]; then
+        if [[ ! -d $monotone_dir ]]; then
+            echo "Missing $monotone_dir; attempting to setup based on $old_build_opt"
+            mkdir -p $monotone_dir
+        fi
+        for i in monotonerc keys; do
+            if [[ ! -e $monotone_dir/$i && -e $HOME/.monotone/$i ]]; then
+                echo "ln -s $HOME/.monotone/$i $monotone_dir/$i"
+                ln -s $HOME/.monotone/$i $monotone_dir/$i
+            fi
+        done
+        for i in ssd.db simpl.db; do
+            if [[ ! -r $monotone_dir/$i && -r $HOME/.monotone/$i ]]; then
+                echo "cp $HOME/.monotone/$i $monotone_dir/$i"
+                cp $HOME/.monotone/$i $monotone_dir/$i
+            fi
+        done
+        export MONOTONE_DIR=$monotone_dir
+    else
+        unset MONOTONE_DIR
+    fi
+
+    if [[ ! -e $BUILD_OPT/bin/deptool && -e $old_build_opt/Lintel/src/deptool-bootstrap ]]; then
+        echo "Missing $BUILD_OPT/bin/deptool; bootstrapping with $old_build_opt/Lintel/src/deptool-bootstrap"
+        mkdir -p $BUILD_OPT/bin
+        cp $old_build_opt/Lintel/src/deptool-bootstrap $BUILD_OPT/bin/deptool
+        chmod +x $BUILD_OPT/bin/deptool
+    fi
+
+    if [[ -z "$IN_ZSHENV_COMMON" ]]; then
+        # re-set path, and anything else depending on
+        # the above env variables
+        reload
+    fi
+
+    [[ -d $PROJECTS ]] || mkdir -p $PROJECTS
+    cd $PROJECTS
+    [[ -d ./$CURREL ]] && cd ./$CURREL
+    true
+}
+
+mainline () {
+    if [[ -d /var/tmp/work-$USER ]]; then
+        new-deptool-base /var/tmp/work-$USER/mainline /var/tmp/work-$USER/monotone
+    else
+        new-deptool-base $HOME
+    fi
+}
+
+code-review () {
+    new-deptool-base $HOME/code-review
+}
+
+release () {
+    if [[ -d /var/tmp/work-$USER ]]; then
+        new-deptool-base /var/tmp/work-$USER/release /var/tmp/work-$USER/monotone
+    else
+        new-deptool-base $HOME/release
+    fi
+}
+
+testing () {
+    if [[ -d /var/tmp/work-$USER ]]; then
+        new-deptool-base /var/tmp/work-$USER/testing /var/tmp/work-$USER/monotone
+    else
+        new-deptool-base $HOME/testing
+    fi
+}
+
+
+tmp () {
+    mkdir /var/tmp/work-$USER
+    mainline
+}
+
+prep-local-build () {
+    local target
+    local reenv
+    if [[ "$PROJECTS" = "$HOME/projects" ]]; then
+        target=/var/tmp/build-$USER
+        reenv=mainline
+    elif [[ "$PROJECTS" = "$HOME/code-review/projects" ]]; then
+        target=/var/tmp/build-cr-$USER
+        reenv=code-review
+    elif [[ ! -z "$1" ]]; then
+        target=$1
+    else    
+        echo "Usage: prep-local-build [target, tries to infer from \$PROJECTS, but failed]"
+        return 1
+    fi
+
+    local dest=$target/opt-$BUILD_OS-$UNAME_M/bin
+    mkdir -p $dest
+    local deptool=$BUILD_OPT/Lintel/src/deptool-bootstrap 
+    if [[ ! -f $deptool ]]; then
+        echo "Unable to bootstrap $target, missing $deptool"
+        return 1
+    fi
+    cp $deptool $dest/deptool
+    if [[ -z "$reenv" ]]; then
+        echo "Execute whatever command you need to use $target as your new root"
+    else
+        $reenv
+    fi
+}
+
 if [[ "$DEPTOOL" != false ]]; then
     eval `$DEPTOOL getenv for-sh`
+
+    # Only do this once.
+    if [[ -z "$INITIAL_DEPTOOL_SETUP" ]]; then
+        local curdir=$PWD
+        INITIAL_DEPTOOL_SETUP=done
+        mainline
+        cd $curdir
+    fi
+
     [[ -x $BUILD_OPT/bin/deptool ]] && DEPTOOL=$BUILD_OPT/bin/deptool
 
     if [[ ! -d $BUILD_OPT/bin ]]; then
@@ -33,6 +160,7 @@ if [[ "$DEPTOOL" != false ]]; then
 
     hash -d build=$BUILD_OPT
     hash -d debug=$BUILD_DEBUG
+    hash -d projects=$PROJECTS
 fi
 
 if [[ -z "$CCACHE_DIR" && -w /var/cache/ccache && -d /var/cache/ccache ]]; then
@@ -48,5 +176,4 @@ fi
 case "$HOST_IP" in
     15.184.*) MTN_SERVER=15.184.3.7
 esac
-
 

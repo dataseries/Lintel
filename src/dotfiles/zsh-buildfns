@@ -215,3 +215,6 @@ galtool() {
     scrumtool --db=galway "$@"
 }
 
+galtool2() {
+    scrumtool --db=galway2 "$@"
+}
