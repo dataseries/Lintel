@@ -200,11 +200,11 @@ namespace lintel {
 	    init(name, desc);
 	}
 	
-	bool used() {
+	bool used() const {
 	    return !saved.empty();
 	}
 	
-	T get() {
+	T get() const {
 	    if (used()) {
 		return saved.as<T>();
 	    } else {
@@ -272,11 +272,11 @@ namespace lintel {
 	    init(name, desc);
 	}
 
-	bool used() {
+	bool used() const {
 	    return val;
 	}
 	
-	bool get() {
+	bool get() const {
 	    return val;
 	}
 	
