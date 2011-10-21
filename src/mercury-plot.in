@@ -1329,7 +1329,7 @@ sub plotxy_yerr {
     my($filename, $sql_cmd) = @_;
 
     my $p = default_plotinfo($filename,$sql_cmd);
-    $p->{with} = 'yerrorbars';
+    $p->{with} = 'yerrorbars' unless defined $p->{with};
     return $p;
 }
 
@@ -1337,7 +1337,7 @@ sub plotxy_yhilo {
     my($filename, $sql_cmd) = @_;
 
     my $p = default_plotinfo($filename,$sql_cmd);
-    $p->{with} = 'yerrorbars';
+    $p->{with} = 'yerrorbars' unless defined $p->{with};
     return $p;
 }
 
@@ -1358,7 +1358,7 @@ sub plotxy2_yerr {
 
     my $p = default_plotinfo($filename,$sql_cmd);
     $p->{axes} = 'x1y2';
-    $p->{with} = 'yerrorbars';
+    $p->{with} = 'yerrorbars' unless defined $p->{with};
     gnuplot('set ytics nomirror');
     gnuplot('set y2tics');
     return $p;
@@ -1369,7 +1369,7 @@ sub plotxy2_yhilo {
 
     my $p = default_plotinfo($filename,$sql_cmd);
     $p->{axes} = 'x1y2';
-    $p->{with} = 'yerrorbars';
+    $p->{with} = 'yerrorbars' unless defined $p->{with};
     gnuplot('set ytics nomirror');
     gnuplot('set y2tics');
     return $p;
