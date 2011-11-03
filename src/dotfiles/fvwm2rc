@@ -147,6 +147,7 @@ AddToMenu "Hosts-Menu2" "Hosts" Title
 +	       "xc" Exec exec xterm -T xc -e /bin/sh -c 'slogin -e none -A -X xc' &
 +	       "fileserver-1" Exec exec xterm -T fileserver-1 -e /bin/sh -c 'slogin -e none -A -X fileserver-1.u' &
 +	       "fileserver-2" Exec exec xterm -T fileserver-2 -e /bin/sh -c 'slogin -e none -A -X fileserver-2.u' &
++	       "fileserver-3" Exec exec xterm -T fileserver-3 -e /bin/sh -c 'slogin -e none -A -X fileserver-3.u' &
 
 AddToMenu "Hosts-Menu" "Hosts" Title
 +	       "martenot" Exec exec xterm -T martenot.hpl.hp.com -e /bin/sh -c 'slogin -A -e none -X martenot.hpl.hp.com' &

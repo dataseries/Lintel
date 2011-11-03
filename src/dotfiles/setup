@@ -50,16 +50,10 @@ copyUpdate() {
     fi
 }
 
-# TODO-reviewer: we could instead symlink.  The advantage of symlinking is that
-# it would make sure that as soon as an update was applied to Lintel it was applied into
-# the user's environment.  The downside is that any bugs would get propagated quickly.
-# Unclear which approach is better, but in this case I chose stability over fast updates.
-# Is that the right choice?
-# Yes, stability is the right choice.
-# TODO-anderse: Any not-too-obtrusive way of hinting that new dotfiles are available upon log in? I.e., compare current dotfiles in home dir to what is in Lintel and hint to user ?
 copyFromLintelToDotfiles() {
     DOTFILES=$HOME/.dotfiles
     mkdir -p $DOTFILES
+    ln -snf $SRCPATH $DOTFILES/lintel-source
     echo "Copying from $SRCPATH to $DOTFILES; to see changes:"
     BACKUPDIR=backup.`date +%Y-%m-%d`.$$
     mkdir $DOTFILES/$BACKUPDIR
@@ -75,6 +69,42 @@ copyFromLintelToDotfiles() {
     rmdir $DOTFILES/$BACKUPDIR 2>/dev/null || true
 }
 
+errorOutOfDate() {
+    echo $1
+    exit 1
+}
+
+listOutOfDate() {
+    cd $HOME/.dotfiles || errorOutOfDate "Missing $HOME/.dotfiles"
+    [ -f lintel-source/setup ] || errorOutOfDate "Missing .dotfiles/lintel-source/setup"
+    OUT_OF_DATE=
+    for i in lintel-source/*; do
+        BASE=`basename $i`
+        case $BASE in
+            *~) : ;;
+            \#*\#) : ;;
+            *)
+                if cmp $BASE $i >/dev/null 2>&1; then
+                    :
+                else
+                    OUT_OF_DATE="$BASE $OUT_OF_DATE"
+                fi
+                ;;
+        esac
+    done
+    if [ "$OUT_OF_DATE" = "" ]; then
+        exit 0
+    else
+        echo "WARNING: .dotfiles out of date for: $OUT_OF_DATE; to fix:"
+        echo "(cd `readlink $HOME/.dotfiles/lintel-source` ; ./setup)" 
+        exit 1
+    fi
+}
+
+if [ "$1" = "--list-out-of-date" ]; then
+    listOutOfDate
+fi
+
 case $0 in
     /*) SRCPATH=`dirname $0` ;;
     *) SRCPATH=`dirname $PWD/$0` ;;
@@ -84,6 +114,7 @@ SRCPATH=`echo $SRCPATH | sed -e 's/\/\.$//g' -e 's/\/\.\//\//g'`
 
 case $SRCPATH in 
     */.dotfiles) linkFromDotfilesToHomedir ;;
-    */Lintel*/src/dotfiles) copyFromLintelToDotfiles ;;
+    */Lintel*/src/dotfiles) copyFromLintelToDotfiles && cd $HOME/.dotfiles \
+        && echo "------------------------------" && ./setup ;;
     *) echo "ERROR: do not know how to operate from $SRCPATH"; exit 1 ;;
 esac

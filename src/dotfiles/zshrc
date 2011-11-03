@@ -183,3 +183,4 @@ source_and_status 4 $HOME/.zshrc.late
 
 echo ""
 
+$HOME/.dotfiles/setup --list-out-of-date || true

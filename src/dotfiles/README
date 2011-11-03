@@ -1,8 +1,9 @@
 If this README file is in ~/.dotfiles; then it was copied out of some Lintel version, you can
 update or initialize your dotfiles by running .../Lintel/src/dotfiles/setup; the commands to see
-what has changed will be printed to the screen.  TODO-eric: note that if you already have a a file
-it won't overwrite, and you need to run setup in .dotfiles the first time to make it apply to your
-homedir (or make setup do that automatically?)
+what has changed will be printed to the screen.  If you already have a ~/.<whatever> file, it will
+be preserved and a warning will be generated to indicate that the lintel dotfiles are not replacing
+that file.  Once you have run setup, ~/.dotfiles/lintel-source will be a symlink to the source
+directory for the dotfiles.
 
 These dotfiles are the shared ones that part of our group has been using for several years.  They
 have many useful functions for interfacing between zsh and deptool, they also set up an environment
@@ -15,5 +16,3 @@ be applied at the beginning of the .<whatever> file and can be used to set varia
 customization.  The .late variant will be applied at the end of the .<whatever> file, and can be
 used to build additional customization and/or override decisions made in the common files.  This
 customization is currently present for emacs, zshrc, and zshenv.
-
-TODO-anderse: Not sure what other documentation is needed... Should there be a command 'dotfiles' that has a help which lists some of this README and or points at Lintel/src/dotfiles or something? Or that sees if you have the most recent dotfiles installed? I believe this stuff is under-documented, but I am not sure how to fix it without a bunch of (not valuable) work producing explanations/documentation that will be out of date whenever the dotfiles stuff changes. So, my main concern is making it easy to find the dotfiles stuff, and to know if your dotfiles are up to date or not.
