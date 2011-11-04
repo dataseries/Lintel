@@ -105,7 +105,7 @@ testing () {
 
 
 tmp () {
-    mkdir /var/tmp/work-$USER
+    mkdir -p /var/tmp/work-$USER
     mainline
 }
 
