@@ -23,7 +23,7 @@ linkFromDotfilesToHomedir() {
         i=`basename $i`
         j=`echo "$i" | grep '~$'`
         case $i in
-           _MTN|setup|deptool.config|zsh-*|backup.*|README) : ;;
+           _MTN|setup|deptool.config|zsh-*|backup.*|README|lintel-source) : ;;
            rpmmacros.in) 
                 sed -e "s,HOME,$HOME," -e "s,USER,$USER," \
                     $HOME/.dotfiles/rpmmacros.in >$HOME/.dotfiles/rpmmacros
