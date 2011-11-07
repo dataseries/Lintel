@@ -84,7 +84,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;;; emacs version specific configuration
 
-(if (string-equal "22" (substring (emacs-version) 10 12)) 
+(if (or
+     (string-equal "21" (substring (emacs-version) 10 12))
+     (string-equal "22" (substring (emacs-version) 10 12))
+     (string-equal "23" (substring (emacs-version) 10 12)))
     (progn (blink-cursor-mode 0)
 	   (tool-bar-mode 0)
 	   (menu-bar-mode 0)

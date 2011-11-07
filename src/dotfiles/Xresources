@@ -2,7 +2,7 @@
 !
 ! See the file named COPYING for license details
 !
-! Common X resource settings.  Mostly here for the vnc ones and because it's been part of our
+! Common X resource settings.  Mostly here for the vnc ones and because its been part of our
 ! standard set of available dotfiles.
 
 ghostview.reverseVideo: false
