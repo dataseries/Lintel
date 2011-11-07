@@ -111,6 +111,7 @@ string escapeUnprintable_slow(const string &a) {
     return ret;
 }
 
+// TODO: require boost program options or move this out into a separate test.
 ProgramOption<uint32_t> po_eu_speed_test_iterations
   ("eu-speed-test-iterations", "Number of iterations for the escape unprintable speed test");
 
