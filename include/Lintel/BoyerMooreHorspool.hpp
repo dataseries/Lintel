@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <limits>
+#include <string>
 
 namespace lintel {
     /** \brief A class that encapsulates the BoyerMooreHorspool string matching algorithm */
