@@ -68,7 +68,7 @@
 
 (setq-default fill-column (- lintel-window-width 1))
 
-(if (boundp 'x-display-name)
+(if (and (boundp 'x-display-name) x-display-name)
     (progn
       (set-face-foreground 'highlight "Yellow")
       (set-face-background 'highlight "CornflowerBlue")
