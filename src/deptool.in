@@ -93,7 +93,7 @@ sub usage {
 =head1 SYNOPSIS
 
  % deptool <command> [--man] [options] [args]
-   init [--server=<hostname>] [branch-prefix...]
+   init [--(git|mtn)] [--server=<hostname>] [branch-prefix...]
    checkout <branch-substring...> # checkout branch and dependencies
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-o (optimize build)] [-l|local]
@@ -550,37 +550,87 @@ sub depWalk ($$$);
 
 =pod
 
-=head2 init [--server=<hostname>] [I<branch-prefix>...]
+=head2 init [--mtn] [--git] [--server=<hostname>] [I<repository specifier>...]
 
-The init command will initialize the default setup for the monotone version
-control system.  It will also populate the initial database for checkouts, in
-particular, the one that would contain Lintel since deptool is in Lintel.  By
-default it assumes that usi.hpl.hp.com is the central version control server,
-but this can be overridden with the --server option.  It will use ssd as the default
-branch prefix.  If you do not have the environment variables set up by using
-the getenv command, deptool will ask a number of questions about where the
-files should be placed.  It is usually safe to run the init command with the -y
-option so that these questions will be automatically answered.
+The init command will initialize the default setup for the specified version control
+system.  If no version control system is specified, it will default to git.
 
-After you have run init, you will have a key file.  To be able to sync to a
-particular server, you need to send the public key to the monotone
-administrator for that server.  You can get the key file by running mtn pubkey
-I<email-address>, the same address you used when running deptool init.  For
-HP Labs, the administrator of usi.hpl.hp.com is anderse@hpl.hp.com.
+=head3 init --git
 
-B<Warning:> If you already have a key set up on one machine, you should just
-copy your keys directory to the new machine rather than creating a new key.
-Monotone can get confused by multiple keys with the same email address.
+The init command will initialize the global configuration for git, such as the name and email
+address of the committer.  It will also download one or more repositories, by default the one for
+contining Lintel.  The repository specifiers can either be short names, such as "simpl/Lintel" in
+which case the server hostname will be added or full URLs such as
+git://git.u.hpl.hp.com/simpl/Lintel.  If you specify a short name, then the default server will be
+assumed to be git.u.hpl.hp.com, which is only accessible from the HP intranet.
+
+Init will make a full mirror of the remote repositories into $HOME/.git/I<shortname>.  Right now it
+assumes that the repositories are readable through the git protocol and writeable through the ssh
+protocol, and it will set up the configuration to operate in that mode.
+
+In order to write to a particular project you have to perform two steps.  First you have to send
+your ssh key (e.g. $HOME/.ssh/id_rsa.pub; in the format of an authorized_keys file) to the
+appropriate administrator.  Second you need to get permission to write to the project.  At this
+time both of those steps for git.u.hpl.hp.com can be performed by Eric Anderson
+<eric.anderson4@hp.com>
+
+=head3 init --mtn
+
+This command will also populate the initial database for checkouts, by default, the one that
+would contain Lintel since deptool is in Lintel.  By default it assumes that usi.hpl.hp.com is the
+central version control server, but this can be overridden with the --server option.  It will use
+ssd as the default branch prefix.  If you do not have the environment variables set up by using the
+getenv command, deptool will ask a number of questions about where the files should be placed.  It
+is usually safe to run the init command with the -y option so that these questions will be
+automatically answered.
+
+After you have run init, you will have a key file.  To be able to sync to a particular server, you
+need to send the public key to the monotone administrator for that server.  You can get the key
+file by running mtn pubkey I<email-address>, the same address you used when running deptool init.
+For HP Labs, the administrator of usi.hpl.hp.com is anderse@hpl.hp.com.
+
+B<Warning:> If you already have a key set up on one machine, you should just copy your keys
+directory to the new machine rather than creating a new key.  Monotone can get confused by multiple
+keys with the same email address.
 
 =cut
 
 sub depInit {
-    checkForMtn();
+    my ($mtn,$git);
+    my $server;
+    my $result = GetOptions("server=s" => \$server,
+                            "mtn!" => \$mtn,
+                            "git!" => \$git);
+    usage("Unknown error") unless $result;
+    die "You need to specify either --mtn or --git"
+        unless $mtn || $git;
+    $ENV{MTN_SERVER} = $server if defined $server;
+    # kernel.org is using gitolite; we do too.
+    $ENV{DEPTOOL_GIT_SERVER} = $server if defined $server;
+    depInitGit($server) if $git;
+    depInitMtn($server) if $mtn;
+}
+
+sub checkForBinary {
+    my ($binary) = @_;
+
+    my @paths = split(/:/, $ENV{PATH});
+    foreach my $path (@paths) {
+        return 1 if -x "$path/$binary";
+    }
+    return 0;
+}
+
+sub depInitMtn {
+    die "Unable to find mtn binary in path; you should repair this.
+Usually yum install monotone or apt-get install monotone will work.
+http://usi.hpl.hp.com/twiki/pub/USI/MonotoneVersionControl/mtn-static
+is a static linux binary, alternately, you can get something from
+the monotone web site: http://www.monotone.ca/"
+        unless checkForBinary("mtn");
 
     my $server = mtnServer();
     my $email;
-    my $result = GetOptions("server=s" => \$server);
-    usage("Unknown error") unless $result;
     my @branch_prefixes = @ARGV;
     if (@branch_prefixes == 0) {
         print "Assuming default branch prefix ssd\n";
@@ -590,19 +640,7 @@ sub depInit {
     initMtnDir();
     initMtnKeysRc();
 
-    initDbs($server, \@branch_prefixes);
-}
-
-sub checkForMtn {
-    my @paths = split(/:/, $ENV{PATH});
-    foreach my $path (@paths) {
-        return if -x "$path/mtn";
-    }
-    die "Unable to find mtn binary in path; you should repair this.
-Usually yum install monotone or apt-get install monotone will work.
-http://usi.hpl.hp.com/twiki/pub/USI/MonotoneVersionControl/mtn-static
-is a static linux binary, alternately, you can get something from
-the monotone web site: http://www.monotone.ca/";
+    initMtnDbs($server, \@branch_prefixes);
 }
 
 sub initMtnDir {
@@ -618,7 +656,7 @@ sub initMtnKeysRc {
 
 The key will be generated with an empty password.  You can change it
 by running mtn chkeypass or mtn passphrase depending on your monotone
-version. 
+version.
 
 Run 'deptool help publish' to learn where you have to send your public key
 so tha tyou can publish.
@@ -631,7 +669,7 @@ EOF
         print "Enter e-mail address for identifying monotone key: ";
         my $email = <STDIN>;
         chomp $email;
-        die "?? $email" unless $email =~ /^\S+\@\S+\.\w+$/o;
+        die "Unexpected email format '$email'" unless $email =~ /^\S+\@\S+\.\w+$/o;
 
         runCommand("yes default-password | mtn genkey $email");
 
@@ -683,7 +721,7 @@ EOF
     }
 }
 
-sub initDbs {
+sub initMtnDbs {
     my($server, $branch_prefixes) = @_;
 
     foreach my $branch_prefix (@$branch_prefixes) {
@@ -702,7 +740,107 @@ sub initDbs {
     }
 }
 
+sub depInitGit {
+    die "Unable to find git binary in path; you should repair this.
+Usually yum install git or apt-get install git will work."
+        unless checkForBinary("git");
+
+    my $server = gitServer();
+    my @repositories = @ARGV;
+    if (@repositories == 0) {
+        print "Assuming default repository simpl/Lintel\n";
+        @repositories = ("simpl/Lintel");
+    }
+    initGitConfig();
+    initGitRepositories($server, \@repositories);
+
+    # clone from git+ssh://gitosis@host/repo?
+#  git remote set-url --push origin ssh://gitolite@git.u/simpl/Lintel
+#  Fetch URL: git://git.u/simpl/Lintel
+#  Push  URL: ssh://gitolite@git.u/simpl/Lintel
+# http://git-wt-commit.rubyforge.org/git-publish-branch
+    # no signatures for git commits, can sign tags.
+    # http://git.661346.n2.nabble.com/GPG-signing-for-git-commit-td2582986.html
+    # branch naming: http://nvie.com/posts/a-successful-git-branching-model/
+    # http://scottchacon.com/2011/08/31/github-flow.html
+
+    # branch naming: big question seems to be common commits to master or infrequent, i.e.
+    # can unstable commits go to master.  Seems to depend on quality of regression tests;
+    # high quality -> direct to master, low quality -> develop branch, then branch for release
+    # and stabilization testing.  Convention from core git tools is direct to master; convention
+    # from gittool is direct to develop.
+
+    # upstream branches only tracked for 1 level unless you do --mirror which implies --bare.
+    # we want to support local branches that never go back to central.
+    # we want to allow/encourage rebase for things that haven't been pushed to central
+}
+
+sub initGitConfig {
+    # git config --global -l
+    # set user.name, user.email, core.editor, merge.tool
+
+    my %config = qw/core.editor emacs merge.tool kdiff3/;
+    my @pwuid = getpwuid($UID);
+    my @gecos = split(/,/o, $pwuid[6]);
+    $config{'user.name'} = $gecos[0]; # hope
+
+    if (-f "$ENV{HOME}/.gitconfig") {
+        my $fh = new FileHandle "git config --global -l |";
+        while (<$fh>) {
+            chomp;
+            die "? '$_'" unless /^([\w\.]+)=(.+)$/o;
+            $config{$1} = $2;
+        }
+    }
+    # Define deptool config version by date so that if there turn out to be more things we
+    # want to configure, we can update the date and the config can be updated.
+    my $config_date = '2011-11-12';
+    if (defined $config{'deptool.config'} && $config{'deptool.config'} eq $config_date) {
+        print "Git configuration up to date ($config_date). To reconfigure, first:\n";
+        print "% git config --global deptool.config reconfig\n";
+        return;
+    }
+
+    foreach my $ent (qw/user.email user.name core.editor merge.tool/) {
+        $config{$ent} ||= '';
+        print "Enter git configuration for $ent [default=$config{$ent}]: ";
+        my $val = <STDIN>;
+        chomp $val;
+        $val = $config{$ent} if $val =~ /^\s*$/o;
+        quietRunCommand('git','config','--global',$ent,$val);
+    }
+    quietRunCommand('git','config','--global','deptool.config',$config_date);
+}
+
+sub initGitRepositories {
+    my ($server, $repositories) = @_;
+
+    foreach my $repo (@$repositories) {
+        my $rw_repo = $repo;
+        unless ($repo =~ m!^\w+://!o) {
+            # TODO: need --ssh-user option or something like that.
+            $rw_repo = "ssh://gitolite\@$server/$repo";
+            $repo = "git://$server/$repo";
+        }
+        die "? $repo" unless $repo =~ m!^\w+://[^/]+/(.+)$!o;
+        # Could include the hostname, but that seems a little goofy since the "central" server
+        # could change on a regular basis.  Seems better to assume that the repository names
+        # are going to be unique.
+
+        my ($shortname) = $1;
+
+        runCommand(qw/git clone --mirror/, $repo, "$ENV{HOME}/.git/$shortname");
+        if ($rw_repo ne $repo) {
+            runCommand(qw/git --git-dir/, "$ENV{HOME}/.git/$shortname",
+                       qw/remote set-url --push origin/, $rw_repo);
+        }
+    }
+}
+
 =pod
+
+# TODO-reviewer: should we make this init --tar? Or should we change init to mtninit gitinit?
+# I slightly prefer the former.
 
 =head2 tarinit [--no-cache] [I<download-specification>]
 
@@ -3688,6 +3826,11 @@ for deppull, deppublish operations, it can be specified as
 ssh://[user@]server[:port]/path-to-monotone-db/
 deptool appends the appropriate database
 
+=item gitServer
+
+The DEPTOOL_GIT_SERVER environment variable.  Defaults to git.u.hpl.hp.com.  Needed to determine
+the central repository for init.
+
 =back
 
 =cut
@@ -3712,6 +3855,7 @@ sub getEnv {
         printEnv($shell, 'BUILD_OPT', \&buildOpt);
         printEnv($shell, 'MAKE_PARALLELISM', \&makeParallelism);
         printEnv($shell, 'MTN_SERVER', \&mtnServer);
+        printEnv($shell, 'DEPTOOL_GIT_SERVER', \&gitServer);
     } else {
         usage("Bad env var request") unless $env =~ /^\w+$/o;
         my $ret = eval "$ARGV[0]()";
@@ -3913,6 +4057,14 @@ sub mtnServer {
         $ENV{MTN_SERVER} = "usi.hpl.hp.com";
     }
     return $ENV{MTN_SERVER};
+}
+
+sub gitServer {
+    unless(defined $ENV{DEPTOOL_GIT_SERVER}) {
+        userPrompt("assume default git server git.u.hpl.hp.com (set via \$DEPTOOL_GIT_SERVER)");
+        $ENV{DEPTOOL_GIT_SERVER} = "git.u.hpl.hp.com";
+    }
+    return $ENV{DEPTOOL_GIT_SERVER};
 }
 
 ##### Common functions
