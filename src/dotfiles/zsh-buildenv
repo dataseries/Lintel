@@ -150,7 +150,10 @@ if [[ "$DEPTOOL" != false ]]; then
     if [[ $DEPTOOL != $BUILD_OPT/bin/deptool && -x $BUILD_OPT/bin/deptool ]]; then
         DEPTOOL=$BUILD_OPT/bin/deptool
         # may have found an old deptool, re-update env with one we expect to use.
-        # TODO-reviewer: is there a reason to do multiple rounds of this?
+        #
+        # If someone is updating from a really old deptool, and we've made several generations of
+        # really odd changes to the environment setup, then this may fail; it seems unlikely enough
+        # to ignore.
         eval `$DEPTOOL getenv for-sh`
     fi
 
