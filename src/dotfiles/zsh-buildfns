@@ -116,7 +116,7 @@ valgrind() {
 }
 
 centos () {
-    INSTANCE="`schroot -l -a | grep centos5-64bit-`"
+    INSTANCE="`schroot -l -a | grep -v session: | sed 's/chroot://' | grep centos5-64bit-`"
     if [[ `echo $INSTANCE | wc -w` != 1 ]]; then
         echo "Incorrect number of instances"
         return 1

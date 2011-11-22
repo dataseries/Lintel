@@ -12,11 +12,12 @@
 if [[ -z "$DEPTOOL" || "$DEPTOOL" = "false" || ! -x "$DEPTOOL" ]]; then
     DEPTOOL=`whence deptool`
     [[ -z "$DEPTOOL" && -x $HOME/.monotone/deptool ]] && DEPTOOL=$HOME/.monotone/deptool
+    [[ -z "$DEPTOOL" && -x $HOME/.git/deptool ]] && DEPTOOL=$HOME/.git/deptool
     [[ -z "$DEPTOOL" ]] && DEPTOOL=`(echo $HOME/build/opt*/bin/deptool) 2>/dev/null | awk '{print $1}'`
     if [[ -z "$DEPTOOL" || ! -x "$DEPTOOL" ]]; then
 	echo 
 	
-	echo "ERROR: deptool not in path, ~/.monotone/, or ~/build/opt*/bin/"
+	echo "ERROR: deptool not in path, ~/.monotone/, ~/.git/ or ~/build/opt*/bin/"
 	echo "Lots of things won't work right until this is fixed."
 	DEPTOOL=false
     fi
@@ -73,6 +74,10 @@ new-deptool-base () {
     cd $PROJECTS
     [[ -d ./$CURREL ]] && cd ./$CURREL
     true
+}
+
+homedir () {
+    new-deptool-base $HOME
 }
 
 mainline () {
@@ -142,6 +147,12 @@ prep-local-build () {
 
 if [[ "$DEPTOOL" != false ]]; then
     eval `$DEPTOOL getenv for-sh`
+    if [[ $DEPTOOL != $BUILD_OPT/bin/deptool && -x $BUILD_OPT/bin/deptool ]]; then
+        DEPTOOL=$BUILD_OPT/bin/deptool
+        # may have found an old deptool, re-update env with one we expect to use.
+        # TODO-reviewer: is there a reason to do multiple rounds of this?
+        eval `$DEPTOOL getenv for-sh`
+    fi
 
     # Only do this once.
     if [[ -z "$INITIAL_DEPTOOL_SETUP" ]]; then
@@ -150,8 +161,6 @@ if [[ "$DEPTOOL" != false ]]; then
         mainline
         cd $curdir
     fi
-
-    [[ -x $BUILD_OPT/bin/deptool ]] && DEPTOOL=$BUILD_OPT/bin/deptool
 
     if [[ ! -d $BUILD_OPT/bin ]]; then
         echo "WARNING: forcing creation of $BUILD_OPT/bin so it will be in \$PATH"
