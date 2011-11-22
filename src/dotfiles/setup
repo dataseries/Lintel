@@ -51,6 +51,15 @@ copyUpdate() {
 }
 
 copyFromLintelToDotfiles() {
+    case $SRCPATH in
+        $HOME/*) : ;;
+        *) echo "WARNING: $SRCPATH is not under $HOME."
+           echo "if $HOME is shared on multiple machines, and $SRCPATH is not,"
+           echo "you will get errors in the future about missing .dotfiles/lintel-source/setup."
+           echo -n "Return to continue, ctrl-c to abort: "
+           read foo
+           ;;
+    esac
     DOTFILES=$HOME/.dotfiles
     mkdir -p $DOTFILES
     ln -snf $SRCPATH $DOTFILES/lintel-source
@@ -76,7 +85,7 @@ errorOutOfDate() {
 
 listOutOfDate() {
     cd $HOME/.dotfiles || errorOutOfDate "Missing $HOME/.dotfiles"
-    [ -f lintel-source/setup ] || errorOutOfDate "Missing .dotfiles/lintel-source/setup"
+    [ -f lintel-source/setup ] || errorOutOfDate "Missing .dotfiles/lintel-source/setup; run $PROJECTS/Lintel/src/dotfiles/setup?"
     OUT_OF_DATE=
     for i in lintel-source/*; do
         BASE=`basename $i`
