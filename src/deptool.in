@@ -93,8 +93,8 @@ sub usage {
 =head1 SYNOPSIS
 
  % deptool <command> [--man] [options] [args]
-   init [--(git|mtn)] [--server=<hostname>] [branch-prefix...]
-   checkout <branch-substring...> # checkout branch and dependencies
+   init --(git|mtn) [--server=<hostname>] [branch-prefix...]
+   checkout [--(git|mtn)] [--sub-branch=...] <branch-substring...>
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-o (optimize build)] [-l|local]
    commit [--no-tests] # commit branch after dependencies
@@ -815,6 +815,7 @@ sub initGitConfig {
 sub initGitRepositories {
     my ($server, $repositories) = @_;
 
+    my $git_repo_dir = gitRepoDir();
     foreach my $repo (@$repositories) {
         my $rw_repo = $repo;
         unless ($repo =~ m!^\w+://!o) {
@@ -829,9 +830,9 @@ sub initGitRepositories {
 
         my ($shortname) = $1;
 
-        runCommand(qw/git clone --mirror/, $repo, "$ENV{HOME}/.git/$shortname");
+        runCommand(qw/git clone --mirror/, $repo, "$git_repo_dir/$shortname");
         if ($rw_repo ne $repo) {
-            runCommand(qw/git --git-dir/, "$ENV{HOME}/.git/$shortname",
+            runCommand(qw/git --git-dir/, "$git_repo_dir/$shortname",
                        qw/remote set-url --push origin/, $rw_repo);
         }
     }
@@ -1036,24 +1037,44 @@ sub httpFetchLatestRelease {
 
 =pod
 
-=head2 checkout I<branch-substring>...
+=head2 checkout [--(git|mtn)] [--sub-branch=...] I<branch-substring>...
 
-The checkout command, which can be abbreviated as co, checks out a
-branch and its dependencies.  It will find the appropriate branch by
-selecting from all the branches in the databases found as
-~/.monotone/*.db.  It will choose the directory name based on the
-branch name after stripping out the initial uniquifier.  This is based
-on the assumption that branches will be named as
-I<uniquifier>/I<branch-name>/I<sub-branch>.  Deptool will
-automatically select the branch that matches with the least length so
-it will ignore sub-branches that may be present.  For example, if you
-ran checkout Data, it would select the ssd.hpl.hp.com/DataSeries
-branch and put the checkout in ~/projects/DataSeries (by default,
-changeable by setting $PROJECTS).  It would then checkout Lintel since
-Lintel is a dependency for DataSeries.
+The checkout command, which can be abbreviated as co, checks out a branch and its dependencies.  It
+will find the appropriate branch by selecting from all the branches in the repositories found under
+~/.git, and the databases found as ~/.monotone/*.db.  It will then attempt to select the most
+appropriate matching branch.  If there is a conflict between the git and the monotone options, it
+will default to the git option.  This process will repeat for all dependencies of the package you
+selected, for example, if you checked out DataSeries, checkout would checkout Lintel automatically.
+If a sub-branch is specified, then deptool will add that sub-branch to all branches if it exists.  If it doesn't exist, deptool will check out the main branch.
+For example if you check out --sub-branch=feature/parallel DataSeries, deptool will checkout
+DataSeries/feature/parallel, and Lintel/feature/parallel if it exists.
 
-If multiple branches match and they do not share a common prefix,
-deptool will abort the checkout.
+=head3 checkout --git
+
+Deptool will first find all of the available repositories and branches under ~/.git.  It will
+construct long branch names that combine the repository name with the branch name, treating the
+master branch as empty.  E.g. if you have a repository simpl/Lintel with branches master,
+feature/goodness, and personal/eric; you will get a list simpl/Lintel, simpl/Lintel/master,
+simpl/Lintel/feature/goodness, simpl/Lintel/personal/eric.  It will then identify all branches that
+match the specified substring, and select the shortest one if it is a unique prefix of the others
+and otherwise report an error.
+
+Deptool will select the directory name based on the last part of the repository name, e.g. if the
+repository is named simpl/something/Project, the directory name for the checkout will be
+~/projects/Project.  The root for checkouts can be changed by setting $PROJECTS.
+
+=head3 checkout --mtn
+
+Deptool will automatically select the branch that matches with the least length so it will ignore
+sub-branches that may be present.  For example, if you ran checkout Data, it would select the
+ssd.hpl.hp.com/DataSeries branch and put the checkout in ~/projects/DataSeries (by default,
+changeable by setting $PROJECTS).
+
+Deptool will choose the directory name based on the branch name after stripping out the initial
+uniquifier.  This is based on the assumption that branches will be named as
+I<uniquifier>/I<branch-name>/I<sub-branch>.
+
+If multiple branches match and they do not share a common prefix, deptool will abort the checkout.
 
 =head2 co
 
@@ -1061,30 +1082,34 @@ See help checkout
 
 =cut
 
-sub depCheckout {
-    usage("No branch-substrings specified") unless @ARGV > 0;
+# TODO-reviewer: should either a) support DEPTOOL_SUBBRANCH so that when we go into testing we
+# can just say deptool co KeyValue, and automatically get KeyValue/testing; or b) support some
+# option so that a sub-branch is incorporated into the checkout name?  I've certainly done the
+# latter with DataSeries.server for the ssd.hpl.hp.com/DataSeries/server branch.
+#
+# TODO-reviewer: ok, if you do the following it glitches because of the DataSeries dependency
+# inside SimReal not matching the DataSeries/shirant entry.
+# PROJECTS=/tmp/xx ./deptool co --sub-branch=testing KeyValue SimReal/release DataSeries/shirant Lintel
+# I see two fixes: 1) make the "I already did this" based on the checkout directory; 2) decide that
+# this is user error and let it keep failing.  Opinions?
+#
+# TODO-reviewer: the above will also do the monotone checkounts into KeyValue/testing, not just
+# KeyValue.  The git ones would just go into KeyValue.  I prefer the latter.  Opinions?
 
-    my $projects = projects();
-    
-    my @dbs = glob("$monotone_dir/*.db");
-    die "No *.db files in $monotone_dir; did you run $0 init?"
-        unless @dbs > 0;
+sub depCheckout {
+    my ($mtn, $git, $sub_branch);
+    my $result = GetOptions("mtn" => \$mtn, "git" => \$git, "sub-branch=s" => \$sub_branch);
+    usage("Unknown error") unless $result;
+    usage("No branch-substrings specified") unless @ARGV > 0;
+    unless ($mtn || $git) {
+        $mtn = $git = 1;
+    }
 
     my @branches;
-    my %branch_to_db;
-    foreach my $db (@dbs) {
-        my $tmp = new FileHandle("mtn -d $db list branches |");
-        my @tmp = <$tmp>;
-        close($tmp);
-        grep(chomp, @tmp);
-        push(@branches, @tmp);
-        map { 
-            warn "duplicate db ($db, $branch_to_db{$_}) for branch $_
-will use latter."
-                if defined $branch_to_db{$_};
-            $branch_to_db{$_} = $db 
-            } @tmp;
-    }
+    my %branch_to_info;
+
+    depCheckoutGetMtnBranches(\@branches, \%branch_to_info) if $mtn;
+    depCheckoutGetGitBranches(\@branches, \%branch_to_info) if $git;
 
     my @branch_regexes = (@ARGV);
     my %did_regex;
@@ -1093,49 +1118,178 @@ will use latter."
         next if $did_regex{$branch_regex};
         $did_regex{$branch_regex} = 1;
 
-	$branch_regex =~ s/;\w+//o;
-	$branch_regex = "/$branch_regex" unless $branch_regex =~ m!/!o;
-        my @possibles = grep(m/$branch_regex/, @branches);
-        die "No branches found matching $branch_regex"
-            unless @possibles > 0;
-        @possibles = sort { length $a <=> length $b } @possibles;
-        
-        my $branch = shift @possibles;
-        foreach $_ (@possibles) {
-            die "multiple non-prefixed matches for $branch_regex:
-$branch $_
-You need to provide more specificity in the dependencies in deptool.config\n " 
-		unless /^$branch/;
+        my $branch = depCheckoutSelectBranch($branch_regex, \@branches, \%branch_to_info);
+        if (defined $sub_branch) {
+            my $tmp = eval { depCheckoutSelectBranch("$branch_regex/$sub_branch", \@branches,
+                                                     \%branch_to_info); };
+            if (!$@ && defined $tmp) {
+                $branch = $tmp;
+            }
         }
-        
-        my $db = $branch_to_db{$branch};
-        my $dir = $branch;
-        $dir =~ s!^\w+(\.\w+)*/!!o; # strip uniqueifier we put on
-        my $path = "$projects/$dir";
-        print << "END";
 
-Selected branch $branch
-From database $db
-Inferred projects directory $dir
-Inferred full path $path
-END
+        my $info = $branch_to_info{$branch};
+        my $fn = $info->{fn};
+        my $path = &$fn($branch, $info);
 
-        if (-d "$path/_MTN") {
-            print "Found $path/_MTN; skipping redundant checkout.\n";
-        } else {
-	    die "$path already exists; mtn checkout would fail"
-		if -d $path;
-            userPrompt("continue even though you have a / in the directory")
-                if $dir =~ m!/!o;
-        
-            runCommand("mtn -d $db co -b $branch $path");
-        }
 	my $config = readConfig($path);
         if (defined $config->{dependencies} && @{$config->{dependencies}} > 0) {
             print "Adding VC dependencies: ", join(" ", @{$config->{dependencies}}), "\n";
             push(@branch_regexes, @{$config->{dependencies}});
         }
-    }        
+    }
+}
+
+sub depCheckoutSelectBranch {
+    my ($branch_regex, $branches, $branch_to_info) = @_;
+
+    $branch_regex =~ s/;\w+//o;
+    $branch_regex = "/$branch_regex" unless $branch_regex =~ m!/!o;
+    my @possibles = grep(m/$branch_regex/, @$branches);
+    die "No branches found matching $branch_regex"
+        unless @possibles > 0;
+    @possibles = sort { length $a <=> length $b } @possibles;
+
+    my %vcs;
+    map { my $info = $branch_to_info->{$_} || die "?"; $vcs{$info->{vc}} = 1; } @possibles;
+    if ($vcs{git} && $vcs{mtn}) { # prefer git to mtn.
+        print "Pruning out monotone dbs for $branch_regex, use --mtn to force usage\n";
+        @possibles = grep($branch_to_info->{$_}->{vc} ne 'mtn', @possibles);
+    }
+    my $branch = shift @possibles;
+    foreach $_ (@possibles) {
+        die "multiple non-prefixed matches for $branch_regex:
+$branch $_
+You need to provide more specificity in the dependencies in deptool.config\n " 
+            unless /^$branch/;
+    }
+
+    return $branch;
+}
+
+sub depCheckoutGetMtnBranches {
+    my ($branches, $branch_to_info) = @_;
+
+    my @dbs = glob("$monotone_dir/*.db");
+    # TODO-reviewer: generate warning?  I went with no because of usage with no monotone
+    return if @dbs == 0;
+    @dbs = sort @dbs;
+
+    foreach my $db (@dbs) {
+        my $tmp = new FileHandle("mtn -d $db list branches |");
+        my @tmp = <$tmp>;
+        close($tmp);
+        grep(chomp, @tmp);
+        push(@$branches, @tmp);
+        map {
+            warn "duplicate db ($db, $branch_to_info->{$_}->{mtn_db}) for branch $_
+will use latter."
+                if defined $branch_to_info->{$_} && defined $branch_to_info->{$_}->{mtn_db};
+            $branch_to_info->{$_} = { mtn_db => $db, fn => \&depCheckoutMonotoneCheckout,
+                                      vc => 'mtn' };
+        } @tmp;
+    }
+}
+
+sub depCheckoutGetGitBranches {
+    my ($branches, $branch_to_info) = @_;
+
+    my $git_repo_dir = gitRepoDir();
+    my @repo_dirs;
+    find(sub { 
+             print "$File::Find::name\n";
+             return unless -d "$_/objects";
+             foreach my $subdir (qw!branches hooks info objects objects/pack objects/info refs!) {
+                 return unless -d "$File::Find::name/$subdir";
+             }
+             foreach my $subfile (qw!config description HEAD!) {
+                 return unless -f "$File::Find::name/$subfile";
+             }
+             push(@repo_dirs, $File::Find::name);
+             $File::Find::prune = 1;
+         }, $git_repo_dir);
+    print "Found repo dirs: @repo_dirs\n";
+    foreach my $repo_dir (@repo_dirs) {
+        my $prefix = $repo_dir;
+        die "? $prefix $git_repo_dir"
+            unless substr($prefix, 0, length $git_repo_dir) eq $git_repo_dir;
+        substr($prefix, 0, length $git_repo_dir) = '';
+        print "$prefix:\n";
+        my $qm = quotemeta $repo_dir;
+        my $fh = new FileHandle("git --git-dir=$qm branch |")
+            || die "Can't run git branch: $!";
+        my @sub_branch;
+        while (<$fh>) {
+            die "? $_ " unless /^\*? +(\S+)$/o;
+            print "  $1\n";
+            push (@sub_branch, $1);
+            push (@sub_branch, "") if $1 eq 'master';
+        }
+        close($fh);
+        die "git branch failed: $?" unless $? == 0;
+        foreach my $sub_branch (@sub_branch) {
+            my $branch = $prefix;
+            $branch .= "/$sub_branch" unless $sub_branch eq '';
+            die "? $branch" if defined $branch_to_info->{$branch};
+            $branch_to_info->{$branch} = { git_dir => $repo_dir, fn => \&depCheckoutGitCheckout,
+                                           co_path => $prefix, vc => 'git',
+                                           sub_branch => $sub_branch };
+            push(@$branches, $branch);
+        }
+    }
+}
+
+sub depCheckoutMonotoneCheckout {
+    my ($branch, $info) = @_;
+    my $db = $info->{mtn_db};
+    my $dir = $branch;
+    $dir =~ s!^\w+(\.\w+)*/!!o; # strip uniqueifier we put on
+
+    my $path = projects() . "/$dir";
+    print << "END";
+
+Selected monotone branch $branch from database $db
+Checking out into: $path
+END
+
+    if (-d "$path/_MTN") { # TODO-reviwer, should we be checking for all existing vcs?
+        print "Found $path/_MTN; skipping redundant checkout.\n";
+    } else {
+        die "$path already exists; mtn checkout would fail"
+            if -d $path;
+        userPrompt("continue even though you have a / in the directory")
+            if $dir =~ m!/!o;
+
+        runCommand(qw/mtn -d/,$db,qw/co -b/,$branch,$path);
+    }
+    return $path;
+}
+
+sub depCheckoutGitCheckout {
+    my ($branch, $info) = @_;
+
+    my $co_path = $info->{co_path};
+
+    $co_path =~ s!^.*/!!o;
+
+    my $path = projects() . "/$co_path";
+
+    print << "END";
+
+Selected git branch $branch from $info->{git_dir}
+Cloneing into $path
+END
+
+    if (-d "$path/.git") {
+        print "Found $path/.git; skipping redundant clone.\n";
+    } else {
+        die "$path already exists; not managed by git?"
+            if -d $path;
+        my @sub_branch;
+        push(@sub_branch, '-b', $info->{sub_branch})
+            unless $info->{sub_branch} eq '';
+        runCommand(qw/git clone/, @sub_branch, $info->{git_dir}, $path);
+    }
+    return $path;
 }
 
 ##### Dependency build
@@ -3654,6 +3808,8 @@ sub depWalkRecurse ($$$$$$) {
     print "\n";
 }
 
+# TODO-git: test with missing checkout for depbuild, test with missing init.
+
 sub depWalkTryCheckout {
     my ($dep) = @_;
     my $projects = projects();
@@ -3831,6 +3987,11 @@ deptool appends the appropriate database
 The DEPTOOL_GIT_SERVER environment variable.  Defaults to git.u.hpl.hp.com.  Needed to determine
 the central repository for init.
 
+=item gitRepoDir
+
+The DEPTOOL_GIT_REPO_DIR environment variable.  Defaults to ~/.git.  Stores the local mirrors of
+remote repositories.
+
 =back
 
 =cut
@@ -3856,6 +4017,7 @@ sub getEnv {
         printEnv($shell, 'MAKE_PARALLELISM', \&makeParallelism);
         printEnv($shell, 'MTN_SERVER', \&mtnServer);
         printEnv($shell, 'DEPTOOL_GIT_SERVER', \&gitServer);
+        printEnv($shell, 'DEPTOOL_GIT_REPO_DIR', \&gitRepoDir);
     } else {
         usage("Bad env var request") unless $env =~ /^\w+$/o;
         my $ret = eval "$ARGV[0]()";
@@ -4067,6 +4229,14 @@ sub gitServer {
     return $ENV{DEPTOOL_GIT_SERVER};
 }
 
+sub gitRepoDir {
+    unless(defined $ENV{DEPTOOL_GIT_REPO_DIR}) {
+        userPrompt("assume default git repo dir $ENV{HOME}/.git (set via \$DEPTOOL_GIT_REPO_DIR)");
+        $ENV{DEPTOOL_GIT_REPO_DIR} = "$ENV{HOME}/.git";
+    }
+    return $ENV{DEPTOOL_GIT_REPO_DIR};
+}
+
 ##### Common functions
 
 # TODO-sprint: add in support for rc file, allow user to specify config name as argument
@@ -4162,7 +4332,8 @@ publish is executed.
 sub readConfig {
     my ($cfg_dir) = @_;
 
-    confess "internal $cfg_dir" unless -d $cfg_dir;
+    confess "internal: \$cfg_dir not defined" unless defined $cfg_dir;
+    confess "internal: missing directory $cfg_dir" unless -d $cfg_dir;
 
     my $cfg_path = "$cfg_dir/deptool.config";
     confess "Error: missing $cfg_path\n"
