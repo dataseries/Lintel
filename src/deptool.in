@@ -170,11 +170,8 @@ my $auto_yes_to_prompts = 1;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
-my $time_log;
+my $time_log = $ENV{DEPTOOL_TIME_LOG};
 my $debug = 0;
-# TODO: fix this to work the same as the rest of the env vars; which involves fixing
-# all of the callers
-my $monotone_dir = mtnRepoDir();
 
 $Global::last_stamp_timestamp = time();
 
@@ -190,15 +187,9 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
            "build-debug=s" => \$Cache::build_debug,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage,
-	   "monotone-dir=s" => \$monotone_dir,
+	   "monotone-dir=s" => \$ENV{DEPTOOL_MTN_REPO_DIR},
 	   "time-log=s" => \$time_log,
 	   "debug!" => \$debug);
-
-$time_log ||= $ENV{DEPTOOL_TIME_LOG};
-if (!defined $time_log) {
-    my $default_time_log = "$monotone_dir/deptool-timings";
-    $time_log = $default_time_log if (-f $default_time_log);
-}
 
 =pod
 
@@ -647,6 +638,7 @@ the monotone web site: http://www.monotone.ca/"
 }
 
 sub initMtnDir {
+    my $monotone_dir = mtnRepoDir();
     if (! -d $monotone_dir) {
         userPrompt("Create monotone directory $monotone_dir");
         mkdir($monotone_dir, 0755) or die "Unable to mkdir $monotone_dir: $!";
@@ -654,6 +646,7 @@ sub initMtnDir {
 }
 
 sub initMtnKeysRc {
+    my $monotone_dir = mtnRepoDir();
     if (! -d "$monotone_dir/keys") {
         print <<EOF;
 
@@ -727,6 +720,7 @@ EOF
 sub initMtnDbs {
     my($server, $branch_prefixes) = @_;
 
+    my $monotone_dir = mtnRepoDir();
     foreach my $branch_prefix (@$branch_prefixes) {
         my $db = $branch_prefix;
         $db =~ s/\W.*$//o;
@@ -1195,7 +1189,7 @@ You need to provide more specificity in the dependencies in deptool.config\n "
 sub depCheckoutGetMtnBranches {
     my ($branches, $branch_to_info) = @_;
 
-    my @dbs = glob("$monotone_dir/*.db");
+    my @dbs = glob(mtnRepoDir() . "/*.db");
     # TODO-reviewer: generate warning?  I went with no because of usage with no monotone
     return if @dbs == 0;
     @dbs = sort @dbs;
@@ -4406,7 +4400,7 @@ sub readConfig {
 
     my %expect = map { $_ => 1 } qw/dependencies parallel_test parallel_test_path 
 	                            sequential_tests untested_repository/;
-    
+
     foreach my $key (keys %$result) {
 	warn "Unrecognized option '$key' in $cfg_path" unless $expect{$key};
     }
