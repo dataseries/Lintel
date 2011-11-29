@@ -2057,11 +2057,13 @@ the bug.
 =cut
 
 sub setPin {
+    my $vcs = createVCInterface();
+
     die "Have unknown files; setpin is disallowed"
         if depCommitHaveUnknown();
     die "Have changes; setpin is disallowed"
-        if depCommitHaveChanges();
-    my @heads = getCurHeads();
+        if $vcs->haveUncommittedChanges();
+    my @heads = deptool::MonotoneVC::getCurHeads();
     die "Have multiple heads; setpin is disallowed"
         unless @heads == 1;
     my($revision) = @ARGV;
@@ -2070,7 +2072,7 @@ sub setPin {
         runCommand("mtn","update","-r",$revision);
     }
 
-    $revision = getCurRevision()
+    $revision = deptool::MonotoneVC::getCurRevision()
         unless defined $revision;
     
     my $filename = depPinFilename();
@@ -2109,119 +2111,13 @@ sub depPull {
 	    sub { depPullOne(\%options); }, 0);
 }
 
-### sets $options->{made_changes} if we made changes.
-
 sub depPullOne {
     my($options) = @_;
 
+    my $vcs = createVCInterface();
+
     depCommitOne() unless $options->{unsafe_pull_with_changes};
-    mtnOp("pull");
-    depPullMerge();
-    depPullUpdate($options);
-}
-
-sub depPullMerge {
-    while(1) {
-        my $fh = new FileHandle "mtn automate heads |";
-        my @heads = getCurHeads();
-        last if @heads == 1;
-        my $cwd = aliasGetCwd();
-        print "\n" x 5, "You have multiple heads in $cwd.";
-        userPrompt("merge the heads");
-        runCommand("mtn","merge");
-    }
-}
-
-sub depPullUpdate {
-    my($options) = @_;
-
-    my $cwd = aliasGetCwd();
-    my $cur_rev = getCurRevision();
-    my $deppin_filename = depPinFilename();
-    if (-f $deppin_filename) {
-        my @heads = getCurHeads();
-        die "??" unless @heads == 1;
-
-        if (foundPin($cur_rev, $heads[0])) {
-	    print << "END";
-****
-  You are currently pinned to revision $cur_rev
-  The head revision has not changed, so the pin remains.
-  To remove the pin, edit $deppin_filename
-****
-END
-            return;
-        } elsif (hadPin($cur_rev)) {
-            print <<"END";
-****
-You would be pinned to $cur_rev, but the head
-has been updated.  To reset the pin:
-cd $cwd; deptool pin $cur_rev
-****
-END
-            # skip prompting, will do so for the update.
-        }
-    }
-    while(1) {
-        my $cur_rev = getCurRevision();
-        my @heads = getCurHeads();
-        die "??" unless @heads == 1;
-        last if $cur_rev eq $heads[0];
-        print <<"END";
-You current checkout is not up to date in $cwd.
-$cur_rev != $heads[0]
-END
-        userPrompt("update to the current revision");
-        runCommand("mtn","update");
-        $options->{made_changes} = 1;
-    }
-}
-
-sub foundPin {
-    my($rev, $head) = @_;
-
-    my $filename = depPinFilename();
-    return 0 unless -r $filename;
-    my $fh = new FileHandle($filename)
-        or die "Can't open $filename for read: $!";
-    while(<$fh>) {
-        return 1 if /^$head $rev$/;
-    }
-    return 0;
-}
-
-sub hadPin {
-    my($rev) = @_;
-
-    my $filename = depPinFilename();
-    return 0 unless -r $filename;
-    my $fh = new FileHandle($filename)
-        or die "Can't open $filename for read: $!";
-    while(<$fh>) {
-        return 1 if /$rev$/;
-    }
-    return 0;
-}
-
-sub getCurHeads {
-    my($fh) = new FileHandle("mtn automate heads |")
-        or die "Unable to fork: $!";
-    my @heads = <$fh>;
-    close($fh);
-    die "??" unless @heads > 0;
-    grep(chomp, @heads);
-    return @heads;
-}
-
-sub getCurRevision {
-    my($fh) = new FileHandle("mtn automate get_base_revision_id |")
-        or die "Unable to fork: $!";
-
-    local $_ = <$fh>;
-    die "??" unless $_ =~ /^[a-fA-F0-9]{40}$/o;
-    chomp;
-    close($fh);
-    return $_;
+    $vcs->pull($options);
 }
 
 sub depPinFilename {
@@ -2234,11 +2130,12 @@ sub depPullCheckClean {
     return if $options->{unsafe_pull_with_changes};
     my $cwd = aliasGetCwd();
 
-    if (depCommitHaveUnknown()) {
+    my $vcs = createVCInterface();
+    if (depCommitHaveUnknown($vcs)) {
 	die "You have unknown files in $cwd
 Requiring you to commit first. Aborting.\n";
     }
-    if (depCommitHaveChanges()) {
+    if ($vcs->haveUncommittedChanges()) {
 	die "You have uncommitted changes in $cwd
 Requiring you to commit first. Aborting.\n";
     }
@@ -2806,7 +2703,7 @@ sub mtnServePushToBackpropagate {
     my ($host) = @_;
     $ENV{MTN_SERVER} = 'localhost';
     depWalk(sub { 
-	my @heads = getCurHeads();
+	my @heads = deptool::MonotoneVC::getCurHeads();
 	my ($project, @rest) = divideDir(aliasGetCwd());
 	print "HEADS $project: @heads\n";
 	mtnOp("push"); # push anything we got to the untested server
@@ -2890,7 +2787,7 @@ sub depSyncOne {
     my($options) = @_;
 
     mtnOp("sync");
-    depPullUpdate($options);
+    deptool::MonotoneVC::pullDoUpdate($options);
 }
 
 ##### Code review diff
@@ -4815,6 +4712,125 @@ sub tryCommit {
     }
 }
 
+# TODO-reviewer: I'd like to dump the pin code; we use it really infrequently, it's fairly
+# complicated, and once we're on git, it can be better implemented with a local branch.
+# I don't think that anyone is using it so I don't think we're losing much.  However, it was
+# part of the public interface, so an arguement could be made that it should go through a
+# deprecation cycle.
+
+sub foundPin {
+    my($rev, $head) = @_;
+
+    my $filename = main::depPinFilename();
+    return 0 unless -r $filename;
+    my $fh = new FileHandle($filename)
+        or die "Can't open $filename for read: $!";
+    while(<$fh>) {
+        return 1 if /^$head $rev$/;
+    }
+    return 0;
+}
+
+sub hadPin {
+    my($rev) = @_;
+
+    my $filename = main::depPinFilename();
+    return 0 unless -r $filename;
+    my $fh = new FileHandle($filename)
+        or die "Can't open $filename for read: $!";
+    while(<$fh>) {
+        return 1 if /$rev$/;
+    }
+    return 0;
+}
+
+sub getCurHeads {
+    my($fh) = new FileHandle("mtn automate heads |")
+        or die "Unable to fork: $!";
+    my @heads = <$fh>;
+    close($fh);
+    die "??" unless @heads > 0;
+    grep(chomp, @heads);
+    return @heads;
+}
+
+sub pullAndMerge {
+    main::mtnOp("pull");
+    while(1) {
+        my $fh = new FileHandle "mtn automate heads |";
+        my @heads = getCurHeads();
+        last if @heads == 1;
+        my $cwd = aliasGetCwd();
+        print "\n" x 5, "You have multiple heads in $cwd.";
+        userPrompt("merge the heads");
+        runCommand("mtn","merge");
+    }
+}
+
+sub getCurRevision {
+    my($fh) = new FileHandle("mtn automate get_base_revision_id |")
+        or die "Unable to fork: $!";
+
+    local $_ = <$fh>;
+    die "??" unless $_ =~ /^[a-fA-F0-9]{40}$/o;
+    chomp;
+    close($fh);
+    return $_;
+}
+
+sub pullDoUpdate {
+    my ($options) = @_;
+
+    # Do Update
+    my $cwd = main::aliasGetCwd();
+    my $cur_rev = getCurRevision();
+    my $deppin_filename = main::depPinFilename();
+    if (-f $deppin_filename) {
+        my @heads = getCurHeads();
+        die "??" unless @heads == 1;
+
+        if (foundPin($cur_rev, $heads[0])) {
+	    print << "END";
+****
+  You are currently pinned to revision $cur_rev
+  The head revision has not changed, so the pin remains.
+  To remove the pin, edit $deppin_filename
+****
+END
+            return;
+        } elsif (hadPin($cur_rev)) {
+            print <<"END";
+****
+You would be pinned to $cur_rev, but the head
+has been updated.  To reset the pin:
+cd $cwd; deptool pin $cur_rev
+****
+END
+            # skip prompting, will do so for the update.
+        }
+    }
+    while(1) {
+        my $cur_rev = getCurRevision();
+        my @heads = getCurHeads();
+        die "??" unless @heads == 1;
+        last if $cur_rev eq $heads[0];
+        print <<"END";
+You current checkout is not up to date in $cwd.
+$cur_rev != $heads[0]
+END
+        main::userPrompt("update to the current revision");
+        main::runCommand("mtn","update");
+        $options->{made_changes} = 1;
+    }
+}
+
+# sets $options->{made_changes} if we made changes.
+sub pull {
+    my ($this, $options) = @_;
+    pullAndMerge();
+    pullDoUpdate($options);
+}
+
 package deptool::GitVC;
 
 sub new {
@@ -4914,6 +4930,104 @@ sub tryCommit {
         delete $this->{amend};
         return 1;
     }
+}
+
+sub getCurrentHead {
+    # Seems like there should be a way to do this without getting the difference, but I can't find
+    # one.
+    my $fh = new FileHandle "git show --format=format:%H |";
+    $_ = <$fh>;
+    chomp;
+    die "? '$_'" unless /^([0-9a-f]{40})$/o;
+    return $1;
+}
+
+sub getAllBranches {
+    my $fh = new FileHandle "git branch -a |";
+
+    my %branch_to_info;
+    while (<$fh>) {
+        my $info;
+        if (/^\* (\S+)$/o) {
+            $info = { current => 1 };
+        } elsif (/^  (\S+)$/o) {
+            $info = { };
+        } elsif (/^  (\S+) -> (\S+)$/o) {
+            $info = { reference => $2 };
+        } else {
+            chomp;
+            die "unrecognized branch line: $_";
+        }
+        die "duplicate branch line for $1" if defined $branch_to_info{$1};
+        $branch_to_info{$1} = $info;
+    }
+    return \%branch_to_info;
+}
+
+sub getCurrentBranch {
+    my ($this, $branch_to_info) = @_;
+
+    $branch_to_info = $this->getAllBranches() unless defined $branch_to_info;
+    my $current_branch;
+    while (my ($branch, $info) = each %$branch_to_info) {
+        next unless $info->{current};
+        die "multiple current branches ($branch, $current_branch)?" if defined $current_branch;
+        $current_branch = $branch;
+    }
+    die "no current branch?" unless defined $current_branch;
+    return $current_branch;
+}
+
+
+sub pull {
+    my ($this, $options) = @_;
+
+    # To learn about new branches:
+    # git fetch origin '+refs/heads/*:refs/remotes/origin/*'
+    my $cur_head = $this->getCurrentHead();
+
+    # TODO-reviewer: should I put in the userprompt bits?  I don't think anyone was using
+    # or even paying attention to them.
+
+    # TODO-reviewer: below will not respect changes to DEPTOOL_GIT_SERVER; do we care?
+
+    # Learn about new branches, get any new revisions:
+    main::runCommand(qw!git fetch local +refs/heads/*:refs/remotes/local/*!);
+    main::runCommand(qw!git fetch origin +refs/heads/*:refs/remotes/origin/*!);
+    # oddly with the default fetch spec set to that in the config, fetch origin does nothing.
+    my $branch_to_info = $this->getAllBranches();
+    my $current_branch = $this->getCurrentBranch($branch_to_info);
+    my @branches;
+    foreach my $remote (qw/origin local/) {
+        my $branch = "remotes/$remote/$current_branch";
+        if (defined $branch_to_info->{$branch}) {
+            push (@branches, $branch);
+        } else {
+            # TODO: probably should do some sort of merge from some other branch option at some
+            # point.
+            warn "Missing remote branch $branch";
+        }
+    }
+
+    if (@branches > 0) {
+        # merge remote branch(s) to local
+        main::runCommand(qw/git merge/, @branches);
+    } else {
+        # TODO-reviewer: die?
+        warn "No remote branches for $current_branch";
+    }
+    my $new_head = $this->getCurrentHead();
+    if ($cur_head ne $new_head) {
+        $options->{made_changes} = 1;
+    }
+}
+
+sub push {
+    # To delete a branch: gitolite config needs RW+
+    # git push origin :feature/test
+    # This action is unsafe in that it could delete a conflicting update, and the RW+ has the
+    # same issue.  Perhaps put it in the untested repo to do this on merged branches if a
+    # delete/<branch> branch is created?
 }
 
 =pod
