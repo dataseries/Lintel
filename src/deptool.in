@@ -634,8 +634,12 @@ sub depInit {
                             "git!" => \$git,
                             "tar!" => \$tar);
     usage("Unknown error") unless $result;
-    die "You need to specify either --mtn, --git, or --tar"
-        unless $mtn || $git || $tar;
+    my $count = 0;
+    $count+=1 if $mtn;
+    $count+=1 if $git;
+    $count+=1 if $tar;
+    die "You must specify precisely one of --mtn, --git, or --tar"
+        unless $count==1;
     $ENV{MTN_SERVER} = $server if defined $server;
     # kernel.org is using gitolite; we do too.
     $ENV{DEPTOOL_GIT_SERVER} = $server if defined $server;
@@ -4666,6 +4670,9 @@ sub initConfig {
     my $deptool_ignores = $vcs->globalDir() . "/deptool.ignores";
     if (! -f $deptool_ignores) {
         # mode 0755 so others can by default see repos, but not write to them.
+
+        #TODO-eric : on build centos 1 this line is giving me issues (undefined subroutine) if 
+        #I do init.
         File::Path::make_path($vcs->globalDir(), { verbose => 1, mode => 0755 });
         my $fh = new FileHandle ">$deptool_ignores"
             or die "Unable to write $deptool_ignores";
