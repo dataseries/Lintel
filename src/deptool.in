@@ -96,7 +96,7 @@ sub usage {
 =head1 SYNOPSIS
 
  % deptool <command> [--man] [options] [args]
-   init --(git|mtn) [--server=<hostname>] [branch-prefix...]
+   init --(git|mtn|tar) [--server=<hostname>] [branch-prefix|tar-spec...]
    checkout [--(git|mtn)] [--sub-branch=...] <branch-substring...>
    pull # pull branch and dependencies
    build [-t (and test)] [-d (debug build)] [-o (optimize build)] [-l|local]
@@ -544,12 +544,12 @@ sub depWalk ($$$);
 
 =pod
 
-=head2 init [--mtn] [--git] [--server=<hostname>] [I<repository specifier>...]
+=head2 init [--(mtn|git|tar)] [vc-specific-options] [I<repository/tar specifier>...]
 
 The init command will initialize the default setup for the specified version control
 system.  If no version control system is specified, it will default to git.
 
-=head3 init --git
+=head3 init --git [--server=I<hostname>] [I<repository specifier>]
 
 The init command will initialize the global configuration for git, such as the name and email
 address of the committer.  It will also download one or more repositories, by default the one for
@@ -566,12 +566,13 @@ In order to write to a particular project you have to perform two steps.  First 
 your ssh key (e.g. $HOME/.ssh/id_rsa.pub; in the format of an authorized_keys file) to the
 appropriate administrator.  Second you need to get permission to write to the project.  At this
 time both of those steps for git.u.hpl.hp.com can be performed by Eric Anderson
-<eric.anderson4@hp.com>
+<eric.anderson4@hp.com>.  It is slightly preferrable to have only one ssh key because it leads to
+additional work for the administrator to have multiple ones, but the latter can work.  The expected
+format of a key is the openssh authorized_keys format, i.e. a line starting with ssh-rsa (or dsa),
+then a long series of alphanumeric characters and then a name for the key (usually an email
+address).
 
-#TODO-eric: best practices with how to deal with multiple keys would be good, even if it is just
-#a warning to "don't do that"
-
-=head3 init --mtn
+=head3 init --mtn [--server=I<hostname>] [I<repository specifier>]
 
 This command will also populate the initial database for checkouts, by default, the one that
 would contain Lintel since deptool is in Lintel.  By default it assumes that usi.hpl.hp.com is the
@@ -590,22 +591,57 @@ B<Warning:> If you already have a key set up on one machine, you should just cop
 directory to the new machine rather than creating a new key.  Monotone can get confused by multiple
 keys with the same email address.
 
+=head3 init --tar [--no-cache] [I<download-specification>]
+
+The tarinit command will initialize the software packages based on tar files.
+It has three possible types of download specifications, listed below.  If no
+arguments are specified, then it defaults to
+http://tesla.hpl.hp.com/opensource/latest-release; which will download the
+open-source packages available on tesla and unpack then.  If the --no-cache
+option is specified, tarinit will provide --no-cache as an option to wget.
+
+=over 4
+
+=item I</path/to/file.tar.bz2>
+
+This specifies that deptool should unpack the specified tar file into the
+projects directory.  The tar file will normally unpack into a directory names
+I<package>-I<date>, in which case the -I<date> portion will be removed.  If
+there is already a I<package> available in the projects directory, it will only
+be replaced if it has a different release date than the file.tar.bz2 one.
+
+=item I<http://host/path/to/tar>
+
+This specifies that deptool should first download the tar file into the
+projects directory and then unpack it as if the downloaded file had been
+specified to tarinit.  Deptool will use wget to download the file.  If the tar
+file has already been downloaded, it will just be used.
+
+=item I<http://host/path/to/latest-release>
+
+This specifies that deptool should download the specified text file, and should
+then download all of the packages specified in the latest-release file.
+
+=back
+
 =cut
 
 sub depInit {
-    my ($mtn,$git);
+    my ($mtn,$git,$tar);
     my $server;
     my $result = GetOptions("server=s" => \$server,
                             "mtn!" => \$mtn,
-                            "git!" => \$git);
+                            "git!" => \$git,
+                            "tar!" => \$tar);
     usage("Unknown error") unless $result;
-    die "You need to specify either --mtn or --git"
-        unless $mtn || $git;
+    die "You need to specify either --mtn, --git, or --tar"
+        unless $mtn || $git || $tar;
     $ENV{MTN_SERVER} = $server if defined $server;
     # kernel.org is using gitolite; we do too.
     $ENV{DEPTOOL_GIT_SERVER} = $server if defined $server;
     deptool::GitVC::init($server) if $git;
     depInitMtn($server) if $mtn;
+    deptool::TarVC::init() if $tar
 }
 
 sub checkForBinary {
@@ -742,199 +778,17 @@ sub initMtnDbs {
 
 =pod
 
-# TODO-eric: should we make this init --tar? Or should we change init to mtninit gitinit?
-# I slightly prefer the former.
-#
-# init --tar it is.  Be sure to update the documentation of init.
-
 =head2 tarinit [--no-cache] [I<download-specification>]
 
-The tarinit command will initialize the software packages based on tar files.
-It has three possible types of download specifications, listed below.  If no
-arguments are specified, then it defaults to
-http://tesla.hpl.hp.com/opensource/latest-release; which will download the
-open-source packages available on tesla and unpack then.  If the --no-cache
-option is specified, tarinit will provide --no-cache as an option to wget.
-
-=over 4
-
-=item I</path/to/file.tar.bz2>
-
-This specifies that deptool should unpack the specified tar file into the
-projects directory.  The tar file will normally unpack into a directory names
-I<package>-I<date>, in which case the -I<date> portion will be removed.  If
-there is already a I<package> available in the projects directory, it will only
-be replaced if it has a different release date than the file.tar.bz2 one.
-
-=item I<http://host/path/to/tar>
-
-This specifies that deptool should first download the tar file into the
-projects directory and then unpack it as if the downloaded file had been
-specified to tarinit.  Deptool will use wget to download the file.  If the tar
-file has already been downloaded, it will just be used.
-
-=item I<http://host/path/to/latest-release>
-
-This specifies that deptool should download the specified text file, and should
-then download all of the packages specified in the latest-release file.
-
-=back
+Deprecated form of init --tar; will be removed after 2012-12-31.
 
 =cut
 
 sub depTarInit {
-    my $no_cache = 0;
-
-    my $result = GetOptions("no-cache!" => \$no_cache);
-
-    usage("Unknown error") unless $result;
-
-    my (@files) = @ARGV;
-
-    @files = "http://tesla.hpl.hp.com/opensource/latest-release"
-	if @files == 0;
-    my $startdir = aliasGetCwd();
-
-    mkpath(projects());
-    aliasChdir(projects());
-
-    my $cache = $no_cache ? "--no-cache" : "";
-    foreach my $file (@files) {
-	if (-f $file && -r $file) {
-	    unpackProjectsTar($file);
-	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
-	    unpackProjectsTar("$startdir/$file");
-	} elsif ($file =~ m!^http:.*latest-release!o) {
-	    httpFetchLatestRelease($file, $cache);
-	} elsif ($file =~ m!^http:!o) {
-	    httpFetchUnpackTar($file, $cache);
-	} else {
-	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
-	}
-    }
-}
-
-sub maybeBackupOldProjectDir {
-    my ($project, $date, $source) = @_;
-
-    my $projects = projects();
-
-    if (-e "$projects/$project") {
-	if (! -r "$projects/$project/Release.info") {
-	    backupUntarDir("$projects/$project", "Missing Release.info file");
-	} else {
-	    my $fh = new FileHandle "$projects/$project/Release.info"
-		or die "Can't open $projects/$project/Release.info for read: $!";
-	    my $creation_date;
-	    while (<$fh>) {
-		$creation_date = $1 if /^Creation-Date: (\S+)$/o;
-	    }
-	    close($fh);
-
-	    if (! defined $creation_date) {
-		backupUntarDir("$projects/$project", "No creation date in Release.info file");
-	    } elsif ($creation_date ne $date) {
-		backupUntarDir("$projects/$project", 
-			       "Creation date in Release.info file different from one in tar file");
-	    } else {
-		print "$projects/$project is already the same as in $source\n";
-		return 1;
-	    }
-	}
-    }
-    die "$projects/$project exists?"
-	if -e "$projects/$project";
-    return 0;
-}
-
-sub unpackProjectsTar {
-    my ($file) = @_;
-
-    die "Expected $file to end in .bz2"
-	unless $file =~ /\.bz2$/o;
-
-    my $fh = new FileHandle "tar tvvfj $file |"
-	or die "Can't run tar tvvfj $file: $!";
-    local $_ = <$fh>;
-    close($fh);
-    chomp;
-    die "Unable to handle '$_'" 
-	unless m!^d.+ (\w+)-(\d{4}-\d{2}-\d{2})/!o;
-    my ($project, $date) = ($1,$2);
-
-    return if maybeBackupOldProjectDir($project, $date, $file);
-
-    my $projects = projects();
-    if (-d "$project-$date") {
-	userPrompt("Delete $projects/$project-$date");
-	rmtree("$project-$date");
-    }
-
-    userPrompt("Untar $file into $projects");
-    system("tar xvvfj $file");
-    die "Did not get expected directory $project-$date"
-	unless -d "$project-$date";
-    rename("$project-$date","$project")
-	or die "Unable to rename $project-$date to $project";
-}
-
-sub backupUntarDir {
-    my ($dir, $reason) = @_;
-
-    print "Backing up $dir.\n$reason\n";
-    if (-d "$dir.old") {
-	userPrompt("Delete old backup directory $dir.old");
-	rmtree("$dir.old");
-    }
-    userPrompt("Rename $dir to $dir.old");
-
-    rename($dir, "$dir.old")
-	or die "rename($dir, $dir.old) failed: $!";
-}
-
-sub httpFetchUnpackTar {
-    my ($url, $no_cache) = @_;
-
-    die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
-	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
-    my ($project, $date) = ($1, $2);
-
-    return if maybeBackupOldProjectDir($project, $date, $url);
-
-    my $output = "$project-$date.tar.bz2";
-    if ($no_cache ne '') {
-	unlink($output);
-	die "Unable to rm $output: $!" if -e $output;
-	rmtree("$project-$date") if -d "$project-$date";
-    }
-
-    if (! -e $output) {
-	userPrompt("wget $no_cache $url");
-	my $ret = system("wget -O $output.tmp $url");
-
-	die "wget $url failed" unless $ret == 0 && -r "$output.tmp";
-	rename("$output.tmp", $output)
-	    or die "Unable to rename $output.tmp to $output: $!";
-    }
-    unpackProjectsTar(projects() . "/$output");
-}
-
-sub httpFetchLatestRelease {
-    my ($url, $no_cache) = @_;
-
-    userPrompt("download $url");
-    print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
-	if $debug;
-    my $fh = new FileHandle("wget $no_cache -O - $url |")
-	or die "Can't run wget $no_cache -O - $url: $!";
-    my @suburls = <$fh>;
-    close($fh);
-
-    foreach my $suburl (@suburls) {
-	my $tmp = $url;
-	$tmp =~ s/latest-release$/$suburl/o;
-	httpFetchUnpackTar($tmp, $no_cache);
-    }
+    warn "tarinit is deprecated, and will be removed after 2012-12-31, 
+it has been replaced by init --tar for consistency with the other forms
+of init";
+    deptool::TarVC::init();
 }
 
 ##### Dependency Checkout
@@ -5112,6 +4966,168 @@ sub sync {
     # This action is unsafe in that it could delete a conflicting update, and the RW+ has the
     # same issue.  Perhaps put it in the untested repo to do this on merged branches if a
     # delete/<branch> branch is created?
+}
+
+package deptool::TarVC;
+# not really a full version control system, but enough for read-only snapshots from releases.
+
+use File::Path;
+use FileHandle;
+use Getopt::Long;
+
+sub init {
+    my $no_cache = 0;
+
+    my $result = GetOptions("no-cache!" => \$no_cache);
+
+    usage("Unknown error") unless $result;
+
+    my (@files) = @ARGV;
+
+    @files = "http://tesla.hpl.hp.com/opensource/sources/latest-release"
+	if @files == 0;
+    my $startdir = main::aliasGetCwd();
+
+    mkpath(main::projects());
+    main::aliasChdir(main::projects());
+
+    my $cache = $no_cache ? "--no-cache" : "";
+    foreach my $file (@files) {
+	if (-f $file && -r $file) {
+	    unpackProjectsTar($file);
+	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
+	    unpackProjectsTar("$startdir/$file");
+	} elsif ($file =~ m!^http:.*latest-release!o) {
+	    httpFetchLatestRelease($file, $cache);
+	} elsif ($file =~ m!^http:!o) {
+	    httpFetchUnpackTar($file, $cache);
+	} else {
+	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
+	}
+    }
+}
+
+sub maybeBackupOldProjectDir {
+    my ($project, $date, $source) = @_;
+
+    my $projects = main::projects();
+
+    if (-e "$projects/$project") {
+	if (! -r "$projects/$project/Release.info") {
+	    backupUntarDir("$projects/$project", "Missing Release.info file");
+	} else {
+	    my $fh = new FileHandle "$projects/$project/Release.info"
+		or die "Can't open $projects/$project/Release.info for read: $!";
+	    my $creation_date;
+	    while (<$fh>) {
+		$creation_date = $1 if /^Creation-Date: (\S+)$/o;
+	    }
+	    close($fh);
+
+	    if (! defined $creation_date) {
+		backupUntarDir("$projects/$project", "No creation date in Release.info file");
+	    } elsif ($creation_date ne $date) {
+		backupUntarDir("$projects/$project", 
+			       "Creation date in Release.info file different from one in tar file");
+	    } else {
+		print "$projects/$project is already the same as in $source\n";
+		return 1;
+	    }
+	}
+    }
+    die "$projects/$project exists?"
+	if -e "$projects/$project";
+    return 0;
+}
+
+sub unpackProjectsTar {
+    my ($file) = @_;
+
+    die "Expected $file to end in .bz2"
+	unless $file =~ /\.bz2$/o;
+
+    my $fh = new FileHandle "tar tvvfj $file |"
+	or die "Can't run tar tvvfj $file: $!";
+    local $_ = <$fh>;
+    close($fh);
+    chomp;
+    die "Unable to handle '$_'" 
+	unless m!^d.+ (\w+)-(\d{4}-\d{2}-\d{2})/!o;
+    my ($project, $date) = ($1,$2);
+
+    return if maybeBackupOldProjectDir($project, $date, $file);
+
+    my $projects = main::projects();
+    if (-d "$project-$date") {
+	main::userPrompt("Delete $projects/$project-$date");
+	rmtree("$project-$date");
+    }
+
+    main::userPrompt("Untar $file into $projects");
+    system("tar xvvfj $file");
+    die "Did not get expected directory $project-$date"
+	unless -d "$project-$date";
+    rename("$project-$date","$project")
+	or die "Unable to rename $project-$date to $project";
+}
+
+sub backupUntarDir {
+    my ($dir, $reason) = @_;
+
+    print "Backing up $dir.\n$reason\n";
+    if (-d "$dir.old") {
+	main::userPrompt("Delete old backup directory $dir.old");
+	rmtree("$dir.old");
+    }
+    main::userPrompt("Rename $dir to $dir.old");
+
+    rename($dir, "$dir.old")
+	or die "rename($dir, $dir.old) failed: $!";
+}
+
+sub httpFetchUnpackTar {
+    my ($url, $no_cache) = @_;
+
+    die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
+	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
+    my ($project, $date) = ($1, $2);
+
+    return if maybeBackupOldProjectDir($project, $date, $url);
+
+    my $output = "$project-$date.tar.bz2";
+    if ($no_cache ne '') {
+	unlink($output);
+	die "Unable to rm $output: $!" if -e $output;
+	rmtree("$project-$date") if -d "$project-$date";
+    }
+
+    if (! -e $output) {
+	main::userPrompt("wget $no_cache $url");
+	my $ret = system("wget -O $output.tmp $url");
+
+	die "wget $url failed" unless $ret == 0 && -r "$output.tmp";
+	rename("$output.tmp", $output)
+	    or die "Unable to rename $output.tmp to $output: $!";
+    }
+    unpackProjectsTar(main::projects() . "/$output");
+}
+
+sub httpFetchLatestRelease {
+    my ($url, $no_cache) = @_;
+
+    main::userPrompt("download $url");
+    print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
+	if $debug;
+    my $fh = new FileHandle("wget $no_cache -O - $url |")
+	or die "Can't run wget $no_cache -O - $url: $!";
+    my @suburls = <$fh>;
+    close($fh);
+
+    foreach my $suburl (@suburls) {
+	my $tmp = $url;
+	$tmp =~ s/latest-release$/$suburl/o;
+	httpFetchUnpackTar($tmp, $no_cache);
+    }
 }
 
 =pod
