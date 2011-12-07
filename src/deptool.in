@@ -568,6 +568,9 @@ appropriate administrator.  Second you need to get permission to write to the pr
 time both of those steps for git.u.hpl.hp.com can be performed by Eric Anderson
 <eric.anderson4@hp.com>
 
+#TODO-eric: best practices with how to deal with multiple keys would be good, even if it is just
+#a warning to "don't do that"
+
 =head3 init --mtn
 
 This command will also populate the initial database for checkouts, by default, the one that
@@ -739,8 +742,10 @@ sub initMtnDbs {
 
 =pod
 
-# TODO-reviewer: should we make this init --tar? Or should we change init to mtninit gitinit?
+# TODO-eric: should we make this init --tar? Or should we change init to mtninit gitinit?
 # I slightly prefer the former.
+#
+# init --tar it is.  Be sure to update the documentation of init.
 
 =head2 tarinit [--no-cache] [I<download-specification>]
 
