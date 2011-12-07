@@ -1284,7 +1284,10 @@ sub dbpFindOld {
         or die "Unable to stat .deptool.build_stamp: $!";
     my @newer;
     find(sub { return unless -f $_;
+               # Assume changes in the version control directories don't matter; otherwise
+               # we have to re-test after committing
                return if $File::Find::name =~ m!^$src/_MTN!;
+               return if $File::Find::name =~ m!^$src/\.git!;
                my $stat = stat($_) or die "can't stat $_: $!";
                push(@newer, $File::Find::name)
                    if $stat->mtime() > $ref_stat->mtime(); }, $src);
@@ -5073,21 +5076,32 @@ sub pull {
     }
 }
 
+sub tryPush {
+    my ($this, $to) = @_;
+
+    eval { main::runCommand(qw!git push!, $to); };
+    if ($@) {
+        print "Push failed: $@\n";
+        return 0;
+    } else {
+        return 1;
+    }
+}
+
 sub sync {
     my ($this, $options) = @_;
 
-    eval { main::runCommand(qw!git push!); };
-    # TODO: push into cache also?
-    my $push_failed;
-    if ($@) {
-        print "Push failed: $@; trying pull\n";
-        $push_failed = 1;
+    # TODO: Below doesn't respect DEPTOOL_GIT_SERVER, needed for untested repo
+
+    if ($this->tryPush('local-cache') && $this->tryPush('origin')) {
+        # success
+    } else {
+        print "Push failed; trying pull\n";
         $this->pull($options);
         die "push failed, but pull did not make any changes; aborting"
             unless $options->{made_changes};
     }
 
-    die "not implemented";
     # To delete a branch: gitolite config needs RW+
     # git push origin :feature/test
     # This action is unsafe in that it could delete a conflicting update, and the RW+ has the
