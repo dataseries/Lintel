@@ -859,8 +859,8 @@ See help checkout
 # However, you can also want a separate sub-directory for a related version of a package, e.g.  if
 # you are working on the parallel mode for DataSeries, or support for git in deptool, you can want
 # to keep that separate from the existing primary branch, in which case having the checkout in
-# Lintel_git, which allows you to work in a separate directory or branch, but still get it installed
-# into the common location so that it can be tested.
+# Lintel_git, which allows you to work in a separate directory or branch, but still get it
+# installed into the common location so that it can be tested.
 #
 # Support for the former mode is pretty complete since you can set PROJECTS and BUILD_OPT, and the
 # right thing just happens; support for the latter is manual.  If we are going to support common
@@ -868,7 +868,7 @@ See help checkout
 # propagate (to a further sub-branch or to a separate branch), and delete-subbranch; or some
 # equivalent set of commands.  For now the conclusion is that we need to gain some experience
 # working with git to get better feel for how working with branches should operate, i.e. just do it
-# manually an eventually encode a workflow into deptool.  We may want to have related sub-branches
+# manually and eventually encode a workflow into deptool.  We may want to have related sub-branches
 # like DataSeries_parallel_sort and _parallel_analysis for which propagate up and down the tree is
 # simplified.
 
