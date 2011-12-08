@@ -2163,7 +2163,7 @@ sub mtnOp {
     die "??" unless $op =~ /^((pull)|(push)|(sync))$/o;
     my $src = rootSrcDir();
     die "missing $src/_MTN" unless -d "$src/_MTN";
-    my %mtn_opts = readMtnOptions($src);
+    my %mtn_opts = deptool::MonotoneVC::readMtnOptions($src);
     my $branch = $mtn_opts{branch};
     my $database = $mtn_opts{database};
 
@@ -2237,6 +2237,7 @@ sub mtnServe {
                             "rebuild-log=s" => \$rebuild_log);
     usage("Unknown error") unless $result;
 
+    my $vcs = createVCInterface();
     if (defined $config_from) {
         mtnServeGeneral($work_dir, $config_from, $push_to, $rebuild_log);
     } else {
@@ -2244,13 +2245,12 @@ sub mtnServe {
 report if you are still using it and how the general mode is insufficient";
         die "Unable to support work dir/push_to/rebuild-log in local mode"
             if defined $work_dir || defined $push_to || defined $rebuild_log;
-        
+
         my $src = rootSrcDir();
-        my %mtn_opts = readMtnOptions($src);
+        my %mtn_opts = deptool::MonotoneVC::readMtnOptions($src);
         die "? no database" unless defined $mtn_opts{database};
-        
-        local $_ = vcVersion();
-        my $vcver = "$_->{type}-$_->{version}";
+
+        my $vcver = $vcs->versionString();
         if ($vcver =~ /^monotone-0.28\b/o) {
             runCommand("mtn","-d",$mtn_opts{database},'serve','*');
         } elsif ($vcver =~ /^monotone-0.4\d\b/o) {
@@ -2665,44 +2665,14 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
     my %parents;
     my %dates;
     my $branch;
+    my $vcs = createVCInterface();
     foreach my $revision (@revisions) {
-        my @output = vcLogRevision($revision);
+        my %info = $vcs->parseRevisionInfo($revision);
 
-        my %info = eval {
-            simpleParse(\@output, 
-                        [ qr/^-+$/o => undef,
-                          qr/^Revision: (\S+)$/o => 'revision',
-                          qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor',
-                          qr/^Author:/o => undef,
-                          qr/^Date:\s+(.+)$/o => 'date',
-                          qr/^Branch:\s+(\S+)$/o => 'branch' ]);
-        };
-
-        if ($@ =~ /Error on line 3.*got .Parent:/o) {
-            %info = eval {
-                simpleParse(\@output, 
-                            [ qr/^-+$/o => undef,
-                              qr/^Revision: (\S+)$/o => 'revision',
-                              qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor1',
-                              qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor2',
-                              qr/^Author:/o => undef,
-                              qr/^Date:\s+(.+)$/o => 'date',
-                              qr/^Branch:\s+(\S+)$/o => 'branch' ]);
-            };
-            die "revision $revision looks like a merge revision, but doesn't parse: $@"
-                if $@;
-            print "Revision $revision appears to be a merge
-revision.  That is currently not supported for viewing differences.  Most
-likely, the revision was a mistake in specifying the revision to review. 
-However, if you know an appropriate way to review merge revisions, please
-provide feedback.\n";
-            userPrompt("Continue reviewing");
-            $info{ancestor} = "merge:$info{ancestor1}"; # lie
-            $info{revision} = "merge:$info{revision}"; # mark as merge
-        } elsif ($@) {
-            die $@;
+        foreach $_ (qw/revision ancestor date branch/) {
+            die "Missing requiring revision info $_ on revision $revision"
+                unless defined $info{$_};
         }
-
         $parents{$info{revision}} = $info{ancestor};
         $dates{$info{revision}} = $info{date};
 	$branch = $info{branch} unless defined $branch;
@@ -2726,7 +2696,7 @@ Assuming you just want to continue reviewing.\n";
         print "Missing expected files to continue diffing in $basedir\n";
         print "Return to delete, ctrl-c to abort: ";
         $_ = <STDIN>;
-        runCommand("rm -rf $basedir");
+        rmtree($basedir);
     }
 
     if (! -d $basedir) {
@@ -2744,28 +2714,26 @@ sub codeReviewSequence {
     my @revisions = grep(!/^merge:/o, @$revs);
     my ($start, $last);
     if (@revisions > 0) {
-        my %mtn_options = readMtnOptions();
-        my $database = $mtn_options{database};
-        die "missing db in .../_MTN/options" 
-            unless defined $database;
-        
+        my $vcs = createVCInterface();
+        $vcs->codeReviewPrep();
+
         $start = $parents->{$revisions[0]};
-        
+
         print "Trying to build single sequence diff from ", 
             substr($start,0,20), " to ", substr($revisions[@revisions-1],0,20), 
                 "\n  using ", join(", ", map { substr($_, 0, 8) } @revisions), "\n";
-        
-        codeReviewCheckout($database, "$basedir/$start", $start);
-        
+
+        $vcs->codeReviewCheckout("$basedir/$start", $start);
+
         $last = $start;
         while (@revisions > 0) {
             my $to = $revisions[0];
             my $from = $parents->{$to};
-            
+
             print "Trying to patch $last\n   with ", substr($from, 0, 20), 
                 " -> ", substr($to, 0, 20), "\n";
-            
-            codeReviewPatch($database, $basedir, $last, $from, $to);
+
+            codeReviewPatch($vcs, $basedir, $last, $from, $to);
             $last = $to;
             shift @revisions;
         }
@@ -2828,9 +2796,10 @@ sub kdiffDirs {
     # TODO-sprint: make this extract the relevant part from each log
     # message for the file we are reviewing.
 
+    my $vcs = createVCInterface();
     foreach my $rev (@$revisions) {
         $rev =~ s/^merge://o;
-        print vcLogRevision($rev);
+        print $vcs->rawRevisionInfo($rev);
     }
     my $cur = '*start*';
     my $auto = undef;
@@ -2885,7 +2854,7 @@ sub kdiffDirs {
             # warn "kdiff3 command failed (ignoring)" if $@;
             $cur = $next;
 	} elsif (/^reviewed\s*(.*)$/o) {
-	    markReviewed($revisions, $1);
+	    $vcs->markReviewed($revisions, $1);
             runCommand("rm -rf $basedir");
             last;
         } elsif ($_ eq 'auto') {
@@ -2905,7 +2874,7 @@ sub kdiffDirs {
                 if (/^\s*$/o) {
                     print "There is no default.\n";
                 } elsif (/^y/io) {
-                    markReviewed($revisions, '');
+                    $vcs->markReviewed($revisions, '');
                     runCommand("rm -rf $basedir");
                     last;
                 } elsif (/^n/io) {
@@ -2967,7 +2936,7 @@ sub getChanged {
         warn "old file $k missing, assuming it was dropped" unless $v == 2;
     }
 
-    @changed = grep(!/((-final-version)|(-pre-fix))$/o, @changed);
+    @changed = grep(!/((-cr-version-[a-f0-9]+)|(-cr-edit-me))$/o, @changed);
     return @changed;
 }
 
@@ -3025,46 +2994,12 @@ sub getDiffOrder {
     return @order;
 }
 
-sub markReviewed {
-    my($revisions, $comment) = @_;
-
-    $comment ||= '';
-    my @at = localtime(time);
-    my $at = sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $at[5]+1900, $at[4]+1, $at[3],
-		     $at[2], $at[1], $at[0]);
-    if (length $comment < 1) {
-	$comment = $at;
-    } else {
-	$comment = "$at: $comment";
-    }
-
-    foreach my $revision (@$revisions) {
-	vcAddCertificate($revision, 'review', $comment);
-    }
-}
-
-sub codeReviewCheckout {
-    my($database, $targetdir, $revision) = @_;
-
-    my $certs = vcGetCertificates($database, $revision);
-    $certs = $certs->{$revision};
-    die "no certificates on revision $revision?" unless defined $certs;
-    my @cmd = ('mtn', 'checkout', '-d', $database, '-r', $revision);
-    if (@{$certs->{branch}} == 2) {
-        my @values = sort { (length $a) <=> (length $b) } map { $_->{value} } @{$certs->{branch}};
-        push(@cmd, "-b", $values[0]);
-        print "Using shortest branch $values[0]\n";
-    }
-
-    quietRunCommand(@cmd, $targetdir);
-}
-
 sub codeReviewPatch {
-    my ($database, $basedir, $last, $from, $to) = @_;
+    my ($vcs, $basedir, $last, $from, $to) = @_;
 
     rcopy("$basedir/$last", "$basedir/$to")
         or die "copy ($basedir/$last,$basedir/$to) failed: $!";
-    quietRunCommand("mtn diff -d $database -r $from -r $to >$basedir/$to.patch");
+    $vcs->codeReviewWritePatch($from, $to, "$basedir/$to.patch");
     eval {
         quietRunCommand("patch -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
     };
@@ -3097,19 +3032,20 @@ sub codeReviewPatch {
                 print "will start $ENV{EDITOR} for $file and rejected patch\n";
                 print "return to continue, ctrl-c to abort: ";
                 $_ = <STDIN>;
-                copy("$basedir/$to/$file","$basedir/$to/$file-pre-fix");
-                runCommand("mtn cat -r $to $file >$basedir/$to/$file-final-version");
-                runCommand("$ENV{EDITOR} $basedir/$to/$file $basedir/$to/$patch $basedir/$to/$file-final-version");
-                if (compare("$basedir/$to/$file-pre-fix","$basedir/$to/$file") == 0) {
+                copy("$basedir/$to/$file","$basedir/$to/$file-cr-edit-me");
+                $vcs->codeReviewExtractFile($to, $file, "$basedir/$to/$file-cr-version-$to");
+                runCommand("$ENV{EDITOR} $basedir/$to/$file-cr-edit-me $basedir/$to/$patch $basedir/$to/$file-cr-version-$to");
+                if (compare("$basedir/$to/$file","$basedir/$to/$file-cr-edit-me") == 0) {
                     print "No changes made.  Return to save empty patch, ctrl-c to abort: ";
                     $_ = <STDIN>;
                 }
 
                 print "Saving repair difference as $repairpatch\n";
-                eval { runCommand("diff -u $basedir/$to/$file-pre-fix $basedir/$to/$file >$repairpatch"); };
+                eval { runCommand("diff -u $basedir/$to/$file $basedir/$to/$file-cr-edit-me >$repairpatch"); };
+                rename("$basedir/$to/$file-cr-edit-me", "$basedir/$to/$file")
+                    or die "rename failed: $!";
             }
-            unlink("$basedir/$to/$file-pre-fix", "$basedir/$to/$patch",
-                   "$basedir/$to/$file-final-version");
+            unlink("$basedir/$to/$patch", "$basedir/$to/$file-cr-version-$to");
         }
     }
 }
@@ -3206,7 +3142,7 @@ sub reviewStatus {
 	unless @revisions > 0;
 
     foreach my $revision (@revisions) {
-	my $certs = vcGetCertificates($db, $revision);
+	my $certs = deptool::MonotoneVC::getCertificates($db, $revision);
 
 	my $rev_certs = $certs->{$revision};
 	next if $unreviewed_only && defined $rev_certs->{review};
@@ -4117,22 +4053,6 @@ sub aliasGetCwd {
     return $here;
 }
 
-sub readMtnOptions {
-    my ($src) = @_;
-
-    $src = rootSrcDir() unless defined $src;
-    my $fh = new FileHandle("$src/_MTN/options")
-        or die "Can't open $src/_MTN/options for read: $!";
-    my %ret;
-    while(<$fh>) {
-        $ret{branch} = $1 if /^\s*branch \"(.+)\"$/o;
-        $ret{database} = $1 if /^\s*database \"(.+)\"$/o;
-    }
-    close($fh);
-
-    return %ret;
-}
-
 sub getCmdOutput {
     my($cmd, $pre_close_fn) = @_;
 
@@ -4206,97 +4126,6 @@ sub readFile {
 # TODO: propagate this to other vc actions so we can support multiple vc
 # systems (e.g. svn) at the same time.
 
-sub vcVersion {
-    unless (defined $Cache::vc_version) {
-	my @output = getCmdOutput("mtn --version");
-
-	die "bad return from mtn --version" unless @output == 1;
-
-	local $_ = $output[0];
-	die "can't parse '$output[0]'" unless /^monotone (\d+\.\d+\S*) /o;
-	$Cache::vc_version = { 'type' => 'monotone', 'version' => $1 };
-    }
-
-    die "Internal" unless defined $Cache::vc_version;
-    return $Cache::vc_version;
-}
-
-sub vcVersionString {
-    local $_ = vcVersion();
-    return "$_->{type}-$_->{version}";
-}
-
-sub vcLogRevision {
-    my ($revision) = @_;
-
-    my $vcver = vcVersionString();
-    if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
-	my ($major, $minor) = ($1,$2);
-        my $check_fn = sub {
-            my ($out, $err) = @_;
-
-            if (grep(/no match for selection/o, @{$err}) > 0) {
-                die "Revision '$revision' not found. Did you specify the correct revision?";
-            }
-        };
-	if ($major == 0 && $minor <= 0.28) { # may be later than this
-	    return getCmdOutput("mtn log -r $revision --last 1", $check_fn);
-	} elsif ($major == 0 && $minor < 45) { # date formatting added in 0.45
-	    return getCmdOutput("mtn log --from $revision --last 1 --no-graph", $check_fn);
-	} else {
-	    return getCmdOutput("mtn log --no-format-dates --from $revision --last 1 --no-graph",
-                               $check_fn);
-	}
-    } else {
-	die "Don't know how to get revision log on $vcver";
-    }
-}
-
-sub vcAddCertificate {
-    my ($revision, $cert_name, $cert_val) = @_;
-
-    quietRunCommand('mtn', 'cert', $revision, $cert_name, $cert_val);
-}
-
-sub vcGetCertificates {
-    my ($db, @revisions) = @_;
-
-    if (defined $db) {
-	$db = "--db $db";
-    } else {
-	$db = "";
-    }
-    my %ret;
-
-    foreach my $revision (@revisions) {
-	my @lines = getCmdOutput("mtn $db list certs $revision");
-
-	my %rev_info;
-	for (my $i = 0; $i < @lines; ) {
-	    my @slice = @lines[$i .. $i + 4];
-	    my %info = simpleParse(\@slice,
-				   [ qr/^-+$/o => undef,
-				     qr/^Key\s+:\s+(.+)$/o => 'key',
-				     qr/^Sig\s+:\s+(\S+)$/o => 'sig',
-				     qr/^Name\s+:\s+(\S+)$/o => 'name',
-				     qr/^Value\s+:\s+(.*)$/o => 'value' ]);
-	    $info{value} .= "\n";
-	    for ($i += 5; $i < @lines && $lines[$i] !~ /^-+$/o; ++$i) {
-		$_ = $lines[$i];
-		s/^\s+: //o;
-		$info{value} .= $_;
-	    }
-	    chomp $info{value};
-	    if ($info{sig} eq 'ok') {
-		push(@{$rev_info{$info{name}}}, { 'who' => $info{key},
-						  'value' => $info{value} });
-	    }
-	}
-	$ret{$revision} = \%rev_info;
-    }
-    return \%ret;
-}
-
 sub vcGetNonMergeRevisions {
     my ($db, $branch) = @_;
 
@@ -4325,7 +4154,7 @@ sub vcGetNonMergeRevisions {
 
     my $cmd;
 
-    my $vcver = vcVersionString();
+    my $vcver = createVCInterface()->versionString();
     if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
 	my ($major, $minor) = ($1,$2);
 	if ($major == 0 && $minor <= 0.28) { # may be later than this
@@ -4586,6 +4415,206 @@ sub sync {
     my ($this, $options) = @_;
     main::mtnOp("sync");
     pullDoUpdate($options);
+}
+
+sub version {
+    my ($this) = @_;
+
+    unless (defined $this->{mtn_version}) {
+	my @output = main::getCmdOutput("mtn --version");
+
+	die "bad return from mtn --version" unless @output == 1;
+
+	local $_ = $output[0];
+	die "can't parse '$output[0]'" unless /^monotone (\d+\.\d+\S*) /o;
+	$this->{mtn_version} = $1;
+    }
+    return $this->{mtn_version};
+}
+
+sub versionString {
+    my ($this) = @_;
+
+    return "monotone-" . $this->version();
+}
+
+sub rawRevisionInfo {
+    my ($this, $revision) = @_;
+
+    my $vcver = $this->versionString();
+    if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
+	my ($major, $minor) = ($1,$2);
+        my $check_fn = sub {
+            my ($out, $err) = @_;
+
+            if (grep(/no match for selection/o, @{$err}) > 0) {
+                die "Revision '$revision' not found. Did you specify the correct revision?";
+            }
+        };
+	if ($major == 0 && $minor <= 0.28) { # may be later than this
+	    return main::getCmdOutput("mtn log -r $revision --last 1", $check_fn);
+	} elsif ($major == 0 && $minor < 45) { # date formatting added in 0.45
+	    return main::getCmdOutput("mtn log --from $revision --last 1 --no-graph", $check_fn);
+	} else {
+	    return main::getCmdOutput("mtn log --no-format-dates --from $revision --last 1"
+                                      . " --no-graph", $check_fn);
+	}
+    } else {
+	die "Don't know how to get revision log on $vcver";
+    }
+}
+
+sub parseRevisionInfo {
+    my ($this, $revision) = @_;
+
+    my @output = $this->rawRevisionInfo($revision);
+
+    my %info = eval {
+        main::simpleParse(\@output, 
+                          [ qr/^-+$/o => undef,
+                            qr/^Revision: (\S+)$/o => 'revision',
+                            qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor',
+                            qr/^Author:/o => undef,
+                            qr/^Date:\s+(.+)$/o => 'date',
+                            qr/^Branch:\s+(\S+)$/o => 'branch' ]);
+    };
+
+    if ($@ =~ /Error on line 3.*got .Parent:/o) {
+        %info = eval {
+            main::simpleParse(\@output, 
+                              [ qr/^-+$/o => undef,
+                                qr/^Revision: (\S+)$/o => 'revision',
+                                qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor1',
+                                qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor2',
+                                qr/^Author:/o => undef,
+                                qr/^Date:\s+(.+)$/o => 'date',
+                                qr/^Branch:\s+(\S+)$/o => 'branch' ]);
+        };
+        die "revision $revision looks like a merge revision, but doesn't parse: $@"
+            if $@;
+        print "Revision $revision appears to be a merge
+revision.  That is currently not supported for viewing differences.  Most
+likely, the revision was a mistake in specifying the revision to review. 
+However, if you know an appropriate way to review merge revisions, please
+provide feedback.\n";
+        userPrompt("Continue reviewing");
+        $info{ancestor} = "merge:$info{ancestor1}";    # lie
+        $info{revision} = "merge:$info{revision}";     # mark as merge
+    } elsif ($@) {
+        die $@;
+    }
+    return %info;
+}
+
+sub markReviewed {
+    my ($this, $revisions, $comment) = @_;
+
+    $comment ||= '';
+    my @at = localtime(time);
+    my $at = sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $at[5]+1900, $at[4]+1, $at[3],
+		     $at[2], $at[1], $at[0]);
+    if (length $comment < 1) {
+	$comment = $at;
+    } else {
+	$comment = "$at: $comment";
+    }
+
+    foreach my $revision (@$revisions) {
+        quietRunCommand('mtn', 'cert', $revision, 'review', $comment);
+    }
+}
+
+sub readMtnOptions {
+    my ($src) = @_;
+
+    $src = main::rootSrcDir() unless defined $src;
+    my $fh = new FileHandle("$src/_MTN/options")
+        or die "Can't open $src/_MTN/options for read: $!";
+    my %ret;
+    while(<$fh>) {
+        $ret{branch} = $1 if /^\s*branch \"(.+)\"$/o;
+        $ret{database} = $1 if /^\s*database \"(.+)\"$/o;
+    }
+    close($fh);
+
+    return %ret;
+}
+
+sub codeReviewPrep {
+    my ($this) = @_;
+
+    my %mtn_options = readMtnOptions();
+    $this->{database} = $mtn_options{database};
+    die "missing db in .../_MTN/options" 
+            unless defined $this->{database};
+}
+
+sub getCertificates {
+    my ($db, @revisions) = @_;
+
+    if (defined $db) {
+	$db = "--db $db";
+    } else {
+	$db = "";
+    }
+    my %ret;
+
+    foreach my $revision (@revisions) {
+	my @lines = main::getCmdOutput("mtn $db list certs $revision");
+
+	my %rev_info;
+	for (my $i = 0; $i < @lines; ) {
+	    my @slice = @lines[$i .. $i + 4];
+	    my %info = main::simpleParse(\@slice,
+                                         [ qr/^-+$/o => undef,
+                                           qr/^Key\s+:\s+(.+)$/o => 'key',
+                                           qr/^Sig\s+:\s+(\S+)$/o => 'sig',
+                                           qr/^Name\s+:\s+(\S+)$/o => 'name',
+                                           qr/^Value\s+:\s+(.*)$/o => 'value' ]);
+	    $info{value} .= "\n";
+	    for ($i += 5; $i < @lines && $lines[$i] !~ /^-+$/o; ++$i) {
+		$_ = $lines[$i];
+		s/^\s+: //o;
+		$info{value} .= $_;
+	    }
+	    chomp $info{value};
+	    if ($info{sig} eq 'ok') {
+		push(@{$rev_info{$info{name}}}, { 'who' => $info{key},
+						  'value' => $info{value} });
+	    }
+	}
+	$ret{$revision} = \%rev_info;
+    }
+    return \%ret;
+}
+
+sub codeReviewCheckout {
+    my($this, $targetdir, $revision) = @_;
+
+    my $certs = getCertificates($this->{database}, $revision);
+    $certs = $certs->{$revision};
+    die "no certificates on revision $revision?" unless defined $certs;
+    my @cmd = (qw/mtn checkout -d/, $this->{database}, '-r', $revision);
+    if (@{$certs->{branch}} == 2) {
+        my @values = sort { (length $a) <=> (length $b) } map { $_->{value} } @{$certs->{branch}};
+        push(@cmd, "-b", $values[0]);
+        print "Using shortest branch $values[0]\n";
+    }
+
+    main::quietRunCommand(@cmd, $targetdir);
+}
+
+sub codeReviewWritePatch {
+    my ($this, $from, $to, $dest) = @_;
+
+    # TODO: use processmanager so we can be safe on this command execution
+    main::quietRunCommand("mtn diff -d $this->{database} -r $from -r $to >$dest");
+}
+
+sub codeReviewExtractFile {
+    my ($this, $to, $file, $dest) = @_;
+
+    main::runCommand("mtn cat -r $to $file >$dest");
 }
 
 package deptool::GitVC;
