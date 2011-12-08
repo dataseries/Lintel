@@ -844,19 +844,76 @@ See help checkout
 
 =cut
 
-# TODO-reviewer: should either a) support DEPTOOL_SUBBRANCH so that when we go into testing we
+# TODO-reviewer: (1) should either a) support DEPTOOL_SUBBRANCH so that when we go into testing we
 # can just say deptool co KeyValue, and automatically get KeyValue/testing; or b) support some
 # option so that a sub-branch is incorporated into the checkout name?  I've certainly done the
 # latter with DataSeries.server for the ssd.hpl.hp.com/DataSeries/server branch.
 #
-# TODO-reviewer: ok, if you do the following it glitches because of the DataSeries dependency
+# TODO-reviewer: (2) ok, if you do the following it glitches because of the DataSeries dependency
 # inside SimReal not matching the DataSeries/shirant entry.
 # PROJECTS=/tmp/xx ./deptool co --sub-branch=testing KeyValue SimReal/release DataSeries/shirant Lintel
 # I see two fixes: 1) make the "I already did this" based on the checkout directory; 2) decide that
 # this is user error and let it keep failing.  Opinions?
 #
-# TODO-reviewer: the above will also do the monotone checkounts into KeyValue/testing, not just
+# TODO-reviewer: (3) the above will also do the monotone checkounts into KeyValue/testing, not just
 # KeyValue.  The git ones would just go into KeyValue.  I prefer the latter.  Opinions?
+
+# TODO-eric: (all 3 todos) I'm not clear on your specific use deptool with multiple branches, but
+# the way I've been using it for initial checkouts is to check out from low dependency to high, in
+# order (since I know the deps), and if I get the "foobar" branch, to manually move things down one
+# notch in the tree (e.g. "mv SimReal/foobar/* SimReal/ ; rmdir SimReal/foobar") before checking
+# out the higher level branch.  I'm not sure how this differs from your typical workflow; I have to
+# check out the projects from scratch seldom enough that it has never been more than a minor
+# annoyance
+#
+# However, for one-off branches (e.g. where there isn't a set of linked dependencies) I have
+# preferred a naming scheme with a - or _ (e.g. I have ssd.hpl.hp.com/DataSeries/shirant checked
+# out under projects/ellie_DataSeries); hence, in response to todo-reviewer-1 I think I prefer "the
+# latter"
+#
+# For todo-2, your command is doubly goofy, because you check out KeyValue/testing and
+# SimReal/testing AND SimReal/release.  For some reason, although it *does* complain about
+# DataSeries/shirant, it does not complain about SimReal/release.  I think that switching to - or _
+# (or .) separated branches may help alleviate this.
+#
+# For todo-3, yes, I strongly prefer the latter.  Again, using a non-/ seperator could help; I
+# think that the preferable thing overall would be to get deptool to get the behavior I am manually
+# getting out of it automatically.  That is, I think that in work-tucek/testing/projects, there
+# should be a SimReal directory and a KeyValue directory, but no KeyValue/testing directory.
+#
+# Finally, I small final thought to document.  I'm not sure that I really understand the workflow
+# issues that git is creating, but if we are going to encourage a more "branchy" workflow once
+# we're in git, then this micro-branches (u-branches) need to fit into the namespace of the macro-branches
+# neatly.  Consider this hypothetical file tree:
+
+# work-tucek/testing/Lintel
+# work-tucek/testing/DataSeries
+# work-tucek/testing/DataSeries-shirant
+# work-tucek/testing/SimReal-sprint50-paxos
+# work-tucek/testing/SimReal-sprint50
+# work-tucek/testing/SimReal
+# work-tucek/testing/KeyValue-sprint50
+# work-tucek/testing/KeyValue-sprint50-json
+# work-tucek/testing/KeyValue-sprint49
+
+# I think that if I am inside KeyValue-sprint50-json, this indicates a u-branch for sprint50, which
+# has been further branched for a task involving json support.  Build/test in that branch should
+# attempt to use the things tied to the best-matching prefix (with the -'es as seperators), so
+# KeyValue-sprint50 would be the best match.  Work in KeyValue-sprint49 should target the vanilla
+# SimReal.  DataSeries-shirant would not be automatically used by any of the SR/KV branches, unless
+# (magically in an unspecified way) the choice was overridden.
+#
+# I'm not certain if I've described something coherent, workable, or sensible, but it seems like a
+# possible mechanism.  It does force heirarchy on the names of branches, but that seems like the
+# only good way to allow an automatic tool to know what branch/subbranch/subsubbranch it ought use.
+# deptool would therefore need a "make-subbranch" command; "forward-propagate" (e.g. get all
+# updates which exist in SimReal-sprint50 to appear in the sprint50-paxos branch) would also be
+# useful, and (perhaps as git-only), a "back-propagate-and-dissolve" which should first ensure a
+# forward-propagate worked, then back-propagate/remove the branch.
+#
+# Or not.
+
+
 
 sub depCheckout {
     my ($mtn, $git, $sub_branch);
@@ -936,6 +993,9 @@ sub depCheckoutGetMtnBranches {
 
     my @dbs = glob(mtnRepoDir() . "/*.db");
     # TODO-reviewer: generate warning?  I went with no because of usage with no monotone
+    # TODO-eric: No warning is fine, but then I think you need an initVCSes call or somesuch.
+    # Since we bake in the hpl servers into the script, baking in some dbs in the initVCSes
+    # function would also seem kosher.
     return if @dbs == 0;
     @dbs = sort @dbs;
 
@@ -1017,10 +1077,15 @@ Checking out into: $path
 END
 
     if (-d "$path/_MTN") { # TODO-reviwer, should we be checking for all existing vcs?
+# We're not going to migrate VCSes much, so I don't think so.
         print "Found $path/_MTN; skipping redundant checkout.\n";
     } else {
         die "$path already exists; mtn checkout would fail"
             if -d $path;
+#TODO-eric: looking at this code and looking at the behavior of deptool, I am feeling less
+#certain that I understand what the below prompt means.  Could you, at least in a comment,
+#elaborate why having "a / in the directory" is bad in this context?  I think it relates
+#to the above involved discussion.
         userPrompt("continue even though you have a / in the directory")
             if $dir =~ m!/!o;
 
@@ -1041,7 +1106,7 @@ sub depCheckoutGitCheckout {
     print << "END";
 
 Selected git branch $branch from $info->{git_dir}
-Cloneing into $path
+Cloning into $path
 END
 
     if (-d "$path/.git") {
@@ -3471,6 +3536,7 @@ sub depWalkRecurse ($$$$$$) {
     print "\n";
 }
 
+# TODO-eric: was this meant to be handled?
 # TODO-git: test with missing checkout for depbuild, test with missing init.
 
 sub depWalkTryCheckout {
