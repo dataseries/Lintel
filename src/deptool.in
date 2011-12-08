@@ -546,8 +546,10 @@ sub depWalk ($$$);
 
 =head2 init [--(mtn|git|tar)] [vc-specific-options] [I<repository/tar specifier>...]
 
-The init command will initialize the default setup for the specified version control
-system.  If no version control system is specified, it will default to git.
+The init command will initialize the default setup for the specified version control system.  If no
+version control system is specified, it will default to git.  You can specify at most one of the
+different version control systems on a single command line since the behavior is enough different
+that specifying multiple ones is unlikely to do the right thing.
 
 =head3 init --git [--server=I<hostname>] [I<repository specifier>]
 
@@ -627,25 +629,25 @@ then download all of the packages specified in the latest-release file.
 =cut
 
 sub depInit {
-    my ($mtn,$git,$tar);
+    my %mode;
     my $server;
     my $result = GetOptions("server=s" => \$server,
-                            "mtn!" => \$mtn,
-                            "git!" => \$git,
-                            "tar!" => \$tar);
+                            "mtn!" => \$mode{mtn},
+                            "git!" => \$mode{git},
+                            "tar!" => \$mode{tar});
     usage("Unknown error") unless $result;
     my $count = 0;
-    $count+=1 if $mtn;
-    $count+=1 if $git;
-    $count+=1 if $tar;
-    die "You must specify precisely one of --mtn, --git, or --tar"
-        unless $count==1;
+    map { ++$count if $_; } values %mode;
+    if ($count == 0) {
+        $mode{git} = 1;
+    } elsif ($count > 1) {
+        die "You must specify at most one of --mtn, --git, or --tar";
+    }
     $ENV{MTN_SERVER} = $server if defined $server;
-    # kernel.org is using gitolite; we do too.
     $ENV{DEPTOOL_GIT_SERVER} = $server if defined $server;
-    deptool::GitVC::init($server) if $git;
-    depInitMtn($server) if $mtn;
-    deptool::TarVC::init() if $tar
+    depInitMtn($server) if $mode{mtn};
+    deptool::GitVC::init($server) if $mode{git};
+    deptool::TarVC::init() if $mode{tar};
 }
 
 sub checkForBinary {
@@ -4590,7 +4592,7 @@ sub markReviewed {
     }
 
     foreach my $revision (@$revisions) {
-        quietRunCommand('mtn', 'cert', $revision, 'review', $comment);
+        main::quietRunCommand('mtn', 'cert', $revision, 'review', $comment);
     }
 }
 
@@ -4616,7 +4618,7 @@ sub codeReviewPrep {
     my %mtn_options = readMtnOptions();
     $this->{database} = $mtn_options{database};
     die "missing db in .../_MTN/options" 
-            unless defined $this->{database};
+        unless defined $this->{database};
 }
 
 sub getCertificates {
@@ -4765,10 +4767,7 @@ sub initConfig {
     my $deptool_ignores = $vcs->globalDir() . "/deptool.ignores";
     if (! -f $deptool_ignores) {
         # mode 0755 so others can by default see repos, but not write to them.
-
-        #TODO-eric : on build centos 1 this line is giving me issues (undefined subroutine) if 
-        #I do init.
-        File::Path::make_path($vcs->globalDir(), { verbose => 1, mode => 0755 });
+        mkpath([$vcs->globalDir()], 1, 0755);
         my $fh = new FileHandle ">$deptool_ignores"
             or die "Unable to write $deptool_ignores";
         print $fh <<'EOF';
