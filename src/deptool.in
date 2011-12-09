@@ -423,7 +423,12 @@ Same as cdopt, except for the debug build directory.
 
 =cut
 
-{
+# TODO: when we move to separate modules for all the packages, below should be unnecessary
+@deptool::GitVC::ISA = qw/deptool/;
+
+main();
+
+sub main {
     my $command = shift @ARGV;
     my $fn = $commands{$command};
 
@@ -2683,6 +2688,8 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
     my %dates;
     my $branch;
     my $vcs = createVCInterface();
+    $vcs->codeReviewPrep();
+    my @full_revs;
     foreach my $revision (@revisions) {
         my %info = $vcs->parseRevisionInfo($revision);
 
@@ -2690,6 +2697,8 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
             die "Missing requiring revision info $_ on revision $revision"
                 unless defined $info{$_};
         }
+        die "Duplicate revision $revision specified?"
+            if defined $parents{$info{revision}};
         $parents{$info{revision}} = $info{ancestor};
         $dates{$info{revision}} = $info{date};
 	$branch = $info{branch} unless defined $branch;
@@ -2718,22 +2727,20 @@ Assuming you just want to continue reviewing.\n";
 
     if (! -d $basedir) {
         mkdir($basedir, 0755) or die "unable to mkdir $basedir: $!";
-        codeReviewSequence(\@revisions, \%parents, $basedir);
+        codeReviewSequence($vcs, \@revisions, \%parents, $basedir);
     } else {
-        kdiffDirs($basedir, $original_dir, $final_dir, \@revisions);
+        kdiffDirs($vcs, $basedir, $original_dir, $final_dir, \@revisions);
     }
 }
 
 sub codeReviewSequence {
-    my ($revs, $parents, $basedir) = @_;
+    my ($vcs, $revs, $parents, $basedir) = @_;
 
     die "no revisions?" unless @$revs > 0;
     my @revisions = grep(!/^merge:/o, @$revs);
     my ($start, $last);
-    if (@revisions > 0) {
-        my $vcs = createVCInterface();
-        $vcs->codeReviewPrep();
 
+    if (@revisions > 0) {
         $start = $parents->{$revisions[0]};
 
         print "Trying to build single sequence diff from ", 
@@ -2765,7 +2772,7 @@ sub codeReviewSequence {
         ($start, $last) = ('no-such-directory', 'no-such-directory');
     }
 
-    kdiffDirs($basedir, $start, $last, $revs);
+    kdiffDirs($vcs, $basedir, $start, $last, $revs);
 }
 
 # TODO-sprint: make .thrift files show up early by default.
@@ -2808,12 +2815,11 @@ sub makeDiffOrder {
 }
 
 sub kdiffDirs {
-    my ($basedir, $original_dir, $final_dir, $revisions) = @_;
+    my ($vcs, $basedir, $original_dir, $final_dir, $revisions) = @_;
 
     # TODO-sprint: make this extract the relevant part from each log
     # message for the file we are reviewing.
 
-    my $vcs = createVCInterface();
     foreach my $rev (@$revisions) {
         $rev =~ s/^merge://o;
         print $vcs->rawRevisionInfo($rev);
@@ -2871,7 +2877,7 @@ sub kdiffDirs {
             # warn "kdiff3 command failed (ignoring)" if $@;
             $cur = $next;
 	} elsif (/^reviewed\s*(.*)$/o) {
-	    $vcs->markReviewed($revisions, $1);
+	    codeReviewMarkReviewed($vcs, $revisions, $1);
             runCommand("rm -rf $basedir");
             last;
         } elsif ($_ eq 'auto') {
@@ -2891,7 +2897,7 @@ sub kdiffDirs {
                 if (/^\s*$/o) {
                     print "There is no default.\n";
                 } elsif (/^y/io) {
-                    $vcs->markReviewed($revisions, '');
+                    codeReviewMarkReviewed($vcs, $revisions);
                     runCommand("rm -rf $basedir");
                     last;
                 } elsif (/^n/io) {
@@ -2920,6 +2926,22 @@ END_OF_HELP
             $cur = selectPrevDiffFile($basedir, $_, $cur);
         }
     }
+}
+
+sub codeReviewMarkReviewed {
+    my ($vcs, $revisions, $comment) = @_;
+
+    $comment ||= '';
+    my @at = localtime(time);
+    my $at = sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $at[5]+1900, $at[4]+1, $at[3],
+		     $at[2], $at[1], $at[0]);
+    if (length $comment < 1) {
+	$comment = $at;
+    } else {
+	$comment = "$at: $comment";
+    }
+    die "?" if $comment =~ /\n/o;
+    $vcs->markReviewed($revisions, $comment);
 }
 
 sub getChanged {
@@ -3016,11 +3038,8 @@ sub codeReviewPatch {
 
     rcopy("$basedir/$last", "$basedir/$to")
         or die "copy ($basedir/$last,$basedir/$to) failed: $!";
-    $vcs->codeReviewWritePatch($from, $to, "$basedir/$to.patch");
-    eval {
-        quietRunCommand("patch -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
-    };
-    if ($@) {
+
+    unless ($vcs->codeReviewTryPatch($from, $to, $basedir)) {
         my @failed = grep(/\.rej$/o, findFilesPrefix("$basedir/$to"));
         print "\n\n**************\n";
         print "Patch failed ($basedir/$to.patch.err) for files: ", join(", ", @failed), "\n";
@@ -3051,7 +3070,7 @@ sub codeReviewPatch {
                 $_ = <STDIN>;
                 copy("$basedir/$to/$file","$basedir/$to/$file-cr-edit-me");
                 $vcs->codeReviewExtractFile($to, $file, "$basedir/$to/$file-cr-version-$to");
-                runCommand("$ENV{EDITOR} $basedir/$to/$file-cr-edit-me $basedir/$to/$patch $basedir/$to/$file-cr-version-$to");
+                runCommand("$ENV{EDITOR} $basedir/$to/$patch $basedir/$to/$file-cr-version-$to $basedir/$to/$file-cr-edit-me");
                 if (compare("$basedir/$to/$file","$basedir/$to/$file-cr-edit-me") == 0) {
                     print "No changes made.  Return to save empty patch, ctrl-c to abort: ";
                     $_ = <STDIN>;
@@ -4249,6 +4268,75 @@ sub createVCInterface {
     return $ret;
 }
 
+package deptool;
+
+use Carp;
+
+sub parseRevisionInfo { # run in a source directory that should include the speified revision
+    my ($this, $revision) = @_;
+
+    confess "unimplemented";
+    # for merge revisions, 
+    return ( revision => $revision, # allowed to expand it out if desired
+             ancestor => '...', # or ancestor1 | ancestor2 -- needed for calculating diffs
+             author => '...', # optional
+             date => 'sortable-in-ascii-order, e.g. ISO8601 date',
+             branch => '...' # to detect whether all revs are on the same branch
+           );
+}
+
+sub codeReviewPrep {
+    my ($this) = @_;
+
+    # Any preparation you need to be able to run the other codeReview commands in an arbitrary
+    # directory.
+    confess "unimplemented";
+}
+
+sub codeReviewCheckout { # run out of an arbitrary directory
+    my($this, $targetdir, $revision) = @_;
+
+    # check out revision $revision into $targetdir; you can assume codeReviewPrep has been called
+    # on $this
+    confess "unimplemented";
+}
+
+sub codeReviewTryPatch { # run out of an arbitrary directory
+    my ($this, $from, $to, $basedir) = @_;
+
+    # You can assume codeReviewPrep has been called on $this.  You can also assume that $from is
+    # the direct ancestor of $to.
+
+    # Steps in this function:
+    # 1) write the diff between $from and $to into the file named $basedir/$to.patch
+    #
+    # 2) attempt to patch $basedir/$to with $basedir/$to.patch writing output and errors to
+    #    $basedir/$to.patch.err
+    #
+    # 3) return true if the patch succeeded, false otherwise.
+    confess "unimplemented";
+}
+
+sub codeReviewExtractFile {
+    my ($this, $rev, $file, $dest) = @_;
+
+    # You can assume codeReviewPrep has been called on $this.
+    #
+    # Extract $file from revision $rev and write it to $dest
+    confess "unimplemented";
+}
+
+sub markReviewed {
+    my ($this, $revisions, $comment) = @_;
+
+    # You can assume codeReviewPrep has been called on $this.
+    #
+    # Record associated with all the $revisions = ['rev', 'rev', 'rev'] entries that they have been
+    # reviewed by the current user and the comment for the review is $comment (which will be a
+    # non-empty single-line string)
+    confess "unimplemented";
+}
+
 package deptool::MonotoneVC;
 
 sub new {
@@ -4521,18 +4609,17 @@ provide feedback.\n";
     return %info;
 }
 
+sub codeReviewPrep {
+    my ($this) = @_;
+
+    my %mtn_options = readMtnOptions();
+    $this->{database} = $mtn_options{database};
+    die "missing db in .../_MTN/options" 
+        unless defined $this->{database};
+}
+
 sub markReviewed {
     my ($this, $revisions, $comment) = @_;
-
-    $comment ||= '';
-    my @at = localtime(time);
-    my $at = sprintf("%04d-%02d-%02dT%02d:%02d:%02d", $at[5]+1900, $at[4]+1, $at[3],
-		     $at[2], $at[1], $at[0]);
-    if (length $comment < 1) {
-	$comment = $at;
-    } else {
-	$comment = "$at: $comment";
-    }
 
     foreach my $revision (@$revisions) {
         main::quietRunCommand('mtn', 'cert', $revision, 'review', $comment);
@@ -4553,15 +4640,6 @@ sub readMtnOptions {
     close($fh);
 
     return %ret;
-}
-
-sub codeReviewPrep {
-    my ($this) = @_;
-
-    my %mtn_options = readMtnOptions();
-    $this->{database} = $mtn_options{database};
-    die "missing db in .../_MTN/options" 
-        unless defined $this->{database};
 }
 
 sub getCertificates {
@@ -4619,11 +4697,15 @@ sub codeReviewCheckout {
     main::quietRunCommand(@cmd, $targetdir);
 }
 
-sub codeReviewWritePatch {
-    my ($this, $from, $to, $dest) = @_;
+sub codeReviewTryPatch {
+    my ($this, $from, $to, $basedir) = @_;
 
     # TODO: use processmanager so we can be safe on this command execution
-    main::quietRunCommand("mtn diff -d $this->{database} -r $from -r $to >$dest");
+    main::runCommand("mtn diff -d $this->{database} -r $from -r $to >$basedir/$to.patch");
+    eval {
+        main::runCommand("patch -p0 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
+    };
+    return $@ ? 0 : 1;
 }
 
 sub codeReviewExtractFile {
@@ -4635,6 +4717,9 @@ sub codeReviewExtractFile {
 package deptool::GitVC;
 
 use strict;
+use vars '@ISA';
+@ISA = qw/deptool/;
+
 use English;
 use File::Path;
 
@@ -5010,6 +5095,118 @@ sub sync {
     # This action is unsafe in that it could delete a conflicting update, and the RW+ has the
     # same issue.  Perhaps put it in the untested repo to do this on merged branches if a
     # delete/<branch> branch is created?
+}
+
+sub rawRevisionInfo {
+    my ($this, $revision, $format) = @_;
+
+    $format ||= 'full';
+    my $check_fn = sub {
+        my ($out, $err) = @_;
+
+        if (grep(/fatal: bad object/o, @{$err}) > 0) {
+            die "Revision '$revision' not found. Did you specify the correct revision?";
+        }
+    };
+    return main::getCmdOutput("git log -1 --format=$format -r $revision", $check_fn);
+}
+
+sub parseRevisionInfo {
+    my ($this, $revision) = @_;
+
+    my @output = $this->rawRevisionInfo($revision, 'raw');
+
+    my %info;
+    foreach $_ (@output) {
+        last if /^$/o;
+        chomp;
+        die "unable to parse '$_'" unless /^(\w+) (.+)$/o;
+        if (defined $info{$1}) {
+            if (ref $info{$1}) {
+                push(@{$info{$1}}, $2);
+            } else {
+                $info{$1} = [$info{$1}, $2];
+            }
+        } else {
+            $info{$1} = $2;
+        }
+    }
+
+    foreach $_ (qw/commit parent author/) {
+        die "Missing $_ entry from git log output" unless defined $info{$_};
+    }
+
+    foreach $_ (qw/commit author/) {
+        die "Duplicate $_ entry for git $revision?" if ref $info{$_};
+    }
+
+    die "can not parse $info{author}"
+        unless $info{author} =~ /^(.+) (\d+) [\+\-]\d{4}$/o;
+    my ($author, $date_raw) = ($1, $2);
+    my @d = gmtime($date_raw);
+    my $date = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
+                       $d[5]+1900, $d[4]+1, $d[3], $d[2], $d[1], $d[0]);
+    my %ret = ( revision => $info{commit}, author => $author, date => $date, branch => 'unknown' );
+    if (ref $info{parent}) { # merge revision
+        $ret{ancestor1} = $info{parent}->[0];
+        $ret{ancestor2} = $info{parent}->[1];
+    } else {
+        $ret{ancestor} = $info{parent};
+    }
+    return %ret;
+}
+
+sub codeReviewPrep {
+    my ($this) = @_;
+
+    $this->{srcdir} = main::aliasGetCwd();
+}
+
+sub codeReviewCheckout {
+    my($this, $targetdir, $revision) = @_;
+
+    rmtree($targetdir);
+    my $cwd = main::aliasGetCwd();
+    main::runCommand(qw/git clone --shared --/, "$this->{srcdir}/.git", $targetdir);
+    # --git-dir isn't sufficient; if you have changes in the current directory, at least for
+    # git 1.7.2.5 it will refuse to do the checkout command.
+    main::aliasChdir($targetdir);
+    main::runCommand(qw/git --git-dir/, "$targetdir/.git", 'checkout', $revision);
+    main::aliasChdir($cwd);
+}
+
+sub markReviewed {
+    my ($this, $revisions, $comment) = @_;
+
+    my $config = $this->readConfig();
+    die "Internal" unless defined $this->{srcdir};
+    my $fh = new FileHandle ">>$this->{srcdir}/.deptool-git-review-markings"
+        or die "Unable to open $this->{srcdir}/.deptool-git-review-markings for write: $!";
+    my $email = $config->{'user.email'};
+    foreach my $rev (@$revisions) {
+        print $fh "$rev\t$email\t$comment\n";
+    }
+    close($fh);
+}
+
+sub codeReviewTryPatch {
+    my ($this, $from, $to, $basedir) = @_;
+
+    # TODO: use processmanager so we can be safe on this command execution
+    main::runCommand("git --git-dir $this->{srcdir}/.git diff --patch --patience $from $to >$basedir/$to.patch");
+    eval {
+        main::runCommand("patch -p1 --ignore-whitespace -d $basedir/$to <$basedir/$to.patch >$basedir/$to.patch.err 2>&1");
+    };
+    return $@ ? 0 : 1;
+}
+
+sub codeReviewExtractFile {
+    my ($this, $rev, $file, $dest) = @_;
+
+    # You can assume codeReviewPrep has been called on $this.
+    #
+    # Extract $file from revision $rev and write it to $dest
+    main::runCommand("git --git-dir $this->{srcdir}/.git show $rev:$file >$dest");
 }
 
 package deptool::TarVC;
