@@ -425,6 +425,7 @@ Same as cdopt, except for the debug build directory.
 
 # TODO: when we move to separate modules for all the packages, below should be unnecessary
 @deptool::GitVC::ISA = qw/deptool/;
+@deptool::MonotoneVC::ISA = qw/deptool/;
 
 main();
 
@@ -3190,14 +3191,16 @@ sub reviewStatus {
 	unless @revisions > 0;
 
     foreach my $revision (@revisions) {
-	my $certs = $vcs->getCertificates($revision); # TODO: move to parseRevisionInfo
+	my %info = $vcs->parseRevisionInfo($revision); # TODO: move to parseRevisionInfo
 
-	my $rev_certs = $certs->{$revision};
-	next if $unreviewed_only && defined $rev_certs->{review};
-	die "Missing changelog cert on $revision?"
-	    unless defined $rev_certs->{changelog};
-	my $changelog_by = $rev_certs->{changelog}->[0]->{who};
-	my $changelog = $_ = $rev_certs->{changelog}->[0]->{value};
+        my @reviews = $vcs->getReviews($revision);
+	next if $unreviewed_only && @reviews > 0;
+        foreach $_ (qw/changelog author date/) {
+            die "Missing $_ info for $revision?"
+                unless defined $info{$_};
+        }
+	my $changelog_by = $info{author};
+	my $changelog = $_ = $info{changelog};
 	s/^\s*\n//go;
 	s/\n(.|\n)*$//o;
 
@@ -3205,20 +3208,18 @@ sub reviewStatus {
 	s/^(.{1,70}).*/$1/o; # truncate regardless
 	$_ .= " ..." unless $_ eq $changelog;
 	print "$revision: $changelog_by\n  ($_)\n";
-	if (defined $rev_certs->{review}) {
-	    foreach my $ent (@{$rev_certs->{review}}) {
-		$_ = $ent->{value};
+	if (@reviews > 0) {
+	    foreach my $ent (@reviews) {
+		$_ = $ent->[1];
 		chomp;
 		my $date = 'unknown';
 		$date = $1
 		    if s/^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})(: )?//o;
-		print "  reviewed by $ent->{who} at $date\n";
+		print "  reviewed by $ent->[0] at $date\n";
 		print "    $_\n" if length > 0;
 	    }
 	} else {
-	    $_ = $rev_certs->{date}->[0]->{value};
-	    chomp;
-	    print "  No reviews for revision dated $_.\n";
+	    print "  No reviews for revision dated $info{date}.\n";
 	}
 	print "\n";
     }
@@ -3244,8 +3245,9 @@ sub selectRevisions {
 	    die "Unknown argument '$_'; see deptool help review-status";
 	}
     }
+    $vcs->setRepository($selectors{repo}) if defined $selectors{repo};
 
-    my @revisions = vcGetNonMergeRevisions($selectors{db}, $selectors{branch});
+    my @revisions = vcGetNonMergeRevisions($selectors{repo}, $selectors{branch});
     my @ret;
     foreach my $rev (@revisions) {
 	die "? $rev->{Revision}"
@@ -4296,7 +4298,8 @@ sub parseRevisionInfo { # run in a source directory that should include the spec
              ancestor => '...', # required, array if this is a merge revision
              author => '...', # optional
              date => 'sortable-in-ascii-order, e.g. ISO8601 date',
-             branch => '...' # to detect whether all revs are on the same branch
+             branch => '...', # to detect whether all revs are on the same branch
+             changelog => '...' # multi-line string
            );
 }
 
@@ -4350,6 +4353,21 @@ sub markReviewed {
     # reviewed by the current user and the comment for the review is $comment (which will be a
     # non-empty single-line string)
     confess "unimplemented";
+}
+
+sub setRepository {
+    my ($this, $repository) = @_;
+
+    # Store the repository specified by the user for use in getReviews
+    confess "unimplemented";
+}
+
+sub getReviews {
+    my ($this, $revision) = @_;
+
+    # setRepository may have been called.
+    confess "unimplemented";
+    # return ( [ 'author', 'review comment' ], ... ); potentially empty for no reviews
 }
 
 package deptool::MonotoneVC;
@@ -4559,6 +4577,7 @@ sub versionString {
 sub rawRevisionInfo {
     my ($this, $revision) = @_;
 
+    my $db = defined $this->{database} ? "-d $this->{database}" : '';
     my $vcver = $this->versionString();
     if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
 	my ($major, $minor) = ($1,$2);
@@ -4570,11 +4589,12 @@ sub rawRevisionInfo {
             }
         };
 	if ($major == 0 && $minor <= 0.28) { # may be later than this
-	    return main::getCmdOutput("mtn log -r $revision --last 1", $check_fn);
+	    return main::getCmdOutput("mtn $db log -r $revision --last 1", $check_fn);
 	} elsif ($major == 0 && $minor < 45) { # date formatting added in 0.45
-	    return main::getCmdOutput("mtn log --from $revision --last 1 --no-graph", $check_fn);
+	    return main::getCmdOutput("mtn $db log --from $revision --last 1 --no-graph",
+                                      $check_fn);
 	} else {
-	    return main::getCmdOutput("mtn log --no-format-dates --from $revision --last 1"
+	    return main::getCmdOutput("mtn $db log --no-format-dates --from $revision --last 1"
                                       . " --no-graph", $check_fn);
 	}
     } else {
@@ -4614,7 +4634,8 @@ sub parseRevisionInfo {
              ancestor => $raw_info{Parent},
              author => $raw_info{Author},
              date => $raw_info{Date},
-             branch => $raw_info{Branch} );
+             branch => $raw_info{Branch},
+             changelog => $raw_info{changelog} );
 }
 
 sub codeReviewPrep {
@@ -4650,41 +4671,6 @@ sub readMtnOptions {
     return %ret;
 }
 
-sub getCertificates { # TODO: somewhat duplicative of parseRevisionInfo(); cleanup?
-    my ($this, @revisions) = @_;
-
-    my $db = defined $this->{database} ? "--db $this->{database}" : '';
-    my %ret;
-
-    foreach my $revision (@revisions) {
-	my @lines = main::getCmdOutput("mtn $db list certs $revision");
-
-	my %rev_info;
-	for (my $i = 0; $i < @lines; ) {
-	    my @slice = @lines[$i .. $i + 4];
-	    my %info = main::simpleParse(\@slice,
-                                         [ qr/^-+$/o => undef,
-                                           qr/^Key\s+:\s+(.+)$/o => 'key',
-                                           qr/^Sig\s+:\s+(\S+)$/o => 'sig',
-                                           qr/^Name\s+:\s+(\S+)$/o => 'name',
-                                           qr/^Value\s+:\s+(.*)$/o => 'value' ]);
-	    $info{value} .= "\n";
-	    for ($i += 5; $i < @lines && $lines[$i] !~ /^-+$/o; ++$i) {
-		$_ = $lines[$i];
-		s/^\s+: //o;
-		$info{value} .= $_;
-	    }
-	    chomp $info{value};
-	    if ($info{sig} eq 'ok') {
-		push(@{$rev_info{$info{name}}}, { 'who' => $info{key},
-						  'value' => $info{value} });
-	    }
-	}
-	$ret{$revision} = \%rev_info;
-    }
-    return \%ret;
-}
-
 sub codeReviewCheckout {
     my($this, $targetdir, $revision) = @_;
 
@@ -4714,6 +4700,28 @@ sub codeReviewExtractFile {
     my ($this, $to, $file, $dest) = @_;
 
     main::runCommand("mtn cat -r $to $file >$dest");
+}
+
+sub setRepository {
+    my ($this, $db) = @_;
+
+    $this->{database} = $db;
+}
+
+sub getReviews {
+    my ($this, $revision) = @_;
+
+    my $db = defined $this->{database} ? "-d $this->{database}" : '';
+    my @certs = main::getCmdOutput("mtn $db list certs $revision");
+    my @reviews;
+    for (my $i=0; $i < @certs; ++$i) {
+        next unless $certs[$i] =~ /^Name\s+: review$/o;
+        die "Internal parse error $certs[$i-2] " unless $certs[$i-2] =~ /^Key\s+: (.+)$/o;
+        my $author = $1;
+        die "Internal parse error $certs[$i+1] " unless $certs[$i+1] =~ /^Value : (.+)$/o;
+        push (@reviews, [ $author, $1 ]);
+    }
+    return @reviews;
 }
 
 package deptool::GitVC;
