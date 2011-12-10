@@ -2693,9 +2693,22 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
     foreach my $revision (@revisions) {
         my %info = $vcs->parseRevisionInfo($revision);
 
+        if (ref $info{ancestor}) {
+            print "Revision $revision appears to be a merge
+revision.  That is currently not supported for viewing differences.  Most
+likely, the revision was a mistake in specifying the revision to review. 
+However, if you know an appropriate way to review merge revisions, please
+provide feedback.\n";
+            userPrompt("Continue reviewing");
+            $info{ancestor} = "merge:$info{ancestor}->[0]";    # lie
+            $info{revision} = "merge:$info{revision}";     # mark as merge
+        }
         foreach $_ (qw/revision ancestor date branch/) {
             die "Missing requiring revision info $_ on revision $revision"
                 unless defined $info{$_};
+            if (ref $info{$_}) {
+                $info{$_} = $info{$_}->[0];
+            }
         }
         die "Duplicate revision $revision specified?"
             if defined $parents{$info{revision}};
@@ -3127,10 +3140,10 @@ Only print out revisions that have not been reviewed.  Note that this option is
 slower than the others since the certificates need to be retrieved in addition
 to the log information in order to determine if there have been any reviews.
 
-=item db=I<path>
+=item (db|repo)=I<path>
 
-Instead of using the database implied by the current directory, use one
-specified explicitly.
+Instead of using the database/repository implied by the current directory, use one specified
+explicitly.
 
 =item branch=I<branch>
 
@@ -3149,14 +3162,12 @@ sub reviewStatus {
 
     my @revisions;
     my @selectors;
-    my $db;
 
     foreach $_ (@ARGV) {
 	if ($_ eq 'unreviewed') {
 	    $unreviewed_only = 1;
-	} elsif (/^db=(\S+)$/o) {
-	    $db = $1;
-	    push(@selectors, $_);
+        } elsif (/^((db)|(repo))=(\S+)$/o) {
+            push(@selectors, "repo=$4");
 	} elsif (/=/o) {
 	    # TODO-sprint: check that min-data and max-date selectors match YYYY-MM-DD format
 
@@ -3170,15 +3181,16 @@ sub reviewStatus {
 	}
     }
 
+    my $vcs = createVCInterface();
     if (@selectors > 0) {
-	push(@revisions, selectRevisions(@selectors));
+	push(@revisions, selectRevisions($vcs, @selectors));
     }
 
     die "Selectors @ARGV did not select any revisions"
 	unless @revisions > 0;
 
     foreach my $revision (@revisions) {
-	my $certs = deptool::MonotoneVC::getCertificates($db, $revision);
+	my $certs = $vcs->getCertificates($revision); # TODO: move to parseRevisionInfo
 
 	my $rev_certs = $certs->{$revision};
 	next if $unreviewed_only && defined $rev_certs->{review};
@@ -3213,13 +3225,14 @@ sub reviewStatus {
 }
 
 sub selectRevisions {
-    my (@selectors) = @_;
+    my ($vcs, @selectors) = @_;
 
     my %selectors = ('who' => undef,
 		     'min-date' => undef,
 		     'max-date' => undef,
 		     'branch' => undef,
-		     'db' => undef);
+		     'db' => undef,
+                     'repo' => undef);
 
     foreach $_ (@selectors) {
 	if (/^(\S+)=(\S+)$/o) {
@@ -4107,7 +4120,7 @@ sub getCmdOutput {
     &$pre_close_fn(\@stdout, \@stderr) if defined $pre_close_fn;
     close($read) or confess "close failed: $!\ncommand is $cmd";
     close($error) or confess "close failed: $!\ncommand is $cmd";
-    die "$cmd failed" unless $status == 0;
+    confess "$cmd failed" unless $status == 0;
     return @stdout;
 }
 
@@ -4272,13 +4285,15 @@ package deptool;
 
 use Carp;
 
-sub parseRevisionInfo { # run in a source directory that should include the speified revision
+sub parseRevisionInfo { # run in a source directory that should include the specified revision
     my ($this, $revision) = @_;
 
     confess "unimplemented";
-    # for merge revisions, 
+    # note that ancestor, author, date, and branch can all be arrays if there are multiple
+    # values for those either because it is a merge revision or multiple people generated
+    # identical results.
     return ( revision => $revision, # allowed to expand it out if desired
-             ancestor => '...', # or ancestor1 | ancestor2 -- needed for calculating diffs
+             ancestor => '...', # required, array if this is a merge revision
              author => '...', # optional
              date => 'sortable-in-ascii-order, e.g. ISO8601 date',
              branch => '...' # to detect whether all revs are on the same branch
@@ -4572,41 +4587,34 @@ sub parseRevisionInfo {
 
     my @output = $this->rawRevisionInfo($revision);
 
-    my %info = eval {
-        main::simpleParse(\@output, 
-                          [ qr/^-+$/o => undef,
-                            qr/^Revision: (\S+)$/o => 'revision',
-                            qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor',
-                            qr/^Author:/o => undef,
-                            qr/^Date:\s+(.+)$/o => 'date',
-                            qr/^Branch:\s+(\S+)$/o => 'branch' ]);
-    };
+    my %raw_info;
 
-    if ($@ =~ /Error on line 3.*got .Parent:/o) {
-        %info = eval {
-            main::simpleParse(\@output, 
-                              [ qr/^-+$/o => undef,
-                                qr/^Revision: (\S+)$/o => 'revision',
-                                qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor1',
-                                qr/^(?:(?:Ancestor)|(?:Parent)):\s+(\S+)$/o => 'ancestor2',
-                                qr/^Author:/o => undef,
-                                qr/^Date:\s+(.+)$/o => 'date',
-                                qr/^Branch:\s+(\S+)$/o => 'branch' ]);
-        };
-        die "revision $revision looks like a merge revision, but doesn't parse: $@"
-            if $@;
-        print "Revision $revision appears to be a merge
-revision.  That is currently not supported for viewing differences.  Most
-likely, the revision was a mistake in specifying the revision to review. 
-However, if you know an appropriate way to review merge revisions, please
-provide feedback.\n";
-        userPrompt("Continue reviewing");
-        $info{ancestor} = "merge:$info{ancestor1}";    # lie
-        $info{revision} = "merge:$info{revision}";     # mark as merge
-    } elsif ($@) {
-        die $@;
+    while ($_ = shift @output) {
+        last if /^$/o;
+        next if /^-+$/o;
+        chomp;
+        die "unable to parse $_" unless /^(\w+):\s+(\S.+)$/o;
+        if (defined $raw_info{$1}) {
+            die "internal" if ref $raw_info{$1};
+            $raw_info{$1} = [$raw_info{$1}, $2];
+        } else {
+            $raw_info{$1} = $2;
+        }
     }
-    return %info;
+    $_ = shift @output; die "?" unless /^Changelog:/o;
+    $_ = shift @output; die "?" unless /^$/o;
+    $raw_info{changelog} = join('', @output);
+
+    foreach $_ (qw/Revision Parent Author Date Branch/) {
+        die "Missing expected revision info $_ for revision $revision"
+            unless defined $raw_info{$_};
+    }
+
+    return ( revision => $raw_info{Revision},
+             ancestor => $raw_info{Parent},
+             author => $raw_info{Author},
+             date => $raw_info{Date},
+             branch => $raw_info{Branch} );
 }
 
 sub codeReviewPrep {
@@ -4642,14 +4650,10 @@ sub readMtnOptions {
     return %ret;
 }
 
-sub getCertificates {
-    my ($db, @revisions) = @_;
+sub getCertificates { # TODO: somewhat duplicative of parseRevisionInfo(); cleanup?
+    my ($this, @revisions) = @_;
 
-    if (defined $db) {
-	$db = "--db $db";
-    } else {
-	$db = "";
-    }
+    my $db = defined $this->{database} ? "--db $this->{database}" : '';
     my %ret;
 
     foreach my $revision (@revisions) {
@@ -4684,12 +4688,10 @@ sub getCertificates {
 sub codeReviewCheckout {
     my($this, $targetdir, $revision) = @_;
 
-    my $certs = getCertificates($this->{database}, $revision);
-    $certs = $certs->{$revision};
-    die "no certificates on revision $revision?" unless defined $certs;
+    my %info = $this->parseRevisionInfo($revision);
     my @cmd = (qw/mtn checkout -d/, $this->{database}, '-r', $revision);
-    if (@{$certs->{branch}} == 2) {
-        my @values = sort { (length $a) <=> (length $b) } map { $_->{value} } @{$certs->{branch}};
+    if (ref $info{branch}) {
+        my @values = sort { (length $a) <=> (length $b) } @{$info{branch}};
         push(@cmd, "-b", $values[0]);
         print "Using shortest branch $values[0]\n";
     }
@@ -5117,7 +5119,7 @@ sub parseRevisionInfo {
     my @output = $this->rawRevisionInfo($revision, 'raw');
 
     my %info;
-    foreach $_ (@output) {
+    while ($_ = shift @output) {
         last if /^$/o;
         chomp;
         die "unable to parse '$_'" unless /^(\w+) (.+)$/o;
@@ -5131,7 +5133,8 @@ sub parseRevisionInfo {
             $info{$1} = $2;
         }
     }
-
+    grep(s/^    //o, @output);
+    $info{changelog} = join('', @output);
     foreach $_ (qw/commit parent author/) {
         die "Missing $_ entry from git log output" unless defined $info{$_};
     }
