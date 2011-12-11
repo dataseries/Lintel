@@ -2692,33 +2692,33 @@ yum -y install perl-File-Copy-Recursive?\n$@" if $@;
     $vcs->codeReviewPrep();
     my @full_revs;
     foreach my $revision (@revisions) {
-        my %info = $vcs->parseRevisionInfo($revision);
+        my $info = $vcs->parseRevisionInfo($revision);
 
-        if (ref $info{ancestor}) {
+        if (ref $info->{ancestor}) {
             print "Revision $revision appears to be a merge
 revision.  That is currently not supported for viewing differences.  Most
 likely, the revision was a mistake in specifying the revision to review. 
 However, if you know an appropriate way to review merge revisions, please
 provide feedback.\n";
             userPrompt("Continue reviewing");
-            $info{ancestor} = "merge:$info{ancestor}->[0]";    # lie
-            $info{revision} = "merge:$info{revision}";     # mark as merge
+            $info->{ancestor} = "merge:$info->{ancestor}->[0]";    # lie
+            $info->{revision} = "merge:$info->{revision}";     # mark as merge
         }
         foreach $_ (qw/revision ancestor date branch/) {
             die "Missing requiring revision info $_ on revision $revision"
-                unless defined $info{$_};
-            if (ref $info{$_}) {
-                $info{$_} = $info{$_}->[0];
+                unless defined $info->{$_};
+            if (ref $info->{$_}) {
+                $info->{$_} = $info->{$_}->[0];
             }
         }
         die "Duplicate revision $revision specified?"
-            if defined $parents{$info{revision}};
-        $parents{$info{revision}} = $info{ancestor};
-        $dates{$info{revision}} = $info{date};
-	$branch = $info{branch} unless defined $branch;
-	unless($branch eq $info{branch}) {
-	    userPrompt("continue through mismatch on branches for specified revisions?\n ($branch != $info{branch})");
-	    $branch = $info{branch};
+            if defined $parents{$info->{revision}};
+        $parents{$info->{revision}} = $info->{ancestor};
+        $dates{$info->{revision}} = $info->{date};
+	$branch = $info->{branch} unless defined $branch;
+	unless($branch eq $info->{branch}) {
+	    userPrompt("continue through mismatch on branches for specified revisions?\n ($branch != $info->{branch})");
+	    $branch = $info->{branch};
 	}
     }
 
@@ -3191,23 +3191,24 @@ sub reviewStatus {
 	unless @revisions > 0;
 
     foreach my $revision (@revisions) {
-	my %info = $vcs->parseRevisionInfo($revision); # TODO: move to parseRevisionInfo
+	my $info = ref $revision ? $revision : $vcs->parseRevisionInfo($revision);
 
-        my @reviews = $vcs->getReviews($revision);
+        my @reviews = $vcs->getReviews($info->{revision});
 	next if $unreviewed_only && @reviews > 0;
         foreach $_ (qw/changelog author date/) {
-            die "Missing $_ info for $revision?"
-                unless defined $info{$_};
+            die "Missing $_ info for $revision parseRevisionInfo incorrect?"
+                unless defined $info->{$_};
         }
-	my $changelog_by = $info{author};
-	my $changelog = $_ = $info{changelog};
+	my $changelog_by = $info->{author};
+	my $changelog = $_ = $info->{changelog};
 	s/^\s*\n//go;
 	s/\n(.|\n)*$//o;
+        s/^\s+\*\s+//o;
 
 	s/^(.{1,60}\S+).*/$1/o; # try to break at whitespace
 	s/^(.{1,70}).*/$1/o; # truncate regardless
 	$_ .= " ..." unless $_ eq $changelog;
-	print "$revision: $changelog_by\n  ($_)\n";
+	print "$info->{revision}: $changelog_by\n  ($_)\n";
 	if (@reviews > 0) {
 	    foreach my $ent (@reviews) {
 		$_ = $ent->[1];
@@ -3219,7 +3220,7 @@ sub reviewStatus {
 		print "    $_\n" if length > 0;
 	    }
 	} else {
-	    print "  No reviews for revision dated $info{date}.\n";
+	    print "  No reviews for revision dated $info->{date}.\n";
 	}
 	print "\n";
     }
@@ -3247,15 +3248,15 @@ sub selectRevisions {
     }
     $vcs->setRepository($selectors{repo}) if defined $selectors{repo};
 
-    my @revisions = vcGetNonMergeRevisions($selectors{repo}, $selectors{branch});
+    my @revisions = $vcs->parseNonMergeRevisions($selectors{branch});
     my @ret;
     foreach my $rev (@revisions) {
-	die "? $rev->{Revision}"
-	    unless defined $rev->{Author} && defined $rev->{Date};
-	next if defined $selectors{who} && $rev->{Author} !~ /$selectors{who}/o;
-	next if defined $selectors{'min-date'} && $rev->{Date} lt $selectors{'min-date'};
-	next if defined $selectors{'max-date'} && $rev->{Date} gt $selectors{'max-date'};
-	push (@ret, $rev->{Revision});
+	die "? $rev->{revision}"
+	    unless defined $rev->{author} && defined $rev->{date};
+	next if defined $selectors{who} && $rev->{author} !~ /$selectors{who}/o;
+	next if defined $selectors{'min-date'} && $rev->{date} lt $selectors{'min-date'};
+	next if defined $selectors{'max-date'} && $rev->{date} gt $selectors{'max-date'};
+	push (@ret, $rev);
     }
     return @ret;
 }
@@ -4175,97 +4176,6 @@ sub readFile {
 # TODO: propagate this to other vc actions so we can support multiple vc
 # systems (e.g. svn) at the same time.
 
-sub vcGetNonMergeRevisions {
-    my ($db, $branch) = @_;
-
-    if (defined $db) {
-	$db = "--db $db";
-    } else {
-	$db = '';
-    }
-
-    my $from = '';
-    if (defined $branch) {
-	my @out = getCmdOutput("mtn $db head -b $branch");
-	grep(chomp, @out);
-
-	die "no heads for branch $branch"
-	    unless @out > 0;
-
-	die "multiple heads for branch $branch ($out[0] $out[1])?"
-	    unless @out == 1;
-
-	die "head output for branch $branch not hex ($out[0])?"
-	    unless $out[0] =~ /^([0-9a-f]+) \S+/o;
-
-	$from = "--from $1";
-    }
-
-    my $cmd;
-
-    my $vcver = createVCInterface()->versionString();
-    if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
-	my ($major, $minor) = ($1,$2);
-	if ($major == 0 && $minor <= 0.28) { # may be later than this
-	    $cmd = "mtn $db log $from --no-merges";
-	} elsif ($major == 0 && $minor < 45) { # date formatting added in 0.45
-	    $cmd = "mtn $db log $from --no-graph --no-merges";
-	} else {
-	    $cmd = "mtn $db log $from --no-graph --no-merges --no-format-dates";
-	}
-    } else {
-	die "Don't know how to get non-merge revisions from $vcver";
-    }
- 
-    my $fh = new FileHandle "$cmd |"
-	or die "Unable to run $cmd: $!";
-    my @ret;
-    while (<$fh>) {
-	chomp;
-	die "? '$_'" unless /^-+$/o;
-	my %ent;
-	my $tmp = $_;
-	$_ = <$fh>;
-	if ($_ =~ /^Revision: ([a-f0-9]{40})$/o) {
-	    $ent{Revision} = $1;
-	    while (<$fh>) {
-		$ent{Branch} = $1 if /^Branch:\s+(\S+)$/o;
-		chomp;
-		last if /^\s*$/o;
-		die "? '$_'" unless /^(\w+):\s+(.*)$/o; # .* because earliest Ancestor is empty.
-		$ent{$1} = $2;
-	    }
-	    $ent{changes} = '';
-	    while (<$fh>) {
-		last if /^-{50,}$/o;
-		$ent{changes} .= $_;
-	    }
-            # dunno how this happened, but it's present on some old DataSeries revisions.
-	    $ent{Branch} ||= 'unknown-branch'; 
-	    push (@ret, \%ent) unless defined $branch && $branch ne $ent{Branch};
-	} else {
-	    # assume someone put lots of --- in the changelog
-
-	    confess "weird, no revision data accumulated $_ " unless @ret > 0;
-	    my $ent = $ret[@ret-1];
-	    $ent->{changes} .= $tmp;
-	    while (1) {
-		last if /^-{50,}$/o;
-		$ent{changes} .= $_;
-		$_ = <$fh>;
-		last unless defined $_;
-	    }
-	}
-	last unless defined $_;
-	redo;
-    }
-    $_ = <$fh>;
-    die "? '$_' still have input; last rev $ret[$#ret]->{Revision}" if defined $_;
-    close($fh) or confess "close failed: $! ($?)\ncommand is $cmd";
-    die "$cmd failed" unless $? == 0;
-    return @ret;
-}
-
 sub createVCInterface {
     my $srcdir = rootSrcDir();
 
@@ -4294,13 +4204,14 @@ sub parseRevisionInfo { # run in a source directory that should include the spec
     # note that ancestor, author, date, and branch can all be arrays if there are multiple
     # values for those either because it is a merge revision or multiple people generated
     # identical results.
-    return ( revision => $revision, # allowed to expand it out if desired
-             ancestor => '...', # required, array if this is a merge revision
+    return { revision => $revision, # allowed to expand it out if desired
+             ancestor => '...', # required, array if this is a merge revision, undef if this is the
+                                # first revision
              author => '...', # optional
              date => 'sortable-in-ascii-order, e.g. ISO8601 date',
              branch => '...', # to detect whether all revs are on the same branch
              changelog => '...' # multi-line string
-           );
+           };
 }
 
 sub codeReviewPrep {
@@ -4370,7 +4281,22 @@ sub getReviews {
     # return ( [ 'author', 'review comment' ], ... ); potentially empty for no reviews
 }
 
+sub parseNonMergeRevisions {
+    my ($this, $branch) = @_;
+    # branch may be undefined, in which case the current branch should be used
+
+    # setRepository may have been called.
+    confess "unimplemented";
+    # return ({ parseRevisionInfo output}, ...);
+}
+
 package deptool::MonotoneVC;
+
+use strict;
+use Carp;
+
+use vars '@ISA';
+@ISA = qw/deptool/;
 
 sub new {
     my ($class) = @_;
@@ -4625,17 +4551,17 @@ sub parseRevisionInfo {
     $_ = shift @output; die "?" unless /^$/o;
     $raw_info{changelog} = join('', @output);
 
-    foreach $_ (qw/Revision Parent Author Date Branch/) {
+    foreach $_ (qw/Revision Author Date Branch/) {
         die "Missing expected revision info $_ for revision $revision"
             unless defined $raw_info{$_};
     }
 
-    return ( revision => $raw_info{Revision},
+    return { revision => $raw_info{Revision},
              ancestor => $raw_info{Parent},
              author => $raw_info{Author},
              date => $raw_info{Date},
              branch => $raw_info{Branch},
-             changelog => $raw_info{changelog} );
+             changelog => $raw_info{changelog} };
 }
 
 sub codeReviewPrep {
@@ -4674,10 +4600,10 @@ sub readMtnOptions {
 sub codeReviewCheckout {
     my($this, $targetdir, $revision) = @_;
 
-    my %info = $this->parseRevisionInfo($revision);
+    my $info = $this->parseRevisionInfo($revision);
     my @cmd = (qw/mtn checkout -d/, $this->{database}, '-r', $revision);
-    if (ref $info{branch}) {
-        my @values = sort { (length $a) <=> (length $b) } @{$info{branch}};
+    if (ref $info->{branch}) {
+        my @values = sort { (length $a) <=> (length $b) } @{$info->{branch}};
         push(@cmd, "-b", $values[0]);
         print "Using shortest branch $values[0]\n";
     }
@@ -4724,12 +4650,110 @@ sub getReviews {
     return @reviews;
 }
 
+sub parseNonMergeRevisions {
+    my ($this, $branch) = @_;
+
+    my $db = defined $this->{database} ? "--db $this->{database}" : '';
+
+    my $from = '';
+    if (defined $branch) {
+	my @out = main::getCmdOutput("mtn $db head -b $branch");
+	grep(chomp, @out);
+
+	die "no heads for branch $branch"
+	    unless @out > 0;
+
+	die "multiple heads for branch $branch ($out[0] $out[1])?"
+	    unless @out == 1;
+
+	die "head output for branch $branch not hex ($out[0])?"
+	    unless $out[0] =~ /^([0-9a-f]+) \S+/o;
+
+	$from = "--from $1";
+    }
+
+    my $cmd;
+
+    my $vcver = $this->versionString();
+    if ($vcver =~ /^monotone-(\d+)\.(\d+)\b/o) {
+	my ($major, $minor) = ($1,$2);
+	if ($major == 0 && $minor <= 0.28) { # may be later than this
+	    $cmd = "mtn $db log $from --no-merges";
+	} elsif ($major == 0 && $minor < 45) { # date formatting added in 0.45
+	    $cmd = "mtn $db log $from --no-graph --no-merges";
+	} else {
+	    $cmd = "mtn $db log $from --no-graph --no-merges --no-format-dates";
+	}
+    } else {
+	die "Don't know how to get non-merge revisions from $vcver";
+    }
+
+    my $fh = new FileHandle "$cmd |"
+	or die "Unable to run $cmd: $!";
+    my %remap = ( 'Parent' => 'ancestor', 'Author' => 'author', 'Date' => 'date',
+                  'Branch' => 'branch' );
+    my @ret;
+    while (<$fh>) {
+	chomp;
+	die "? '$_'" unless /^-+$/o;
+	my %ent;
+	my $tmp = $_;
+	$_ = <$fh>;
+	if ($_ =~ /^Revision: ([a-f0-9]{40})$/o) {
+	    $ent{revision} = $1;
+	    while (<$fh>) {
+		last if /^\s*$/o;
+		die "? '$_'" unless /^(\w+):\s+(.*)$/o; # .* because earliest Ancestor is empty.
+                my $k = $remap{$1};
+                if (defined $ent{$k}) {
+                    if (ref $ent{$k}) {
+                        push(@{$ent{$k}}, $2);
+                    } else {
+                        $ent{$k} = [$ent{$k}, $2];
+                    }
+                } else {
+                    $ent{$k} = $2;
+                }
+	    }
+	    $ent{changelog} = '';
+	    while (<$fh>) {
+		last if /^-{50,}$/o;
+		$ent{changelog} .= $_;
+	    }
+            $ent{changelog} =~ s/Changelog:\s*\n//o;
+            # dunno how this happened, but it's present on some old DataSeries revisions.
+	    $ent{branch} ||= 'unknown-branch'; 
+	    push (@ret, \%ent);
+	} else {
+	    # assume someone put lots of --- in the changelog
+
+	    confess "weird, no revision data accumulated $_ " unless @ret > 0;
+	    my $ent = $ret[@ret-1];
+	    $ent->{changes} .= $tmp;
+	    while (1) {
+		last if /^-{50,}$/o;
+		$ent{changes} .= $_;
+		$_ = <$fh>;
+		last unless defined $_;
+	    }
+	}
+	last unless defined $_;
+	redo;
+    }
+    $_ = <$fh>;
+    die "? '$_' still have input; last rev $ret[$#ret]->{Revision}" if defined $_;
+    close($fh) or confess "close failed: $! ($?)\ncommand is $cmd";
+    die "$cmd failed" unless $? == 0;
+    return @ret;
+}
+
 package deptool::GitVC;
 
 use strict;
 use vars '@ISA';
 @ISA = qw/deptool/;
 
+use Carp;
 use English;
 use File::Path;
 
@@ -5118,14 +5142,14 @@ sub rawRevisionInfo {
             die "Revision '$revision' not found. Did you specify the correct revision?";
         }
     };
-    return main::getCmdOutput("git log -1 --format=$format -r $revision", $check_fn);
+    my $git_dir = defined $this->{git_dir} ? "--git-dir $this->{git_dir}/.git" : '';
+    return main::getCmdOutput("git $git_dir log -1 --format=$format -r $revision", $check_fn);
 }
 
-sub parseRevisionInfo {
-    my ($this, $revision) = @_;
+sub parseRevisionData {
+    my ($this, @output) = @_;
 
-    my @output = $this->rawRevisionInfo($revision, 'raw');
-
+    grep(s/\n$//o, @output);
     my %info;
     while ($_ = shift @output) {
         last if /^$/o;
@@ -5141,14 +5165,17 @@ sub parseRevisionInfo {
             $info{$1} = $2;
         }
     }
+    pop(@output) if $output[@output-1] =~ /^$/o;
+    my @prefix = grep(/^\S/o, @output);
+    die "parse error " . scalar @prefix . " bad lines, first bad line '$prefix[0]' " if @prefix > 0;
     grep(s/^    //o, @output);
     $info{changelog} = join('', @output);
-    foreach $_ (qw/commit parent author/) {
+    foreach $_ (qw/commit author/) {
         die "Missing $_ entry from git log output" unless defined $info{$_};
     }
 
     foreach $_ (qw/commit author/) {
-        die "Duplicate $_ entry for git $revision?" if ref $info{$_};
+        confess "Duplicate $_ entry for git data?" if ref $info{$_};
     }
 
     die "can not parse $info{author}"
@@ -5157,14 +5184,22 @@ sub parseRevisionInfo {
     my @d = gmtime($date_raw);
     my $date = sprintf("%04d-%02d-%02d %02d:%02d:%02d",
                        $d[5]+1900, $d[4]+1, $d[3], $d[2], $d[1], $d[0]);
-    my %ret = ( revision => $info{commit}, author => $author, date => $date, branch => 'unknown' );
-    if (ref $info{parent}) { # merge revision
+    my %ret = ( revision => $info{commit}, author => $author, date => $date, branch => 'unknown',
+                changelog => $info{changelog} );
+    if (defined $info{parent} && ref $info{parent}) { # merge revision
         $ret{ancestor1} = $info{parent}->[0];
         $ret{ancestor2} = $info{parent}->[1];
     } else {
         $ret{ancestor} = $info{parent};
     }
-    return %ret;
+    return \%ret;
+}
+
+sub parseRevisionInfo {
+    my ($this, $revision) = @_;
+
+    my @output = $this->rawRevisionInfo($revision, 'raw');
+    return $this->parseRevisionData(@output);
 }
 
 sub codeReviewPrep {
@@ -5218,6 +5253,56 @@ sub codeReviewExtractFile {
     #
     # Extract $file from revision $rev and write it to $dest
     main::runCommand("git --git-dir $this->{srcdir}/.git show $rev:$file >$dest");
+}
+
+sub setRepository {
+    my ($this, $repository) = @_;
+
+    $this->{git_dir} = $repository;
+}
+
+sub getReviews {
+    my ($this, $revision) = @_;
+
+    confess "unable to handle short revision '$revision'" unless $revision =~ /^[a-f0-9]{40}$/o;
+    unless (defined $this->{reviews}) {
+        my $srcdir = $this->{git_dir} || main::rootSrcDir();
+        $this->{reviews} = {};
+        my $file = "$srcdir/.deptool-git-review-markings";
+        if (-f $file) {
+            my $fh = new FileHandle $file or die "Unable to open $file for read: $!";
+            while (<$fh>) {
+                chomp;
+                die "unable to parse '$_'" unless /^([a-f0-9]{40})\t(.+?)\t(.+)$/o;
+                $this->{reviews}->{$1} ||= [];
+                push(@{$this->{reviews}->{$1}}, [ $2, $3 ]);
+            }
+        }
+    }
+    my $ret = $this->{reviews}->{$revision};
+    return () unless defined $ret;
+    return @$ret;
+}
+
+sub parseNonMergeRevisions {
+    my ($this, $branch) = @_;
+
+    my $git_dir = defined $this->{git_dir} ? "--git-dir $this->{git_dir}/.git" : '';
+
+    # branch may be undefined, in which case the current branch should be used
+    my $fh = new FileHandle "git $git_dir log --format=raw -z --no-merges |"
+        or die "Unable to run git log: $!";
+
+    local $INPUT_RECORD_SEPARATOR;
+    $INPUT_RECORD_SEPARATOR = "\x00";
+    my @ret;
+    while (my $commit = <$fh>) {
+        $commit =~ s/\x00$//o;
+        my @lines = split(/\n/o, $commit);
+        push(@ret, $this->parseRevisionData(@lines));
+    }
+
+    return @ret;
 }
 
 package deptool::TarVC;
