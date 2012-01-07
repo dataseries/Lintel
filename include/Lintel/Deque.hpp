@@ -224,7 +224,7 @@ public:
             cur_pos = (cur_pos + mydeque->q_size - 1) % mydeque->q_size;
         }
         // The logical offset in the deque, as if the deque was a vector starting at 0.
-        inline size_t logicalOffset(const iterator &i) const {
+        inline int64_t logicalOffset(const iterator &i) const {
             return (i.cur_pos - i.mydeque->q_front + i.mydeque->q_size) % i.mydeque->q_size;
         }
 	Deque *mydeque;
