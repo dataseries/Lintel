@@ -4940,7 +4940,7 @@ sub tryCommit {
     my ($this) = @_;
 
     main::runCommand(qw/git add -u/); # any uncommitted files we want to track should already be added
-    my $pm = new Lintel::ProcessManager;
+    my $pm = new Lintel::ProcessManager();
 
     my $commit_pid = $pm->fork(cmd => [qw/git commit/, $this->{amend} ? ('--amend') : ()]);
 
