@@ -23,6 +23,10 @@ if [[ -z "$DEPTOOL" || "$DEPTOOL" = "false" || ! -x "$DEPTOOL" ]]; then
     fi
 fi
 
+# TODO-reviewer: should we make it check for /var/tmp?  Problem is that /var/tmp seems to get
+# auto-cleaned up, and we don't want that.
+[ -z "$DEPTOOL_LOCAL_WORK_ROOT" ] && DEPTOOL_LOCAL_WORK_ROOT=/local
+
 new-deptool-base () {
     local base=$1
     local monotone_dir=$2
@@ -81,69 +85,78 @@ homedir () {
 }
 
 mainline () {
-    if [[ -d /var/tmp/work-$USER ]]; then
-        new-deptool-base /var/tmp/work-$USER/mainline /var/tmp/work-$USER/monotone
+    if [[ -d $DEPTOOL_LOCAL_WORK_ROOT/work-$USER ]]; then
+        new-deptool-base $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/mainline $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/monotone
     else
         new-deptool-base $HOME
     fi
 }
 
 code-review () {
-    new-deptool-base $HOME/code-review
+    if [[ -d $DEPTOOL_LOCAL_WORK_ROOT/work-$USER ]]; then
+        new-deptool-base $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/code-review $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/monotone
+    else
+        new-deptool-base $HOME/code-review
+    fi
 }
 
 release () {
-    if [[ -d /var/tmp/work-$USER ]]; then
-        new-deptool-base /var/tmp/work-$USER/release /var/tmp/work-$USER/monotone
+    if [[ -d $DEPTOOL_LOCAL_WORK_ROOT/work-$USER ]]; then
+        new-deptool-base $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/release $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/monotone
     else
         new-deptool-base $HOME/release
     fi
 }
 
 testing () {
-    if [[ -d /var/tmp/work-$USER ]]; then
-        new-deptool-base /var/tmp/work-$USER/testing /var/tmp/work-$USER/monotone
+    if [[ -d $DEPTOOL_LOCAL_WORK_ROOT/work-$USER ]]; then
+        new-deptool-base $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/testing $DEPTOOL_LOCAL_WORK_ROOT/work-$USER/monotone
     else
         new-deptool-base $HOME/testing
     fi
 }
 
+local-build () {
+    mkdir -p $DEPTOOL_LOCAL_WORK_ROOT/work-$USER
+    mainline
+}    
 
 tmp () {
-    mkdir -p /var/tmp/work-$USER
-    mainline
+    echo "Warning, tmp command has been renamed to local-build, and will be removed after 2012-06-01"
+    local-build
 }
 
-prep-local-build () {
-    local target
-    local reenv
-    if [[ "$PROJECTS" = "$HOME/projects" ]]; then
-        target=/var/tmp/build-$USER
-        reenv=mainline
-    elif [[ "$PROJECTS" = "$HOME/code-review/projects" ]]; then
-        target=/var/tmp/build-cr-$USER
-        reenv=code-review
-    elif [[ ! -z "$1" ]]; then
-        target=$1
-    else    
-        echo "Usage: prep-local-build [target, tries to infer from \$PROJECTS, but failed]"
-        return 1
-    fi
-
-    local dest=$target/opt-$BUILD_OS-$UNAME_M/bin
-    mkdir -p $dest
-    local deptool=$BUILD_OPT/Lintel/src/deptool-bootstrap 
-    if [[ ! -f $deptool ]]; then
-        echo "Unable to bootstrap $target, missing $deptool"
-        return 1
-    fi
-    cp $deptool $dest/deptool
-    if [[ -z "$reenv" ]]; then
-        echo "Execute whatever command you need to use $target as your new root"
-    else
-        $reenv
-    fi
-}
+# below is probably obsolete and never used, remove after 2012-06-01
+# prep-local-build () {
+#     local target
+#     local reenv
+#     if [[ "$PROJECTS" = "$HOME/projects" ]]; then
+#         target=$DEPTOOL_LOCAL_WORK_ROOT/build-$USER
+#         reenv=mainline
+#     elif [[ "$PROJECTS" = "$HOME/code-review/projects" ]]; then
+#         target=$DEPTOOL_LOCAL_WORK_ROOT/build-cr-$USER
+#         reenv=code-review
+#     elif [[ ! -z "$1" ]]; then
+#         target=$1
+#     else    
+#         echo "Usage: prep-local-build [target, tries to infer from \$PROJECTS, but failed]"
+#         return 1
+#     fi
+# 
+#     local dest=$target/opt-$BUILD_OS-$UNAME_M/bin
+#     mkdir -p $dest
+#     local deptool=$BUILD_OPT/Lintel/src/deptool-bootstrap 
+#     if [[ ! -f $deptool ]]; then
+#         echo "Unable to bootstrap $target, missing $deptool"
+#         return 1
+#     fi
+#     cp $deptool $dest/deptool
+#     if [[ -z "$reenv" ]]; then
+#         echo "Execute whatever command you need to use $target as your new root"
+#     else
+#         $reenv
+#     fi
+# }
 
 if [[ "$DEPTOOL" != false ]]; then
     eval `$DEPTOOL getenv for-sh`
