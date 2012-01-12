@@ -4705,6 +4705,7 @@ sub parseNonMergeRevisions {
 		last if /^\s*$/o;
 		die "? '$_'" unless /^(\w+):\s+(.*)$/o; # .* because earliest Ancestor is empty.
                 my $k = $remap{$1};
+                next unless defined $k;
                 if (defined $ent{$k}) {
                     if (ref $ent{$k}) {
                         push(@{$ent{$k}}, $2);
