@@ -4804,9 +4804,12 @@ Usually yum install git or apt-get install git will work."
 }
 
 sub initConfig {
+    my ($quiet) = @_;
+
     # git config --global -l
     # set user.name, user.email, core.editor, merge.tool
 
+    my $config_date = '2011-12-07';
     my %config = qw/core.editor emacs merge.tool kdiff3 deptool.diff difftool/;
     my @pwuid = getpwuid($UID);
     my @gecos = split(/,/o, $pwuid[6]);
@@ -4816,10 +4819,11 @@ sub initConfig {
     $vcs->readConfig(\%config);
     # Define deptool config version by date so that if there turn out to be more things we
     # want to configure, we can update the date and the config can be updated.
-    my $config_date = '2011-11-25';
     if (defined $config{'deptool.config'} && $config{'deptool.config'} eq $config_date) {
-        print "Git configuration up to date ($config_date). To reconfigure, first:\n";
-        print "% git config --global deptool.config reconfig\n\n";
+        if (!$quiet) {
+            print "Git configuration up to date ($config_date). To reconfigure, first:\n";
+            print "% git config --global deptool.config reconfig\n\n";
+        }
         return;
     } elsif (defined $config{'deptool.config'}) {
         print "Git configuration out of date: $config{'deptool.config'} != $config_date.\n";
@@ -4841,7 +4845,7 @@ EOF
     }
     $config{'core.excludesfile'} = $deptool_ignores;
 
-    foreach my $ent (qw/user.email user.name core.editor core.excludesfile merge.tool/) {
+    foreach my $ent (qw/user.email user.name core.editor core.excludesfile merge.tool deptool.diff/) {
         $config{$ent} ||= '';
         print "Enter git configuration for $ent [default=$config{$ent}]: ";
         my $val = <STDIN>;
@@ -5058,6 +5062,7 @@ sub getAllRemotes {
 sub pull {
     my ($this, $options) = @_;
 
+    initConfig(1);
     # To learn about new branches:
     # git fetch origin '+refs/heads/*:refs/remotes/origin/*'
     my $cur_head = $this->getCurrentHead();
