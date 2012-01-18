@@ -83,7 +83,7 @@ errorOutOfDate() {
     exit 1
 }
 
-listOutOfDate() {
+getOutOfDate() {
     cd $HOME/.dotfiles || errorOutOfDate "Missing $HOME/.dotfiles"
     [ -f lintel-source/setup ] || errorOutOfDate "Missing .dotfiles/lintel-source/setup; run $PROJECTS/Lintel/src/dotfiles/setup?"
     OUT_OF_DATE=
@@ -101,29 +101,76 @@ listOutOfDate() {
                 ;;
         esac
     done
+    echo $OUT_OF_DATE
+}
+
+listOutOfDate() {
+    OUT_OF_DATE=`getOutOfDate`
     if [ "$OUT_OF_DATE" = "" ]; then
         exit 0
     else
-        echo "WARNING: .dotfiles out of date for: $OUT_OF_DATE; to fix:"
-        echo "(cd `readlink $HOME/.dotfiles/lintel-source` ; ./setup)" 
+        echo "WARNING: .dotfiles out of date for: $OUT_OF_DATE"
+        echo "to diff: (cd $HOME/.dotfiles ; ./setup --diff)"
+        echo "to fix: (cd `readlink $HOME/.dotfiles/lintel-source` ; ./setup)" 
         exit 1
     fi
 }
 
-if [ "$1" = "--list-out-of-date" ]; then
-    listOutOfDate
-fi
+diffWithSource() {
+    DIFFPROGRAM="$*"
+    if [ -z "$DIFFPROGRAM" ]; then
+        KDIFF3=`which kdiff3 2>/dev/null`
+        if [ -z "$KDIFF3" ]; then
+            DIFFPROGRAM="diff -c"
+        else
+            DIFFPROGRAM="$KDIFF3"
+        fi
+    fi
 
-case $0 in
-    /*) SRCPATH=`dirname $0` ;;
-    *) SRCPATH=`dirname $PWD/$0` ;;
+    OUT_OF_DATE=`getOutOfDate`
+
+    if [ -z "$OUT_OF_DATE" ]; then
+        echo "No files out of date"
+    else
+        cd $HOME/.dotfiles
+        for i in $OUT_OF_DATE; do
+            $DIFFPROGRAM $i lintel-source/$i
+        done
+    fi
+    exit 0
+}
+
+runSetup() {
+    case $0 in
+        /*) SRCPATH=`dirname $0` ;;
+        *) SRCPATH=`dirname $PWD/$0` ;;
+    esac
+
+    SRCPATH=`echo $SRCPATH | sed -e 's/\/\.$//g' -e 's/\/\.\//\//g'`
+
+    case $SRCPATH in 
+        */.dotfiles) linkFromDotfilesToHomedir ;;
+        */Lintel*/src/dotfiles) copyFromLintelToDotfiles && cd $HOME/.dotfiles \
+            && echo "------------------------------" && ./setup ;;
+        *) echo "ERROR: do not know how to operate from $SRCPATH"; exit 1 ;;
+    esac
+    exit 0
+}
+
+help() {
+    echo "Usage: $0 # Setup dotfiles, copying from `dirname $0` or symlinking from $HOME/.dotfiles"
+    echo "  [--list-out-of-date] # list out of date dotfiles"
+    echo "  [--diff [diff-program...]] # compare current and source dotfiles"
+    echo "  [-h | --help] # print this help"
+}
+
+case "$1" in
+    --list-out-of-date) listOutOfDate ;;
+    --diff) shift; diffWithSource "$*" ;;
+    -h|--help) help; exit 0 ;;
+    "") runSetup ;;
+    *) echo "Unknown option '$1'"; help; exit 1;
 esac
 
-SRCPATH=`echo $SRCPATH | sed -e 's/\/\.$//g' -e 's/\/\.\//\//g'`
-
-case $SRCPATH in 
-    */.dotfiles) linkFromDotfilesToHomedir ;;
-    */Lintel*/src/dotfiles) copyFromLintelToDotfiles && cd $HOME/.dotfiles \
-        && echo "------------------------------" && ./setup ;;
-    *) echo "ERROR: do not know how to operate from $SRCPATH"; exit 1 ;;
-esac
+echo "Internal error '$1'"
+exit 1

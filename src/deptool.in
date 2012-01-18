@@ -4966,7 +4966,7 @@ sub tryCommit {
     die "missing $commit_pid status?" unless defined $status{$commit_pid};
     if ($status{$commit_pid} != 0) {
         die "Internal, commit failed, but no outstanding changes?"
-            unless $this->haveUnommittedChanges();
+            unless $this->haveUncommittedChanges();
         # Commit failed, don't adjust the $this->{amend} state
         print "Warning: commit failed, will re-try\n";
         return 0;

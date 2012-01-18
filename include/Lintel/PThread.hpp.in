@@ -32,8 +32,11 @@ extern "C" {
 class PThreadMisc { // should be a namespace if we believe everyone supports those
 public:
     static int getCurrentCPU(bool unknown_ok = false);
-    /// Return the number of CPUs on the current host.  If unknown_ok is true,
-    /// return -1 if we can not figure out the number of CPUs.
+    /// Return the number of CPUs on the current host.  If unknown_ok is true, return -1 if we can
+    /// not figure out the number of CPUs.  You can set the environment variable
+    /// NUMBER_OF_PROCESSORS to specify the number of cpus and override the automatically
+    /// determined number and/or handle the case where the code does not know how to determine the
+    /// cpu count.
     static int getNCpus(bool unknown_ok = false);
 };	   
 
