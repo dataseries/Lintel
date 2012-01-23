@@ -5093,7 +5093,7 @@ sub pull {
 
     if (@branches > 0) {
         # merge remote branch(s) to local
-        main::runCommand(qw/git merge/, @branches);
+        main::runCommand(qw/git merge --log/, @branches);
     } else {
         # TODO-reviewer: die?
         warn "No remote branches for $current_branch";
