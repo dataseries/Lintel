@@ -19,7 +19,7 @@ status_echo -n "zshenv: 1"
 
 PATH=$PATH:/sbin:/usr/sbin:/bin
 UNAMES=`uname -s`
-HOSTNAME=`hostname`
+HOSTNAME=`hostname | sed 's/\\..*$//'`
 
 source_and_status() {
     if [[ -f "$2" ]]; then

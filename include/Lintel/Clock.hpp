@@ -37,7 +37,7 @@ extern "C" {
 };
 #endif
 
-#if defined(__linux__) && defined(__i386__)
+#if (defined(__FreeBSD__) || defined(__linux__)) && defined(__i386__)
 /* don't include <asm/msr.h>, as it fails on some platforms */
 #define rdtscll(val) \
      __asm__ __volatile__("rdtsc" : "=A" (val))

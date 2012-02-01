@@ -1,3 +1,5 @@
+# TODO: extend deptool to report this information using some command.
+
 NOTE: the list of optional dependencies is quite incomplete.
 
 ----------------------------
@@ -6,7 +8,7 @@ Fedora-Core12 (fedora12):
      % yum install -y perl perl-Digest-SHA1 cmake gcc-c++ make boost-devel tar
 
   Lintel via version control required:
-     % yum install -y monotone
+     % yum install -y git
 
   Lintel optional:
      ...
@@ -15,7 +17,7 @@ Fedora-Core12 (fedora12):
 
 Debian-Lenny (debian-5.0):
   Lintel required:
-     % aptitude install perl monotone libdigest-sha1-perl cmake build-essential
+     % aptitude install perl git libdigest-sha1-perl cmake build-essential
      % aptitude install libboost-dev
 
   Lintel optional:
@@ -24,6 +26,27 @@ Debian-Lenny (debian-5.0):
      # lintel-latex-rebuild:
      % aptitude install texlive-latex-base ghostscript
 
+     # mercury-plot
+     % aptitude install gnuplot libio-pty-perl libdata-showtable-perl netpbm
+
+     # lintel-disktool
+     % aptitude install sg3-utils
+  
+     # Lintel::ProcessManager (add support for memory resource limit)
+     % aptitude install libbsd-resource-perl
+
+----------------------------
+
+Debian-Squeeze (debian-6.0):
+  Lintel required:
+     % aptitude install perl git libdigest-sha1-perl cmake build-essential
+     % aptitude install libboost-dev
+
+  Lintel optional:
+     % aptitude install doxygen libxml2-dev
+
+     # lintel-latex-rebuild:
+     % aptitude install texlive-latex-base ghostscript
 
      # mercury-plot
      % aptitude install gnuplot libio-pty-perl libdata-showtable-perl netpbm
@@ -59,3 +82,18 @@ CentOS 5 (centos5)
 
      # Lintel::ProcessManager (add support for memory resource limit)
      yum -y install perl-BSD-Resource.x86_64
+
+----------------------------
+
+FreeBSD 8.2 (freebsd-8.2)
+  Lintel required:
+    pkg_add -r perl cmake boost-libs
+
+  Lintel options:
+     # remove deptool warning
+     pkg_add -r p5-Digest-SHA1
+
+     # deptool git version control
+     pkg_add -r git
+
+

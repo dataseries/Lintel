@@ -22,7 +22,9 @@ fi
 srcdir=$1
 builddir=$2
 installdir=$3
-LOCKFILE=`mktemp`
+[ ! -z "$TMPDIR" ] || TMPDIR=/tmp
+LOCKFILE=`mktemp $TMPDIR/lintel-flock.XXXXXXXX`
+trap "rm $LOCKFILE*" 0
 PERL5LIB=$srcdir:$installdir/share/perl5:$PERL5LIB
 
 export srcdir builddir installdir LOCKFILE PERL5LIB
@@ -174,8 +176,7 @@ rm $LOCKFILE-success-[ab]
 
 ### cleanup
 
-rm $LOCKFILE
+rm $LOCKFILE*
+trap '' 0
 echo "Success."
-
-
 

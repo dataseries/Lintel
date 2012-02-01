@@ -424,50 +424,46 @@ void checkNboundTests() {
 }
 
 void checkLazy() {
-    if (true) {
-	MersenneTwisterRandom mt;
-	cout << "test lazy... seed " << mt.seed_used; cout.flush();
-	int error_mag = mt.randInt(6)+2;
-	int bound_mag = mt.randInt(8)+3;
-	int64_t bound = 1;
-	for (int i=0; i<bound_mag; i++) {
-	    bound *= 10;
-	}
-	bound = static_cast<int64_t>(bound * (mt.randDouble() + .01));
-	double err = 1;
-	for (int i=0; i<error_mag; i++) {
-	    err /= 10;
-	}
+    MersenneTwisterRandom mt(1162194046);
+    cout << "test lazy... seed " << mt.seed_used << "\n";
+    int error_mag = mt.randInt(6)+2;
+    int bound_mag = mt.randInt(8)+3;
+    int64_t bound = 1;
+    for (int i=0; i<bound_mag; i++) {
+        bound *= 10;
+    }
+    bound = static_cast<int64_t>(bound * (mt.randDouble() + .01));
+    double err = 1;
+    for (int i=0; i<error_mag; i++) {
+        err /= 10;
+    }
 
-	StatsQuantile a(err, bound, 10, false);
-	StatsQuantile b(err, bound, 10, true);	
-	cout << "lazy using err " << err << " bound " << bound << endl;
-	bound_mag = 1;
-	int64_t inserted = 0;
-	while (inserted < 1000000 && inserted < bound) {
-	    int limit = mt.randInt(bound_mag)+1;
-	    if (limit + inserted >= bound) {
-		break;
-	    }
-	    for (int i = 0 ; i<limit; i++) {
-		double v = mt.randDouble();
-		a.add(v);
-		b.add(v);
-	    }
-	    cout << "inserted " << limit << endl;
-	    inserted+=limit;
-	    int checked = 0;
-	    for (double i = 0.0; i<=1; i+= mt.randDouble()/100.0) {
-		double avar = a.getQuantile(i);
-		double bvar = b.getQuantile(i);
-		INVARIANT(avar == bvar, format("%f != %f")
-			  % avar % bvar);
-		checked++;
-	    }
-	    cout << checked << " positions checked" << endl;
-	    bound_mag *= 1 + mt.randInt(10);
-	}
-
+    StatsQuantile a(err, bound, 10, false);
+    StatsQuantile b(err, bound, 10, true);	
+    cout << "lazy using err " << err << " bound " << bound << "\n";
+    bound_mag = 1;
+    int64_t inserted = 0;
+    while (inserted < 1000000 && inserted < bound) {
+        int limit = mt.randInt(bound_mag)+1;
+        if (limit + inserted >= bound) {
+            break;
+        }
+        for (int i = 0 ; i<limit; i++) {
+            double v = mt.randDouble();
+            a.add(v);
+            b.add(v);
+        }
+        cout << "inserted " << limit << "\n";
+        inserted+=limit;
+        int checked = 0;
+        for (double i = 0.0; i<=1; i+= mt.randDouble()/100.0) {
+            double avar = a.getQuantile(i);
+            double bvar = b.getQuantile(i);
+            INVARIANT(avar == bvar, format("%.10f: %f != %f") % i % avar % bvar);
+            checked++;
+        }
+        cout << checked << " positions checked" << "\n";
+        bound_mag *= 1 + mt.randInt(10);
     }
 }
 

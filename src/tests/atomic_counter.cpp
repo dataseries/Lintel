@@ -12,7 +12,7 @@ lintel::AtomicCounter correct_count(0);
 int32_t incorrect_count(0);
 
 // Spin barrier -- be wary!
-static volatile int32_t doStart(0);
+static volatile int32_t do_start(0);
 
 
 class AtomicCounterThread : public PThread {
@@ -25,21 +25,29 @@ public:
     
     virtual void *run() {
 	// Spin barrier -- be wary.
-        while (!doStart) {
+        while (!do_start) {
 	    sched_yield();
 	}
+
+        for(int32_t i=0; i < 1000; ++i) {
+            int32_t val = incorrect_count;
+            correct_count.incThenFetch();
+            sched_yield(); // Almost guarantee a failure
+            incorrect_count = val + 1;
+        }
 
 	for (int32_t i=0; i<num_iters; ++i) {
             // Excercise both increment interfaces: fetchThenAdd and
             // fetchThenInc
-	    if (thread_num == 1) {
+	    if (thread_num == 0) {
+                int32_t val = incorrect_count;
 		correct_count.incThenFetch();
-		incorrect_count++;
+                incorrect_count = val + 1;
 	    } else {
 		// Split up the increment operation to vastly increase the
 		// odds of a data race.
 		int32_t val = incorrect_count;
-		correct_count.addThenFetch(thread_num);
+		correct_count.addThenFetch(thread_num+1);
 		val += thread_num;
 		incorrect_count = val;
 	    }
@@ -75,20 +83,16 @@ int main () {
     // benefit since our races are entirely from running threads.
     // on very few cpus, having one extra thread increases our chance of a race
     int32_t num_threads = PThreadMisc::getNCpus(true) + 1;
-    if (num_threads <= 1) {
+    if (num_threads <= 4) {
         num_threads = 4; // should be enough to get some races
     }
     int32_t num_iters = 1000 * 1000; // 1 million chances to screw up.
-    if (num_threads == 1) {
-        num_threads = 2;
-        num_iters = 1000 * 1000; // hope we will get swapped out at a good point
-    }
+
     // Determine "the answer" for final sum.
-    int32_t final_sum =0;
+    int32_t final_sum = 1000 * num_threads; // initial loop with sched_yield
     for(int32_t i=0; i<num_threads; ++i) {
-	final_sum += i;
+	final_sum += (i+1) * num_iters; // each thread adds a different amount
     }
-    final_sum *= num_iters; // "the answer"
     
     std::vector<PThread *> thread_list;
     for(int32_t i=0; i<num_threads; ++i) {
@@ -99,7 +103,7 @@ int main () {
     for(int32_t i=0; i<num_threads; ++i) {
 	thread_list[i]->start();
     }
-    doStart = 1;
+    do_start = 1;
     for(int32_t i=0; i<num_threads; ++i) {
 	thread_list[i]->join();
     }

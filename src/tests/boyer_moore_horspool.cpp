@@ -2,15 +2,12 @@
 #include <Lintel/BoyerMooreHorspool.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 
-// For memmem
-#ifndef _GNU_SOURCE
-#error need gnu source for memmem
-#endif
 #include <string>
 using namespace lintel;
 
 size_t other_impl(const void * hay, size_t hay_len,
 		  const void * needle, size_t needle_len) {
+    // if memmem is missing, then probably missing #define _GNU_SOURCE
     void * res = memmem(hay, hay_len, needle, needle_len);
     char * res_c = reinterpret_cast<char *>(res);
     const char * hay_c = reinterpret_cast<const char *>(hay);

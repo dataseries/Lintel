@@ -403,25 +403,35 @@ string getHostFQDN() {
 #endif
 
 string stringError(int errnum) {
+    static string strerror_failed("strerror failed");
     const size_t buflen = 256;
     char buf[buflen];
 
-#ifdef SYS_POSIX
+#if defined(__FreeBSD__)
+    if (strerror_r(errnum, buf, buflen)) {
+        return strerror_failed;
+    } else {
+        buf[buflen-1] = '\0';
+	return string(buf);
+    }
+#elif defined(SYS_POSIX)
     // Note there are two strerror_r(3). See <string.h> for details.
     char *s = ::strerror_r(errnum, buf, buflen);
     if (s != NULL) {
+        buf[buflen-1] = '\0';
 	return string(s);
     } else {
-	return "(NULL)";
+	return strerror_failed;
     }
-#endif
-#ifdef SYS_NT
+#elif defined(SYS_NT)
     if (strerror_s(buf, buflen, errnum)) {
-	return "(NULL)";
-    }
-    else {
+	return strerror_failed;
+    } else {
+        buf[buflen-1] = '\0';
 	return string(buf);
     }
+#else
+#    error "Unable to calculate stringError"    
 #endif
 }
 
