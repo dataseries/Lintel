@@ -73,8 +73,7 @@ public:
 	checkQuantile(tmp, "duplicate-backward-interleave");
 	tmp.reset();
 
-	uint32_t seed = lintel::BobJenkinsHashMix3(getpid(), Clock::cycleCounter() & 0xFFFFFFFF,
-						   Clock::todTfrac() >> 32);
+	uint32_t seed = lintel::BobJenkinsHashMix3(getpid(), getuid(), Clock::todTfrac() >> 32);
 	cout << format("quantile-check seeding with %d\n") % seed;
 	MersenneTwisterRandom mt(seed);
 
