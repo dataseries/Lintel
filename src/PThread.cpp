@@ -217,7 +217,7 @@ PThreadScopedOnlyMutex::PThreadScopedOnlyMutex(bool errorcheck)
 	SINVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
     }
 #endif
-#if __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
     if (errorcheck) {
         SINVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
     }
@@ -284,3 +284,30 @@ pthread_t PThreadNoSignals::start() {
 void *PThreadFunction::run() {
     return fn();
 }
+
+
+#ifdef __OpenBSD__
+int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abs_timeout) {
+    int ret;
+    struct timespec now, to_sleep;
+
+    to_sleep.tv_sec = 0;
+    while ((ret = pthread_mutex_trylock(mutex)) == EBUSY) {
+        CHECKED(clock_gettime(CLOCK_REALTIME, &now) == 0, "clock_gettime failed");
+        if (now.tv_sec > abs_timeout->tv_sec ||
+            (now.tv_sec == abs_timeout->tv_sec && now.tv_nsec >= abs_timeout->tv_nsec)) {
+            return ETIMEDOUT;
+        }
+        to_sleep.tv_nsec = abs_timeout->tv_nsec - now.tv_nsec;
+        if (to_sleep.tv_nsec < 0) {
+            to_sleep.tv_nsec += 1000 * 1000 * 1000;
+        }
+        // sleep at most 10ms.
+        if (to_sleep.tv_nsec > 10 * 1000 * 1000) {
+            to_sleep.tv_nsec = 10 * 1000 * 1000;
+        }
+        nanosleep(&to_sleep, NULL);
+    }
+    return ret;
+}
+#endif

@@ -3709,6 +3709,7 @@ sub buildRoot {
 sub operatingSystem {
     $Cache::operating_system ||= $ENV{BUILD_OS};
     unless(defined $Cache::operating_system) {
+        $Cache::operating_system = "unknown";
 	if (-f "/etc/lsb-release") { # need to check this first, Ubuntu has /etc/debian_version
             my $lsbver = new FileHandle("/etc/lsb-release")
                 or die "Can't open /etc/debian_version for read: $!";
@@ -3778,21 +3779,31 @@ sub operatingSystem {
                 s/\W/_/go; s/\s/_/go;
 		$Cache::operating_system = "suse-unknown-$_";
 	    }
-        } elsif (-f "/etc/freebsd-update.conf") {
+        }
+
+        if ($Cache::operating_system =~ /^unknown/o) {
             my $uname = new FileHandle("uname -rs |")
                 or die "Can't run uname -rs for read: $!";
             $_ = <$uname>;
             chomp;
             if (/^FreeBSD (\d+\.\d+)-RELEASE$/o) {
                 $Cache::operating_system = "freebsd-$1";
-            } else {
+            } elsif (/^FreeBSD\s/o) {
                 s/^FreeBSD\s+//o;
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "freebsd-unknown-$_";
+            } elsif (/^OpenBSD (\d+\.\d+)$/o) {
+                $Cache::operating_system = "openbsd-$1";
+            } elsif (/^OpenBSD\s/o) {
+                s/^OpenBSD\s+//o;
+                s/\W/_/go; s/\s/_/go;
+                $Cache::operating_system = "openbsd-unknown-$_";
+            } elsif (/^(\w+)\s+(\S.*)$/o) {
+                s/\W/_/go; s/\s/_/go;
+                $Cache::operating_system = "unknown-$_";
             }
-        } else {
-            $Cache::operating_system = "unknown";
         }
+
         if ($Cache::operating_system =~ /unknown/o) {
 	    if (defined $ENV{OS}) {
 		print STDERR "Unrecognized operating system, overriding with deprecated env var OS\n";
@@ -3855,13 +3866,26 @@ sub buildOpt {
 }
 
 sub makeParallelism {
-    my $fh = new FileHandle("/proc/cpuinfo");
+    if (defined $ENV{MAKE_PARALLELISM}) {
+        return $ENV{MAKE_PARALLELISM};
+    }
     my $nprocessors = 0;
-    if ($fh) {
+    my $fh = new FileHandle "/proc/cpuinfo";
+    if ($fh) { # linux
         while(<$fh>) {
             ++$nprocessors if /^processor\s+:\s+\d+$/o;
         }
         close($fh);
+    }
+    if ($nprocessors == 0) {
+        $fh = new FileHandle "sysctl hw.ncpu 2>/dev/null |"; # freebsd
+        while (<$fh>) {
+            if (/^hw\.ncpu: (\d+)$/o) {
+                $nprocessors = $1;
+            } elsif (/^hw\.ncpu=(\d+)$/o) {
+                $nprocessors = $1;
+            }
+        }
     }
     if ($nprocessors == 0) {
         print "Warning: unable to find \# processors in /proc/cpuinfo\n"
@@ -4915,7 +4939,7 @@ sub readConfig {
         my $fh = new FileHandle "git config --global -l |";
         while (<$fh>) {
             chomp;
-            die "? '$_'" unless /^([\w\.]+)=(.+)$/o;
+            die "? '$_'" unless /^([\w\.]+)=(.*)$/o;
             $config->{$1} = $2;
         }
     }

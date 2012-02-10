@@ -96,7 +96,7 @@ string escapeUnprintable_slow(const string &a) {
     string ret;
     for(size_t i=0; i<a.size(); ++i) {
         uint32_t c = static_cast<unsigned char>(a[i]);
-	if (!isprint(c) || c=='%') {
+	if (!(isprint(c) && isascii(c)) || c=='%') {
             if (c=='%') {
                 ret.append("%%");
             } else {
@@ -204,7 +204,10 @@ void test_hexstring() {
     SINVARIANT(!ishexstring(decaf) && !ishexstring(helloworld) && !ishexstring(decafbadraw));
 
     SINVARIANT(decafbad == hexstring(decafbadraw));
-    SINVARIANT(hexstring(maybehexstring(maybehex2raw(decafbad))) == decafbadhex);
+    INVARIANT(hexstring(maybehexstring(maybehex2raw(decafbad))) == decafbadhex,
+              format("%s -> %s -> %s != %s") % maybehex2raw(decafbad) 
+              % maybehexstring(maybehex2raw(decafbad))
+              % hexstring(maybehexstring(maybehex2raw(decafbad))) % decafbadhex);
     
     SINVARIANT(hexstring(helloworld)==helloworldhex && hex2raw(helloworldhex)==helloworld);
 }

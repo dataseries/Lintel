@@ -155,6 +155,16 @@ ADD_LIBRARY(Lintel ${LIBRARY_TYPE} ${LIBLINTEL_SOURCES})
 SET_TARGET_PROPERTIES(Lintel 
     PROPERTIES VERSION ${LINTEL_VERSION} SOVERSION ${LINTEL_ABI_VERSION})
 
+IF ("${HOST_TYPE}" STREQUAL "OpenBSD")
+    # OpenBSD does not have stubs for the lock/unlock operations that link when you don't
+    # enable threading.  Therefore since a bit of lintel relies on those operations we have
+    # to always link with threads.
+    IF (NOT THREADS_ENABLED)
+        FATAL_ERROR("Can not build on OpenBSD without threads")
+    ENDIF (NOT THREADS_ENABLED)
+    TARGET_LINK_LIBRARIES(Lintel ${CMAKE_THREAD_LIBS_INIT})
+ENDIF ("${HOST_TYPE}" STREQUAL "OpenBSD")
+
 ################################## CONDITIONAL LIBRARY
 
 IF(LIBXML2_ENABLED)

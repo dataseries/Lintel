@@ -46,14 +46,14 @@ void stringHTTests() {
 
     for(unsigned i = 0; i < 1000; ++i) {
 	char buf[30];
-	sprintf(buf,"%d", i);
+	snprintf(buf,30,"%d", i);
 	
 	test[string(buf)] = i;
     }
 
     for(unsigned i = 0; i < 1000; ++i) {
 	char buf[30];
-	sprintf(buf,"%d", i);
+	snprintf(buf,30,"%d", i);
 	
 	SINVARIANT(test[string(buf)] == i);
     }

@@ -16,22 +16,19 @@ SimpleMutex::SimpleMutex()
     pthread_mutex_init(&m, NULL);
 }
 
-SimpleMutex::~SimpleMutex()
-{ 
+SimpleMutex::~SimpleMutex() { 
     int ret = pthread_mutex_destroy(&m); 
     INVARIANT(ret == 0, boost::format("pthread_mutex_destroy failed: %s")
 	      % strerror(ret));
 }
 
-void SimpleMutex::lock() 
-{
+void SimpleMutex::lock() {
     int ret = pthread_mutex_lock(&m);
     INVARIANT(ret == 0, boost::format("pthread_mutex_lock failed: %s")
 	      % strerror(ret));
 }
 
-void SimpleMutex::unlock() 
-{
+void SimpleMutex::unlock() {
     int ret = pthread_mutex_unlock(&m);
     INVARIANT(ret == 0, boost::format("pthread_mutex_unlock failed: %s")
 	      % strerror(ret));

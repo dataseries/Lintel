@@ -166,7 +166,9 @@ string maybehexstring(const void *_data, unsigned datasize) {
 
 string maybehexstring(const string &a) {
     for(unsigned int i=0;i<a.size();++i) {
-	if (!isprint(a[i])) {
+        if (isprint(a[i]) && isascii(a[i])) {
+            // ok, openbsd considers 0xbf printable, but not ascii
+        } else {
 	    return hexstring(a);
 	}
     }
@@ -175,7 +177,7 @@ string maybehexstring(const string &a) {
 
 namespace {
     inline bool eu_escape(char c) {
-        return !isprint(c) || c == '%';
+        return !(isprint(c) && isascii(c)) || c == '%';
     }
 }
 
@@ -407,7 +409,8 @@ string stringError(int errnum) {
     const size_t buflen = 256;
     char buf[buflen];
 
-#if defined(__FreeBSD__)
+    // TODO: do the cmake compile time check to decide on strerror_r interface
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
     if (strerror_r(errnum, buf, buflen)) {
         return strerror_failed;
     } else {

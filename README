@@ -1,55 +1,55 @@
 IMPORTANT INFORMATION
 
-This package is referred to as Lintel.  It originates from the Storage
-Systems Department (SSD, or SSP) of Hewlett-Packard Laboratories, Palo
-Alto, CA 94304.  IT IS PROVIDED TO YOU SOLELY UNDER THE TERMS OF THE
-AGREEMENTS DETAILED IN THE COPYING FILE.  If you do not agree to any of 
-these terms, you must delete this software, and any copies you may have 
-made of it.
+The Lintel package is a general utility package, e.g. data-structures,
+algorithms, tools, etc.  Individually none of the pieces are large enough to be
+worth distributing separately; combined they make a useful collection of tools
+for development.
 
+The Lintel package is open source under a BSD License, the full license terms
+are in the file COPYING. Please send bug reports, requests for improvements,
+and general discussion to lintel-users@lists.sourceforge.net.
 
-DEFECT REPORTS
+INSTALLING BINARY PACKAGES / COMPILING FROM SOURCE
 
-Please send bug reports software@cello.hpl.hp.com.  Please note that
-we cannot help you debug your installation, software setup, or
-C++ knowledge.
+You can use Lintel either by installing a binary package or by compiling it
+from source.  If you compile from source you can either get the release source
+files that are the same version as the binary packages, or you can get the
+source from version control which will give you a more current but less tested
+version of the source code.  To build from source you may need to install
+required packages and may want to install optional ones.  doc/dependencies.txt
+will show dependencies for some standard operating systems.
 
-In return, we would greatly appreciate any bug fixes or enhancements -
-or even simply hearing about how you are using the package.
+Longer and more detailed/precice versions of these instructions are available
+at: http://tesla.hpl.hp.com/opensource/
 
-PREREQUISITES
+1) Installing binary packages
+   # Download the repository signing key
+   wget http://tesla.hpl.hp.com/opensource/repositories/signing-key-latest.gpg
+   # Install the repository signing key
+   apt-key add filename # DEB
+   cp filename /etc/pki/rpm-gpg/tesla-opensource-key # RPM
+   # Pick your repository from http://tesla.hpl.hp.com/opensource/repositories
+   # and add it to /etc/apt/sources.list.d or /etc/yum.repos.d
+   $EDITOR filename
+   # Install the packages
+   apt-get install liblintel-dev # DEB
+   yum install Lintel-devel # RPM
 
-libboost (http://www.boost.org/), 1.33.1 or greater has been tested  
-  On debian/ubuntu: aptitude install libboost-dev libboost-signals-dev
-  On fedora/rhel: yum install boost-devel
+2) Installing from the tar source file releases
+   # Download the build tool
+   cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
+   # Download and unpack the sources
+   perl deptool-bootstrap tarinit http://tesla.hpl.hp.com/opensource/sources/latest-release
+   # Build, install (-t = and test) the programs
+   cd ~/projects/DataSeries && perl ~/deptool-bootstrap build -t
 
-BUILDING
-
-1a) Get source code (via version control, inside HP only):
-   [ -d ~/.monotone ] || mkdir ~/.monotone
-   mtn -d ~/.monotone/ssd.db db init
-   mtn -d ~/.monotone/ssd.db pull usi.hpl.hp.com ssd.hpl.hp.com/Lintel\*
-   [ -d ~/projects ] || mkdir ~/projects
-   cd ~/projects
-   mtn -d ~/.monotone/ssd.db co -b ssd.hpl.hp.com/Lintel Lintel
-   cd Lintel
-   # monotone intro: https://twiki.hpl.hp.com/bin/view/StorageSystems/MonotoneIntro
-
-1b) Get source code (via tarball, from anywhere):
-   [ -d ~/projects ] || mkdir ~/projects
-   cd ~/projects
-   # visit http://tesla.hpl.hp.com/opensource/ to find the most recent version
-   wget http://tesla.hpl.hp.com/opensource/Lintel-2007-11-07.tar.bz2
-   bunzip2 -c < Lintel-2007-11-07.tar.bz2 | tar xvvf -
-   mv Lintel-2007-11-07 Lintel
-
-2) configure the package:
-   mkdir -p ~/build/optimize/Lintel
-   cd ~/build/optimize/Lintel
-   ccmake [-DCMAKE_INSTALL_PREFIX=<install-prefix>] ~/projects/Lintel
-   (we use an install prefix like ~/build/optimize)
-
-3) compile and install the package:
-   cd ~/build/optimize/Lintel:
-   make && make test && make install
+3) Installing from version control
+   # Download the build tool
+   cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
+   # Initialize the source repository (leave off the server option inside HPL)
+   perl deptool-bootstrap init --server=github.com eric-anderson/Lintel eric-anderson/DataSeries
+   # Checkout the source code
+   perl deptool-bootstrap checkout DataSeries
+   # Build, install (-t = and test) the programs
+   cd ~/projects/DataSeries && perl ~/deptool-bootstrap build -t
 

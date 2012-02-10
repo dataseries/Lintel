@@ -1,5 +1,5 @@
 #!/bin/sh
-set -e
+set -e -x
 
 ./testutil >testutil.out 2>&1 || true
 
@@ -11,6 +11,10 @@ cat >testutil.good <<EOF
 **** Failed expression: found
 **** Details: unexpected error message 'expected to fail'
 EOF
+
+if [ "`uname -s`" = OpenBSD ]; then
+    echo "Abort trap " >>testutil.good
+fi
 
 cmp testutil.good testutil.check
 rm testutil.out testutil.check testutil.good
