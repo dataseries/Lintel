@@ -15,7 +15,7 @@
     typedef _off64_t off64_t;
 #endif
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
     typedef off_t off64_t;
 #   define O_LARGEFILE 0
 #endif

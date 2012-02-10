@@ -1,3 +1,5 @@
+STRING(REGEX REPLACE "-.+$" "" LINTEL_SYSTEM_TYPE ${CMAKE_SYSTEM})
+
 MACRO(LINTEL_CONFIG_FILE file_name)
 #    MESSAGE("${file_name}: substitute @vars")
     CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${file_name}.in
