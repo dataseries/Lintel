@@ -191,6 +191,10 @@ public:
 	return hashtable.size();
     }
 
+    size_t capacity() const {
+        return hashtable.capacity();
+    }
+
     bool empty() const {
 	return hashtable.empty();
     }

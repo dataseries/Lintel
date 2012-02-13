@@ -166,7 +166,9 @@ string maybehexstring(const void *_data, unsigned datasize) {
 
 string maybehexstring(const string &a) {
     for(unsigned int i=0;i<a.size();++i) {
-	if (!isprint(a[i])) {
+        if (isprint(a[i]) && isascii(a[i])) {
+            // ok, openbsd considers 0xbf printable, but not ascii
+        } else {
 	    return hexstring(a);
 	}
     }
@@ -175,7 +177,7 @@ string maybehexstring(const string &a) {
 
 namespace {
     inline bool eu_escape(char c) {
-        return !isprint(c) || c == '%';
+        return !(isprint(c) && isascii(c)) || c == '%';
     }
 }
 
@@ -403,25 +405,36 @@ string getHostFQDN() {
 #endif
 
 string stringError(int errnum) {
+    static string strerror_failed("strerror failed");
     const size_t buflen = 256;
     char buf[buflen];
 
-#ifdef SYS_POSIX
+    // TODO: do the cmake compile time check to decide on strerror_r interface
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+    if (strerror_r(errnum, buf, buflen)) {
+        return strerror_failed;
+    } else {
+        buf[buflen-1] = '\0';
+	return string(buf);
+    }
+#elif defined(SYS_POSIX)
     // Note there are two strerror_r(3). See <string.h> for details.
     char *s = ::strerror_r(errnum, buf, buflen);
     if (s != NULL) {
+        buf[buflen-1] = '\0';
 	return string(s);
     } else {
-	return "(NULL)";
+	return strerror_failed;
     }
-#endif
-#ifdef SYS_NT
+#elif defined(SYS_NT)
     if (strerror_s(buf, buflen, errnum)) {
-	return "(NULL)";
-    }
-    else {
+	return strerror_failed;
+    } else {
+        buf[buflen-1] = '\0';
 	return string(buf);
     }
+#else
+#    error "Unable to calculate stringError"    
 #endif
 }
 

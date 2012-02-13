@@ -18,14 +18,16 @@
 #include <vector>
 #include <Lintel/ByteBuffer.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
-#define LINTEL_UNSTABLE_PROCESS_STATISTICS_NOWARN
-#include <Lintel/unstable/ProcessStatistics.hpp>
+#if WITH_PROCESS_STATISTICS
+#    define LINTEL_UNSTABLE_PROCESS_STATISTICS_NOWARN
+#    include <Lintel/unstable/ProcessStatistics.hpp>
+using lintel::ProcessStatistics;
+using namespace lintel::process_statistics;
+#endif
 
 using namespace std;
 using boost::format;
 using lintel::ByteBuffer;
-using lintel::ProcessStatistics;
-using namespace lintel::process_statistics;
 
 const size_t page_size = 4096;
 void basicChecks(ByteBuffer &buf) {
@@ -381,6 +383,7 @@ void allowCOWOnZeroSizeTest() {
     myList.at(0).append("0123456789");
 }
 
+#if WITH_PROCESS_STATISTICS
 void testMemUsage(ByteBuffer & buffer, size_t initial_size, size_t initial_resident) {
     ProcessStatistics proc_stats;
     const size_t buffer_size = 10 * 1000 * page_size;
@@ -448,6 +451,7 @@ void detachSecondTest() {
     SINVARIANT(fabs(proc_stats.getCached(AddressSize) - initial_size) < 100*page_size);
     SINVARIANT(fabs(proc_stats.get(ResidentSize) - initial_resident) < 100*page_size);
 }
+#endif
 
 int main(int argc, char *argv[]) {
     ByteBuffer buf(true);
@@ -461,8 +465,11 @@ int main(int argc, char *argv[]) {
     overloadOutOperatorTests();
     unextendTest();
     allowCOWOnZeroSizeTest(); 
+
+#if WITH_PROCESS_STATISTICS
     detachFirstTest();
     detachSecondTest();
+#endif
 
     return 0;
 }

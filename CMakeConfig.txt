@@ -16,14 +16,23 @@ IF(NOT CMAKE_BUILD_TYPE)
     SET(CMAKE_BUILD_TYPE RelWithDebInfo)
 ENDIF(NOT CMAKE_BUILD_TYPE)
 
-#### Windows vs. Linux stuff
+#### OS specific bits
 
-IF (WIN32)
+IF(WIN32)
     ADD_DEFINITIONS(/DSYS_NT)
     INCLUDE_DIRECTORIES(${Lintel_SOURCE_DIR}/include/Lintel/windows)
-ELSE (WIN32)
+ELSE(WIN32)
     ADD_DEFINITIONS(-DSYS_POSIX)
-ENDIF (WIN32)
+ENDIF(WIN32)
+
+IF("${LINTEL_SYSTEM_TYPE}" STREQUAL "Linux")
+    SET(PROCESS_STATISTICS_DEFAULT On)
+ELSE("${LINTEL_SYSTEM_TYPE}" STREQUAL "Linux")
+    SET(PROCESS_STATISTICS_DEFAULT Off)
+ENDIF("${LINTEL_SYSTEM_TYPE}" STREQUAL "Linux")
+
+OPTION(WITH_PROCESS_STATISTICS "Build the process-statistics module in lintel"
+                                ${PROCESS_STATISTICS_DEFAULT})
 
 ##### Required bits
 
@@ -119,13 +128,11 @@ IF(WITH_THREADS AND THREADS_ENABLED)
         SET(PTHREAD_ISLOCKED_QUIET ON)
     ELSE(HAS_PTHREAD_ISLOCKED)
         MESSAGE("Determining expression for PThreadMutex::isLocked()")
-        EXECUTE_PROCESS(COMMAND uname OUTPUT_VARIABLE HOST_TYPE
-                        OUTPUT_STRIP_TRAILING_WHITESPACE)
         IF(0)
-        ELSEIF("${HOST_TYPE}" STREQUAL "HP-UX")
+        ELSEIF("${LINTEL_SYSTEM_TYPE}" STREQUAL "HP-UX")
             SET(TMP_HAS_PTHREAD_ISLOCKED 1)
     	    SET(TMP_PTHREAD_ISLOCKED_EXPR "((char *)&m)[67] == 0")
-        ELSEIF("${HOST_TYPE}" STREQUAL "Linux")
+        ELSEIF("${LINTEL_SYSTEM_TYPE}" STREQUAL "Linux")
 	    LINTEL_TRY_RUN(LINUX_ISLOCKED_1 config/linux-islocked-1.cpp
 	                   CMAKE_FLAGS -DLINK_LIBRARIES=-lpthread)
 	    LINTEL_TRY_RUN(LINUX_ISLOCKED_2 config/linux-islocked-2.cpp
@@ -165,6 +172,16 @@ IF(WITH_THREADS AND THREADS_ENABLED)
     CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/include/Lintel/PThread.hpp.in
                    ${CMAKE_CURRENT_BINARY_DIR}/include/Lintel/PThread.hpp
                    @ONLY)
+
+    # Eric Anderson has no idea why the below seems to be needed, but without it, tests like
+    # simplemutex,lintel-perl fail even though libLintel and simplemutex are both build with the
+    # -pthread option that is specified by the FindThreads.cmake module.
+
+    IF ("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
+        FIND_LIBRARY(OPENBSD_PTHREAD pthread)
+        SET(CMAKE_THREAD_LIBS_INIT ${CMAKE_THREAD_LIBS_INIT} ${OPENBSD_PTHREAD})
+    ENDIF ("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
+
 ENDIF(WITH_THREADS AND THREADS_ENABLED)
 
 ### LibXML2
@@ -235,3 +252,4 @@ ENDIF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
 
 # TODO: if we are forced onto program_options-mt, then we should really be
 # putting that into LintelPThread since we just forced thread linking.
+

@@ -5,6 +5,10 @@
 #
 # cmake rules for the src/tests directory
 
+IF(WITH_PROCESS_STATISTICS)
+    ADD_DEFINITIONS(-DWITH_PROCESS_STATISTICS)
+ENDIF(WITH_PROCESS_STATISTICS)
+
 ################################## MACROS
 
 MACRO(LINTEL_ENVTEST testname)
@@ -42,6 +46,7 @@ LINTEL_SIMPLE_TEST(byte_buffer)
 LINTEL_SIMPLE_TEST(boyer_moore_horspool)
 LINTEL_SIMPLE_TEST(stlutility)
 LINTEL_SIMPLE_TEST(base64)
+LINTEL_SIMPLE_TEST(interpolation-search)
 
 ################################## SPECIAL TEST PROGRAMS
 
@@ -63,8 +68,6 @@ ENDIF(LINTEL_DBI_ENABLED)
 
 
 ADD_TEST(byte_buffer byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
-
-LINTEL_SIMPLE_TEST(process_statistics)
 
 ################################## CONDITIONAL BITS
 
@@ -94,6 +97,10 @@ ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
 IF(MERCURY_PLOT_ENABLED)
     ADD_TEST(mercury-plot ${CMAKE_CURRENT_SOURCE_DIR}/mercury-plot.sh ${Lintel_SOURCE_DIR}/src)
 ENDIF(MERCURY_PLOT_ENABLED)
+
+IF(WITH_PROCESS_STATISTICS)
+    LINTEL_SIMPLE_TEST(process_statistics)
+ENDIF(WITH_PROCESS_STATISTICS)
 
 ################################### LONGER TESTS
 

@@ -193,10 +193,14 @@ if [[ -z "$CCACHE_DIR" && -w /var/cache/ccache && -d /var/cache/ccache ]]; then
    export CCACHE_UMASK=002
 fi
 
-HOST_IP=`ifconfig eth0 | grep 'inet addr' | sed -e 's/^.*addr://' -e 's/ .*$//'`
-if [[ -z "$HOST_IP" ]]; then
-        HOST_IP=`ifconfig bond0 2>/dev/null | grep 'inet addr' | sed -e 's/^.*addr://' -e 's/ .*$//'`
+DEVICE=`cat /tmp/.network.device 2>/dev/null`
+if [[ "$DEVICE" != "" ]]; then
+    HOST_IP=`ifconfig $DEVICE 2>/dev/null | grep Bcast | awk '{print $2}' | sed 's/addr://'`
+else
+    HOST_IP=`ifconfig eth0 2>/dev/null | grep 'inet addr' | sed -e 's/^.*addr://' -e 's/ .*$//'`
+    [[ -z "$HOST_IP" ]] && HOST_IP=`ifconfig bond0 2>/dev/null | grep 'inet addr' | sed -e 's/^.*addr://' -e 's/ .*$//'`
 fi
+[[ -z "$HOST_IP" ]] && HOST_IP=`hostname -i 2>/dev/null`
         
 case "$HOST_IP" in
     15.184.*) MTN_SERVER=15.184.3.7

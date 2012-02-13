@@ -92,6 +92,10 @@ public:
 	return hashtable.size();
     }
 
+    size_t capacity() const {
+        return hashtable.capacity();
+    }
+
     void reserve(unsigned expected_entries) {
 	hashtable.reserve(expected_entries);
     }

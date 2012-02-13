@@ -17,6 +17,7 @@ SET(INCLUDE_FILES
 	DebugFlag.hpp
 	Deque.hpp
 	Double.hpp
+        FileUtil.hpp
 	HashFns.hpp
 	HashMap.hpp
 	HashTable.hpp
@@ -48,6 +49,7 @@ SET(INCLUDE_FILES
 	StringUtil.hpp
 	TestUtil.hpp
 	Tuples.hpp
+        TypeCompat.hpp
 )
 
 ################################## CONDITIONAL BITS

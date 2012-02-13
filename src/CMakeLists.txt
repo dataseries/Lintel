@@ -63,7 +63,6 @@ SET(LIBLINTEL_SOURCES
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
 	${LIBLINTEL_THREAD_SOURCES}
-	unstable/ProcessStatistics.cpp
 )
 
 SET(LINTEL_FEATURES boost)
@@ -145,11 +144,26 @@ IF(PERL_ENABLED)
     LIST(APPEND LINTEL_FEATURES perl)
 ENDIF(PERL_ENABLED)
 
+IF(WITH_PROCESS_STATISTICS)
+    LIST(APPEND LINTEL_FEATURES process-statistics)
+    LIST(APPEND LIBLINTEL_SOURCES unstable/ProcessStatistics.cpp)
+ENDIF(WITH_PROCESS_STATISTICS)
+
 ################################## LIBRARY
 
 ADD_LIBRARY(Lintel ${LIBRARY_TYPE} ${LIBLINTEL_SOURCES})
 SET_TARGET_PROPERTIES(Lintel 
     PROPERTIES VERSION ${LINTEL_VERSION} SOVERSION ${LINTEL_ABI_VERSION})
+
+IF ("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
+    # OpenBSD does not have stubs for the lock/unlock operations that link when you don't
+    # enable threading.  Therefore since a bit of lintel relies on those operations we have
+    # to always link with threads.
+    IF (NOT THREADS_ENABLED)
+        FATAL_ERROR("Can not build on OpenBSD without threads")
+    ENDIF (NOT THREADS_ENABLED)
+    TARGET_LINK_LIBRARIES(Lintel ${CMAKE_THREAD_LIBS_INIT})
+ENDIF ("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
 
 ################################## CONDITIONAL LIBRARY
 

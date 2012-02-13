@@ -1,3 +1,10 @@
+STRING(REGEX REPLACE "-.+$" "" LINTEL_SYSTEM_TYPE ${CMAKE_SYSTEM})
+
+# Default of ".so" is wrong, OpenBSD libraries (at least on 5.0) always have the .so.#.#
+IF("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
+    LIST(APPEND CMAKE_EXTRA_SHARED_LIBRARY_SUFFIXES .so.[0-9]+.[0-9]+)
+ENDIF("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
+
 MACRO(LINTEL_CONFIG_FILE file_name)
 #    MESSAGE("${file_name}: substitute @vars")
     CONFIGURE_FILE(${CMAKE_CURRENT_SOURCE_DIR}/${file_name}.in

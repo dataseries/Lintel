@@ -131,7 +131,7 @@ StatsQuantile::StatsQuantile(double _quantile_error, int64_t in_nbound, int _pri
 // fake Nbound, big enough for tests
 StatsQuantile::StatsQuantile(const string &,
 			     int _nbuffers, int _buffer_size, int _print_nrange)
-    : quantile_error(Double::NaN), Nbound(5000000), print_nrange(_print_nrange)
+    : quantile_error(Double::NaN), Nbound(5000000), print_nrange(_print_nrange), lazy(true)
 {
     init(_nbuffers, _buffer_size);
 }
@@ -208,9 +208,6 @@ void StatsQuantile::reset() {
 void StatsQuantile::addQuantile(const double value) {
     if (cur_buffer_pos >= buffer_size) {
 	cur_buffer += 1;
-	if (lazy && all_buffers[cur_buffer] == NULL) {
-	    all_buffers[cur_buffer] = new double[buffer_size];
-	}
 	cur_buffer_pos = 0;
 	if (cur_buffer == nbuffers) {
 	    collapse();
@@ -222,6 +219,10 @@ void StatsQuantile::addQuantile(const double value) {
 		      doubleOrder());
 	    buffer_sorted[cur_buffer-1] = true;
 #endif
+	}
+        SINVARIANT(cur_buffer < nbuffers);
+	if (lazy && all_buffers[cur_buffer] == NULL) {
+	    all_buffers[cur_buffer] = new double[buffer_size];
 	}
 	buffer_weight[cur_buffer] = 1;
 	buffer_level[cur_buffer] = 0;

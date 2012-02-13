@@ -12,6 +12,10 @@
 
 #include <iostream>
 
+#ifdef __FreeBSD__
+#include <sys/types.h>
+#include <sys/sysctl.h>
+#endif
 
 #include <Lintel/PThread.hpp>
 #include <Lintel/SimpleMutex.hpp>
@@ -46,14 +50,15 @@ int PThreadMisc::getCurrentCPU(bool unknown_ok) {
 
 int PThreadMisc::getNCpus(bool unknown_ok) {
     static SimpleMutex m;
-    static unsigned nprocs;
+    static unsigned cache_ncpus;
 
     SimpleScopedLock lock(m);
-    if (nprocs == 0) {
+    // http://stackoverflow.com/questions/150355/programmatically-find-the-number-of-cores-on-a-machine
+    if (cache_ncpus == 0) {
 	// automatically set on windows, and hence cygwin.
         if (const char* result = getenv("NUMBER_OF_PROCESSORS")) {
-            nprocs = stringToInteger<uint32_t>(result);
-	    INVARIANT(nprocs > 0, "NUMBER_OF_PROCESSORS must be > 0");
+            cache_ncpus = stringToInteger<uint32_t>(result);
+	    INVARIANT(cache_ncpus > 0, "NUMBER_OF_PROCESSORS must be > 0");
 #ifdef __linux__
 	} else if (1) {
 	    ifstream infile("/proc/cpuinfo");
@@ -65,10 +70,36 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
 	    while(!infile.eof()) {
 		getline(infile, line);
 		if (prefixequal(line,processor)) {
-		    ++nprocs;
+		    ++cache_ncpus;
 		}
 	    }
-	    INVARIANT(nprocs > 0, "no processors found in /proc/cpuinfo");
+	    INVARIANT(cache_ncpus > 0, "no processors found in /proc/cpuinfo");
+#endif
+#ifdef __FreeBSD__
+        } else if (1) {
+            int name[4];
+            int ncpus = 0;
+            size_t length = sizeof(ncpus); 
+
+            name[0] = CTL_HW;
+#if defined HW_AVAILCPU            
+            name[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
+
+            /* get the number of CPUs from the system */
+            CHECKED(sysctl(name, 2, &ncpus, &length, NULL, 0) == 0, "sysctl failed");
+            SINVARIANT(length == sizeof(ncpus));
+#endif
+            if (ncpus < 1) {
+                name[1] = HW_NCPU;
+                CHECKED(sysctl(name, 2, &ncpus, &length, NULL, 0) == 0, "sysctl failed");
+                SINVARIANT(length == sizeof(ncpus));
+            }
+
+            if (ncpus < 1) {
+                FATAL_ERROR("Can not get number of CPUS on FreeBSD via sysctl");
+            }
+
+            cache_ncpus = ncpus;
 #endif
 	} else {
 	    INVARIANT(unknown_ok, "don't know how to get the number of CPUs;"
@@ -77,8 +108,8 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
 	    return -1;
 	}
     }
-    INVARIANT(nprocs > 0, "huh");
-    return nprocs;
+    INVARIANT(cache_ncpus > 0, "huh");
+    return cache_ncpus;
 }
 
 PThread::PThread() : thread_live(false) {
@@ -178,14 +209,17 @@ PThreadScopedOnlyMutex::PThreadScopedOnlyMutex(bool errorcheck)
     SINVARIANT(pthread_mutexattr_init(&attr)==0);
 #if __linux__
     if (errorcheck) {
-	SINVARIANT(pthread_mutexattr_setkind_np
-		   (&attr,PTHREAD_MUTEX_ERRORCHECK_NP)==0);
+	SINVARIANT(pthread_mutexattr_setkind_np(&attr,PTHREAD_MUTEX_ERRORCHECK_NP)==0);
     }
 #endif
 #if HPUX_ACC
     if (errorcheck) {
-	SINVARIANT(pthread_mutexattr_settype
-		   (&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
+	SINVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
+    }
+#endif
+#if defined(__FreeBSD__) || defined(__OpenBSD__)
+    if (errorcheck) {
+        SINVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
     }
 #endif
     SINVARIANT(pthread_mutex_init(&m,&attr)==0);
@@ -250,3 +284,30 @@ pthread_t PThreadNoSignals::start() {
 void *PThreadFunction::run() {
     return fn();
 }
+
+
+#ifdef __OpenBSD__
+int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abs_timeout) {
+    int ret;
+    struct timespec now, to_sleep;
+
+    to_sleep.tv_sec = 0;
+    while ((ret = pthread_mutex_trylock(mutex)) == EBUSY) {
+        CHECKED(clock_gettime(CLOCK_REALTIME, &now) == 0, "clock_gettime failed");
+        if (now.tv_sec > abs_timeout->tv_sec ||
+            (now.tv_sec == abs_timeout->tv_sec && now.tv_nsec >= abs_timeout->tv_nsec)) {
+            return ETIMEDOUT;
+        }
+        to_sleep.tv_nsec = abs_timeout->tv_nsec - now.tv_nsec;
+        if (to_sleep.tv_nsec < 0) {
+            to_sleep.tv_nsec += 1000 * 1000 * 1000;
+        }
+        // sleep at most 10ms.
+        if (to_sleep.tv_nsec > 10 * 1000 * 1000) {
+            to_sleep.tv_nsec = 10 * 1000 * 1000;
+        }
+        nanosleep(&to_sleep, NULL);
+    }
+    return ret;
+}
+#endif

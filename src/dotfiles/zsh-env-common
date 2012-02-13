@@ -48,12 +48,7 @@ export QT_XFT=1
 
 export LESS="-R -F -X"
 
-DEVICE=`cat /tmp/.network.device 2>/dev/null`
-if [[ "$DEVICE" != "" ]]; then
-   IPADDR=`ifconfig $DEVICE 2>/dev/null | grep Bcast | awk '{print $2}' | sed 's/addr://'`
-fi
-[[ "$IPADDR" == "" ]] && IPADDR=`hostname -i`
-case $HOSTNAME-$IPADDR in
+case $HOSTNAME-$HOST_IP in
     *-1[56].*) 
 	# Don't export by default, sometimes works poorly with things like 
 	# yum because of caching issues
@@ -62,9 +57,6 @@ case $HOSTNAME-$IPADDR in
  	export no_proxy=localhost,zk3.dec.com,zko.dec.com,zko.hp.com,fc.hp.com,cpqcorp.net,hpqcorp.net,hpl.hp.com
     ;;
 esac
-
-[[ -d /mount/src ]] && hash -d src=/mount/src
-[[ -d /mount/cello/www ]] && hash -d www=/mount/cello/www
 
 $LINTEL_ZSH_DEBUG && status_echo -n "g"
 unset IN_ZSHENV_COMMON

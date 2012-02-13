@@ -980,9 +980,9 @@ sub depCheckoutGetGitBranches {
     my $git_repo_dir = gitRepoDir();
     my @repo_dirs;
     find(sub {
-             print "$File::Find::name\n";
              return unless -d "$_/objects";
-             foreach my $subdir (qw!branches hooks info objects objects/pack objects/info refs!) {
+             # branches doesn't always exist
+             foreach my $subdir (qw!hooks info objects objects/pack objects/info refs!) {
                  return unless -d "$File::Find::name/$subdir";
              }
              foreach my $subfile (qw!config description HEAD!) {
@@ -1493,7 +1493,7 @@ sub dbpDoParallelTest {
 
     die "unimplemented no tests" unless @testlist > 0;
 
-    my $children = new Lintel::ProcessManager(auto_kill_on_destroy => 1);
+    my $children = Lintel::ProcessManager->new(auto_kill_on_destroy => 1);
     my $parallelism = $ENV{MAKE_PARALLELISM} || 1;
 
     map { rmtree($_) if -d $_ } qw(Testing/Temporary Testing/Parallel);
@@ -1749,7 +1749,7 @@ sub depBuildParallel {
     @pending = grep ($_->[1] ne 'test', @pending) unless $options->{tests};
 
     my %running;
-    my $children = new Lintel::ProcessManager(auto_kill_on_destroy => 1);
+    my $children = Lintel::ProcessManager->new(auto_kill_on_destroy => 1);
 
     my $prev_pending_size = @pending;
     # Process everything we have to process.
@@ -2320,7 +2320,7 @@ sub mtnServeGeneral {
     }
     runCommand("cat $work_dir/pubkeys/*.pubkey | mtn -d $work_dir/serve.db read");
 
-    my $pm = new Lintel::ProcessManager();
+    my $pm = Lintel::ProcessManager->new();
     my @args = ('mtn', '-d', "$work_dir/serve.db", '--norc', '--rcfile', "$work_dir/serve.rc");
 
     # start push-to process
@@ -2380,7 +2380,7 @@ sub mtnServePushTo {
     symlink("$workdir/keys", "$workdir/dbs/keys")
         or warn "symlink failed: $!";
     readlink("$workdir/dbs/keys") eq "$workdir/keys" or die "?";
-    my $pm = new Lintel::ProcessManager;
+    my $pm = Lintel::ProcessManager->new();
     my $failure_count = 0;
     my $last_heads = '';
     while (1) {
@@ -3709,6 +3709,7 @@ sub buildRoot {
 sub operatingSystem {
     $Cache::operating_system ||= $ENV{BUILD_OS};
     unless(defined $Cache::operating_system) {
+        $Cache::operating_system = "unknown";
 	if (-f "/etc/lsb-release") { # need to check this first, Ubuntu has /etc/debian_version
             my $lsbver = new FileHandle("/etc/lsb-release")
                 or die "Can't open /etc/debian_version for read: $!";
@@ -3778,9 +3779,31 @@ sub operatingSystem {
                 s/\W/_/go; s/\s/_/go;
 		$Cache::operating_system = "suse-unknown-$_";
 	    }
-        } else {
-            $Cache::operating_system = "unknown";
         }
+
+        if ($Cache::operating_system =~ /^unknown/o) {
+            my $uname = new FileHandle("uname -rs |")
+                or die "Can't run uname -rs for read: $!";
+            $_ = <$uname>;
+            chomp;
+            if (/^FreeBSD (\d+\.\d+)-RELEASE$/o) {
+                $Cache::operating_system = "freebsd-$1";
+            } elsif (/^FreeBSD\s/o) {
+                s/^FreeBSD\s+//o;
+                s/\W/_/go; s/\s/_/go;
+                $Cache::operating_system = "freebsd-unknown-$_";
+            } elsif (/^OpenBSD (\d+\.\d+)$/o) {
+                $Cache::operating_system = "openbsd-$1";
+            } elsif (/^OpenBSD\s/o) {
+                s/^OpenBSD\s+//o;
+                s/\W/_/go; s/\s/_/go;
+                $Cache::operating_system = "openbsd-unknown-$_";
+            } elsif (/^(\w+)\s+(\S.*)$/o) {
+                s/\W/_/go; s/\s/_/go;
+                $Cache::operating_system = "unknown-$_";
+            }
+        }
+
         if ($Cache::operating_system =~ /unknown/o) {
 	    if (defined $ENV{OS}) {
 		print STDERR "Unrecognized operating system, overriding with deprecated env var OS\n";
@@ -3843,13 +3866,26 @@ sub buildOpt {
 }
 
 sub makeParallelism {
-    my $fh = new FileHandle("/proc/cpuinfo");
+    if (defined $ENV{MAKE_PARALLELISM}) {
+        return $ENV{MAKE_PARALLELISM};
+    }
     my $nprocessors = 0;
-    if ($fh) {
+    my $fh = new FileHandle "/proc/cpuinfo";
+    if ($fh) { # linux
         while(<$fh>) {
             ++$nprocessors if /^processor\s+:\s+\d+$/o;
         }
         close($fh);
+    }
+    if ($nprocessors == 0) {
+        $fh = new FileHandle "sysctl hw.ncpu 2>/dev/null |"; # freebsd
+        while (<$fh>) {
+            if (/^hw\.ncpu: (\d+)$/o) {
+                $nprocessors = $1;
+            } elsif (/^hw\.ncpu=(\d+)$/o) {
+                $nprocessors = $1;
+            }
+        }
     }
     if ($nprocessors == 0) {
         print "Warning: unable to find \# processors in /proc/cpuinfo\n"
@@ -4903,7 +4939,7 @@ sub readConfig {
         my $fh = new FileHandle "git config --global -l |";
         while (<$fh>) {
             chomp;
-            die "? '$_'" unless /^([\w\.]+)=(.+)$/o;
+            die "? '$_'" unless /^([\w\.]+)=(.*)$/o;
             $config->{$1} = $2;
         }
     }
@@ -4945,7 +4981,7 @@ sub tryCommit {
     my ($this) = @_;
 
     main::runCommand(qw/git add -u/); # any uncommitted files we want to track should already be added
-    my $pm = new Lintel::ProcessManager();
+    my $pm = Lintel::ProcessManager->new();
 
     my $commit_pid = $pm->fork(cmd => [qw/git commit/, $this->{amend} ? ('--amend') : ()]);
 
@@ -5093,7 +5129,7 @@ sub pull {
 
     if (@branches > 0) {
         # merge remote branch(s) to local
-        main::runCommand(qw/git merge/, @branches);
+        main::runCommand(qw/git merge --log/, @branches);
     } else {
         # TODO-reviewer: die?
         warn "No remote branches for $current_branch";

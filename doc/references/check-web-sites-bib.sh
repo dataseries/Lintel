@@ -7,13 +7,13 @@ BIB=`dirname $0`/web-sites.bib
 echo "Checking $BIB for errors, see README for description of rules"
 [ -f $BIB ] || error "Input file $BIB is not present"
 
-AT_COUNT=`grep '^\@' $BIB | wc -l`
-MISC_COUNT=`grep '^@misc{' $BIB | wc -l`
-KEY_COUNT=`grep '^  key ' $BIB | wc -l`
-AUTHOR_COUNT=`grep '^  author ' $BIB | wc -l`
-NOTE_COUNT=`grep '^  note ' $BIB | wc -l`
-NOTE_URL_COUNT=`grep '^  note.*url' $BIB | wc -l`
-NOTE_ACCESSED_COUNT=`grep '^  note.*Accessed.*20[0-9][0-9]' $BIB | wc -l`
+AT_COUNT=`grep '^\@' $BIB | wc -l | sed 's/^ *//'`
+MISC_COUNT=`grep '^@misc{' $BIB | wc -l | sed 's/^ *//'`
+KEY_COUNT=`grep '^  key ' $BIB | wc -l | sed 's/^ *//'`
+AUTHOR_COUNT=`grep '^  author ' $BIB | wc -l | sed 's/^ *//'`
+NOTE_COUNT=`grep '^  note ' $BIB | wc -l | sed 's/^ *//'`
+NOTE_URL_COUNT=`grep '^  note.*url' $BIB | wc -l | sed 's/^ *//'`
+NOTE_ACCESSED_COUNT=`grep '^  note.*Accessed.*20[0-9][0-9]' $BIB | wc -l | sed 's/^ *//'`
 
 [ "$AT_COUNT" -ge 5 ] || error "Have fewer than 5 references?"
 [ "$AT_COUNT" = "$MISC_COUNT" ] || error "Mismatch between stanzas and misc stanzas: $AT_COUNT != $MISC_COUNT"

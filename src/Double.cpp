@@ -13,8 +13,11 @@
 #endif
 
 // TODO: see if we need to do something to support cygwin
-#if defined(__i386__) && !defined(__CYGWIN__)
-#include <fpu_control.h>
+#if defined(__i386__) && defined(__linux__)
+#    define FPU_CONTROL 1
+#    include <fpu_control.h>
+#else
+#    define FPU_CONTROL 0
 #endif
 
 #include <limits>
@@ -32,15 +35,13 @@ double Double::default_epsilon = 1e-12;
 #endif
 
 #ifdef BOOST_MSVC
-inline bool isnan(double v)
-{
+inline bool isnan(double v) {
     // comparisons with nan always fail
     return !(v <= std::numeric_limits<double>::infinity())
 	|| !(v >= -std::numeric_limits<double>::infinity());
 }
 
-inline bool isinf(double v)
-{
+inline bool isinf(double v) {
     return v == INFINITY || v == -INFINITY;
 }
 
@@ -56,10 +57,8 @@ static double work_around_icc_bug() {
 const double Double::NaN = work_around_icc_bug();
 const double Double::Inf = INFINITY;
 
-void
-Double::setFP64BitMode()
-{
-#if defined(__i386__) && !defined(__CYGWIN__)
+void Double::setFP64BitMode() {
+#if FPU_CONTROL
     fpu_control_t cw;
     _FPU_GETCW(cw);
     INVARIANT(cw == _FPU_IEEE,
@@ -71,18 +70,14 @@ Double::setFP64BitMode()
 #endif
 }
 
-void
-Double::resetFPMode()
-{
-#if defined(__i386__) && !defined(__CYGWIN__)
+void Double::resetFPMode() {
+#if FPU_CONTROL
     fpu_control_t cw = _FPU_IEEE;
     _FPU_SETCW(cw);
 #endif
 }
 
-void
-Double::selfCheck()
-{
+void Double::selfCheck() {
     INVARIANT(isnan(NaN),"nan isn't");
     INVARIANT(isinf(Inf),"inf isn't");
     INVARIANT(isinf(-Inf),"-inf isn't");

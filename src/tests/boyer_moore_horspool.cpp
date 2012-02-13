@@ -2,15 +2,29 @@
 #include <Lintel/BoyerMooreHorspool.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 
-// For memmem
-#ifndef _GNU_SOURCE
-#error need gnu source for memmem
-#endif
 #include <string>
 using namespace lintel;
 
+#ifdef __OpenBSD__
+void *memmem(const void *haystack_in, size_t haystack_len, const void *needle, size_t needle_len) {
+    if (needle_len > haystack_len) {
+        return NULL;
+    }
+    const char *haystack = static_cast<const char *>(haystack_in);
+    const char *last_check_at = haystack + (haystack_len - needle_len);
+    while (haystack <= last_check_at) {
+        if (memcmp(haystack, needle, needle_len) == 0) {
+            return const_cast<void *>(static_cast<const void *>(haystack));
+        }
+        ++haystack;
+    }
+    return NULL;
+}
+#endif
+
 size_t other_impl(const void * hay, size_t hay_len,
 		  const void * needle, size_t needle_len) {
+    // if memmem is missing, then probably missing #define _GNU_SOURCE
     void * res = memmem(hay, hay_len, needle, needle_len);
     char * res_c = reinterpret_cast<char *>(res);
     const char * hay_c = reinterpret_cast<const char *>(hay);

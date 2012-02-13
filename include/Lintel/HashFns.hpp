@@ -105,7 +105,7 @@ namespace lintel {
 	// 2) determine whether the type is integral, and if so do a whole bunch
 	//    of complicated per size stuff so that we can work properly on 
 	//    different platforms.  The problem boils down to 32bit Debian etch
-	//    things long long and int64_t are the same types, and so can't have
+	//    thinks long long and int64_t are the same types, and so can't have
 	//    hash functions declared for both.  Conversely, 64bit RHEL4 thinks
 	//    they are different types, and hence requires a separate definition
 	//    for hashing both of these.

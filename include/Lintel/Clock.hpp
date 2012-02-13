@@ -37,21 +37,20 @@ extern "C" {
 };
 #endif
 
-#if defined(__linux__) && defined(__i386__)
+#if defined(__GNUC__) && defined(__i386__)
 /* don't include <asm/msr.h>, as it fails on some platforms */
 #define rdtscll(val) \
      __asm__ __volatile__("rdtsc" : "=A" (val))
 #define HAVE_RDTSCLL 1
 #endif
 
-#if defined(__linux__) && defined(__x86_64__)
-// cannot count on msr.h to define this in recent
-// kernels.  this was ripped verbatim from RHEL4's
-// /usr/include/asm-x86_64/msr.h
+#if defined(__GNUC__) && defined(__x86_64__)
+// From wikipedia <http://en.wikipedia.org/wiki/Time_Stamp_Counter>: We cannot use "=A", since this
+// would use %rax on x86_64 and return only the lower 32bits of the TSC
 #define rdtscll(val) do { \
-     unsigned int a,d; \
-     asm volatile("rdtsc" : "=a" (a), "=d" (d)); \
-     (val) = ((unsigned long)a) | (((unsigned long)d)<<32); \
+     uint32_t low,high; \
+     asm volatile("rdtsc" : "=a" (low), "=d" (high)); \
+     (val) = static_cast<uint64_t>(low) | (static_cast<uint64_t>(high) << 32); \
 } while(0)
 #define HAVE_RDTSCLL 1
 #endif

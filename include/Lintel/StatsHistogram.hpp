@@ -49,9 +49,6 @@
 #include <vector>
 #include <math.h>
 #include <boost/config.hpp>
-#if !defined(__CYGWIN__) && !defined(BOOST_MSVC) 
-#include <values.h>
-#endif
 #include <iostream>
 #include <fstream>
 #include <Lintel/AssertBoost.hpp>

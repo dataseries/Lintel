@@ -513,6 +513,10 @@ public:
 	return chains.available();
     }
 
+    size_t capacity() const {
+        return entry_points.size() * target_chain_length;
+    }
+
     size_t memoryUsage() const {
 	return sizeof(hte) * chains.capacity() + sizeof(int) * entry_points.capacity();
     }

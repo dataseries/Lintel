@@ -85,7 +85,7 @@ StatsSeriesGroup::addStat()
     std::string sname = myname;
 
     char buf[20];
-    sprintf(buf,"%d",(int)stats.size());
+    snprintf(buf,20,"%d",(int)stats.size());
 
     sname += buf;
     Stats *newstat = StatsMaker::make(sname);

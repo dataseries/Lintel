@@ -50,18 +50,28 @@ copyUpdate() {
     fi
 }
 
+validateHomedirOk() {
+    validate_oksrc=`cat $DOTFILES/.ok-src-dir 2>/dev/null`
+    if [ "$validate_oksrc" = $SRCPATH ]; then
+        echo "$SRCPATH validated as ok."
+        echo "   to re-check: rm $DOTFILES/.ok-src-dir to re-check"
+    else
+        echo "WARNING: $SRCPATH is not under $HOME."
+        echo "if $HOME is shared on multiple machines, and $SRCPATH is not,"
+        echo "you will get errors in the future about missing .dotfiles/lintel-source/setup."
+        echo -n "Return to continue, ctrl-c to abort: "
+        read foo
+        echo $SRCPATH >$DOTFILES/.ok-src-dir
+    fi
+}
+
 copyFromLintelToDotfiles() {
-    case $SRCPATH in
-        $HOME/*) : ;;
-        *) echo "WARNING: $SRCPATH is not under $HOME."
-           echo "if $HOME is shared on multiple machines, and $SRCPATH is not,"
-           echo "you will get errors in the future about missing .dotfiles/lintel-source/setup."
-           echo -n "Return to continue, ctrl-c to abort: "
-           read foo
-           ;;
-    esac
     DOTFILES=$HOME/.dotfiles
     mkdir -p $DOTFILES
+    case $SRCPATH in
+        $HOME/*) : ;;
+        *) validateHomedirOk ;;
+    esac
     ln -snf $SRCPATH $DOTFILES/lintel-source
     echo "Copying from $SRCPATH to $DOTFILES; to see changes:"
     BACKUPDIR=backup.`date +%Y-%m-%d`.$$
