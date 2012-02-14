@@ -39,9 +39,7 @@ namespace {
 	tmp.options = recognized;
 	po::store(tmp, var_map);
     }
-}
 
-namespace {
     string argv0 = "unknown-program-name"; // For usage message. 
     string extra_help;
     using namespace lintel::detail;
@@ -66,6 +64,13 @@ namespace {
 	    cout << boost::format("%s\n") % i->first;
 	}
     }
+
+    typedef std::vector<lintel::detail::ProgramOptionInitFn> InitFns;
+
+    InitFns &getInitFns() {
+        static InitFns init_fns;
+        return init_fns;
+    }
 };
 
 namespace lintel {
@@ -87,6 +92,17 @@ namespace lintel {
     }
 
     namespace detail {
+        void addProgramOptionInitFn(const ProgramOptionInitFn &initfn) {
+            getInitFns().push_back(initfn);
+        }
+
+        void runProgramOptionInitFns() {
+            InitFns &init_fns(getInitFns());
+            for (InitFns::iterator i = init_fns.begin(); i != init_fns.end(); ++i) {
+                (*i)();
+            }
+            init_fns.clear();
+        }
 
         uint32_t getHelpWidth() {
             // COLUMNS is automatically in environment, but isn't exported by default.  Would
@@ -174,6 +190,7 @@ namespace lintel {
     
     namespace {
         vector<string> parseCommandLine(po::command_line_parser &parser, bool allow_unrecognized) {
+            runProgramOptionInitFns();
             po::variables_map var_map;
             vector<string> unrecognized;
             basicParseCommandLine(parser, detail::programOptionsDesc(), var_map, unrecognized);
