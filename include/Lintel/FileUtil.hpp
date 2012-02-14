@@ -24,7 +24,7 @@ int64_t modifyTimeNanoSec(const struct stat &statbuf) {
 #if defined(__linux__)
     return static_cast<int64_t>(statbuf.st_mtime) * 1000 * 1000 * 1000
         + statbuf.st_mtim.tv_nsec;
-#elif defined(__FreeBSD__)
+#elif defined(__FreeBSD__) || defined(__OpenBSD__)
     return static_cast<int64_t>(statbuf.st_mtime) * 1000 * 1000 * 1000
         + statbuf.st_mtimespec.tv_nsec;
 #else

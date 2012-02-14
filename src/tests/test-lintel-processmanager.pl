@@ -6,6 +6,7 @@ use Time::HiRes 'time';
 
 my $process_manager = new Lintel::ProcessManager();
 
+$process_manager->{debug} = 1;
 eval "use BSD::Resource";
 unless ($@) {
     testCoreDump();

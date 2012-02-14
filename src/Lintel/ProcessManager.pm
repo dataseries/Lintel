@@ -304,47 +304,65 @@ sub wait {
 
     my %exited;
     my $started = time;
+    my $exit_count = 0;
+
+    my $handle_exit = sub {
+        my ($child, $status) = @_;
+
+        # TODO: add a test where we exit with lots of different status; it's possible
+        # we need to set $SIG{CHLD} = 'IGNORE' or something, but it seems to be working.
+        print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
+
+        $exited{$child} = $status;
+        ++$exit_count;
+
+        unless (exists $this->{children}->{$child}) {
+            warn "Unexpected pid $child exited with status $status";
+        } else {
+            my $fn = $this->{children}->{$child}->{exitfn};
+            delete $this->{children}->{$child}; # in case fn calls wait
+            &$fn($child, $status) if defined $fn;
+        }
+    };
+
     while (1) {
-	my $exit_count = 0;
 	confess "Can't call wait without any children" 
 	    unless $this->nChildren() > 0;
 	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
-	    my $status = $?;
-            # TODO: add a test where we exit with lots of different status; it's possible
-            # we need to set $SIG{CHLD} = 'IGNORE' or something, but it seems to be working.
-	    print "Lintel::ProcessManager($$): exit($child) -> $status\n" if $this->{debug};
-
-	    $exited{$child} = $status;
-	    ++$exit_count;
-
-	    unless (exists $this->{children}->{$child}) {
-		warn "Unexpected pid $child exited with status $status";
-	    } else {
-		my $fn = $this->{children}->{$child}->{exitfn};
-		delete $this->{children}->{$child}; # in case fn calls wait
-		&$fn($child, $status) if defined $fn;
-	    }
+            &$handle_exit($child, $?);
 	}
 	if ($exit_count == 0) {
+            # Added 'No child processes' check in because in at least one case, we got stuck in an
+            # infinite loop waiting for a child to exit when there was no sub-process.
 	    if ($! eq 'No child processes') {
 
-		# Added this check in because in at least one case, we got
-		# stuck in an infinite loop waiting for a child to exit when
-		# there was no sub-process .  Second check about can-signal was
-		# added because we had cases (debian etch 32bit user, 64bit
-		# kernel) where 'no child processes' was returned and yet,
-		# there were children as per the pstree
 
+                # Added can_signal check because we had cases (debian etch 32bit user, 64bit
+		# kernel) where 'no child processes' was returned and yet, there were children as
+		# per the pstree
 		my @can_signal;
 
 		foreach my $child ($this->children()) {
 		    push(@can_signal, $child) if kill 0, $child;
 		}
 
+                # Added this check because on openbsd in a VM we seemed to have a race between
+                # the waitpid above and the can_signal test, but on openbsd we can not send a 0
+                # signal to a zombie process.  However, if any zombies are there, then the call
+                # to waitpid below should succeed.
+                if (@can_signal == 0) {
+                    my $child = waitpid(-1, WNOHANG);
+                    if ($child > 0) {
+                        &$handle_exit($child, $?);
+                        push(@can_signal, $child);
+                    }
+                }
+
 		if (@can_signal == 0) {
 		    if ($this->{debug}) {
 			print "Lintel::ProcessManager($$): pstree-begin\n";
-			system("/usr/bin/pstree -p $$");
+			system("pstree -p $$") == 0
+                            || system("ps jx"); # openbsd
 			print "Lintel::ProcessManager($$): pstree-end\n";
 		    }
 
