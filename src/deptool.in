@@ -5128,8 +5128,14 @@ sub pull {
     }
 
     if (@branches > 0) {
-        # merge remote branch(s) to local
-        main::runCommand(qw/git merge --log/, @branches);
+        # If we run this as a single command, then we seem to generate a log message in order to
+        # merge the up-to-date local-cache with the origin remote.  Running the two commands
+        # separately does not seem to generate the spurious log message, and the order does not
+        # seem to matter.
+        foreach my $branch (@branches) {
+            # merge remote branch(s) to local
+            main::runCommand(qw/git merge --log --ff/, $branch);
+        }
     } else {
         # TODO-reviewer: die?
         warn "No remote branches for $current_branch";

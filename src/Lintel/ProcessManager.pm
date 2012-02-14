@@ -325,7 +325,7 @@ sub wait {
         }
     };
 
-    while (1) {
+    while ($exit_count == 0) {
 	confess "Can't call wait without any children" 
 	    unless $this->nChildren() > 0;
 	while ((my $child = waitpid(-1, WNOHANG)) > 0) {
@@ -335,8 +335,6 @@ sub wait {
             # Added 'No child processes' check in because in at least one case, we got stuck in an
             # infinite loop waiting for a child to exit when there was no sub-process.
 	    if ($! eq 'No child processes') {
-
-
                 # Added can_signal check because we had cases (debian etch 32bit user, 64bit
 		# kernel) where 'no child processes' was returned and yet, there were children as
 		# per the pstree
@@ -371,8 +369,6 @@ sub wait {
 	    }
 	    last if defined $timeout && time >= $started + $timeout;
 	    select(undef, undef, undef, 0.1);
-	} else {
-	    last;
 	}
     }
 
