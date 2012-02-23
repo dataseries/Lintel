@@ -135,6 +135,7 @@ AddToMenu "Module-Popup" "Modules" Title
 
 AddToMenu "Hosts-Menu2" "Hosts" Title
 +	       "keyvalue-2" Exec exec xterm -T keyvalue-debian-x86-2 -e /bin/sh -c 'slogin -A -t -e none keyvalue-debian-x86-2.u.hpl.hp.com' &
++	       "build-debian-1" Exec exec xterm -T build-debian-1 -e /bin/sh -c 'slogin -A -t -e none build-debian-1.u.hpl.hp.com' &
 +	       "build-centos-1" Exec exec xterm -T build-centos-1 -e /bin/sh -c 'slogin -A -t -e none build-centos-1.u.hpl.hp.com' &
 +	       "pa-install" Exec exec xterm -T pa-install -e /bin/sh -c 'slogin -e none -A -X pa-install.u' &
 +	       "keyvalue-centos-build-6" Exec exec xterm -T keyvalue-centos-build-6 -e /bin/sh -c 'slogin -A -t -e none keyvalue-centos-build-6.u.hpl.hp.com' &
