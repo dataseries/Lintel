@@ -98,6 +98,17 @@ MACRO(LINTEL_RPATH_CONFIG)
         # add the automatically determined parts of the RPATH
         # which point to directories outside the build tree to the install RPATH
         SET(CMAKE_INSTALL_RPATH_USE_LINK_PATH TRUE)
+
+        # For MacOS
+        SET(CMAKE_INSTALL_NAME_DIR "${CMAKE_INSTALL_RPATH}")
     ENDIF(WITH_INSTALLED_RPATH)
+
+    IF(0)
+    ELSEIF("${LINTEL_SYSTEM_TYPE}" STREQUAL Darwin)
+        # No extra magic flags
+    ELSE(0)
+        SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
+        SET(CMAKE_SHARED_LINKER_FLAGS "-Wl,--as-needed ${CMAKE_SHARED_LINKER_FLAGS}")
+    ENDIF(0)
 ENDMACRO(LINTEL_RPATH_CONFIG)
 

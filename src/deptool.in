@@ -357,11 +357,11 @@ test, next pull and update.  If no changes were made, synchronize the
 updates to the central server.  Alternately, restart the loop at the
 build and test stage.
 
-=item cmake [I<--clean> | I<clean>]
+=item cmake [I<--clean> | I<clean> | I<cmake options...>]
 
 Run the cmake configuration command, or clean out the cmake
 configuration files.  See help cmake for details on how cmake is
-run.
+run.  Additional cmake options can also be specified.
 
 =item pin I<revision>
 
@@ -2036,17 +2036,16 @@ depcommit: will show differences after successful build\n";
 
 =pod
 
-=head2 cmake
+=head2 cmake [I<--clean> | I<clean> | I<cmake options...>]
 
-This command has to be run in either the build or debug directory.  In the
-build directory, it will set the install prefix to $BUILD_OPT and the cmake
-build type to RelWithDebInfo.  In the debug directory, it will set the install
-prefix to $BUILD_DEBUG and the cmake build type to Debug.  If you are in a
-sub-type build directory (see cdopt), then the deptool cmake command will
-automatically add -DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that
-the configuration can take into effect the sub-type.  You can set the
-environment variable DEPTOOL_CMAKE_FLAGS if there are additional flags that
-need to be passed to cmake.
+This command has to be run in either the build or debug directory.  In the build directory, it will
+set the install prefix to $BUILD_OPT and the cmake build type to RelWithDebInfo.  In the debug
+directory, it will set the install prefix to $BUILD_DEBUG and the cmake build type to Debug.  If
+you are in a sub-type build directory (see cdopt), then the deptool cmake command will
+automatically add -DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that the configuration
+can take into effect the sub-type.  You can set the environment variable DEPTOOL_CMAKE_FLAGS if
+there are additional flags that need to be passed to cmake.  You can also specify directory
+specific options on the command line.
 
 =cut
 
@@ -3798,6 +3797,16 @@ sub operatingSystem {
                 s/^OpenBSD\s+//o;
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "openbsd-unknown-$_";
+            } elsif (/^Darwin\s+/o) {
+                my $sys_prof = new FileHandle("system_profiler SPSoftwareDataType |")
+                    or die "Can't run system_profiler SPSoftwareDataType for read: $!";
+                my $sys_ver;
+                while (<$sys_prof>) {
+                    $sys_ver = $1 if /^\s+System Version: Mac OS X (\d+\.\d+\b)/o;
+                }
+                die "Unable to find system version in output of system_profiler SPSoftwareDataType"
+                    unless defined $sys_ver;
+                $Cache::operating_system = "macos-$sys_ver";
             } elsif (/^(\w+)\s+(\S.*)$/o) {
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "unknown-$_";
@@ -3878,7 +3887,7 @@ sub makeParallelism {
         close($fh);
     }
     if ($nprocessors == 0) {
-        $fh = new FileHandle "sysctl hw.ncpu 2>/dev/null |"; # freebsd
+        $fh = new FileHandle "sysctl hw.ncpu 2>/dev/null |"; # freebsd, openbsd, macos
         while (<$fh>) {
             if (/^hw\.ncpu: (\d+)$/o) {
                 $nprocessors = $1;

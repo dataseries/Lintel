@@ -28,8 +28,12 @@ extern "C" {
 }
 #endif
 
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__APPLE_CC__)
 int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abs_timeout);
+#endif
+#if defined(__APPLE_CC__)
+#define CLOCK_REALTIME 12345
+int clock_gettime(int how, struct timespec *into);
 #endif
 
 /// \brief Misc pthread-related functions

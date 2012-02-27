@@ -15,9 +15,10 @@
     typedef _off64_t off64_t;
 #endif
 
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__APPLE_CC__)
     typedef off_t off64_t;
 #   define O_LARGEFILE 0
 #endif
 
+// TODO: write tests.
 #endif
