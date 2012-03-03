@@ -107,7 +107,7 @@ cd rpm-build
 rm -rf $RPM_BUILD_ROOT
 make install DESTDIR=$RPM_BUILD_ROOT
 pwd
-../debian/fix-install.sh $RPM_BUILD_ROOT
+../dist/fix-install.sh $RPM_BUILD_ROOT
 mkdir -p $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
 cp ../Release.info ../Changelog.mtn ../COPYING $RPM_BUILD_ROOT%{_docdir}/Lintel-%{version}
 # TODO: can we make cmake automatically figure out that centos wants libs in /usr/lib64
@@ -185,6 +185,9 @@ rm -rf $RPM_BUILD_ROOT rpm-build
 /usr/share/doc/perl-Lintel
 
 %changelog
+
+* Tue Feb 28 2012 anderse@hpl.hp.com 0.2012.02.28-1
+- release testing
 
 * Mon Jun 13 2011 anderse@hpl.hp.com 0.2011.06.13-1
 - Release.  See NEWS for major changes.

@@ -84,6 +84,9 @@ BUILD := $(MAKE_DIST)/build
 # edit the files on cello to note the new release, and any major announcements
 # run the copy from cello to tesla to make the release public
 help:
+	@echo "./dist/rules prep-release # make the version stamp file in $(MAKE_DIST)"
+	@echo "./dist/rules snapshot-tar # make tar files out of checked out Lintel/DataSeries"
+	@echo "./dist/rules sources"
 	@echo "./dist/rules packages"
 	@echo "./dist/rules remote-hosts"
 	@echo "./dist/rules endpin-mtn"
@@ -91,17 +94,18 @@ help:
 	@echo "./dist/rules clean"
 	@echo "release date $(RELEASE_DATE)"
 
-prep-release:
-	echo "Figure out how to make the perl stuff not include my path in the release"
-	exit 1
+prep-release: $(MAKE_DIST)/version
+
+$(MAKE_DIST)/version:
 	mkdir -p $(MAKE_DIST)
-	[ ! -f $(MAKE_DIST)/version ]
 	if [ -f $(MAKE_DIST)/version.tmp ]; then \
 		echo "Using existing version.tmp"; \
 	else \
 		echo "RELEASE_DATE=`date +%Y-%m-%d`" >$(MAKE_DIST)/version.tmp; \
 		echo "RELEASE_VERSION=0.`date +%Y.%m.%d`" >>$(MAKE_DIST)/version.tmp; \
 	fi
+	echo "TODO-release: check changelogs against the project-builder variants"
+	exit 1
 	. $(MAKE_DIST)/version.tmp \
 	    && [ `head -1 debian/changelog | grep $$RELEASE_VERSION | wc -l` = 1 ]
 	. $(MAKE_DIST)/version.tmp \
@@ -111,6 +115,10 @@ prep-release:
 	. $(MAKE_DIST)/version.tmp; DSSPEC=../DataSeries/redhat/DataSeries.spec.in \
 	    && [ `grep $$RELEASE_VERSION $$DSSPEC | wc -l` = 1 ]
 	mv $(MAKE_DIST)/version.tmp $(MAKE_DIST)/version
+
+snapshot-tar: $(MAKE_DIST)/version
+	./redhat/make-tar.sh
+	(cd ../DataSeries && ./redhat/make-tar.sh)
 
 endpin-mtn:
 	cd ~/projects/Lintel && mtn sync endpin.cs.hmc.edu ssd.hpl.hp.com/Lintel\*
@@ -426,12 +434,12 @@ $(BUILD)/tmp.db:
 
 	mv $@-new $@
 
-$(BUILD)/localhost/%/Changelog.mtn: $(BUILD)/tmp.db
+$(BUILD)/localhost/%/ChangeLog: $(BUILD)/tmp.db
 	[ $(RELEASE_DATE) != unknown ]
 	mkdir -p `dirname $@`
 	(cd $(BUILD) && $(SRC_LINTEL)/dist/checkout.sh $*) >$(BUILD)/localhost/checkout.$* 2>&1
 
-$(BUILD)/localhost/%.tar.bz2: $(BUILD)/localhost/%/Changelog.mtn
+$(BUILD)/localhost/%.tar.bz2: $(BUILD)/localhost/%/ChangeLog
 	(cd $(BUILD) && tar cvvfj $@-new --exclude=_MTN $*)
 	mv $@-new $@
 

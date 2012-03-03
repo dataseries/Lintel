@@ -12,7 +12,7 @@ help:
 debian/build/config-stamp: 
 	dh_testdir
 	mkdir -p debian/build
-	(cd debian/build; cmake -DCMAKE_INSTALL_PREFIX=/usr ../..)
+	(ROOT=`pwd`; cd debian/build; cd `/bin/pwd` && cmake -DCMAKE_INSTALL_PREFIX=/usr $$ROOT)
 	./dist/make-release-changelog.sh
 	touch $@
 
@@ -44,8 +44,8 @@ install: build
 
 	(cd debian/build && $(MAKE) DESTDIR=$(CURDIR)/debian/tmp install)
 	mkdir -p $(TMP_USR)/share/doc/Lintel
-	cp -p Release.info Changelog.mtn $(TMP_USR)/share/doc/Lintel
-	./debian/fix-install.sh $(CURDIR)/debian/tmp
+	cp -p Release.info ChangeLog $(TMP_USR)/share/doc/Lintel
+	./dist/fix-install.sh $(CURDIR)/debian/tmp
 
 
 # Build architecture-independent files here.
