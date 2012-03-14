@@ -39,20 +39,27 @@ use Time::HiRes 'time';
 # something, it's gotten gigantic.
 
 BEGIN {
-    # RHEL5 doesn't have Digest::SHA1 by default, only MD5
-    eval "use Digest::SHA1 'sha1_hex';";
-    if ($@) {
-	die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
-	eval "use Digest::MD5 'md5_hex';";
-	die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
-	eval 'sub hexDigest { return md5_hex($_[0]); };';
-	warn "Using Digest::MD5 instead of Digest::SHA1.
-Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
-	    unless defined $ENV{DEPTOOL_NOWARN_MD5};
-    } else{
+    # Debian Wheezy (7.0) dropped Digest::SHA1
+    eval "use Digest::SHA 'sha1_hex';";
+    if (!$@) {
 	eval 'sub hexDigest { return sha1_hex($_[0]); };';
+    } else {
+        die $@ unless $@ =~ m!Can.t locate Digest/SHA.pm in !;
+        # RHEL5 doesn't have Digest::SHA1 by default, only MD5
+        eval "use Digest::SHA1 'sha1_hex';";
+        if (!$@) {
+            eval 'sub hexDigest { return sha1_hex($_[0]); };';
+        } else {
+            die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
+
+            eval "use Digest::MD5 'md5_hex';";
+            die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
+            eval 'sub hexDigest { return md5_hex($_[0]); };';
+            warn "Using Digest::MD5 instead of Digest::SHA1.
+Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
+                unless defined $ENV{DEPTOOL_NOWARN_MD5};
+        }
     }
-    die $@ if $@;
 }
 
 @PERL5_MODULES_INC_UNSHIFT@

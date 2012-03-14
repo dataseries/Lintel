@@ -10,9 +10,9 @@ use warnings;
 use vars '@ISA';
 use FileHandle;
 use Digest::MD5;
-use Digest::SHA1;
+use Lintel::SHA1;
 
-die "module version mismatch" 
+die "module version mismatch"
     unless $BatchParallel::common::interface_version < 2;
 
 @ISA = qw/BatchParallel::common/;
@@ -93,16 +93,18 @@ sub checksum {
     my($this, $source, $output, $filename) = @_;
 
     foreach my $digest_type (sort keys %{$this->{digests}}) {
-	my $digest;
-	$digest = new Digest::SHA1 if $digest_type eq 'sha1';
-	$digest = new Digest::MD5 if $digest_type eq 'md5';
-	die "??" unless defined $digest;
-	
+        my $digest_class;
+        $digest_class = $Lintel::SHA1::impl_package if $digest_type eq 'sha1';
+        $digest_class = 'Digest::MD5' if $digest_type eq 'md5';
+        die "unknown digest type '$digest_type'" unless defined $digest_class;
+
+	my $digest = $digest_class->new();
+
 	my $fh = new FileHandle($source)
 	    or die "Can't open $source for read: $!";
 	$digest->addfile($fh);
-	my $checksum = $digest->hexdigest;
-	
+	my $checksum = $digest->hexdigest();
+
 	print $output "$digest_type $checksum $filename\n";
     }
 }
@@ -129,7 +131,5 @@ sub rebuild {
     close($output);
     return 1;
 }
-	    
-1;
 
-    
+1;

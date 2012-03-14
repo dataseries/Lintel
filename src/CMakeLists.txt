@@ -81,6 +81,7 @@ IF(PERL_ENABLED)
     LINTEL_INSTALL_FILE_PATH(${CMAKE_INSTALL_PREFIX}/share/perl5
     	Text/Expand.pm
     	Lintel/File/Lock.pm
+        Lintel/SHA1.pm
     )
 
     IF(PERL_DIGEST_HMAC_ENABLED AND SSH_ENABLED)

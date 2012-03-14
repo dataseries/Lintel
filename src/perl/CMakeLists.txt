@@ -6,12 +6,12 @@
 
 IF(NOT PERL_XSUBPPDIR)
     EXECUTE_PROCESS(
-        COMMAND perl -e "for (@INC) { next unless -r qq{\$_/ExtUtils/xsubpp}; print; exit(0); }; print q{NOT-FOUND};"
+        COMMAND perl -e "for (@INC) { next unless -r qq{\$_/ExtUtils/xsubpp} && -r qq{\$_/ExtUtils/typemap}; print; exit(0); }; print q{NOT-FOUND};"
 	OUTPUT_VARIABLE PERL_TMP)
     IF(EXISTS "${PERL_TMP}/ExtUtils/xsubpp")
         SET(PERL_XSUBPPDIR "${PERL_TMP}/ExtUtils" CACHE INTERNAL "directory containing xsubpp")
     ELSE(EXISTS "${PERL_TMP}/ExtUtils/xsubpp")
-        MESSAGE("Can NOT build binary Perl modules: ExtUtils/xsubpp not found in perl @INC dirs")
+        MESSAGE("Can NOT build binary Perl modules: ExtUtils/{xsubpp,typemap} not found in perl @INC dirs")
     ENDIF(EXISTS "${PERL_TMP}/ExtUtils/xsubpp")
 ENDIF(NOT PERL_XSUBPPDIR)
 

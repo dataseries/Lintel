@@ -74,14 +74,22 @@ void testSimple() {
         vector<int>::iterator iter = countingILB(array.begin(), array.end(), i);
         SINVARIANT(iter >= array.begin() && iter < array.end());
         SINVARIANT(*iter == i);
-        cout << format("%d offset estimations, %d comparisions\n") % eo_count % compare_count;
     }
+    cout << format("%d offset estimations, %d comparisions\n") % eo_count % compare_count;
 
     size_t expect_compare = 1 + 2 + 1 + 4 * 999;
     IF_LINTEL_DEBUG(expect_compare += 2 * 999); // debug checks cost another 2 compares/cycle
     SINVARIANT(eo_count == 999 && compare_count == expect_compare);
 
+    array.clear();
+    array.resize(1000);
+    for (ssize_t i = array.size() - 1; i >= 0; --i) {
+        array[i] = 2;
+        vector<int>::iterator at = interpolationLowerBound(array.begin(), array.end(), 1);
+        INVARIANT(at == (array.begin() + i), format("%d != %d") % i % (at - array.begin()));
+    }
     cout << "test simple passed.\n";
+
 }
 
 void testRandom() {

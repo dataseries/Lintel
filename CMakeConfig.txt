@@ -250,6 +250,8 @@ IF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
     MESSAGE("Unable to find boost/program_options.hpp; will not build Lintel/ProgramOptions")
 ENDIF(NOT BOOST_PROGRAM_OPTIONS_LIBRARIES)
 
+LINTEL_BOOST_EXTRA(BOOST_MAKE_UNSIGNED boost/type_traits/make_unsigned.hpp None)
+
 # TODO: if we are forced onto program_options-mt, then we should really be
 # putting that into LintelPThread since we just forced thread linking.
 

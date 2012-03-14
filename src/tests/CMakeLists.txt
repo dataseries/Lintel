@@ -46,7 +46,6 @@ LINTEL_SIMPLE_TEST(byte_buffer)
 LINTEL_SIMPLE_TEST(boyer_moore_horspool)
 LINTEL_SIMPLE_TEST(stlutility)
 LINTEL_SIMPLE_TEST(base64)
-LINTEL_SIMPLE_TEST(interpolation-search)
 
 ################################## SPECIAL TEST PROGRAMS
 
@@ -93,6 +92,10 @@ IF(BOOST_PROGRAM_OPTIONS_ENABLED)
     LINTEL_SIMPLE_PROGRAM(program_options)
     ADD_TEST(program_options ${CMAKE_CURRENT_SOURCE_DIR}/run-check-program-options.sh ${CMAKE_CURRENT_SOURCE_DIR})
 ENDIF(BOOST_PROGRAM_OPTIONS_ENABLED)
+
+IF(BOOST_MAKE_UNSIGNED_ENABLED)
+    LINTEL_SIMPLE_TEST(interpolation-search)
+ENDIF(BOOST_MAKE_UNSIGNED_ENABLED)
 
 IF(MERCURY_PLOT_ENABLED)
     ADD_TEST(mercury-plot ${CMAKE_CURRENT_SOURCE_DIR}/mercury-plot.sh ${Lintel_SOURCE_DIR}/src)
