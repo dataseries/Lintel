@@ -202,16 +202,16 @@ LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-config 1 "Lintel ${LINTEL_VERSION}"
 IF(PERL_ENABLED) 
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(batch-parallel 1 "Lintel ${LINTEL_VERSION}")
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-flock 1 "Lintel ${LINTEL_VERSION}")
-ENDIF(PERL_ENABLED) 
-
-IF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED) 
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(deptool 1 "Lintel ${LINTEL_VERSION}")
     # Built, but intentionally not installed.
     ADD_CUSTOM_TARGET(deptool-bootstrap ALL 
                       COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-bootstrap.sh
     		          ${CMAKE_CURRENT_SOURCE_DIR} 
     		      DEPENDS deptool.in Lintel/File/Lock.pm Lintel/ProcessManager.pm)
-ENDIF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED) 
+ELSE(PERL_ENABLED)
+    MESSAGE("deptool will NOT be built.  Could not find perl")
+ENDIF(PERL_ENABLED) 
+
 
 IF(PERL_ENABLED AND SFDISK_ENABLED AND SGINFO_ENABLED)
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-disktool 1 "Lintel ${LINTEL_VERSION}")

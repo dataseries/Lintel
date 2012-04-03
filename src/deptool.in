@@ -33,12 +33,16 @@ use POSIX 'ceil';
 use Pod::Usage;
 use Safe;
 use Sys::Hostname;
-use Time::HiRes 'time';
 
 # TODO: split this file into separate pieces for the different commands or
 # something, it's gotten gigantic.
 
 BEGIN {
+    # One use of time in the code; shouldn't really matter, may help a little.
+    eval "use Time::HiRes 'time';";
+    if ($@) {
+        die $@ unless $@ =~ m!Can.t locate Time/Hires.pm in !;
+    }
     # Debian Wheezy (7.0) dropped Digest::SHA1
     eval "use Digest::SHA 'sha1_hex';";
     if (!$@) {
@@ -177,7 +181,6 @@ my $auto_yes_to_prompts = 1;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
-my $time_log = $ENV{DEPTOOL_TIME_LOG};
 my $debug = 0;
 
 $Global::last_stamp_timestamp = time();
@@ -195,7 +198,6 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage,
 	   "monotone-dir=s" => \$ENV{DEPTOOL_MTN_REPO_DIR},
-	   "time-log=s" => \$time_log,
 	   "debug!" => \$debug);
 
 =pod
@@ -204,7 +206,7 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
 
 =over 4
 
-=item --no-auto-yes 
+=item --no-auto-yes
 
 Do not automatically answer 'yes' to all of the prompts that are
 provided if there is a sane default answer.  Default is true because
@@ -257,15 +259,6 @@ Specify the directory to search for monotone databases that include
 the current project.  This can be also be specified using the 
 MONOTONE_DIR environment variable, or failing that, the directory
 defaults to $HOME/.monotone.
-
-=item --time-log=<path>
-
-Specify the file to use for logging build times.  The default is
-I<monotone-dir>/deptool-timings.  If the file is present then deptool
-will write a base64 encoded log entry for each command. Unsuccessful
-commands or commands that are aborted with a ^C are not logged.  The
-default file can be specified using the DEPTOOL_TIME_LOG environment
-variable.
 
 =item --man
 
@@ -445,36 +438,7 @@ sub main {
     
     # handle case where start dir is a symlink
     aliasChdir($ENV{PWD}) if defined $ENV{PWD};
-    my $start_time = time;
     &$fn;
-    addTimeLog($start_time);
-}
-
-sub addTimeLog {
-    my ($start_time) = @_;
-
-    return unless defined $time_log;
-
-    my $timelog_entry = {
-	    version => 1,
-	    command => [$0, @original_arguments ],
-	    host => hostname,
-	    directory => getcwd,
-	    starttime => $start_time,
-	    endtime => time
-	};
-	
-    if (my $lock = Lintel::File::Lock::getLockEx($time_log, waittime => 5, 
-						 flags => O_WRONLY | O_CREAT | O_APPEND)) {
-	my $doc = encode_base64(Dumper($timelog_entry), '');
-	my $sha1 = hexDigest($doc);
-	print $lock "$doc $sha1\n" or die "print failed: $!";
-	close $lock or die "close failed: $!";
-    } else {
-	warn "Skipping time logging; unable to lock $time_log\n";
-    }
-
-    # TODO: add code that parses the time logs and writes out SQL for mercury.
 }
 
 # TODO: factor this out into a library so that it can be used by lots

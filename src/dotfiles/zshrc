@@ -40,7 +40,7 @@ procfind () {
   fi
   case $BUILD_OS in
     debian*)
-      /bin/ps -efl | grep $search
+      COLUMNS= /bin/ps -efl | grep $search
     ;;
     *hpux*)
       UNIX95=1 /bin/ps -e -o pid,ppid,user,group,nice,pri,vsz,sz,pcpu,etime,time,args | grep $search
