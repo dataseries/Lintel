@@ -31,7 +31,7 @@ help:
 # code for global multi-os-version in here.
 
 MAKE_DIST := $(HOME)/tmp/make-dist
-PB_ROOT := $(shell grep '^pbdefdir' $(HOME)/.pbrc | awk '{print $$4}')
+PB_ROOT := $(shell grep '^pbdefdir' $(HOME)/.pbrc | awk '{print $$4}' | sed 's,\$$ENV{.*},$(HOME),')
 SRC_LINTEL := $(HOME)/projects/Lintel
 SRC_DATASERIES := $(HOME)/projects/DataSeries
 
@@ -80,10 +80,8 @@ PB_SCILINUX := $(foreach ver, $(SCILINUX_VERSIONS), \
 
 PARALLELISM=6
 
-LINTEL_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_LINTEL)/debian/changelog)
-DATASERIES_VERSION := $(shell perl -ne '/\w+\s+\(([0-9\.]+)\) /o || die "bad $$_"; print "$$1"; exit(0);' <$(SRC_DATASERIES)/debian/changelog)
-
 RELEASE_DATE := $(shell if [ -f $(MAKE_DIST)/version ]; then . $(MAKE_DIST)/version; echo $$RELEASE_DATE; else echo unknown; fi)
+RELEASE_VERSION := $(shell if [ -f $(MAKE_DIST)/version ]; then . $(MAKE_DIST)/version; echo $$RELEASE_VERSION; else echo unknown; fi)
 REMOTE_TMP := /var/tmp
 
 ###### -- local and remote host build vaiables --
@@ -101,23 +99,14 @@ $(MAKE_DIST)/version:
 		echo "RELEASE_DATE=`date +%Y-%m-%d`" >$(MAKE_DIST)/version.tmp; \
 		echo "RELEASE_VERSION=0.`date +%Y.%m.%d`" >>$(MAKE_DIST)/version.tmp; \
 	fi
-	echo "TODO-release: check changelogs against the project-builder variants"
-	exit 1
-	. $(MAKE_DIST)/version.tmp \
-	    && [ `head -1 debian/changelog | grep $$RELEASE_VERSION | wc -l` = 1 ]
-	. $(MAKE_DIST)/version.tmp \
-	    && [ `grep $$RELEASE_VERSION redhat/Lintel.spec.in | wc -l` = 1 ]
-	. $(MAKE_DIST)/version.tmp \
-	    && [ `head -1 ../DataSeries/debian/changelog | grep $$RELEASE_VERSION | wc -l` = 1 ]
-	. $(MAKE_DIST)/version.tmp; DSSPEC=../DataSeries/redhat/DataSeries.spec.in \
-	    && [ `grep $$RELEASE_VERSION $$DSSPEC | wc -l` = 1 ]
+	./dist/check-changelogs.sh $(PB_ROOT) $(MAKE_DIST)
 	mv $(MAKE_DIST)/version.tmp $(MAKE_DIST)/version
 
 snapshot-tar: $(MAKE_DIST)/version
 	[ ! -f CMakeCache.txt ]
 	[ ! -f ../DataSeries/CMakeCache.txt ]
-	./redhat/make-tar.sh
-	(cd ../DataSeries && ./redhat/make-tar.sh)
+	./dist/make-tar.sh $(MAKE_DIST)
+	(cd ../DataSeries && ./dist/make-tar.sh $(MAKE_DIST))
 
 # sudo HOME=/var/www/localpkgs gpg --gen-key
 # Real name: Local packages signing key
@@ -132,32 +121,39 @@ clean:
 	sudo rm -rf $(MAKE_DIST)
 	sudo rm -rf --one-file-system $(PB_ROOT)/chroot
 	sudo rm -rf $(PB_ROOT)/repos
-	-sudo rm ../*$(LINTEL_VERSION)* ../*$(DATASERIES_VERSION)*
+	-sudo rm ../*$(RELEASE_VERSION)* ../*$(RELEASE_VERSION)*
 	-[ -d .git ] && rm Release.info ChangeLog ../DataSeries/Release.info ../DataSeries/ChangeLog
 
 # ------------ Packages -------------
 
-packages: $(PB_DEBIAN) $(PB_UBUNTU) $(PB_CENTOS) $(PB_FEDORA) $(PB_OPENSUSE) $(PB_SCILINUX)
+packages: deb-packages rpm-packages
+
+deb-packages: $(PB_DEBIAN) $(PB_UBUNTU)
+
+rpm-packages: $(PB_CENTOS) $(PB_FEDORA) $(PB_OPENSUSE) $(PB_SCILINUX)
 
 # ------------------------------------------------------------------------
 # Project-Builder rules
 
-pb-lintel-src: /home/anderse/projects/Lintel-$(LINTEL_VERSION).tar.gz
-	[ ! -f $(MAKE_DIST)/lintel/pb/cms2build ] || rm $(MAKE_DIST)/lintel/pb/cms2build
+.SECONDARY:
+
+pb-lintel-src: /home/anderse/projects/Lintel-$(RELEASE_VERSION).tar.gz
+	@[ ! -f $(MAKE_DIST)/lintel/pb/cms2build ] || rm $(MAKE_DIST)/lintel/pb/cms2build
 	./dist/rules $(MAKE_DIST)/lintel/pb/cms2build
 
 pb-lintel-%: $(MAKE_DIST)/lintel/pb/%/build
 	@echo "Built lintel package for $*"
 
 pb-dataseries-src: 
-	[ ! -f $(MAKE_DIST)/dataseries/pb/cms2build ] || rm $(MAKE_DIST)/dataseries/pb/cms2build
+	@[ ! -f $(MAKE_DIST)/dataseries/pb/cms2build ] || rm $(MAKE_DIST)/dataseries/pb/cms2build
 	./dist/rules $(MAKE_DIST)/dataseries/pb/cms2build
 
 pb-dataseries-%: $(MAKE_DIST)/dataseries/pb/%/build
 	@echo "Built dataseries package for $*"
 
+# --- lintel ---
 
-$(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/release/Lintel.pb /home/anderse/projects/Lintel-$(LINTEL_VERSION).tar.gz
+$(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/$(RELEASE_VERSION)/Lintel.pb /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.gz
 	mkdir -p `dirname $@`
 	pb -v -p Lintel -r 0.2012.02.28 cms2build >$@-new 2>$@.err
 	mv $@-new $@
@@ -165,8 +161,8 @@ $(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/release/Lintel.pb /ho
 $(MAKE_DIST)/lintel/pb/%/new-ve: $(MAKE_DIST)/lintel/pb/cms2build
 	-sudo umount $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/proc
 	-sudo rm -rf --one-file-system $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`
-	[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
-	mkdir -p `dirname $@`
+	@[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
+	@mkdir -p `dirname $@`
 	pb -v -m $* newve >$@-new 2>$@.err
 	mv $@-new $@
 
@@ -175,12 +171,14 @@ $(MAKE_DIST)/lintel/pb/%/setup-ve: $(MAKE_DIST)/lintel/pb/%/new-ve
 	mv $@-new $@
 
 $(MAKE_DIST)/lintel/pb/%/build: $(MAKE_DIST)/lintel/pb/%/setup-ve
+	@[ ! -f $@ ] || rm $@
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -p Lintel -m $* build2ve >$@-new 2>$@.err
 	mv $@-new $@
 
+# --- dataseries ---
 
-
-$(MAKE_DIST)/dataseries/pb/cms2build: $(PB_ROOT)/DataSeries/pbconf/release/DataSeries.pb /home/anderse/projects/DataSeries-$(LINTEL_VERSION).tar.gz
+$(MAKE_DIST)/dataseries/pb/cms2build: $(PB_ROOT)/DataSeries/pbconf/$(RELEASE_VERSION)/DataSeries.pb /var/www/pb-sources/DataSeries-$(RELEASE_VERSION).tar.gz
 	mkdir -p `dirname $@`
 	pb -v -p DataSeries -r 0.2012.02.28 cms2build >$@-new 2>$@.err
 	mv $@-new $@
@@ -188,8 +186,8 @@ $(MAKE_DIST)/dataseries/pb/cms2build: $(PB_ROOT)/DataSeries/pbconf/release/DataS
 $(MAKE_DIST)/dataseries/pb/%/new-ve: $(MAKE_DIST)/lintel/pb/%/build $(MAKE_DIST)/dataseries/pb/cms2build
 	-sudo umount $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/proc
 	-sudo rm -rf --one-file-system $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`
-	[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
-	mkdir -p `dirname $@`
+	@[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
+	@mkdir -p `dirname $@`
 	pb -v -m $* newve >$@-new 2>$@.err
 	mv $@-new $@
 
@@ -198,6 +196,7 @@ $(MAKE_DIST)/dataseries/pb/%/setup-ve: $(MAKE_DIST)/dataseries/pb/%/new-ve
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/pb/%/build: $(MAKE_DIST)/dataseries/pb/%/setup-ve
+	@[ ! -f $@ ] || rm $@
 	pb -v -p DataSeries -m $* build2ve >$@-new 2>$@.err
 	mv $@-new $@
 
