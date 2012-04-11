@@ -126,11 +126,23 @@ clean:
 
 # ------------ Packages -------------
 
-packages: deb-packages rpm-packages
+packages: pb-deb pb-rpm
 
-deb-packages: $(PB_DEBIAN) $(PB_UBUNTU)
+pb-debian: $(PB_DEBIAN)
 
-rpm-packages: $(PB_CENTOS) $(PB_FEDORA) $(PB_OPENSUSE) $(PB_SCILINUX)
+pb-ubuntu: $(PB_UBUNTU)
+
+pb-deb: pb-debian pb-ubuntu
+
+pb-centos: $(PB_CENTOS)
+
+pb-fedora: $(PB_FEDORA)
+
+pb-opensuse: $(PB_OPENSUSE)
+
+pb-scilinux: $(PB_SCILINUX)
+
+pb-rpm: pb-centos pb-fedora pb-opensuse pb-scilinux
 
 # ------------------------------------------------------------------------
 # Project-Builder rules
@@ -150,6 +162,7 @@ pb-dataseries-src:
 
 pb-dataseries-%: $(MAKE_DIST)/dataseries/pb/%/build
 	@echo "Built dataseries package for $*"
+	@echo "------------------------------------------------------------------"
 
 # --- lintel ---
 
@@ -159,14 +172,20 @@ $(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/$(RELEASE_VERSION)/Li
 	mv $@-new $@
 
 $(MAKE_DIST)/lintel/pb/%/new-ve: $(MAKE_DIST)/lintel/pb/cms2build
+	@[ ! -f $@ ] || rm $@
 	-sudo umount $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/proc
+	-sudo umount $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/sys
 	-sudo rm -rf --one-file-system $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`
 	@[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
 	@mkdir -p `dirname $@`
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -m $* newve >$@-new 2>$@.err
+	[ `grep 'was corrupt' $@-new | wc -l` = 0 ]
 	mv $@-new $@
 
 $(MAKE_DIST)/lintel/pb/%/setup-ve: $(MAKE_DIST)/lintel/pb/%/new-ve
+	@[ ! -f $@ ] || rm $@
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -m $* setupve >$@-new 2>$@.err
 	mv $@-new $@
 
@@ -184,19 +203,25 @@ $(MAKE_DIST)/dataseries/pb/cms2build: $(PB_ROOT)/DataSeries/pbconf/$(RELEASE_VER
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/pb/%/new-ve: $(MAKE_DIST)/lintel/pb/%/build $(MAKE_DIST)/dataseries/pb/cms2build
+	@[ ! -f $@ ] || rm $@
 	-sudo umount $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/proc
 	-sudo rm -rf --one-file-system $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`
 	@[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
 	@mkdir -p `dirname $@`
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -m $* newve >$@-new 2>$@.err
+	[ `grep 'was corrupt' $@-new | wc -l` = 0 ]
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/pb/%/setup-ve: $(MAKE_DIST)/dataseries/pb/%/new-ve
+	@[ ! -f $@ ] || rm $@
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -m $* setupve >$@-new 2>$@.err
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/pb/%/build: $(MAKE_DIST)/dataseries/pb/%/setup-ve
 	@[ ! -f $@ ] || rm $@
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -p DataSeries -m $* build2ve >$@-new 2>$@.err
 	mv $@-new $@
 

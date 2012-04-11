@@ -42,10 +42,13 @@ IF(PERL_BINARY_MODULES_ENABLED)
     		       COMMAND rm LintelPerl-1
     	               COMMAND mv LintelPerl-2 LintelPerl.cpp
     		       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/xsubpp-cleanup ${CMAKE_CURRENT_SOURCE_DIR}/LintelPerl.xs)
+
+    EXECUTE_PROCESS(COMMAND perl -e "use Config; print \$Config{ccflags};"
+                    OUTPUT_VARIABLE PERL_CCFLAGS ERROR_QUIET)
     
     SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_BINARY_DIR}/LintelPerl.cpp
                                 PROPERTIES GENERATED true
-    			    COMPILE_FLAGS "-I${PERL_COREINCDIR}")
+    			    COMPILE_FLAGS "-I${PERL_COREINCDIR} ${PERL_CCFLAGS}")
     
     ADD_LIBRARY(LintelPerl SHARED ${CMAKE_CURRENT_BINARY_DIR}/LintelPerl.cpp)
     TARGET_LINK_LIBRARIES(LintelPerl Lintel)

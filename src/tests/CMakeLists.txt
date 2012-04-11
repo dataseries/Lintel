@@ -42,7 +42,6 @@ LINTEL_SIMPLE_TEST(tuples)
 LINTEL_SIMPLE_TEST(hashtuplestats)
 LINTEL_SIMPLE_TEST(statscube)
 LINTEL_SIMPLE_TEST(priority_queue)
-LINTEL_SIMPLE_TEST(byte_buffer)
 LINTEL_SIMPLE_TEST(boyer_moore_horspool)
 LINTEL_SIMPLE_TEST(stlutility)
 LINTEL_SIMPLE_TEST(base64)
@@ -55,18 +54,25 @@ ADD_TEST(lintel_log ${CMAKE_CURRENT_SOURCE_DIR}/run-check-lintel-log.sh)
 LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
-IF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED)
+LINTEL_SIMPLE_PROGRAM(byte_buffer)
+ADD_TEST(byte_buffer env DEPTOOL=${CMAKE_CURRENT_BINARY_DIR}/../deptool-bootstrap ./byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
+
+IF(PERL_ENABLED)
     ADD_TEST(deptool-env env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
     ADD_TEST(deptool-help-init env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} ${CMAKE_CURRENT_BINARY_DIR}/../deptool help init)
-    ADD_TEST(lintel-processmanager env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} perl ${CMAKE_CURRENT_SOURCE_DIR}/test-lintel-processmanager.pl)
-ENDIF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED)
+
+    LINTEL_SIMPLE_PROGRAM(deptool-osarch)
+    ADD_TEST(deptool-osarch ${CMAKE_CURRENT_SOURCE_DIR}/test-deptool-osarch.sh ${Lintel_SOURCE_DIR})
+
+    IF(PERL_TIME_HIRES_ENABLED)
+        ADD_TEST(lintel-processmanager env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} perl ${CMAKE_CURRENT_SOURCE_DIR}/test-lintel-processmanager.pl)
+    ENDIF(PERL_TIME_HIRES_ENABLED)
+ENDIF(PERL_ENABLED)
 
 IF(LINTEL_DBI_ENABLED)
     ADD_TEST(test_lintel_dbi ${PERL_PATH} -I${CMAKE_CURRENT_SOURCE_DIR}/.. ${CMAKE_CURRENT_SOURCE_DIR}/../perl/test_lintel_dbi.pl)
 ENDIF(LINTEL_DBI_ENABLED)
 
-
-ADD_TEST(byte_buffer byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
 
 ################################## CONDITIONAL BITS
 
@@ -102,7 +108,8 @@ IF(MERCURY_PLOT_ENABLED)
 ENDIF(MERCURY_PLOT_ENABLED)
 
 IF(WITH_PROCESS_STATISTICS)
-    LINTEL_SIMPLE_TEST(process_statistics)
+    LINTEL_SIMPLE_PROGRAM(process_statistics)
+    ADD_TEST(process_statistics env DEPTOOL=${CMAKE_CURRENT_BINARY_DIR}/../deptool-bootstrap ./process_statistics)
 ENDIF(WITH_PROCESS_STATISTICS)
 
 ################################### LONGER TESTS

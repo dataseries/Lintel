@@ -3710,9 +3710,9 @@ sub operatingSystem {
             if (/^(\d+\.\d+)(\.\d+)?$/o) {
                 $Cache::operating_system = "debian-$1";
             } elsif (m!^([a-z]+)/sid$!o) {
-                $Cache::operating_system = "debian-$1-unstable";
+                $Cache::operating_system = "debian-${1}_unstable";
             } elsif (m!^testing$!o) {
-                $Cache::operating_system = "debian-testing-unstable";
+                $Cache::operating_system = "debian-testing_unstable";
             } else {
                 s/\W//go; s/\s/_/go;
                 $Cache::operating_system = "debian-unknown-$_";
@@ -3723,14 +3723,18 @@ sub operatingSystem {
             $_ = <$rhver>;
             close($rhver);
             chomp;
-            if (/^Red Hat Enterprise Linux.+release (\d+)\b/o) {
-                $Cache::operating_system = "rhel$1";
+            # Include minor versions because major things like boost installs
+            # can change between minor releases of the OS.
+            if (/^Red Hat Enterprise Linux.+release (\d+\.\d+) /o) {
+                $Cache::operating_system = "rhel-$1";
 	    } elsif (/^Fedora release (\d+) \(\w+\)$/o) {
-		$Cache::operating_system = "fedora$1";
-	    } elsif (/^CentOS release (\d+)\b/o) {
-		$Cache::operating_system = "centos$1";
-            } elsif (/^CentOS Linux release (\d+)\b/o) {
-                $Cache::operating_system = "centos$1";
+		$Cache::operating_system = "fedora-$1";
+	    } elsif (/^CentOS release (\d+\.\d+) /o) {
+		$Cache::operating_system = "centos-$1";
+            } elsif (/^CentOS Linux release (\d+\.\d+) /o) {
+                $Cache::operating_system = "centos-$1";
+            } elsif (/^Scientific Linux release (\d+\.\d+) /o) {
+                $Cache::operating_system = "scilinux-$1";
             } else {
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "rh-unknown-$_";
@@ -3741,9 +3745,11 @@ sub operatingSystem {
 	    $_ = <$susever>;
 	    close($susever);
 	    chomp;
-	    if (/^openSUSE (\d+)\.\d+ /o) {
+            # unclear if openSUSE minor releases are compatible; given 8 month release cycle, seems
+            # unlikely so we tie to the minor version also.
+	    if (/^openSUSE (\d+\.\d+) /o) {
 		$Cache::operating_system = "opensuse-$1";
-            } elsif (/^SUSE Linux Enterprise Server (\d+)\b/o) {
+            } elsif (/^SUSE Linux Enterprise Server (\d+\.\d+)\b/o) {
                 $Cache::operating_system = "suse-$1";
 	    } else {
                 s/\W/_/go; s/\s/_/go;

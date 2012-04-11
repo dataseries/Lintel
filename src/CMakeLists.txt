@@ -59,6 +59,7 @@ SET(LIBLINTEL_SOURCES
 	StatsSeries.cpp
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
+        TestUtil.cpp
 	${LIBLINTEL_THREAD_SOURCES}
 )
 
