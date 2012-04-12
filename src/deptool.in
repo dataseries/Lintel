@@ -5378,37 +5378,23 @@ sub init {
     }
 }
 
-sub maybeBackupOldProjectDir {
-    my ($project, $date, $source) = @_;
+sub backupOldProjectDir {
+    my ($project) = @_;
 
     my $projects = main::projects();
 
-    if (-e "$projects/$project") {
-	if (! -r "$projects/$project/Release.info") {
-	    backupUntarDir("$projects/$project", "Missing Release.info file");
-	} else {
-	    my $fh = new FileHandle "$projects/$project/Release.info"
-		or die "Can't open $projects/$project/Release.info for read: $!";
-	    my $creation_date;
-	    while (<$fh>) {
-		$creation_date = $1 if /^Creation-Date: (\S+)$/o;
-	    }
-	    close($fh);
-
-	    if (! defined $creation_date) {
-		backupUntarDir("$projects/$project", "No creation date in Release.info file");
-	    } elsif ($creation_date ne $date) {
-		backupUntarDir("$projects/$project", 
-			       "Creation date in Release.info file different from one in tar file");
-	    } else {
-		print "$projects/$project is already the same as in $source\n";
-		return 1;
-	    }
-	}
+    my $from_name = "$projects/$project";
+    if (-e $from_name) {
+        my @now = localtime(time);
+        my $backup_date = sprintf("%04d-%02d-%02dT%02d:%02d", $now[5] + 1900, $now[4], $now[3],
+                                  $now[2], $now[1]);
+        my $to_name = "${from_name}.$backup_date";
+        main::userPrompt("Rename $from_name to $to_name");
+        rename($from_name, $to_name)
+            or die "Unable to rename $from_name to $to_name: $!";
     }
-    die "$projects/$project exists?"
-	if -e "$projects/$project";
-    return 0;
+    die "$from_name still exists?"
+	if -e $from_name;
 }
 
 sub unpackProjectsTar {
@@ -5423,53 +5409,38 @@ sub unpackProjectsTar {
     close($fh);
     chomp;
     die "Unable to handle '$_'" 
-	unless m!^d.+ (\w+)-(\d{4}-\d{2}-\d{2})/!o;
-    my ($project, $date) = ($1,$2);
+	unless m!^d.+ (\w+)-([\d\-\.]+)/!o;
+    my ($project, $revision) = ($1,$2);
 
-    return if maybeBackupOldProjectDir($project, $date, $file);
+    backupOldProjectDir($project);
 
     my $projects = main::projects();
-    if (-d "$project-$date") {
-	main::userPrompt("Delete $projects/$project-$date");
-	rmtree("$project-$date");
+    if (-d "$project-$revision") {
+	main::userPrompt("Delete $projects/$project-$revision");
+	rmtree("$project-$revision");
     }
 
     main::userPrompt("Untar $file into $projects");
     system("tar xvvfj $file");
-    die "Did not get expected directory $project-$date"
-	unless -d "$project-$date";
-    rename("$project-$date","$project")
-	or die "Unable to rename $project-$date to $project";
-}
-
-sub backupUntarDir {
-    my ($dir, $reason) = @_;
-
-    print "Backing up $dir.\n$reason\n";
-    if (-d "$dir.old") {
-	main::userPrompt("Delete old backup directory $dir.old");
-	rmtree("$dir.old");
-    }
-    main::userPrompt("Rename $dir to $dir.old");
-
-    rename($dir, "$dir.old")
-	or die "rename($dir, $dir.old) failed: $!";
+    die "Did not get expected directory $project-$revision"
+	unless -d "$project-$revision";
+    rename("$project-$revision","$project")
+	or die "Unable to rename $project-$revision to $project";
 }
 
 sub httpFetchUnpackTar {
     my ($url, $no_cache) = @_;
 
-    die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
-	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
-    my ($project, $date) = ($1, $2);
+    die "Bad url '$url', expected http://.*/\\w+-([\d\-\.]+).bz2"
+	unless $url =~ m!^http://.*/(\w+)-([\d\-\.]+).tar.bz2$!o;
+    my ($project, $revision) = ($1, $2);
 
-    return if maybeBackupOldProjectDir($project, $date, $url);
+    backupOldProjectDir($project);
 
-    my $output = "$project-$date.tar.bz2";
+    my $output = "$project-$revision.tar.bz2";
     if ($no_cache ne '') {
 	unlink($output);
 	die "Unable to rm $output: $!" if -e $output;
-	rmtree("$project-$date") if -d "$project-$date";
     }
 
     if (! -e $output) {

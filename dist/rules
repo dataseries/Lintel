@@ -78,6 +78,14 @@ SCILINUX_VERSIONS := 6.0 6.1 6.2
 PB_SCILINUX := $(foreach ver, $(SCILINUX_VERSIONS), \
 	         $(foreach arch, x86_64 i386, pb-dataseries-scilinux-$(ver)-$(arch)))
 
+FREEBSD_VERSIONS := 7r4 8r2 9r0
+VM_FREEBSD := $(foreach ver, $(FREEBSD_VERSIONS), \
+	         $(foreach arch, amd64 i386, vm-dataseries-freebsd-$(ver)-$(arch)))
+
+OPENBSD_VERSIONS := 4r9 5r0
+VM_OPENBSD := $(foreach ver, $(OPENBSD_VERSIONS), \
+	         $(foreach arch, amd64 i386, vm-dataseries-openbsd-$(ver)-$(arch)))
+
 PARALLELISM=6
 
 RELEASE_DATE := $(shell if [ -f $(MAKE_DIST)/version ]; then . $(MAKE_DIST)/version; echo $$RELEASE_DATE; else echo unknown; fi)
@@ -224,6 +232,28 @@ $(MAKE_DIST)/dataseries/pb/%/build: $(MAKE_DIST)/dataseries/pb/%/setup-ve
 	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -p DataSeries -m $* build2ve >$@-new 2>$@.err
 	mv $@-new $@
+
+# ------------------------------------------------------------------------
+# Testing on virtual machines
+
+vm-dataseries-%: $(MAKE_DIST)/dataseries/vm/%/build
+	@echo "Built dataseries for $*"
+
+vm-test: vm-dataseries-freebsd-7r4
+
+/var/www/pb-sources/%-$(RELEASE_DATE).tar.bz2: /var/www/pb-sources/%-$(RELEASE_VERSION).tar.gz
+	gunzip -c < $< | bzip2 -9v >$@-new
+	mv $@-new $@
+
+/var/www/pb-sources/latest-release: /var/www/pb-sources/Lintel-$(RELEASE_DATE).tar.bz2 /var/www/pb-sources/DataSeries-$(RELEASE_DATE).tar.bz2
+	echo "Lintel-$(RELEASE_DATE).tar.bz2" >$@-new
+	echo "DataSeries-$(RELEASE_DATE).tar.bz2" >>$@-new
+	mv $@-new $@
+
+$(MAKE_DIST)/dataseries/vm/%/build: 
+	ping -c 1 $* >$@-new 2>&1
+	scp dist/vm-build.sh $* # >>$@-new 2>&1
+	ssh $* dist/vm-build.sh # >>$@-new 2>&1
 
 # ------------------------------------------------------------------------
 # Testing on existing systems...
