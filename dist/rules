@@ -239,21 +239,39 @@ $(MAKE_DIST)/dataseries/pb/%/build: $(MAKE_DIST)/dataseries/pb/%/setup-ve
 vm-dataseries-%: $(MAKE_DIST)/dataseries/vm/%/build
 	@echo "Built dataseries for $*"
 
-vm-test: vm-dataseries-freebsd-7r4
+vm-freebsd: $(VM_FREEBSD)
 
-/var/www/pb-sources/%-$(RELEASE_DATE).tar.bz2: /var/www/pb-sources/%-$(RELEASE_VERSION).tar.gz
+vm-openbsd: $(VM_OPENBSD)
+
+vm-all: vm-openbsd vm-freebsd 
+
+vm-check-%: 
+	ping -c 1 $*
+	HOSTNAME=`ssh $* hostname | sed 's/.my.domain//'` && echo "remotename=$$HOSTNAME" && [ $* = "$$HOSTNAME" ]
+	echo "------ $* running properly ------"
+
+vm-check-all: $(patsubst vm-dataseries-%, vm-check-%, $(VM_FREEBSD) $(VM_OPENBSD))
+	@echo "************ all VM's running properly **************"
+
+/var/www/pb-sources/deptool-bootstrap: $(BUILD_OPT)/Lintel/src/deptool-bootstrap
+	cp $< $@
+
+/var/www/pb-sources/%.bz2: /var/www/pb-sources/%.gz
 	gunzip -c < $< | bzip2 -9v >$@-new
 	mv $@-new $@
 
-/var/www/pb-sources/latest-release: /var/www/pb-sources/Lintel-$(RELEASE_DATE).tar.bz2 /var/www/pb-sources/DataSeries-$(RELEASE_DATE).tar.bz2
-	echo "Lintel-$(RELEASE_DATE).tar.bz2" >$@-new
-	echo "DataSeries-$(RELEASE_DATE).tar.bz2" >>$@-new
+/var/www/pb-sources/latest-release: /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.bz2 /var/www/pb-sources/DataSeries-$(RELEASE_VERSION).tar.bz2 /var/www/pb-sources/deptool-bootstrap
+	echo "Lintel-$(RELEASE_VERSION).tar.bz2" >$@-new
+	echo "DataSeries-$(RELEASE_VERSION).tar.bz2" >>$@-new
 	mv $@-new $@
 
-$(MAKE_DIST)/dataseries/vm/%/build: 
-	ping -c 1 $* >$@-new 2>&1
-	scp dist/vm-build.sh $* # >>$@-new 2>&1
-	ssh $* dist/vm-build.sh # >>$@-new 2>&1
+$(MAKE_DIST)/dataseries/vm/%/build: /var/www/pb-sources/latest-release
+	mkdir -p `dirname $@`
+	./dist/rules vm-check-$* >$@-new 2>&1
+	scp dist/vm-build.sh $*: >>$@-new 2>&1
+	ssh $* /bin/sh vm-build.sh >>$@-new 2>&1
+	echo "Success building $*"
+	mv $@-new $@
 
 # ------------------------------------------------------------------------
 # Testing on existing systems...

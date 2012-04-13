@@ -608,11 +608,13 @@ then download all of the packages specified in the latest-release file.
 sub depInit {
     my %mode;
     my $server;
+    Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
     my $result = GetOptions("server=s" => \$server,
                             "mtn!" => \$mode{mtn},
                             "git!" => \$mode{git},
                             "tar!" => \$mode{tar});
     usage("Unknown error") unless $result;
+    Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
     my $count = 0;
     map { ++$count if $_; } values %mode;
     if ($count == 0) {
@@ -5400,38 +5402,32 @@ sub backupOldProjectDir {
 sub unpackProjectsTar {
     my ($file) = @_;
 
-    die "Expected $file to end in .bz2"
-	unless $file =~ /\.bz2$/o;
-
-    my $fh = new FileHandle "tar tvvfj $file |"
-	or die "Can't run tar tvvfj $file: $!";
-    local $_ = <$fh>;
-    close($fh);
-    chomp;
-    die "Unable to handle '$_'" 
-	unless m!^d.+ (\w+)-([\d\-\.]+)/!o;
+    my $name_re = qr!\b(\w+)-([\d\-\.]+).tar.bz2!;
+    die "Expected $file to be named $name_re"
+	unless $file =~ $name_re;
     my ($project, $revision) = ($1,$2);
 
     backupOldProjectDir($project);
 
     my $projects = main::projects();
-    if (-d "$project-$revision") {
+    if (-e "$project-$revision") {
 	main::userPrompt("Delete $projects/$project-$revision");
 	rmtree("$project-$revision");
     }
+    die "internal $project-$revision" if -e "$project-$revision";
 
     main::userPrompt("Untar $file into $projects");
     system("tar xvvfj $file");
     die "Did not get expected directory $project-$revision"
 	unless -d "$project-$revision";
-    rename("$project-$revision","$project")
+    rename("$project-$revision",$project)
 	or die "Unable to rename $project-$revision to $project";
 }
 
 sub httpFetchUnpackTar {
     my ($url, $no_cache) = @_;
 
-    die "Bad url '$url', expected http://.*/\\w+-([\d\-\.]+).bz2"
+    die "Bad url '$url', expected http://.*/\\w+-([\\d\\-\\.]+).bz2"
 	unless $url =~ m!^http://.*/(\w+)-([\d\-\.]+).tar.bz2$!o;
     my ($project, $revision) = ($1, $2);
 
@@ -5457,10 +5453,10 @@ sub httpFetchUnpackTar {
 sub httpFetchLatestRelease {
     my ($url, $no_cache) = @_;
 
-    main::userPrompt("download $url");
+    main::userPrompt("wget $no_cache $url");
     print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
 	if $debug;
-    my $fh = new FileHandle("wget $no_cache -O - $url |")
+    my $fh = new FileHandle("wget $no_cache -O - $url 2>/dev/null |")
 	or die "Can't run wget $no_cache -O - $url: $!";
     my @suburls = <$fh>;
     close($fh);
