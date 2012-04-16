@@ -40,7 +40,9 @@ void second(int argc, char *argv[]) {
 void third(int argc, char *argv[]) {
     // --help
 
-    lintel::programOptionsHelp("test-extra-help-bit");
+    // Columns = 10                                              existing
+    //                        perfect     | last    | force    |    |
+    lintel::programOptionsHelp("1234567890 1 3 5 7 9 123 567890abcde\nabc");
     lintel::ProgramOption<char> arg1("arg1", "argument 1 description");
     lintel::ProgramOption<bool> arg2("arg2", "argument 2 description");
     lintel::parseCommandLine(argc, argv);

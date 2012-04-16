@@ -570,36 +570,32 @@ B<Warning:> If you already have a key set up on one machine, you should just cop
 directory to the new machine rather than creating a new key.  Monotone can get confused by multiple
 keys with the same email address.
 
-=head3 init --tar [--no-cache] [I<download-specification>]
+=head3 init --tar [I<download-specification>]
 
-The tarinit command will initialize the software packages based on tar files.
-It has three possible types of download specifications, listed below.  If no
-arguments are specified, then it defaults to
-http://tesla.hpl.hp.com/opensource/latest-release; which will download the
-open-source packages available on tesla and unpack then.  If the --no-cache
-option is specified, tarinit will provide --no-cache as an option to wget.
+The tarinit command will initialize the software packages based on tar files.  It has three
+possible types of download specifications, listed below.  If no arguments are specified, then it
+defaults to http://tesla.hpl.hp.com/opensource/latest-release; which will download the open-source
+packages available on tesla and unpack then.
 
 =over 4
 
 =item I</path/to/file.tar.bz2>
 
-This specifies that deptool should unpack the specified tar file into the
-projects directory.  The tar file will normally unpack into a directory names
-I<package>-I<date>, in which case the -I<date> portion will be removed.  If
-there is already a I<package> available in the projects directory, it will only
-be replaced if it has a different release date than the file.tar.bz2 one.
+This specifies that deptool should unpack the specified tar file into the projects directory.  The
+tar file will normally unpack into a directory names I<package>-I<date>, in which case the -I<date>
+portion will be removed.  If there is already a I<package> available in the projects directory, it
+will only be replaced if it has a different release date than the file.tar.bz2 one.
 
 =item I<http://host/path/to/tar>
 
-This specifies that deptool should first download the tar file into the
-projects directory and then unpack it as if the downloaded file had been
-specified to tarinit.  Deptool will use wget to download the file.  If the tar
-file has already been downloaded, it will just be used.
+This specifies that deptool should first download the tar file into the projects directory and then
+unpack it as if the downloaded file had been specified to tarinit.  Deptool will use wget to
+download the file.  If the tar file has already been downloaded, it will just be used.
 
 =item I<http://host/path/to/latest-release>
 
-This specifies that deptool should download the specified text file, and should
-then download all of the packages specified in the latest-release file.
+This specifies that deptool should download the specified text file, and should then download all
+of the packages specified in the latest-release file.
 
 =back
 
@@ -3529,14 +3525,14 @@ sub rootSrcDir {
 
 =pod
 
-=head2 getenv I<what>
+=head2 getenv [--quiet] [--unset] I<what>
 
-The getenv command allows you to get the environment variables that
-are needed for deptool to work without prompting.  This command has
-two forms, one that gets a specific environment variable and prints it
-out, and one that prints out a string that can be evaluated to set all
-the environment variables in the shell.  Therefore I<what> can have a
-number of values:
+The getenv command allows you to get the environment variables that are needed for deptool to work
+without prompting.  This command has two forms, one that gets a specific environment variable and
+prints it out, and one that prints out a string that can be evaluated to set all the environment
+variables in the shell. In the form for printing out all values for a shell, the --unset option
+will instead cause the values to be unset in the environment.  Because of the multiple modes,
+I<what> can have a number of values:
 
 =over
 
@@ -3614,7 +3610,9 @@ remote repositories.
 =cut
 
 sub getEnv {
-    my $result = GetOptions("quiet!" => \$quiet);
+    my $unset;
+    my $result = GetOptions("quiet!" => \$quiet,
+                            "unset!" => \$unset);
 
     usage("Unknown error") unless $result;
     usage("Missing requested env var") unless @ARGV == 1;
@@ -3622,6 +3620,7 @@ sub getEnv {
     my $env = $ARGV[0];
     if ($env =~ /^for-((sh)|(csh))$/o) {
         my $shell = $1;
+        $shell = "unset-$shell" if $unset;
         $quiet = 1;
         $auto_yes_to_prompts = 1;
 
@@ -3655,6 +3654,10 @@ sub printEnv {
         print qq{export $envvar="$val";\n};
     } elsif ($shell eq 'csh') {
         print qq{setenv $envvar "$val";\n};
+    } elsif ($shell eq 'unset-sh') {
+        print qq{unset $envvar\n};
+    } elsif ($shell eq 'unset-csh') {
+        print qq{unsetenv $envvar\n};
     } else {
         die "?? $shell";
     }
@@ -3729,6 +3732,8 @@ sub operatingSystem {
             # can change between minor releases of the OS.
             if (/^Red Hat Enterprise Linux.+release (\d+\.\d+) /o) {
                 $Cache::operating_system = "rhel-$1";
+            } elsif (/^Red Hat Enterprise Linux.*release (\d+) .*Update (\d+)\b/o) {
+                $Cache::operating_system = "rhel-$1.$2";
 	    } elsif (/^Fedora release (\d+) \(\w+\)$/o) {
 		$Cache::operating_system = "fedora-$1";
 	    } elsif (/^CentOS release (\d+\.\d+) /o) {
@@ -5351,8 +5356,11 @@ use Getopt::Long;
 sub init {
     my $no_cache = 0;
 
+    # TODO-2013-04-15: remove the below option.
     my $result = GetOptions("no-cache!" => \$no_cache);
 
+    warn "no-cache is now on by default, it seems unlikely someone would init twice"
+        if $no_cache;
     usage("Unknown error") unless $result;
 
     my (@files) = @ARGV;
@@ -5364,16 +5372,15 @@ sub init {
     mkpath(main::projects());
     main::aliasChdir(main::projects());
 
-    my $cache = $no_cache ? "--no-cache" : "";
     foreach my $file (@files) {
 	if (-f $file && -r $file) {
 	    unpackProjectsTar($file);
 	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
 	    unpackProjectsTar("$startdir/$file");
 	} elsif ($file =~ m!^http:.*latest-release!o) {
-	    httpFetchLatestRelease($file, $cache);
+	    httpFetchLatestRelease($file);
 	} elsif ($file =~ m!^http:!o) {
-	    httpFetchUnpackTar($file, $cache);
+	    httpFetchUnpackTar($file);
 	} else {
 	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
 	}
@@ -5425,7 +5432,7 @@ sub unpackProjectsTar {
 }
 
 sub httpFetchUnpackTar {
-    my ($url, $no_cache) = @_;
+    my ($url) = @_;
 
     die "Bad url '$url', expected http://.*/\\w+-([\\d\\-\\.]+).bz2"
 	unless $url =~ m!^http://.*/(\w+)-([\d\-\.]+).tar.bz2$!o;
@@ -5434,38 +5441,50 @@ sub httpFetchUnpackTar {
     backupOldProjectDir($project);
 
     my $output = "$project-$revision.tar.bz2";
-    if ($no_cache ne '') {
-	unlink($output);
-	die "Unable to rm $output: $!" if -e $output;
-    }
 
-    if (! -e $output) {
-	main::userPrompt("wget $no_cache $url");
-	my $ret = system("wget -O $output.tmp $url");
-
-	die "wget $url failed" unless $ret == 0 && -r "$output.tmp";
-	rename("$output.tmp", $output)
-	    or die "Unable to rename $output.tmp to $output: $!";
-    }
+    fetchHttp($url, $output);
     unpackProjectsTar(main::projects() . "/$output");
 }
 
 sub httpFetchLatestRelease {
-    my ($url, $no_cache) = @_;
+    my ($url) = @_;
 
-    main::userPrompt("wget $no_cache $url");
-    print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
-	if $debug;
-    my $fh = new FileHandle("wget $no_cache -O - $url 2>/dev/null |")
-	or die "Can't run wget $no_cache -O - $url: $!";
+    fetchHttp($url, "latest-release");
+    my $fh = new FileHandle("latest-release")
+	or die "Can't open latest-release: $!";
     my @suburls = <$fh>;
     close($fh);
 
     foreach my $suburl (@suburls) {
 	my $tmp = $url;
 	$tmp =~ s/latest-release$/$suburl/o;
-	httpFetchUnpackTar($tmp, $no_cache);
+	httpFetchUnpackTar($tmp);
     }
+}
+
+sub fetchHttp {
+    my ($url, $output) = @_;
+
+    foreach my $file ($output, "$output.tmp") {
+        unlink($file);
+        die "Unable to rm $file: $!" if -e $file;
+    }
+    foreach my $cmd ("wget --no-cache -O $output.tmp $url",
+                     "curl -o $output.tmp $url") {
+        main::userPrompt($cmd);
+        print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
+            if $debug;
+        my $ret = system($cmd);
+
+        if ($ret == 0 && -r "$output.tmp") {
+            rename("$output.tmp", $output)
+                or die "Unable to rename $output.tmp to $output: $!";
+            return;
+        } else {
+            warn "'$cmd' failed";
+        }
+    }
+    die "Unable to download $url, all commands failed.";
 }
 
 =pod

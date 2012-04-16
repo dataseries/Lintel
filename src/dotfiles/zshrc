@@ -45,6 +45,8 @@ procfind () {
     *hpux*)
       UNIX95=1 /bin/ps -e -o pid,ppid,user,group,nice,pri,vsz,sz,pcpu,etime,time,args | grep $search
     ;;
+    *macos*)
+      COLUMNS= /bin/ps guax | grep $search
     *)
       echo "Don't know how to procfind on a $BUILD_OS"
     ;;

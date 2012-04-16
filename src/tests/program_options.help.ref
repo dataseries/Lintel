@@ -1,4 +1,12 @@
-Usage: ./program_options [options] test-extra-help-bit
+Usage:
+./program_
+options
+[options]
+1234567890
+1 3 5 7 9
+123 567890
+abcde
+abc
 Allowed options:
   -h [ --help ]         get help on this program
   --arg1 arg            argument 1 description (Default value ['\000'].)

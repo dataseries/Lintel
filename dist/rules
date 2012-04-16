@@ -19,9 +19,9 @@
 help:
 	@echo "./dist/rules prep-release # make the version stamp file in $(MAKE_DIST)"
 	@echo "./dist/rules snapshot-tar # make tar files out of checked out Lintel/DataSeries"
-	@echo "./dist/rules sources"
-	@echo "./dist/rules packages"
-	@echo "./dist/rules remote-hosts"
+	@echo "./dist/rules packages # build binary packages using project-builder"
+	@echo "./dist/rules vm-all # build from source on all virtual machines"
+	@echo "./dist/rules remote-hosts # build from source on remote hosts"
 	@echo "./dist/rules martenot-copy"
 	@echo "./dist/rules clean"
 	@echo "release date $(RELEASE_DATE)"
@@ -32,8 +32,6 @@ help:
 
 MAKE_DIST := $(HOME)/tmp/make-dist
 PB_ROOT := $(shell grep '^pbdefdir' $(HOME)/.pbrc | awk '{print $$4}' | sed 's,\$$ENV{.*},$(HOME),')
-SRC_LINTEL := $(HOME)/projects/Lintel
-SRC_DATASERIES := $(HOME)/projects/DataSeries
 
 # 6.0=squeeze EOL ?
 # 7.0=wheezy release ?
@@ -90,7 +88,6 @@ PARALLELISM=6
 
 RELEASE_DATE := $(shell if [ -f $(MAKE_DIST)/version ]; then . $(MAKE_DIST)/version; echo $$RELEASE_DATE; else echo unknown; fi)
 RELEASE_VERSION := $(shell if [ -f $(MAKE_DIST)/version ]; then . $(MAKE_DIST)/version; echo $$RELEASE_VERSION; else echo unknown; fi)
-REMOTE_TMP := /var/tmp
 
 ###### -- local and remote host build vaiables --
 
@@ -123,7 +120,7 @@ snapshot-tar: $(MAKE_DIST)/version
 # empty passphrase (or use gpg-agent)
 
 martenot-copy: $(BUILD)/remote-host/martenot.hpl.hp.com/result
-	dist/martenot-copy --to-martenot $(REMOTE_TMP) $(RELEASE_DATE)
+	dist/martenot-copy --to-martenot XXXXX$(REMOTE_TMP) $(RELEASE_DATE)
 
 clean:
 	sudo rm -rf $(MAKE_DIST)
@@ -236,8 +233,8 @@ $(MAKE_DIST)/dataseries/pb/%/build: $(MAKE_DIST)/dataseries/pb/%/setup-ve
 # ------------------------------------------------------------------------
 # Testing on virtual machines
 
-vm-dataseries-%: $(MAKE_DIST)/dataseries/vm/%/build
-	@echo "Built dataseries for $*"
+vm-dataseries-%: $(MAKE_DIST)/vm/%/result
+	@echo "--------- Success building dataseries on $* ---------"
 
 vm-freebsd: $(VM_FREEBSD)
 
@@ -260,87 +257,61 @@ vm-check-all: $(patsubst vm-dataseries-%, vm-check-%, $(VM_FREEBSD) $(VM_OPENBSD
 	gunzip -c < $< | bzip2 -9v >$@-new
 	mv $@-new $@
 
-/var/www/pb-sources/latest-release: /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.bz2 /var/www/pb-sources/DataSeries-$(RELEASE_VERSION).tar.bz2 /var/www/pb-sources/deptool-bootstrap
+LR_DEPS := /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.bz2     \
+	   /var/www/pb-sources/DataSeries-$(RELEASE_VERSION).tar.bz2 \
+	   /var/www/pb-sources/deptool-bootstrap
+
+/var/www/pb-sources/latest-release: $(LR_DEPS)
 	echo "Lintel-$(RELEASE_VERSION).tar.bz2" >$@-new
 	echo "DataSeries-$(RELEASE_VERSION).tar.bz2" >>$@-new
 	mv $@-new $@
 
-$(MAKE_DIST)/dataseries/vm/%/build: /var/www/pb-sources/latest-release
+BUILD_FROM_SOURCE := $(PROJECTS)/Lintel/dist/build-from-source.sh
+$(MAKE_DIST)/vm/%/build: /var/www/pb-sources/latest-release $(BUILD_FROM_SOURCE)
 	mkdir -p `dirname $@`
 	./dist/rules vm-check-$* >$@-new 2>&1
-	scp dist/vm-build.sh $*: >>$@-new 2>&1
-	ssh $* /bin/sh vm-build.sh >>$@-new 2>&1
-	echo "Success building $*"
+	scp dist/build-from-source.sh $*: >>$@-new 2>&1
+	ssh $* /bin/sh build-from-source.sh $(RELEASE_VERSION) $* http://192.168.122.1/pb-sources \
+	  >>$@-new 2>&1
+	mv $@-new $@
+
+$(MAKE_DIST)/vm/%/result: $(MAKE_DIST)/vm/%/build
+	scp $*:/var/tmp/dataseries-test/result-$* $@-new
+	[ "`cat $@-new`" = $(RELEASE_VERSION) ]
+	ssh $* rm -rf /var/tmp/dataseries-test
 	mv $@-new $@
 
 # ------------------------------------------------------------------------
 # Testing on existing systems...
 
 remote-hosts: 
-	./dist/rules $(BUILD)/localhost/done
+	./dist/rules -j 1 $(foreach host, $(TEST_HOSTS), prep-host-$(host))
 	# lots of parallelism for remote host build, it's all different machines
-	./dist/rules -j 16 $(foreach host, $(TEST_HOSTS), $(BUILD)/remote-host/$(host)/result)
+	./dist/rules -j -k $(foreach host, $(TEST_HOSTS), host-dataseries-$(host))
 
-$(BUILD)/tmp.db:
-	[ `id -u` != 0 ]
-	sudo mkdir -p `dirname $@`
-	sudo chown `whoami` `dirname $@`
-	cp $(HOME)/.monotone/ssd.db $@-new
-	# mtn -d $@-new db init
-	# mtn -d $@-new pull $(MTN_PULL_FROM) ssd.hpl.hp.com/Lintel
-	# mtn -d $@-new pull $(MTN_PULL_FROM) ssd.hpl.hp.com/DataSeries
-# TODO: if we do a pull, do the check here also
-#    HEAD="`mtn -d tmp.db automate heads ssd.hpl.hp.com/$i`"
-#    REF_HEAD="`cd ~/projects/$i; mtn automate heads`"
-#    if [ "$HEAD" != "$REF_HEAD" ]; then 
-#	echo "Weird, heads differ between synced ($HEAD) and ~/projects/$i ($REF_HEAD)"
-#	exit 1
-#    fi
+prep-host-%:
+	ssh $* hostname
 
-	mv $@-new $@
+host-dataseries-%: $(MAKE_DIST)/remote-hosts/%/result
+	@echo "---------- Success building dataseries on $* -----------"
 
-$(BUILD)/localhost/%/ChangeLog: $(BUILD)/tmp.db
-	[ $(RELEASE_DATE) != unknown ]
+WWW_SRC := /var/www/pb-sources
+$(MAKE_DIST)/remote-hosts/tesla-source: $(WWW_SRC)/latest-release
 	mkdir -p `dirname $@`
-	(cd $(BUILD) && $(SRC_LINTEL)/dist/checkout.sh $*) >$(BUILD)/localhost/checkout.$* 2>&1
-
-$(BUILD)/localhost/%.tar.bz2: $(BUILD)/localhost/%/ChangeLog
-	(cd $(BUILD) && tar cvvfj $@-new --exclude=_MTN $*)
+	rsync -av $(WWW_SRC)/latest-release $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 \
+	    $(WWW_SRC)/deptool-bootstrap $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 \
+	    tesla.hpl.hp.com:opensource/tmp >$@-new
 	mv $@-new $@
 
-$(BUILD)/localhost/deptool-bootstrap-local: $(BUILD_OPT)/Lintel/src/deptool-bootstrap
-	cp $< $@-new
-	chmod +x $@-new
-	mv $@-new $@
-
-$(BUILD)/localhost/sources: $(BUILD)/localhost/Lintel-$(RELEASE_DATE).tar.bz2 \
-    $(BUILD)/localhost/DataSeries-$(RELEASE_DATE).tar.bz2 $(BUILD)/localhost/deptool-bootstrap-local
-	touch $@
-
-$(BUILD)/localhost/done: $(BUILD)/localhost/sources
+REMHOST_BUILD_DEPS := $(MAKE_DIST)/remote-hosts/tesla-source $(BUILD_FROM_SOURCE) 
+$(MAKE_DIST)/remote-hosts/%/build: $(REMHOST_BUILD_DEPS)
 	mkdir -p `dirname $@`
-	$(SRC_LINTEL)/dist/test-local.sh $(BUILD)/localhost $(RELEASE_DATE) >$@-new 2>&1
+	scp dist/build-from-source.sh $*:/var/tmp >$@-new 2>&1
+	ssh $* /bin/sh /var/tmp/build-from-source.sh $(RELEASE_VERSION) $* http://tesla.hpl.hp.com/opensource/tmp `sha1sum $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` >>$@-new 2>&1
 	mv $@-new $@
 
-LR_DEPS := $(BUILD)/localhost/Lintel-$(RELEASE_DATE).tar.bz2 \
-	$(BUILD)/localhost/DataSeries-$(RELEASE_DATE).tar.bz2
-$(BUILD)/latest-release: $(LR_DEPS)
-	echo "Lintel-$(RELEASE_DATE).tar.bz2" >$@-new
-	echo "DataSeries-$(RELEASE_DATE).tar.bz2" >>$@-new
-	mv $@-new $@
-
-$(BUILD)/tesla: $(BUILD)/localhost/done $(BUILD)/latest-release
-	rsync -av --progress $(LR_DEPS) $(BUILD)/localhost/build/Lintel/src/deptool-bootstrap \
-	    $(BUILD)/latest-release tesla.hpl.hp.com:opensource/tmp  >$@-new 2>&1
-	mv $@-new $@
-
-$(BUILD)/remote-host/%/build: $(SRC_LINTEL)/dist/test-remote.sh $(BUILD)/tesla
-	mkdir -p `dirname $@`
-	scp $(SRC_LINTEL)/dist/test-remote.sh $*:$(REMOTE_TMP)/test-remote.sh >$@-new 2>&1
-	ssh $* /bin/sh $(REMOTE_TMP)/test-remote.sh $(RELEASE_DATE) $*  >>$@-new 2>&1
-	mv $@-new $@
-
-$(BUILD)/remote-host/%/result: $(BUILD)/remote-host/%/build
-	scp $*:$(REMOTE_TMP)/test-remote/result-$* $@-new
-	[ "`cat $@-new`" = $(RELEASE_DATE) ]
+$(MAKE_DIST)/remote-hosts/%/result: $(MAKE_DIST)/remote-hosts/%/build
+	scp $*:/var/tmp/dataseries-test/result-$* $@-new
+	[ "`cat $@-new`" = $(RELEASE_VERSION) ]
+	ssh $* rm -rf /var/tmp/dataseries-test
 	mv $@-new $@

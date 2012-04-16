@@ -138,34 +138,41 @@ namespace lintel {
             string res = in;
             uint32_t processed_to = 0;
 
+            uint32_t help_width = getHelpWidth();
+            if (help_width < 10) {
+                // Force a minimum size, below code is wrong where 
+                help_width = 10;
+            }
             do {
                 size_t pos = res.find("\n", processed_to);
                 if (pos == string::npos) { // No more \ns
-                    if ((res.length() - processed_to) < getHelpWidth()) {
+                    if ((res.length() - processed_to) <= help_width) {
                         break; // We fit anyway, so stop.  Usual exit point of the loop
                     }
                     // Fallthough; common with case just below
-                } else if (pos - processed_to > getHelpWidth()) {
+                } else if (pos - processed_to > help_width) {
                     // Fallthough; common with the non-break case just above
                 } else { // We had a \n on our own before we needed to wrap
                     processed_to = pos + 1;
                     continue;
                 }
                 // Look for a natural spot to break, but output at least half a line.
-                uint32_t where = processed_to + getHelpWidth()/2;
-                uint32_t old_where = processed_to + getHelpWidth();
-                do {
-                    where = res.find(" ", where) + 1;
-                    if (where - processed_to >= getHelpWidth()) {
-                        // The next " " is too late, so wrap at the last spot we had decided was OK
-                        res.insert(old_where, "\n");
-                        processed_to = old_where+1;
-                        break;
-                    } else {
-                        // We found a " " closer to where we need to wrap.
-                        old_where = where;
-                    }                   
-                } while(1);                
+                pos = processed_to + help_width;
+                SINVARIANT(pos < res.size());
+                for (; pos > processed_to + help_width / 2; --pos) {
+                    if (res[pos] == ' ') {
+                        break; // right-most space in processed_to + [help_width/2, help_width]
+                    }
+                }
+                SINVARIANT(pos > processed_to && pos < res.size());
+                if (res[pos] == ' ') {
+                    res[pos] = '\n';
+                    processed_to = pos + 1;
+                } else {
+                    // Force a break, use all the characters
+                    res.insert(processed_to + help_width, "\n");
+                    processed_to += help_width + 1;
+                }
             } while (processed_to < res.length());
             return res;
         }        
@@ -179,8 +186,9 @@ namespace lintel {
         programOptionsUsage(argv0);
     }
 
-    void programOptionsUsage(const string &_argv0) {
-	cout << boost::format("Usage: %s [options] %s\n") % _argv0 % basicWordWrap(extra_help)
+    void programOptionsUsage(const string &in_argv0) {
+        string usage = str(boost::format("Usage: %s [options] %s\n") % in_argv0 % extra_help);
+        cout << basicWordWrap(usage)
 	     << programOptionsDesc() << "\n";
     }
     
