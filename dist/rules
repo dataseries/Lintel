@@ -270,9 +270,9 @@ BUILD_FROM_SOURCE := $(PROJECTS)/Lintel/dist/build-from-source.sh
 $(MAKE_DIST)/vm/%/build: /var/www/pb-sources/latest-release $(BUILD_FROM_SOURCE)
 	mkdir -p `dirname $@`
 	./dist/rules vm-check-$* >$@-new 2>&1
-	scp dist/build-from-source.sh $*: >>$@-new 2>&1
-	ssh $* /bin/sh build-from-source.sh $(RELEASE_VERSION) $* http://192.168.122.1/pb-sources \
-	  >>$@-new 2>&1
+	scp dist/build-from-source.sh $*:/var/tmp >>$@-new 2>&1
+	ssh $* /bin/sh /var/tmp/build-from-source.sh $(RELEASE_VERSION) $* http://192.168.122.1/pb-sources `sha1sum $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` \
+	    >>$@-new 2>&1
 	mv $@-new $@
 
 $(MAKE_DIST)/vm/%/result: $(MAKE_DIST)/vm/%/build

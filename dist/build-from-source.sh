@@ -15,22 +15,24 @@ DATASERIES_SHA=$5
 
 REMOTE_TMP=/var/tmp/dataseries-test
 
-# Prepare working directory
-[ ! -d $REMOTE_TMP ] || rm -rf $REMOTE_TMP
-mkdir $REMOTE_TMP
-cd $REMOTE_TMP
-
 # Setup environment
 unset http_proxy
 unset no_proxy
 case $MY_HOST in
     *.hp.com) http_proxy=http://web-proxy.corp.hp.com:8088/;
               export http_proxy ;;
+    # default KVM open
+    openbsd-*-*) REMOTE_TMP=/home/anderse/dataseries-test ;;
 esac
 case $LATEST_RELEASE in
     *192.168.122.1*) http_proxy=http://192.168.122.1:3128/; no_proxy=192.168.122.1; 
         export http_proxy; export no_proxy ;;
 esac
+
+# Prepare working directory
+[ ! -d $REMOTE_TMP ] || rm -rf $REMOTE_TMP
+mkdir $REMOTE_TMP
+cd $REMOTE_TMP
 
 # Deptool
 if [ `which curl | wc -l` -ge 1 ]; then
@@ -54,17 +56,28 @@ perl deptool-bootstrap init --tar --no-cache $URL_PREFIX/latest-release
 [ -f $PROJECTS/DataSeries-$VERSION.tar.bz2 ]
 [ -d $PROJECTS/DataSeries ]
 
-[ `which sha1sum 2>/dev/null | wc -l` = 0 ] || SHA1SUM=sha1sum
+[ `which sha1 2>/dev/null | wc -l` = 0 ] || SHA1SUM=sha1
 [ `which shasum 2>/dev/null | wc -l` = 0 ] || SHA1SUM=shasum
+[ `which sha1sum 2>/dev/null | wc -l` = 0 ] || SHA1SUM=sha1sum
 
-[ `$SHA1SUM $PROJECTS/Lintel-$VERSION.tar.bz2 | awk '{print $1}'` = $LINTEL_SHA ]
-[ `$SHA1SUM $PROJECTS/DataSeries-$VERSION.tar.bz2 | awk '{print $1}'` = $DATASERIES_SHA ]
+[ "$SHA1SUM" != "" ]
+
+[ `$SHA1SUM < $PROJECTS/Lintel-$VERSION.tar.bz2 | awk '{print $1}'` = $LINTEL_SHA ]
+[ `$SHA1SUM < $PROJECTS/DataSeries-$VERSION.tar.bz2 | awk '{print $1}'` = $DATASERIES_SHA ]
 
 # Build and test
 cd $PROJECTS/DataSeries
 perl $REMOTE_TMP/deptool-bootstrap build -t
 
 # Note success
+case $MY_HOST in
+    openbsd-*-*) rm -rf $REMOTE_TMP ; 
+        REMOTE_TMP=/var/tmp/dataseries-test ;
+        [ ! -d $REMOTE_TMP ] || rm -rf $REMOTE_TMP ;
+        mkdir $REMOTE_TMP ;
+        ;;
+esac
+        
 mv $0 $REMOTE_TMP/`basename $0` # for single thing to rm
 echo "TEST-REMOTE: EVERYTHING OK!"
 echo $VERSION >$REMOTE_TMP/result-$MY_HOST
