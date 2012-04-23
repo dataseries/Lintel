@@ -1,7 +1,17 @@
 #!/bin/sh
 set -e
 set -x
+
+# deptool should keep broken settings
+BUILD_OS=broken
+export BUILD_OS
 eval `perl ../deptool-bootstrap getenv for-sh`
+[ "$BUILD_OS" = broken ]
+
+# unset should clear them out
+eval `perl ../deptool-bootstrap getenv --unset for-sh`
+eval `perl ../deptool-bootstrap getenv for-sh`
+[ "$BUILD_OS" != broken ]
 REF_OS=`echo $BUILD_OS | sed 's/-.*//'`
 REF_VERSION=`echo $BUILD_OS | sed 's/.*-//'`
 REF_ARCH=$UNAME_M

@@ -5,6 +5,8 @@
 #
 # cmake rules for the src/tests directory
 
+CONFIGURE_FILE(clean-deptool-env.in ${CMAKE_CURRENT_BINARY_DIR}/clean-deptool-env @ONLY)
+
 IF(WITH_PROCESS_STATISTICS)
     ADD_DEFINITIONS(-DWITH_PROCESS_STATISTICS)
 ENDIF(WITH_PROCESS_STATISTICS)
@@ -55,7 +57,7 @@ LINTEL_SIMPLE_PROGRAM(testutil)
 ADD_TEST(test_util ${CMAKE_CURRENT_SOURCE_DIR}/run-check-test-util.sh)
 
 LINTEL_SIMPLE_PROGRAM(byte_buffer)
-ADD_TEST(byte_buffer env DEPTOOL=${CMAKE_CURRENT_BINARY_DIR}/../deptool-bootstrap ./byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
+ADD_TEST(byte_buffer ./clean-deptool-env ./byte_buffer ${CMAKE_CURRENT_SOURCE_DIR}/byte-buffer-test-inp)
 
 IF(PERL_ENABLED)
     ADD_TEST(deptool-env env PERL5LIB=${Lintel_SOURCE_DIR}/src:${CMAKE_INSTALL_PREFIX}/share/perl5:$ENV{PERL5LIB} ${CMAKE_CURRENT_BINARY_DIR}/../deptool getenv for-sh)
@@ -109,7 +111,7 @@ ENDIF(MERCURY_PLOT_ENABLED)
 
 IF(WITH_PROCESS_STATISTICS)
     LINTEL_SIMPLE_PROGRAM(process_statistics)
-    ADD_TEST(process_statistics env DEPTOOL=${CMAKE_CURRENT_BINARY_DIR}/../deptool-bootstrap ./process_statistics)
+    ADD_TEST(process_statistics ./clean-deptool-env ./process_statistics)
 ENDIF(WITH_PROCESS_STATISTICS)
 
 ################################### LONGER TESTS

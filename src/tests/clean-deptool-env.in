@@ -1,0 +1,6 @@
+#!/bin/sh
+set -e
+DEPTOOL=@CMAKE_CURRENT_BINARY_DIR@/../deptool-bootstrap
+eval `perl $DEPTOOL getenv --unset for-sh`
+eval `perl $DEPTOOL getenv for-sh`
+exec "$@"

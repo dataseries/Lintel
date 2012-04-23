@@ -71,7 +71,9 @@ DeptoolInfo getDeptoolInfo() {
     }
 
     size_t dash_pos = build_os.find('-');
-    SINVARIANT(dash_pos != string::npos);
+    INVARIANT(dash_pos != string::npos, 
+              boost::format("Unable to find - separating os from version in '%s'"
+                            "; bad hard-coded BUILD_OS, or old version of deptool?") % build_os);
     DeptoolInfo ret;
     ret.os = build_os.substr(0, dash_pos);
     ret.version = build_os.substr(dash_pos + 1);
