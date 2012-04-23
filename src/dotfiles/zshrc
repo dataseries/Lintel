@@ -47,6 +47,7 @@ procfind () {
     ;;
     *macos*)
       COLUMNS= /bin/ps guax | grep $search
+    ;;
     *)
       echo "Don't know how to procfind on a $BUILD_OS"
     ;;
