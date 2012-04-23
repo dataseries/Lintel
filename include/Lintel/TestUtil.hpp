@@ -1,6 +1,6 @@
 /* -*-C++-*- */
 /*
-   (c) Copyright 2008, Hewlett-Packard Development Company, LP
+   (c) Copyright 2008-2012, Hewlett-Packard Development Company, LP
 
    See the file named COPYING for license details
 */
@@ -50,6 +50,30 @@
 #define TEST_INVARIANT_MSG2(code, msg1, msg2) {		    \
     std::vector<std::string> msgs; msgs.push_back(msg1); msgs.push_back(msg2); \
     TEST_INVARIANT_MSGVEC(code, msgs); \
+}
+
+namespace lintel {
+    struct DeptoolInfo {
+        std::string os; // e.g. debian, ubuntu, centos, fedora, opensuse, scilinux
+        std::string version; // e.g. 7.0, 11.10, 5.3, 16, 12.1, 6.2
+        std::string arch; // e.g. i386, x86_64
+        std::string osVersion() {
+            return os + "-" + version;
+        }
+        std::string osVersionArch() {
+            return os + "-" + version + "-" + arch;
+        }
+        bool haveAllInfo() {
+            return !(os.empty() || version.empty() || arch.empty());
+        }
+    };
+    
+    // If $BUILD_OS/$UNAME_M are present in the environment, use those values and convert them
+    // into os/version/arch.  Otherwise, run deptool to get those values and return them in the
+    // structure.  If deptool is not present, a structure of all empty strings will be returned.
+    // This function is useful for whitelisting tests that fail on particular combinations of
+    // os/version/arch
+    DeptoolInfo getDeptoolInfo();
 }
 
 #endif

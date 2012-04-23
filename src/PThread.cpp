@@ -12,7 +12,12 @@
 
 #include <iostream>
 
-#ifdef __FreeBSD__
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__APPLE_CC__)
+#define SYSCTL_NCPUS 1
+#endif
+
+#ifdef SYSCTL_NCPUS
+#include <sys/param.h>
 #include <sys/types.h>
 #include <sys/sysctl.h>
 #endif
@@ -75,7 +80,7 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
 	    }
 	    INVARIANT(cache_ncpus > 0, "no processors found in /proc/cpuinfo");
 #endif
-#ifdef __FreeBSD__
+#if defined(SYSCTL_NCPUS)
         } else if (1) {
             int name[4];
             int ncpus = 0;
@@ -217,7 +222,7 @@ PThreadScopedOnlyMutex::PThreadScopedOnlyMutex(bool errorcheck)
 	SINVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
     }
 #endif
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__APPLE_CC__)
     if (errorcheck) {
         SINVARIANT(pthread_mutexattr_settype(&attr,PTHREAD_MUTEX_ERRORCHECK)==0);
     }
@@ -286,7 +291,7 @@ void *PThreadFunction::run() {
 }
 
 
-#ifdef __OpenBSD__
+#if defined(__OpenBSD__) || defined(__APPLE_CC__)
 int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abs_timeout) {
     int ret;
     struct timespec now, to_sleep;
@@ -311,3 +316,17 @@ int pthread_mutex_timedlock(pthread_mutex_t *mutex, const struct timespec *abs_t
     return ret;
 }
 #endif
+
+#if defined(__APPLE_CC__)
+int clock_gettime(int how, struct timespec *into) {
+    struct timeval tp;
+    (void)how;
+    int ret = gettimeofday(&tp, NULL);
+    into->tv_sec = tp.tv_sec;
+    into->tv_nsec = tp.tv_usec * 1000;
+    return ret;
+}
+#endif
+
+
+

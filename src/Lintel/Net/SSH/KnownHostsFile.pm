@@ -16,9 +16,10 @@ use vars qw(@ISA @EXPORT_OK);
 
 use Socket;
 use Digest::HMAC;
-use Digest::SHA1;
 use MIME::Base64;
 use FileHandle;
+
+use Lintel::SHA1;
 
 my $fh = new FileHandle "ssh -v 2>&1 |"
     or die "Can't run ssh -v: $!";
@@ -99,7 +100,7 @@ sub hmac_equal {
     my($b64salt, $hash, $val) = @_;
 
     my $salt = decode_base64($b64salt);
-    my $hmac = Digest::HMAC->new($salt, "Digest::SHA1");
+    my $hmac = Digest::HMAC->new($salt, $Lintel::SHA1::impl_package);
     $hmac->add($val);
     my $b64 = $hmac->b64digest();
     while (length $b64 < length $hash) {

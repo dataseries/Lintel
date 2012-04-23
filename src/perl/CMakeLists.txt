@@ -6,12 +6,12 @@
 
 IF(NOT PERL_XSUBPPDIR)
     EXECUTE_PROCESS(
-        COMMAND perl -e "for (@INC) { next unless -r qq{\$_/ExtUtils/xsubpp}; print; exit(0); }; print q{NOT-FOUND};"
+        COMMAND perl -e "for (@INC) { next unless -r qq{\$_/ExtUtils/xsubpp} && -r qq{\$_/ExtUtils/typemap}; print; exit(0); }; print q{NOT-FOUND};"
 	OUTPUT_VARIABLE PERL_TMP)
     IF(EXISTS "${PERL_TMP}/ExtUtils/xsubpp")
         SET(PERL_XSUBPPDIR "${PERL_TMP}/ExtUtils" CACHE INTERNAL "directory containing xsubpp")
     ELSE(EXISTS "${PERL_TMP}/ExtUtils/xsubpp")
-        MESSAGE("Can NOT build binary Perl modules: ExtUtils/xsubpp not found in perl @INC dirs")
+        MESSAGE("Can NOT build binary Perl modules: ExtUtils/{xsubpp,typemap} not found in perl @INC dirs")
     ENDIF(EXISTS "${PERL_TMP}/ExtUtils/xsubpp")
 ENDIF(NOT PERL_XSUBPPDIR)
 
@@ -42,10 +42,13 @@ IF(PERL_BINARY_MODULES_ENABLED)
     		       COMMAND rm LintelPerl-1
     	               COMMAND mv LintelPerl-2 LintelPerl.cpp
     		       DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/xsubpp-cleanup ${CMAKE_CURRENT_SOURCE_DIR}/LintelPerl.xs)
+
+    EXECUTE_PROCESS(COMMAND perl -e "use Config; print \$Config{ccflags};"
+                    OUTPUT_VARIABLE PERL_CCFLAGS ERROR_QUIET)
     
     SET_SOURCE_FILES_PROPERTIES(${CMAKE_CURRENT_BINARY_DIR}/LintelPerl.cpp
                                 PROPERTIES GENERATED true
-    			    COMPILE_FLAGS "-I${PERL_COREINCDIR}")
+    			    COMPILE_FLAGS "-I${PERL_COREINCDIR} ${PERL_CCFLAGS}")
     
     ADD_LIBRARY(LintelPerl SHARED ${CMAKE_CURRENT_BINARY_DIR}/LintelPerl.cpp)
     TARGET_LINK_LIBRARIES(LintelPerl Lintel)

@@ -37,6 +37,11 @@ verify_unlocked() {
     fi
 }
 
+is_unlocked() {
+    TMP=`verify_unlocked`
+    return $?
+}
+
 verify_locked() {
     wait_time=$1
     [ -z "$wait_time" ] && wait_time=0
@@ -52,22 +57,29 @@ verify_locked() {
     fi
 }
     
+is_locked() {
+    TMP=`verify_locked`
+    return $?
+}
+
 ### Blocked lock test
 
+echo "---- Blocked lock test ----"
 verify_unlocked
 echo "Starting sleep `date`..."
-$builddir/lintel-flock --filename=$LOCKFILE --command="sleep 30" &
+$builddir/lintel-flock --filename=$LOCKFILE --command="sleep 10" &
 SLEEP_PID=$!
 sleep 2
 echo "Starting lock timeout at `date`..."
 verify_locked 2
 echo "lock timeout succeeded"
-kill $SLEEP_PID
+kill -TERM $SLEEP_PID
 wait
 echo "Done with blocked lock test"
 
 ### Parallel test
 
+echo "---- Parallel test ----"
 verify_unlocked
 echo "Starting parallel test ($0)"
 echo 0 >$LOCKFILE-count
@@ -86,18 +98,30 @@ rm $LOCKFILE-count
 
 ### Scripting test 1
 
-echo "Simple script test..."
+echo "---- Simple script test ----"
 verify_unlocked
 
 $0 -bglock &
-perl -e 'select(undef,undef,undef,0.5);'
+while is_unlocked; do
+    perl -e 'select(undef,undef,undef,0.1);'
+done
 verify_locked
-sleep 3
+sleep 2
+tries=0
+while is_locked; do
+    tries=`expr $tries + 1`
+    # 12 ~= 3 more seconds for process to finish sleep and exit
+    if [ $tries -gt 12 ]; then
+        echo "Too many tries waiting for unlock"
+        exit 1
+    fi
+    perl -e 'select(undef,undef,undef,0.25);'
+done
 verify_unlocked
 
 ### Scripting test 2
 
-echo "Interchange test..."
+echo "---- Interchange test ----"
 verify_unlocked
 [ -f $LOCKFILE-locked ] && exit 1
 
@@ -179,4 +203,5 @@ rm $LOCKFILE-success-[ab]
 rm $LOCKFILE*
 trap '' 0
 echo "Success."
+
 

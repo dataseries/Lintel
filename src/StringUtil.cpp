@@ -410,7 +410,7 @@ string stringError(int errnum) {
     char buf[buflen];
 
     // TODO: do the cmake compile time check to decide on strerror_r interface
-#if defined(__FreeBSD__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__OpenBSD__) || defined(__APPLE_CC__)
     if (strerror_r(errnum, buf, buflen)) {
         return strerror_failed;
     } else {

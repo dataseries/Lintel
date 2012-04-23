@@ -67,6 +67,7 @@ new-deptool-base () {
         cp $old_build_opt/Lintel/src/deptool-bootstrap $BUILD_OPT/bin/deptool
         chmod +x $BUILD_OPT/bin/deptool
     fi
+    [[ -x $BUILD_OPT/bin/deptool ]] && DEPTOOL=$BUILD_OPT/bin/deptool
 
     if [[ -z "$IN_ZSHENV_COMMON" ]]; then
         # re-set path, and anything else depending on

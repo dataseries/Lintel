@@ -74,6 +74,7 @@
 # TODO: there is a bunch of duplicate code in the below macros,
 # eliminate it.
 
+# SET(LINTEL_FIND_DEBUG ON)
 MACRO(LINTEL_FIND_DEBUG message)
     IF(LINTEL_FIND_DEBUG)
         MESSAGE("lintel-find-debug: ${message}")
@@ -344,6 +345,8 @@ ENDMACRO(LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE)
 ### LINTEL_BOOST_EXTRA
 
 MACRO(LINTEL_BOOST_EXTRA variable header libname)
+    LINTEL_FIND_DEBUG("Boost_INCLUDE_DIRS=${Boost_INCLUDE_DIRS}")
+    LINTEL_FIND_DEBUG("Boost_LIBRARY_DIRS=${Boost_LIBRARY_DIRS}")
     IF("${Boost_INCLUDE_DIRS}" STREQUAL "")
         MESSAGE("WARNING: Did not include FindBoost, automatically including")
 	INCLUDE(FindBoost)
@@ -368,6 +371,9 @@ MACRO(LINTEL_BOOST_EXTRA variable header libname)
 
     IF(${variable}_ENABLED)
         IF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
+            MESSAGE("You can force the boost include/library directories by specifying the cmake options")
+            MESSAGE("  -DBoost_INCLUDE_DIR=path -DBoost_LIBRARY_DIRS=path")
+            MESSAGE("  If you are using deptool, you can set these in DEPTOOL_CMAKE_FLAGS")
             MESSAGE(FATAL_ERROR "Error: different ${header} / boost include dirs '${${variable}_INCLUDES}' != '${Boost_INCLUDE_DIRS}' " )
 	ENDIF(NOT "${${variable}_INCLUDES}" STREQUAL "${Boost_INCLUDE_DIRS}") 
 
@@ -385,6 +391,9 @@ MACRO(LINTEL_BOOST_EXTRA variable header libname)
 	    ENDIF(0)
 	        
 	    IF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")
+                MESSAGE("You can force the boost include/library directories by specifying the cmake options")
+                MESSAGE("  -DBoost_INCLUDE_DIR=path -DBoost_LIBRARY_DIRS=path")
+                MESSAGE("  If you are using deptool, you can set these in DEPTOOL_CMAKE_FLAGS")
  	        MESSAGE(FATAL_ERROR "Error: different ${libname} / boost lib dirs ${${variable}_LIBRARY} -> '${LBE_TMP}' != '${Boost_LIBRARY_DIRS}' ")	
   	    ENDIF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")
 	ENDIF(NOT ${libname} STREQUAL "None")

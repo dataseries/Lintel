@@ -13,6 +13,8 @@
 
 #include <inttypes.h>
 
+#include <boost/type_traits/make_unsigned.hpp>
+
 #include <Lintel/AssertBoost.hpp>
 
 // http://www.cs.technion.ac.il/~itai/publications/Algorithms/p550-perl.pdf
@@ -20,12 +22,25 @@
 
 namespace lintel {
 
+    // TODO: redo the interface to have no precondition, i.e. v does not have to be in first..last
+    // and that if it is outside that rande, the function can return a value < 0 or > last_pos.
+    // but it needs to not crash.  Then clamp the return in the caller using the standard signed
+    // compare trick to usually only take one compare to check if 0..last_pos but if it is out of
+    // range a second to decide whether we clamp to 0 or last_pos.  A good estimator will estimate
+    // <0 if v < first, and >last_pos if v > last.  This approach means that we avoid the compares
+    // to re-establish the pre-condition at the cost of compares to clamp the range, but the clamp
+    // compares are always going to be fast because they are ssize_t compares, whereas the current
+    // compares could be expensive because they are value compares.  Tricky question on what
+    // happens if first == last --> value_range == 0.  That can't happen right now because it 
+    // implies the return value is first and we will have stopped, but with this change it can
+    // happen.
 template<typename ValueT> struct EstimateOffset {
-    // Preconditions: first <= v <= last
+    typedef typename boost::make_unsigned<ValueT>::type UnsignedValueT;
+    // Preconditions: first < v <= last
     // Postconditions: 0 <= return value <= last_pos
     size_t 
     operator()(const ValueT &v, const ValueT &first, const ValueT &last, size_t last_pos) const {
-        ValueT value_range = last - first;
+        UnsignedValueT value_range = last - first;
         double relative_pos = static_cast<double>(v - first) / value_range; // [0,1]
         return relative_pos * last_pos;
     }
@@ -54,7 +69,7 @@ Iterator interpolationLowerBound(Iterator begin, Iterator end, const ValueT &v,
             // v > *end
             return end;
         } else {
-            // ok, v \in [*begin, *end]
+            // ok, v \in ]*begin, *end]
         }
     } else {
         return begin;
@@ -68,7 +83,7 @@ Iterator interpolationLowerBound(Iterator begin, Iterator end, const ValueT &v,
         for (size_t is = 0; len > 0 && is < interpolation_steps; ++is) {
             DEBUG_SINVARIANT(begin < end);
             DEBUG_SINVARIANT((end - begin) == static_cast<ptrdiff_t>(len));
-            DEBUG_SINVARIANT(!comparer(v, *begin)); // *begin <= v
+            DEBUG_SINVARIANT(comparer(*begin, v)); // *begin < v
             DEBUG_INVARIANT(!comparer(*(end - 1), v),// v <= *(end - 1)
                             boost::format("%s < %s") % *(end - 1) % v); 
             estimated_offset = estimator(v, *begin, *(end - 1), len - 1);

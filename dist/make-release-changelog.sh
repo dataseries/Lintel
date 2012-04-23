@@ -6,19 +6,19 @@ update() {
     fi
 }
 
-if [ -d _MTN ]; then
-    echo "Monotone-Revision: `mtn automate get_base_revision_id`" >/tmp/Release.info.$$
+if [ -d .git ]; then
+    echo "Git-Revision: `git show --format=%H HEAD | head -1`" >/tmp/Release.info.$$
     echo "Creation-Date: `date +%Y-%m-%d-%H-%M`" >>/tmp/Release.info.$$
     echo "BEGIN_EXTRA_STATUS" >>/tmp/Release.info.$$
-    mtn status >>/tmp/Release.info.$$
+    git status >>/tmp/Release.info.$$
     echo "END_EXTRA_STATUS" >>/tmp/Release.info.$$
-    `dirname $0`/../dist/mtn-log-sort >/tmp/Changelog.mtn.$$
+    git log >/tmp/ChangeLog.$$
     update Release.info
-    update Changelog.mtn
+    update ChangeLog
 fi
 
-if [ ! -f Release.info -o ! -f Changelog.mtn ]; then
-    echo "Error: Ought to either both Release.info and Changelog.mtn from a release or should have just created it from monotone repository"
+if [ ! -f Release.info -o ! -f ChangeLog ]; then
+    echo "Error: Ought to either both Release.info and ChangeLog from a release or should have just created it from monotone repository"
     exit 1
 fi
 

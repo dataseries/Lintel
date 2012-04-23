@@ -12,9 +12,6 @@ INCLUDE_DIRECTORIES(
 	${Boost_INCLUDE_DIRS}
 	)
 
-SET(CMAKE_EXE_LINKER_FLAGS "-Wl,--as-needed -Wl,--no-undefined ${CMAKE_EXE_LINKER_FLAGS}")
-SET(CMAKE_SHARED_LINKER_FLAGS "-Wl,--as-needed ${CMAKE_SHARED_LINKER_FLAGS}")
-
 ADD_DEFINITIONS(-DLIBLINTEL_VERSION="\\"${LINTEL_VERSION}\\"")
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     ADD_DEFINITIONS(-DDEBUG)
@@ -62,6 +59,7 @@ SET(LIBLINTEL_SOURCES
 	StatsSeries.cpp
 	StatsSeriesGroup.cpp
 	StringUtil.cpp
+        TestUtil.cpp
 	${LIBLINTEL_THREAD_SOURCES}
 )
 
@@ -84,6 +82,7 @@ IF(PERL_ENABLED)
     LINTEL_INSTALL_FILE_PATH(${CMAKE_INSTALL_PREFIX}/share/perl5
     	Text/Expand.pm
     	Lintel/File/Lock.pm
+        Lintel/SHA1.pm
     )
 
     IF(PERL_DIGEST_HMAC_ENABLED AND SSH_ENABLED)
@@ -204,16 +203,16 @@ LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-config 1 "Lintel ${LINTEL_VERSION}"
 IF(PERL_ENABLED) 
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(batch-parallel 1 "Lintel ${LINTEL_VERSION}")
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-flock 1 "Lintel ${LINTEL_VERSION}")
-ENDIF(PERL_ENABLED) 
-
-IF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED) 
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(deptool 1 "Lintel ${LINTEL_VERSION}")
     # Built, but intentionally not installed.
     ADD_CUSTOM_TARGET(deptool-bootstrap ALL 
                       COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-bootstrap.sh
     		          ${CMAKE_CURRENT_SOURCE_DIR} 
     		      DEPENDS deptool.in Lintel/File/Lock.pm Lintel/ProcessManager.pm)
-ENDIF(PERL_ENABLED AND PERL_TIME_HIRES_ENABLED) 
+ELSE(PERL_ENABLED)
+    MESSAGE("deptool will NOT be built.  Could not find perl")
+ENDIF(PERL_ENABLED) 
+
 
 IF(PERL_ENABLED AND SFDISK_ENABLED AND SGINFO_ENABLED)
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-disktool 1 "Lintel ${LINTEL_VERSION}")

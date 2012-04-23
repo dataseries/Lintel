@@ -603,7 +603,7 @@ void StatsQuantile::collapse() {
 
     int64_t cur_quantile_offset = 0;
     int64_t next_output_pos = 0;
-    double prev_val = -Double::Inf;
+    IF_LINTEL_DEBUG(double prev_val = -Double::Inf;)
 
     // Because a double and int are small, it's faster to store the
     // pair rather than do the double dereference each time to
@@ -620,7 +620,7 @@ void StatsQuantile::collapse() {
 	double min_val = pq.top().first;
 
 	DEBUG_INVARIANT(min_val >= prev_val, "Whoa, sort order error?!");
-	prev_val = min_val;
+	IF_LINTEL_DEBUG(prev_val = min_val;)
 	collapse_pos[min_buffer] += 1;
 	// same logic as for output(), this entry is in positions
 	// [cur_quantile_offset .. cur_quantile_offset + bw[mb] - 1]

@@ -33,26 +33,37 @@ use POSIX 'ceil';
 use Pod::Usage;
 use Safe;
 use Sys::Hostname;
-use Time::HiRes 'time';
 
 # TODO: split this file into separate pieces for the different commands or
 # something, it's gotten gigantic.
 
 BEGIN {
-    # RHEL5 doesn't have Digest::SHA1 by default, only MD5
-    eval "use Digest::SHA1 'sha1_hex';";
+    # One use of time in the code; shouldn't really matter, may help a little.
+    eval "use Time::HiRes 'time';";
     if ($@) {
-	die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
-	eval "use Digest::MD5 'md5_hex';";
-	die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
-	eval 'sub hexDigest { return md5_hex($_[0]); };';
-	warn "Using Digest::MD5 instead of Digest::SHA1.
-Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
-	    unless defined $ENV{DEPTOOL_NOWARN_MD5};
-    } else{
-	eval 'sub hexDigest { return sha1_hex($_[0]); };';
+        die $@ unless $@ =~ m!Can.t locate Time/Hires.pm in !;
     }
-    die $@ if $@;
+    # Debian Wheezy (7.0) dropped Digest::SHA1
+    eval "use Digest::SHA 'sha1_hex';";
+    if (!$@) {
+	eval 'sub hexDigest { return sha1_hex($_[0]); };';
+    } else {
+        die $@ unless $@ =~ m!Can.t locate Digest/SHA.pm in !;
+        # RHEL5 doesn't have Digest::SHA1 by default, only MD5
+        eval "use Digest::SHA1 'sha1_hex';";
+        if (!$@) {
+            eval 'sub hexDigest { return sha1_hex($_[0]); };';
+        } else {
+            die $@ unless $@ =~ m!Can.t locate Digest/SHA1.pm in !;
+
+            eval "use Digest::MD5 'md5_hex';";
+            die "Can not use Digest::SHA1 or Digest::MD5: $@" if $@;
+            eval 'sub hexDigest { return md5_hex($_[0]); };';
+            warn "Using Digest::MD5 instead of Digest::SHA1.
+Install package or set the DEPTOOL_NOWARN_MD5 environment variable"
+                unless defined $ENV{DEPTOOL_NOWARN_MD5};
+        }
+    }
 }
 
 @PERL5_MODULES_INC_UNSHIFT@
@@ -170,7 +181,6 @@ my $auto_yes_to_prompts = 1;
 my $quiet = 0;
 my $print_manpage = 0;
 my $noconfig = 0;
-my $time_log = $ENV{DEPTOOL_TIME_LOG};
 my $debug = 0;
 
 $Global::last_stamp_timestamp = time();
@@ -188,7 +198,6 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
            "build-opt=s" => \$Cache::build_optimize,
 	   "man!" => \$print_manpage,
 	   "monotone-dir=s" => \$ENV{DEPTOOL_MTN_REPO_DIR},
-	   "time-log=s" => \$time_log,
 	   "debug!" => \$debug);
 
 =pod
@@ -197,7 +206,7 @@ GetOptions("auto-yes!" => \$auto_yes_to_prompts,
 
 =over 4
 
-=item --no-auto-yes 
+=item --no-auto-yes
 
 Do not automatically answer 'yes' to all of the prompts that are
 provided if there is a sane default answer.  Default is true because
@@ -250,15 +259,6 @@ Specify the directory to search for monotone databases that include
 the current project.  This can be also be specified using the 
 MONOTONE_DIR environment variable, or failing that, the directory
 defaults to $HOME/.monotone.
-
-=item --time-log=<path>
-
-Specify the file to use for logging build times.  The default is
-I<monotone-dir>/deptool-timings.  If the file is present then deptool
-will write a base64 encoded log entry for each command. Unsuccessful
-commands or commands that are aborted with a ^C are not logged.  The
-default file can be specified using the DEPTOOL_TIME_LOG environment
-variable.
 
 =item --man
 
@@ -357,11 +357,11 @@ test, next pull and update.  If no changes were made, synchronize the
 updates to the central server.  Alternately, restart the loop at the
 build and test stage.
 
-=item cmake [I<--clean> | I<clean>]
+=item cmake [I<--clean> | I<clean> | I<cmake options...>]
 
 Run the cmake configuration command, or clean out the cmake
 configuration files.  See help cmake for details on how cmake is
-run.
+run.  Additional cmake options can also be specified.
 
 =item pin I<revision>
 
@@ -438,36 +438,7 @@ sub main {
     
     # handle case where start dir is a symlink
     aliasChdir($ENV{PWD}) if defined $ENV{PWD};
-    my $start_time = time;
     &$fn;
-    addTimeLog($start_time);
-}
-
-sub addTimeLog {
-    my ($start_time) = @_;
-
-    return unless defined $time_log;
-
-    my $timelog_entry = {
-	    version => 1,
-	    command => [$0, @original_arguments ],
-	    host => hostname,
-	    directory => getcwd,
-	    starttime => $start_time,
-	    endtime => time
-	};
-	
-    if (my $lock = Lintel::File::Lock::getLockEx($time_log, waittime => 5, 
-						 flags => O_WRONLY | O_CREAT | O_APPEND)) {
-	my $doc = encode_base64(Dumper($timelog_entry), '');
-	my $sha1 = hexDigest($doc);
-	print $lock "$doc $sha1\n" or die "print failed: $!";
-	close $lock or die "close failed: $!";
-    } else {
-	warn "Skipping time logging; unable to lock $time_log\n";
-    }
-
-    # TODO: add code that parses the time logs and writes out SQL for mercury.
 }
 
 # TODO: factor this out into a library so that it can be used by lots
@@ -599,36 +570,32 @@ B<Warning:> If you already have a key set up on one machine, you should just cop
 directory to the new machine rather than creating a new key.  Monotone can get confused by multiple
 keys with the same email address.
 
-=head3 init --tar [--no-cache] [I<download-specification>]
+=head3 init --tar [I<download-specification>]
 
-The tarinit command will initialize the software packages based on tar files.
-It has three possible types of download specifications, listed below.  If no
-arguments are specified, then it defaults to
-http://tesla.hpl.hp.com/opensource/latest-release; which will download the
-open-source packages available on tesla and unpack then.  If the --no-cache
-option is specified, tarinit will provide --no-cache as an option to wget.
+The tarinit command will initialize the software packages based on tar files.  It has three
+possible types of download specifications, listed below.  If no arguments are specified, then it
+defaults to http://tesla.hpl.hp.com/opensource/latest-release; which will download the open-source
+packages available on tesla and unpack then.
 
 =over 4
 
 =item I</path/to/file.tar.bz2>
 
-This specifies that deptool should unpack the specified tar file into the
-projects directory.  The tar file will normally unpack into a directory names
-I<package>-I<date>, in which case the -I<date> portion will be removed.  If
-there is already a I<package> available in the projects directory, it will only
-be replaced if it has a different release date than the file.tar.bz2 one.
+This specifies that deptool should unpack the specified tar file into the projects directory.  The
+tar file will normally unpack into a directory names I<package>-I<date>, in which case the -I<date>
+portion will be removed.  If there is already a I<package> available in the projects directory, it
+will only be replaced if it has a different release date than the file.tar.bz2 one.
 
 =item I<http://host/path/to/tar>
 
-This specifies that deptool should first download the tar file into the
-projects directory and then unpack it as if the downloaded file had been
-specified to tarinit.  Deptool will use wget to download the file.  If the tar
-file has already been downloaded, it will just be used.
+This specifies that deptool should first download the tar file into the projects directory and then
+unpack it as if the downloaded file had been specified to tarinit.  Deptool will use wget to
+download the file.  If the tar file has already been downloaded, it will just be used.
 
 =item I<http://host/path/to/latest-release>
 
-This specifies that deptool should download the specified text file, and should
-then download all of the packages specified in the latest-release file.
+This specifies that deptool should download the specified text file, and should then download all
+of the packages specified in the latest-release file.
 
 =back
 
@@ -637,11 +604,13 @@ then download all of the packages specified in the latest-release file.
 sub depInit {
     my %mode;
     my $server;
+    Getopt::Long::Configure(qw/pass_through no_auto_abbrev/);
     my $result = GetOptions("server=s" => \$server,
                             "mtn!" => \$mode{mtn},
                             "git!" => \$mode{git},
                             "tar!" => \$mode{tar});
     usage("Unknown error") unless $result;
+    Getopt::Long::Configure(qw/no_pass_through auto_abbrev/);
     my $count = 0;
     map { ++$count if $_; } values %mode;
     if ($count == 0) {
@@ -2036,17 +2005,16 @@ depcommit: will show differences after successful build\n";
 
 =pod
 
-=head2 cmake
+=head2 cmake [I<--clean> | I<clean> | I<cmake options...>]
 
-This command has to be run in either the build or debug directory.  In the
-build directory, it will set the install prefix to $BUILD_OPT and the cmake
-build type to RelWithDebInfo.  In the debug directory, it will set the install
-prefix to $BUILD_DEBUG and the cmake build type to Debug.  If you are in a
-sub-type build directory (see cdopt), then the deptool cmake command will
-automatically add -DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that
-the configuration can take into effect the sub-type.  You can set the
-environment variable DEPTOOL_CMAKE_FLAGS if there are additional flags that
-need to be passed to cmake.
+This command has to be run in either the build or debug directory.  In the build directory, it will
+set the install prefix to $BUILD_OPT and the cmake build type to RelWithDebInfo.  In the debug
+directory, it will set the install prefix to $BUILD_DEBUG and the cmake build type to Debug.  If
+you are in a sub-type build directory (see cdopt), then the deptool cmake command will
+automatically add -DBUILD_SUBDIR=I<sub-type> to the cmake instantiation so that the configuration
+can take into effect the sub-type.  You can set the environment variable DEPTOOL_CMAKE_FLAGS if
+there are additional flags that need to be passed to cmake.  You can also specify directory
+specific options on the command line.
 
 =cut
 
@@ -3557,14 +3525,14 @@ sub rootSrcDir {
 
 =pod
 
-=head2 getenv I<what>
+=head2 getenv [--quiet] [--unset] I<what>
 
-The getenv command allows you to get the environment variables that
-are needed for deptool to work without prompting.  This command has
-two forms, one that gets a specific environment variable and prints it
-out, and one that prints out a string that can be evaluated to set all
-the environment variables in the shell.  Therefore I<what> can have a
-number of values:
+The getenv command allows you to get the environment variables that are needed for deptool to work
+without prompting.  This command has two forms, one that gets a specific environment variable and
+prints it out, and one that prints out a string that can be evaluated to set all the environment
+variables in the shell. In the form for printing out all values for a shell, the --unset option
+will instead cause the values to be unset in the environment.  Because of the multiple modes,
+I<what> can have a number of values:
 
 =over
 
@@ -3642,7 +3610,9 @@ remote repositories.
 =cut
 
 sub getEnv {
-    my $result = GetOptions("quiet!" => \$quiet);
+    my $unset;
+    my $result = GetOptions("quiet!" => \$quiet,
+                            "unset!" => \$unset);
 
     usage("Unknown error") unless $result;
     usage("Missing requested env var") unless @ARGV == 1;
@@ -3650,6 +3620,7 @@ sub getEnv {
     my $env = $ARGV[0];
     if ($env =~ /^for-((sh)|(csh))$/o) {
         my $shell = $1;
+        $shell = "unset-$shell" if $unset;
         $quiet = 1;
         $auto_yes_to_prompts = 1;
 
@@ -3683,6 +3654,10 @@ sub printEnv {
         print qq{export $envvar="$val";\n};
     } elsif ($shell eq 'csh') {
         print qq{setenv $envvar "$val";\n};
+    } elsif ($shell eq 'unset-sh') {
+        print qq{unset $envvar\n};
+    } elsif ($shell eq 'unset-csh') {
+        print qq{unsetenv $envvar\n};
     } else {
         die "?? $shell";
     }
@@ -3740,9 +3715,9 @@ sub operatingSystem {
             if (/^(\d+\.\d+)(\.\d+)?$/o) {
                 $Cache::operating_system = "debian-$1";
             } elsif (m!^([a-z]+)/sid$!o) {
-                $Cache::operating_system = "debian-$1-unstable";
+                $Cache::operating_system = "debian-${1}_unstable";
             } elsif (m!^testing$!o) {
-                $Cache::operating_system = "debian-testing-unstable";
+                $Cache::operating_system = "debian-testing_unstable";
             } else {
                 s/\W//go; s/\s/_/go;
                 $Cache::operating_system = "debian-unknown-$_";
@@ -3753,14 +3728,20 @@ sub operatingSystem {
             $_ = <$rhver>;
             close($rhver);
             chomp;
-            if (/^Red Hat Enterprise Linux.+release (\d+)\b/o) {
-                $Cache::operating_system = "rhel$1";
+            # Include minor versions because major things like boost installs
+            # can change between minor releases of the OS.
+            if (/^Red Hat Enterprise Linux.+release (\d+\.\d+) /o) {
+                $Cache::operating_system = "rhel-$1";
+            } elsif (/^Red Hat Enterprise Linux.*release (\d+) .*Update (\d+)\b/o) {
+                $Cache::operating_system = "rhel-$1.$2";
 	    } elsif (/^Fedora release (\d+) \(\w+\)$/o) {
-		$Cache::operating_system = "fedora$1";
-	    } elsif (/^CentOS release (\d+)\b/o) {
-		$Cache::operating_system = "centos$1";
-            } elsif (/^CentOS Linux release (\d+)\b/o) {
-                $Cache::operating_system = "centos$1";
+		$Cache::operating_system = "fedora-$1";
+	    } elsif (/^CentOS release (\d+\.\d+) /o) {
+		$Cache::operating_system = "centos-$1";
+            } elsif (/^CentOS Linux release (\d+\.\d+) /o) {
+                $Cache::operating_system = "centos-$1";
+            } elsif (/^Scientific Linux release (\d+\.\d+) /o) {
+                $Cache::operating_system = "scilinux-$1";
             } else {
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "rh-unknown-$_";
@@ -3771,9 +3752,11 @@ sub operatingSystem {
 	    $_ = <$susever>;
 	    close($susever);
 	    chomp;
-	    if (/^openSUSE (\d+)\.\d+ /o) {
+            # unclear if openSUSE minor releases are compatible; given 8 month release cycle, seems
+            # unlikely so we tie to the minor version also.
+	    if (/^openSUSE (\d+\.\d+) /o) {
 		$Cache::operating_system = "opensuse-$1";
-            } elsif (/^SUSE Linux Enterprise Server (\d+)\b/o) {
+            } elsif (/^SUSE Linux Enterprise Server (\d+\.\d+)\b/o) {
                 $Cache::operating_system = "suse-$1";
 	    } else {
                 s/\W/_/go; s/\s/_/go;
@@ -3798,6 +3781,16 @@ sub operatingSystem {
                 s/^OpenBSD\s+//o;
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "openbsd-unknown-$_";
+            } elsif (/^Darwin\s+/o) {
+                my $sys_prof = new FileHandle("system_profiler SPSoftwareDataType |")
+                    or die "Can't run system_profiler SPSoftwareDataType for read: $!";
+                my $sys_ver;
+                while (<$sys_prof>) {
+                    $sys_ver = $1 if /^\s+System Version: Mac OS X (\d+\.\d+\b)/o;
+                }
+                die "Unable to find system version in output of system_profiler SPSoftwareDataType"
+                    unless defined $sys_ver;
+                $Cache::operating_system = "macos-$sys_ver";
             } elsif (/^(\w+)\s+(\S.*)$/o) {
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "unknown-$_";
@@ -3878,7 +3871,7 @@ sub makeParallelism {
         close($fh);
     }
     if ($nprocessors == 0) {
-        $fh = new FileHandle "sysctl hw.ncpu 2>/dev/null |"; # freebsd
+        $fh = new FileHandle "sysctl hw.ncpu 2>/dev/null |"; # freebsd, openbsd, macos
         while (<$fh>) {
             if (/^hw\.ncpu: (\d+)$/o) {
                 $nprocessors = $1;
@@ -5128,8 +5121,14 @@ sub pull {
     }
 
     if (@branches > 0) {
-        # merge remote branch(s) to local
-        main::runCommand(qw/git merge --log/, @branches);
+        # If we run this as a single command, then we seem to generate a log message in order to
+        # merge the up-to-date local-cache with the origin remote.  Running the two commands
+        # separately does not seem to generate the spurious log message, and the order does not
+        # seem to matter.
+        foreach my $branch (@branches) {
+            # merge remote branch(s) to local
+            main::runCommand(qw/git merge --log --ff/, $branch);
+        }
     } else {
         # TODO-reviewer: die?
         warn "No remote branches for $current_branch";
@@ -5357,8 +5356,11 @@ use Getopt::Long;
 sub init {
     my $no_cache = 0;
 
+    # TODO-2013-04-15: remove the below option.
     my $result = GetOptions("no-cache!" => \$no_cache);
 
+    warn "no-cache is now on by default, it seems unlikely someone would init twice"
+        if $no_cache;
     usage("Unknown error") unless $result;
 
     my (@files) = @ARGV;
@@ -5370,143 +5372,119 @@ sub init {
     mkpath(main::projects());
     main::aliasChdir(main::projects());
 
-    my $cache = $no_cache ? "--no-cache" : "";
     foreach my $file (@files) {
 	if (-f $file && -r $file) {
 	    unpackProjectsTar($file);
 	} elsif (-f "$startdir/$file" && -r "$startdir/$file") {
 	    unpackProjectsTar("$startdir/$file");
 	} elsif ($file =~ m!^http:.*latest-release!o) {
-	    httpFetchLatestRelease($file, $cache);
+	    httpFetchLatestRelease($file);
 	} elsif ($file =~ m!^http:!o) {
-	    httpFetchUnpackTar($file, $cache);
+	    httpFetchUnpackTar($file);
 	} else {
 	    die "Unrecognized argument '$file', expected either /path/to/tar or http://url";
 	}
     }
 }
 
-sub maybeBackupOldProjectDir {
-    my ($project, $date, $source) = @_;
+sub backupOldProjectDir {
+    my ($project) = @_;
 
     my $projects = main::projects();
 
-    if (-e "$projects/$project") {
-	if (! -r "$projects/$project/Release.info") {
-	    backupUntarDir("$projects/$project", "Missing Release.info file");
-	} else {
-	    my $fh = new FileHandle "$projects/$project/Release.info"
-		or die "Can't open $projects/$project/Release.info for read: $!";
-	    my $creation_date;
-	    while (<$fh>) {
-		$creation_date = $1 if /^Creation-Date: (\S+)$/o;
-	    }
-	    close($fh);
-
-	    if (! defined $creation_date) {
-		backupUntarDir("$projects/$project", "No creation date in Release.info file");
-	    } elsif ($creation_date ne $date) {
-		backupUntarDir("$projects/$project", 
-			       "Creation date in Release.info file different from one in tar file");
-	    } else {
-		print "$projects/$project is already the same as in $source\n";
-		return 1;
-	    }
-	}
+    my $from_name = "$projects/$project";
+    if (-e $from_name) {
+        my @now = localtime(time);
+        my $backup_date = sprintf("%04d-%02d-%02dT%02d:%02d", $now[5] + 1900, $now[4], $now[3],
+                                  $now[2], $now[1]);
+        my $to_name = "${from_name}.$backup_date";
+        main::userPrompt("Rename $from_name to $to_name");
+        rename($from_name, $to_name)
+            or die "Unable to rename $from_name to $to_name: $!";
     }
-    die "$projects/$project exists?"
-	if -e "$projects/$project";
-    return 0;
+    die "$from_name still exists?"
+	if -e $from_name;
 }
 
 sub unpackProjectsTar {
     my ($file) = @_;
 
-    die "Expected $file to end in .bz2"
-	unless $file =~ /\.bz2$/o;
+    my $name_re = qr!\b(\w+)-([\d\-\.]+).tar.bz2!;
+    die "Expected $file to be named $name_re"
+	unless $file =~ $name_re;
+    my ($project, $revision) = ($1,$2);
 
-    my $fh = new FileHandle "tar tvvfj $file |"
-	or die "Can't run tar tvvfj $file: $!";
-    local $_ = <$fh>;
-    close($fh);
-    chomp;
-    die "Unable to handle '$_'" 
-	unless m!^d.+ (\w+)-(\d{4}-\d{2}-\d{2})/!o;
-    my ($project, $date) = ($1,$2);
-
-    return if maybeBackupOldProjectDir($project, $date, $file);
+    backupOldProjectDir($project);
 
     my $projects = main::projects();
-    if (-d "$project-$date") {
-	main::userPrompt("Delete $projects/$project-$date");
-	rmtree("$project-$date");
+    if (-e "$project-$revision") {
+	main::userPrompt("Delete $projects/$project-$revision");
+	rmtree("$project-$revision");
     }
+    die "internal $project-$revision" if -e "$project-$revision";
 
     main::userPrompt("Untar $file into $projects");
     system("tar xvvfj $file");
-    die "Did not get expected directory $project-$date"
-	unless -d "$project-$date";
-    rename("$project-$date","$project")
-	or die "Unable to rename $project-$date to $project";
-}
-
-sub backupUntarDir {
-    my ($dir, $reason) = @_;
-
-    print "Backing up $dir.\n$reason\n";
-    if (-d "$dir.old") {
-	main::userPrompt("Delete old backup directory $dir.old");
-	rmtree("$dir.old");
-    }
-    main::userPrompt("Rename $dir to $dir.old");
-
-    rename($dir, "$dir.old")
-	or die "rename($dir, $dir.old) failed: $!";
+    die "Did not get expected directory $project-$revision"
+	unless -d "$project-$revision";
+    rename("$project-$revision",$project)
+	or die "Unable to rename $project-$revision to $project";
 }
 
 sub httpFetchUnpackTar {
-    my ($url, $no_cache) = @_;
+    my ($url) = @_;
 
-    die "Bad url '$url', expected http://.*/\\w+-\\d{4}-\\d{2}-\\d{2}.bz2"
-	unless $url =~ m!^http://.*/(\w+)-(\d{4}-\d{2}-\d{2}).tar.bz2$!o;
-    my ($project, $date) = ($1, $2);
+    die "Bad url '$url', expected http://.*/\\w+-([\\d\\-\\.]+).bz2"
+	unless $url =~ m!^http://.*/(\w+)-([\d\-\.]+).tar.bz2$!o;
+    my ($project, $revision) = ($1, $2);
 
-    return if maybeBackupOldProjectDir($project, $date, $url);
+    backupOldProjectDir($project);
 
-    my $output = "$project-$date.tar.bz2";
-    if ($no_cache ne '') {
-	unlink($output);
-	die "Unable to rm $output: $!" if -e $output;
-	rmtree("$project-$date") if -d "$project-$date";
-    }
+    my $output = "$project-$revision.tar.bz2";
 
-    if (! -e $output) {
-	main::userPrompt("wget $no_cache $url");
-	my $ret = system("wget -O $output.tmp $url");
-
-	die "wget $url failed" unless $ret == 0 && -r "$output.tmp";
-	rename("$output.tmp", $output)
-	    or die "Unable to rename $output.tmp to $output: $!";
-    }
+    fetchHttp($url, $output);
     unpackProjectsTar(main::projects() . "/$output");
 }
 
 sub httpFetchLatestRelease {
-    my ($url, $no_cache) = @_;
+    my ($url) = @_;
 
-    main::userPrompt("download $url");
-    print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
-	if $debug;
-    my $fh = new FileHandle("wget $no_cache -O - $url |")
-	or die "Can't run wget $no_cache -O - $url: $!";
+    fetchHttp($url, "latest-release");
+    my $fh = new FileHandle("latest-release")
+	or die "Can't open latest-release: $!";
     my @suburls = <$fh>;
     close($fh);
 
     foreach my $suburl (@suburls) {
 	my $tmp = $url;
 	$tmp =~ s/latest-release$/$suburl/o;
-	httpFetchUnpackTar($tmp, $no_cache);
+	httpFetchUnpackTar($tmp);
     }
+}
+
+sub fetchHttp {
+    my ($url, $output) = @_;
+
+    foreach my $file ($output, "$output.tmp") {
+        unlink($file);
+        die "Unable to rm $file: $!" if -e $file;
+    }
+    foreach my $cmd ("wget --no-cache -O $output.tmp $url",
+                     "curl -o $output.tmp $url") {
+        main::userPrompt($cmd);
+        print "Downloading $url using http proxy '$ENV{http_proxy}'\n"
+            if $debug;
+        my $ret = system($cmd);
+
+        if ($ret == 0 && -r "$output.tmp") {
+            rename("$output.tmp", $output)
+                or die "Unable to rename $output.tmp to $output: $!";
+            return;
+        } else {
+            warn "'$cmd' failed";
+        }
+    }
+    die "Unable to download $url, all commands failed.";
 }
 
 =pod

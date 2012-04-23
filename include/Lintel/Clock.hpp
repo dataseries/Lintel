@@ -13,7 +13,7 @@
 
 #include <math.h>
 #include <time.h>
-#if defined(SYS_POSIX) || defined(__unix) || defined(__linux)
+#if defined(SYS_POSIX) || defined(__unix) || defined(__linux) || defined(__APPLE_CC__)
 #include <sys/time.h>
 #include <pthread.h>
 #endif

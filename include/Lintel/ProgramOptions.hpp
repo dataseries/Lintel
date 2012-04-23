@@ -97,6 +97,11 @@ namespace lintel {
             vdesc += "]";
             return vdesc;
         }
+
+        typedef boost::function<void ()> ProgramOptionInitFn;
+
+        void addProgramOptionInitFn(const ProgramOptionInitFn &initfn);
+        void runProgramOptionInitFns();
     }
 
     /// add string to help message, should be called before a call to
@@ -227,14 +232,19 @@ namespace lintel {
     private:
 	void init(const std::string &name, const std::string &desc, 
 		  bool do_help=true) {
+            detail::addProgramOptionInitFn(boost::bind(&ProgramOption<T>::doInit, this, 
+                                                       name, desc, do_help));
+	}
+
+        void doInit(const std::string &name, const std::string &desc, bool do_help) {
 	    std::string def_desc = str(boost::format("%s (Default value %s.)")
 		    % desc % detail::defaultValueString(default_val));
 	    detail::programOptionsDesc(!do_help).add_options()
 		(name.c_str(), boost::program_options::value<T>(), def_desc.c_str());
 	    detail::ProgramOptionFnT f = boost::bind(&ProgramOption<T>::save, this, _1);
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
-	}
-
+        }
+            
 	void save(const boost::program_options::variable_value &opt) {
 	    if (!opt.empty()) { // Do not overwrite saved opts with empty values.
 		saved = opt;
@@ -294,6 +304,11 @@ namespace lintel {
     private:
 	void init(const std::string &name, const std::string &desc, 
 		  bool do_help=true) {
+            detail::addProgramOptionInitFn(boost::bind(&ProgramOption<bool>::doInit, this, 
+                                                       name, desc, do_help));
+        }
+
+        void doInit(const std::string &name, const std::string &desc, bool do_help) {
 	    detail::programOptionsDesc(!do_help).add_options() (name.c_str(), desc.c_str());
 	    detail::ProgramOptionFnT f = boost::bind(&ProgramOption<bool>::save, this, _1);
 	    detail::programOptionsActions().push_back(std::make_pair(name, f));
@@ -324,6 +339,7 @@ namespace lintel {
 
     template<class charT>
     void parseConfigFile(std::basic_istream<charT> &t) {
+        detail::runProgramOptionInitFns();
         boost::program_options::variables_map var_map;
         boost::program_options::store(boost::program_options::parse_config_file
                                       (t, detail::programOptionsDesc()), var_map);
