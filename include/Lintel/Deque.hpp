@@ -162,14 +162,12 @@ public:
         // RandomAccessIterator characteristics, where a is iterator type and n is integral type.
         /// adds diff and returns the iterator
         iterator operator+(ptrdiff_t diff) {
-            DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
-                             && logicalOffset(*this) + diff <= mydeque->size());
+            DEBUG_SINVARIANT(inRangePlus(diff));
             return iterator(mydeque, static_cast<size_t>(cur_pos + diff) % mydeque->q_size);
         }
         /// subtracts diff and returns the iterator
         iterator operator-(ptrdiff_t diff) {
-            DEBUG_SINVARIANT(logicalOffset(*this) - diff >= 0 // <= size iterator at ::end is ok
-                             && logicalOffset(*this) - diff <= mydeque->size());
+            DEBUG_SINVARIANT(inRangeMinus(diff));
             return iterator(mydeque, static_cast<size_t>(cur_pos + mydeque->q_size 
                                                          - diff) % mydeque->q_size);
         }
@@ -195,15 +193,14 @@ public:
         }
         /// adds diff to the iterator and returns the reference
         iterator &operator+=(ptrdiff_t diff) {
-            DEBUG_SINVARIANT(logicalOffset(*this) + diff >= 0 // <= size iterator at ::end is ok
-                             && logicalOffset(*this) + diff <= mydeque->size());
+            DEBUG_SINVARIANT(inRangePlus(diff));
             cur_pos = static_cast<size_t>(cur_pos + diff) % mydeque->q_size;
             return *this;
         }
         /// subtracts diff to the iterator and returns the reference
         iterator &operator-=(ptrdiff_t diff) {
-            DEBUG_SINVARIANT(logicalOffset(*this) - diff >= 0 // <= size iterator at ::end is ok
-                             && logicalOffset(*this) - diff <= mydeque->size());
+            DEBUG_SINVARIANT(inRangeMinus(diff));
+                                  
             cur_pos = static_cast<size_t>(cur_pos + mydeque->q_size - diff) % mydeque->q_size;
             return *this;
         }
@@ -215,6 +212,14 @@ public:
 
 
     private:
+        bool inRangeMinus(ptrdiff_t diff) { // safer to do minus/plus than -diff because of overflow
+            return logicalOffset(*this) - diff >= 0 // <= size as iterator at ::end is ok
+                && static_cast<size_t>(logicalOffset(*this) - diff) <= mydeque->size();
+        }
+        bool inRangePlus(ptrdiff_t diff) {
+            return logicalOffset(*this) + diff >= 0 // <= size as iterator at ::end is ok
+                && static_cast<size_t>(logicalOffset(*this) + diff) <= mydeque->size();
+        }
 	void increment() {
 	    DEBUG_INVARIANT(cur_pos < mydeque->q_size, "invalid use of iterator");
 	    cur_pos = (cur_pos + 1) % mydeque->q_size;

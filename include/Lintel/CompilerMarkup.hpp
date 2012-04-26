@@ -43,6 +43,7 @@
 #    define FUNC_ATTR_NORETURN     __attribute__ ((noreturn))
 #    define FUNC_DEPRECATED_PREFIX
 #    define FUNC_DEPRECATED __attribute__ ((deprecated))
+#    define VAR_DEPRECATED __attribute__ ((deprecated))
 #    define LIKELY(x)      __builtin_expect ((x), 1)
 #    define UNLIKELY(x)    __builtin_expect ((x), 0)
 // # define __malloc       __attribute__ ((malloc))
@@ -52,6 +53,7 @@
 #    define FUNC_ATTR_NORETURN
 #    define FUNC_DEPRECATED_PREFIX __declspec(deprecated)
 #    define FUNC_DEPRECATED
+#    define VAR_DEPRECATED
 #    define LIKELY(x) (x)
 #    define UNLIKELY(x) (x)
 #else
@@ -59,6 +61,7 @@
 #    define FUNC_ATTR_NORETURN     /* no noreturn attribute support */
 #    define FUNC_DEPRECATED_PREFIX
 #    define FUNC_DEPRECATED
+#    define VAR_DEPRECATED
 #    define LIKELY(x)      (x)
 #    define UNLIKELY(x)    (x)
 #endif
