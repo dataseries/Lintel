@@ -4880,6 +4880,15 @@ EOF
         my $val = <STDIN>;
         chomp $val;
         $val = $config{$ent} if $val =~ /^\s*$/o;
+        if ($val eq '') {
+            warn "Invalid to have an empty value for $ent.  Please enter a valid value";
+            redo;
+        }
+        if ($ent eq 'user.email' && $val !~ /\@/) {
+            warn "Invalid email address specified, should have an \@ in it.";
+            redo;
+        }
+
         main::quietRunCommand('git','config','--global',$ent,$val);
     }
 

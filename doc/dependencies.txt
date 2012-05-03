@@ -40,7 +40,7 @@ Debian-Lenny (debian-5.0):
 Debian-Squeeze (debian-6.0):
   Lintel required:
      % aptitude install perl git libdigest-sha1-perl cmake build-essential
-     % aptitude install libboost-dev
+     % aptitude install libboost-dev libboost-thread-dev
 
   Lintel optional:
      % aptitude install doxygen libxml2-dev
