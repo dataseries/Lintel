@@ -20,6 +20,9 @@
 
 namespace lintel {
 
+/** return the modify time in nano-seconds from a statbuf, or just the seconds times 1 billion if
+    we don't know how to get the ns time on the current OS (in which case a compile warning will
+    have been generated) */
 int64_t modifyTimeNanoSec(const struct stat &statbuf) {
 #if defined(__linux__)
     return static_cast<int64_t>(statbuf.st_mtime) * 1000 * 1000 * 1000
@@ -34,10 +37,13 @@ int64_t modifyTimeNanoSec(const struct stat &statbuf) {
 #endif
 }
 
+/** return the modify time in nano-seconds from statting a file, or just the seconds times 1
+    billion if we don't know how to get the ns time on the current OS (in which case a compile
+    warning will have been generated) */
 int64_t modifyTimeNanoSec(const std::string &filename) {
     struct stat statbuf;
     CHECKED(stat(filename.c_str(), &statbuf) == 0, 
-            boost::format("stat failed: %s") % strerror(errno));
+            boost::format("stat(%s) failed: %s") % filename % strerror(errno));
 
     return modifyTimeNanoSec(statbuf);
 }
