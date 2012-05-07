@@ -534,8 +534,8 @@ The init command will initialize the global configuration for git, such as the n
 address of the committer.  It will also download one or more repositories, by default the one for
 contining Lintel.  The repository specifiers can either be short names, such as "simpl/Lintel" in
 which case the server hostname will be added or full URLs such as
-git://git.u.hpl.hp.com/simpl/Lintel.  If you specify a short name, then the default server will be
-assumed to be git.u.hpl.hp.com, which is only accessible from the HP intranet.
+ssh://git@github.com:dataseries/Lintel.git If you specify a short name, then the default server
+will be assumed to be git-pa1.hpl.hp.com, which is only accessible from the HP intranet.
 
 Init will make a full mirror of the remote repositories into $HOME/.git/I<shortname>.  Right now it
 assumes that the repositories are readable through the git protocol and writeable through the ssh
@@ -543,13 +543,11 @@ protocol, and it will set up the configuration to operate in that mode.
 
 In order to write to a particular project you have to perform two steps.  First you have to send
 your ssh key (e.g. $HOME/.ssh/id_rsa.pub; in the format of an authorized_keys file) to the
-appropriate administrator.  Second you need to get permission to write to the project.  At this
-time both of those steps for git.u.hpl.hp.com can be performed by Eric Anderson
-<eric.anderson4@hp.com>.  It is slightly preferrable to have only one ssh key because it leads to
-additional work for the administrator to have multiple ones, but the latter can work.  The expected
-format of a key is the openssh authorized_keys format, i.e. a line starting with ssh-rsa (or dsa),
-then a long series of alphanumeric characters and then a name for the key (usually an email
-address).
+appropriate administrator.  Second you need to get permission to write to the project.  It is
+slightly preferrable to have only one ssh key because it leads to additional work for the
+administrator to have multiple ones, but the latter can work.  The expected format of a key is the
+openssh authorized_keys format, i.e. a line starting with ssh-rsa (or dsa), then a long series of
+alphanumeric characters and then a name for the key (usually an email address).
 
 =head3 init --mtn [--server=I<hostname>] [I<repository specifier>]
 
@@ -3597,7 +3595,7 @@ deptool appends the appropriate database
 
 =item gitServer
 
-The DEPTOOL_GIT_SERVER environment variable.  Defaults to git.u.hpl.hp.com.  Needed to determine
+The DEPTOOL_GIT_SERVER environment variable.  Defaults to git-pa1.hpl.hp.com.  Needed to determine
 the central repository for init.
 
 =item gitRepoDir
@@ -3898,8 +3896,8 @@ sub mtnServer {
 
 sub gitServer {
     unless(defined $ENV{DEPTOOL_GIT_SERVER}) {
-        userPrompt("assume default git server git.u.hpl.hp.com (set via \$DEPTOOL_GIT_SERVER)");
-        $ENV{DEPTOOL_GIT_SERVER} = "git.u.hpl.hp.com";
+        userPrompt("assume default git server git-pa1.hpl.hp.com (set via \$DEPTOOL_GIT_SERVER)");
+        $ENV{DEPTOOL_GIT_SERVER} = "git-pa1.hpl.hp.com";
     }
     return $ENV{DEPTOOL_GIT_SERVER};
 }
@@ -4982,6 +4980,10 @@ sub haveUncommittedChanges {
 sub tryCommit {
     my ($this) = @_;
 
+    die "\$DISPLAY is not set, deptool commit currently assumes that it can create
+two windows one for the diffs and one for the commit.  Unclear how best to
+handle this situation.  Suggestions are welcome.\n "
+        unless defined $ENV{DISPLAY} && $ENV{DISPLAY} =~ /:/o;
     main::runCommand(qw/git add -u/); # any uncommitted files we want to track should already be added
     my $pm = Lintel::ProcessManager->new();
 
