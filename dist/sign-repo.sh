@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 maybeStartGPGAgent() {
+    [ -f $HOME/tmp/make-dist/gpg-agent.sh ] || touch $HOME/tmp/make-dist/gpg-agent.sh
     . $HOME/tmp/make-dist/gpg-agent.sh
     [ "`gpg-agent 2>&1`" = "gpg-agent: gpg-agent running and available" ] && exit 0
     echo "Starting gpg-agent..."

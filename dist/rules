@@ -182,7 +182,7 @@ pb-examples-%: $(MAKE_DIST)/examples/pb/%/build
 
 $(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/$(RELEASE_VERSION)/Lintel.pb /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.gz
 	mkdir -p `dirname $@`
-	pb -v -p Lintel -r 0.2012.02.28 cms2build >$@-new 2>$@.err
+	pb -v -p Lintel -r $(RELEASE_VERSION) cms2build >$@-new 2>$@.err
 	mv $@-new $@
 
 $(MAKE_DIST)/lintel/pb/%/new-ve: $(MAKE_DIST)/lintel/pb/cms2build
@@ -214,7 +214,7 @@ $(MAKE_DIST)/lintel/pb/%/build: $(MAKE_DIST)/lintel/pb/%/setup-ve
 
 $(MAKE_DIST)/dataseries/pb/cms2build: $(PB_ROOT)/DataSeries/pbconf/$(RELEASE_VERSION)/DataSeries.pb /var/www/pb-sources/DataSeries-$(RELEASE_VERSION).tar.gz
 	mkdir -p `dirname $@`
-	pb -v -p DataSeries -r 0.2012.02.28 cms2build >$@-new 2>$@.err
+	pb -v -p DataSeries -r $(RELEASE_VERSION) cms2build >$@-new 2>$@.err
 	mv $@-new $@
 
 $(MAKE_DIST)/dataseries/pb/%/new-ve: $(MAKE_DIST)/lintel/pb/%/build $(MAKE_DIST)/dataseries/pb/cms2build
