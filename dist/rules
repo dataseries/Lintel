@@ -19,6 +19,7 @@
 help:
 	@echo "./dist/rules prep-release # make the version stamp file in $(MAKE_DIST)"
 	@echo "./dist/rules snapshot-tar # make tar files out of checked out Lintel/DataSeries"
+	@echo "./dist/rules signing-daemon # start the package signing daemon"
 	@echo "./dist/rules packages # build binary packages using project-builder"
 	@echo "./dist/rules vm-all # build from source on all virtual machines"
 	@echo "./dist/rules remote-hosts # build from source on remote hosts"
@@ -34,16 +35,16 @@ MAKE_DIST := $(HOME)/tmp/make-dist
 PB_ROOT := $(shell grep '^pbdefdir' $(HOME)/.pbrc | awk '{print $$4}' | sed 's,\$$ENV{.*},$(HOME),')
 
 # 6.0=squeeze EOL ?
-# 7.0=wheezy release ?
-DEBIAN_VERSIONS := 6.0 7.0
+# 7.0=wheezy release ? -- too unstable to make release packages, useful for interim testing
+DEBIAN_VERSIONS := 6.0
 PB_DEBIAN := $(foreach ver, $(DEBIAN_VERSIONS), \
-	       $(foreach arch, x86_64 i386, pb-dataseries-debian-$(ver)-$(arch)))
+	       $(foreach arch, x86_64 i386, pb-examples-debian-$(ver)-$(arch)))
 
 # Ubuntu (EOL): LTS: 8.04=hardy (2013-04) 10.04=lucid (2015-04) 12.04=pangolin (2017-04)
 #          normal   10.10=maverick(2012-04) 11.04=natty (2012-10) 11.10=oneiric (2013-04), 
 UBUNTU_VERSIONS := 8.04 10.04 12.04 10.10 11.04 11.10
 PB_UBUNTU := $(foreach ver, $(UBUNTU_VERSIONS), \
-	       $(foreach arch, x86_64 i386, pb-dataseries-ubuntu-$(ver)-$(arch)))
+	       $(foreach arch, x86_64 i386, pb-examples-ubuntu-$(ver)-$(arch)))
 
 # We are building against vault.centos.org for the older versions; note that they
 # are no longer receiving updates from centos.  We build against older versions because
@@ -55,14 +56,14 @@ PB_UBUNTU := $(foreach ver, $(UBUNTU_VERSIONS), \
 # RHEL6 2010-11 (6.0) .. 2011-05 (6.1) .. 2011-12 (6.2) .. 2020-12 (EOL)
 CENTOS_VERSIONS := 5.2 5.3 5.4 5.5 5.6 5.7 5.8
 PB_CENTOS := $(foreach ver, $(CENTOS_VERSIONS), \
-	       $(foreach arch, x86_64 i386, pb-dataseries-centos-$(ver)-$(arch)))
+	       $(foreach arch, x86_64 i386, pb-examples-centos-$(ver)-$(arch)))
 
 # Support for 2 releases + 1 month
 # Fedora 16 2011-11-08 .. ~2013-01
 # Fedora 15 2011-05-24 .. ~2012-6
 FEDORA_VERSIONS := 15 16
 PB_FEDORA := $(foreach ver, $(FEDORA_VERSIONS), \
-	       $(foreach arch, x86_64 i386, pb-dataseries-fedora-$(ver)-$(arch)))
+	       $(foreach arch, x86_64 i386, pb-examples-fedora-$(ver)-$(arch)))
 
 # Support for two releases + 2 months; see http://en.opensuse.org/openSUSE:Roadmap + http://en.opensuse.org/Lifetime
 # 12.2: 2012-07-11 .. ?
@@ -70,11 +71,11 @@ PB_FEDORA := $(foreach ver, $(FEDORA_VERSIONS), \
 # 11.4: 2011-03-10 .. 2012-09-15
 OPENSUSE_VERSIONS := 11.4 12.1
 PB_OPENSUSE := $(foreach ver, $(OPENSUSE_VERSIONS), \
-	         $(foreach arch, x86_64 i386, pb-dataseries-opensuse-$(ver)-$(arch)))
+	         $(foreach arch, x86_64 i386, pb-examples-opensuse-$(ver)-$(arch)))
 
 SCILINUX_VERSIONS := 6.0 6.1 6.2
 PB_SCILINUX := $(foreach ver, $(SCILINUX_VERSIONS), \
-	         $(foreach arch, x86_64 i386, pb-dataseries-scilinux-$(ver)-$(arch)))
+	         $(foreach arch, x86_64 i386, pb-examples-scilinux-$(ver)-$(arch)))
 
 FREEBSD_VERSIONS := 7r4 8r2 9r0
 VM_FREEBSD := $(foreach ver, $(FREEBSD_VERSIONS), \
@@ -112,6 +113,10 @@ snapshot-tar: $(MAKE_DIST)/version
 	[ ! -f ../DataSeries/CMakeCache.txt ]
 	./dist/make-tar.sh $(MAKE_DIST)
 	(cd ../DataSeries && ./dist/make-tar.sh $(MAKE_DIST))
+	(cd ../DataSeriesExamples && ./make-tar.sh $(MAKE_DIST))
+
+signing-daemon: 
+	./dist/sign-repo.sh --restart-daemon
 
 # sudo HOME=/var/www/localpkgs gpg --gen-key
 # Real name: Local packages signing key
@@ -123,7 +128,7 @@ martenot-copy: $(BUILD)/remote-host/martenot.hpl.hp.com/result
 	dist/martenot-copy --to-martenot XXXXX$(REMOTE_TMP) $(RELEASE_DATE)
 
 clean:
-	sudo rm -rf $(MAKE_DIST)
+	rm -rf $(MAKE_DIST)
 	sudo rm -rf --one-file-system $(PB_ROOT)/chroot
 	sudo rm -rf $(PB_ROOT)/repos
 	-sudo rm ../*$(RELEASE_VERSION)* ../*$(RELEASE_VERSION)*
@@ -169,6 +174,10 @@ pb-dataseries-%: $(MAKE_DIST)/dataseries/pb/%/build
 	@echo "Built dataseries package for $*"
 	@echo "------------------------------------------------------------------"
 
+pb-examples-%: $(MAKE_DIST)/examples/pb/%/build
+	@echo "Built example programs for $*"
+	@echo "------------------------------------------------------------------"
+
 # --- lintel ---
 
 $(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/$(RELEASE_VERSION)/Lintel.pb /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.gz
@@ -198,6 +207,7 @@ $(MAKE_DIST)/lintel/pb/%/build: $(MAKE_DIST)/lintel/pb/%/setup-ve
 	@[ ! -f $@ ] || rm $@
 	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -p Lintel -m $* build2ve >$@-new 2>$@.err
+	dist/sign-repo.sh $* >>$@-new 2>&1
 	mv $@-new $@
 
 # --- dataseries ---
@@ -228,6 +238,26 @@ $(MAKE_DIST)/dataseries/pb/%/build: $(MAKE_DIST)/dataseries/pb/%/setup-ve
 	@[ ! -f $@ ] || rm $@
 	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
 	pb -v -p DataSeries -m $* build2ve >$@-new 2>$@.err
+	dist/sign-repo.sh $* >>$@-new 2>&1
+	mv $@-new $@
+
+# --- dataseries examples ---
+
+$(MAKE_DIST)/examples/pb/%/new-ve: $(MAKE_DIST)/dataseries/pb/%/build
+	@[ ! -f $@ ] || rm $@
+	-sudo umount $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/proc
+	-sudo rm -rf --one-file-system $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`
+	@[ ! -d $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` ]
+	@mkdir -p `dirname $@`
+	[ ! -f $@-new ] || dist/try-fixup-download-errors.sh $* $@-new
+	pb -v -m $* newve >$@-new 2>$@.err
+	[ `grep 'was corrupt' $@-new | wc -l` = 0 ]
+	mv $@-new $@
+
+$(MAKE_DIST)/examples/pb/%/build: $(MAKE_DIST)/examples/pb/%/new-ve
+	sudo cp dist/test-example-bootstrap.sh dist/test-example-build.sh $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/
+	sudo chroot $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` /bin/sh /test-example-bootstrap.sh $* $(RELEASE_VERSION) >$@-new 2>$@.err
+	[ `grep 'SUCCESS BUILDING EXAMPLES' $@-new | wc -l` = 1 ]
 	mv $@-new $@
 
 # ------------------------------------------------------------------------
@@ -271,7 +301,7 @@ $(MAKE_DIST)/vm/%/build: /var/www/pb-sources/latest-release $(BUILD_FROM_SOURCE)
 	mkdir -p `dirname $@`
 	./dist/rules vm-check-$* >$@-new 2>&1
 	scp dist/build-from-source.sh $*:/var/tmp >>$@-new 2>&1
-	ssh $* /bin/sh /var/tmp/build-from-source.sh $(RELEASE_VERSION) $* http://192.168.122.1/pb-sources `sha1sum $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` \
+	ssh $* /bin/sh /var/tmp/build-from-source.sh $(RELEASE_VERSION) $* http://192.168.122.1/pb-sources `sha1sum $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeriesExamples-$(RELEASE_VERSION).tar.gz | awk '{print $$1}'` \
 	    >>$@-new 2>&1
 	mv $@-new $@
 
@@ -300,6 +330,7 @@ $(MAKE_DIST)/remote-hosts/tesla-source: $(WWW_SRC)/latest-release
 	mkdir -p `dirname $@`
 	rsync -av $(WWW_SRC)/latest-release $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 \
 	    $(WWW_SRC)/deptool-bootstrap $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 \
+	    $(WWW_SRC)/DataSeriesExamples-*.tar.gz \
 	    tesla.hpl.hp.com:opensource/tmp >$@-new
 	mv $@-new $@
 
@@ -307,7 +338,7 @@ REMHOST_BUILD_DEPS := $(MAKE_DIST)/remote-hosts/tesla-source $(BUILD_FROM_SOURCE
 $(MAKE_DIST)/remote-hosts/%/build: $(REMHOST_BUILD_DEPS)
 	mkdir -p `dirname $@`
 	scp dist/build-from-source.sh $*:/var/tmp >$@-new 2>&1
-	ssh $* /bin/sh /var/tmp/build-from-source.sh $(RELEASE_VERSION) $* http://tesla.hpl.hp.com/opensource/tmp `sha1sum $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` >>$@-new 2>&1
+	ssh $* /bin/sh /var/tmp/build-from-source.sh $(RELEASE_VERSION) $* http://tesla.hpl.hp.com/opensource/tmp `sha1sum $(WWW_SRC)/Lintel-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeries-$(RELEASE_VERSION).tar.bz2 | awk '{print $$1}'` `sha1sum $(WWW_SRC)/DataSeriesExamples-$(RELEASE_VERSION).tar.gz | awk '{print $$1}'` >>$@-new 2>&1
 	mv $@-new $@
 
 $(MAKE_DIST)/remote-hosts/%/result: $(MAKE_DIST)/remote-hosts/%/build

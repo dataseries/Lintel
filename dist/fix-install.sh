@@ -3,6 +3,16 @@ set -e -x
 [ -d "$1" ]
 TMP_USR=$1/usr
 
+echo 'MESSAGE(${CMAKE_ROOT})' >$TMP_USR/tmp.cmake
+CMAKE_MODULE_PATH=`cmake -P $TMP_USR/tmp.cmake 2>&1`/Modules
+rm $TMP_USR/tmp.cmake
+[ -d $CMAKE_MODULE_PATH ]
+CMAKE_MODULE_SUBPATH=`echo $CMAKE_MODULE_PATH | sed 's,^/usr,,'`
+[ -d /usr/$CMAKE_MODULE_SUBPATH ]
+mkdir -p $TMP_USR/$CMAKE_MODULE_SUBPATH
+mv $TMP_USR/share/cmake-modules/* $TMP_USR/$CMAKE_MODULE_SUBPATH
+rmdir $TMP_USR/share/cmake-modules
+
 perl -ne 's,% (.+)/Lintel,% .../Lintel,; print;' -i $TMP_USR/share/lintel-latex-rebuild/lintel-latex-bib.bib
 perl -ne 's,% (.+)/Lintel,% .../Lintel,; print;' -i $TMP_USR/share/lintel-latex-rebuild/lintel-latex-all.bib
 # Unclear whether lexgrog or doxygen is wrong, but lexgrog does not accept spaces 

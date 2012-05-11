@@ -55,6 +55,23 @@
 # will not be built.
 
 ############################################
+############### common
+############################################
+
+MACRO(FIND_LINTEL_DOCS_CMAKE)
+    FIND_PATH(LINTEL_DOCS_CMAKE_DIR LintelDocs.cmake
+        PATHS ${CMAKE_MODULE_PATH} ${CMAKE_ROOT}/Modules
+        NO_DEFAULT_PATH)
+    IF(NOT LINTEL_DOCS_CMAKE_DIR)
+        MESSAGE(FATAL_ERROR "In LintelDocs.cmake, but can't find it in ${CMAKE_MODULE_PATH} or ${CMAKE_ROOT}/Modules?")
+    ENDIF(NOT LINTEL_DOCS_CMAKE_DIR)
+    SET(LINTEL_DOCS_CMAKE "${LINTEL_DOCS_CMAKE_DIR}/LintelDocs.cmake")
+    IF(NOT EXISTS ${LINTEL_DOCS_CMAKE})
+        MESSAGE(FATAL_ERROR "Insanity?! ${LINTEL_DOCS_CMAKE}")
+    ENDIF(NOT EXISTS ${LINTEL_DOCS_CMAKE})
+ENDMACRO(FIND_LINTEL_DOCS_CMAKE)
+
+############################################
 ############### doxygen
 ############################################
 
@@ -111,11 +128,8 @@ MACRO(LINTEL_DOCS_BUILD)
      
         # TODO: figure out how to clean; the following doesn't work.
         # SET_DIRECTORY_PROPERTIES(PROPERTIES ADDITIONAL_MAKE_CLEAN_FILES doxygen)
-	FIND_FILE(LINTEL_DOCS_CMAKE LintelDocs.cmake ${CMAKE_MODULE_PATH})
-	
-	IF(NOT LINTEL_DOCS_CMAKE)
-            MESSAGE(FATAL_ERROR "Huh, how can we not find LintelDocs.cmake when we are it")
-	ENDIF(NOT LINTEL_DOCS_CMAKE)
+
+	FIND_LINTEL_DOCS_CMAKE()
 
         LIST(APPEND LDB_PATHFIX ${CMAKE_HOME_DIRECTORY} ${DOCS_TOP_BUILD_DIRECTORY})
 	# Create a clean directory for the output or if files are deleted the
@@ -294,12 +308,9 @@ ENDMACRO(LINTEL_LATEX_REQUIRES)
 
 MACRO(LINTEL_POD2MAN_SETUP)
     LINTEL_WITH_PROGRAM(POD2MAN pod2man)
-    FIND_PATH(LINTELDOCS_CMAKE LintelDocs.cmake PATHS ${CMAKE_MODULE_PATH} NO_DEFAULT_PATH)
-    IF(NOT LINTELDOCS_CMAKE)
-        MESSAGE(FATAL_ERROR "In LintelDocs.cmake, but can't find it in ${CMAKE_MODULE_PATH}?")
-    ENDIF(NOT LINTELDOCS_CMAKE)
     LINTEL_REQUIRED_PROGRAM(CMAKE cmake) # We're running it, have to be able to find it.
     SET(LINTEL_POD2MAN_ENABLED ${POD2MAN_ENABLED})
+    FIND_LINTEL_DOCS_CMAKE()
 ENDMACRO(LINTEL_POD2MAN_SETUP)
 
 MACRO(LINTEL_POD2MAN file section release)
@@ -344,7 +355,7 @@ MACRO(LINTEL_POD2MAN_ACTUAL file section release)
                       COMMAND ${CMAKE_PATH} -DPOD2MAN_PATH=${POD2MAN_PATH}
                               -D LPA_IN=${lintel_pod2man_input} -D LPA_OUT=${lintel_pod2man_output}
                               -D LPA_RELEASE=${release} -D LPA_TYPE=${lintel_pod2man_type}
-                              -P ${LINTELDOCS_CMAKE}/LintelDocs.cmake
+                              -P ${LINTEL_DOCS_CMAKE}
                       VERBATIM)
     INSTALL(FILES ${CMAKE_CURRENT_BINARY_DIR}/${lintel_pod2man_output}
             DESTINATION ${CMAKE_INSTALL_PREFIX}/share/man/man${section})
