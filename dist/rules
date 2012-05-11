@@ -124,8 +124,8 @@ signing-daemon:
 # Comment: local package signing key
 # empty passphrase (or use gpg-agent)
 
-martenot-copy: $(BUILD)/remote-host/martenot.hpl.hp.com/result
-	dist/martenot-copy --to-martenot XXXXX$(REMOTE_TMP) $(RELEASE_DATE)
+martenot-copy: $(MAKE_DIST)/remote-hosts/martenot.hpl.hp.com/result
+	dist/martenot-copy --to-martenot $(RELEASE_VERSION)
 
 clean:
 	rm -rf $(MAKE_DIST)
@@ -343,5 +343,5 @@ $(MAKE_DIST)/remote-hosts/%/build: $(REMHOST_BUILD_DEPS)
 $(MAKE_DIST)/remote-hosts/%/result: $(MAKE_DIST)/remote-hosts/%/build
 	scp $*:/var/tmp/dataseries-test/result-$* $@-new
 	[ "`cat $@-new`" = $(RELEASE_VERSION) ]
-	ssh $* rm -rf /var/tmp/dataseries-test
+	[ $* = martenot.hpl.hp.com ] || ssh $* rm -rf /var/tmp/dataseries-test
 	mv $@-new $@

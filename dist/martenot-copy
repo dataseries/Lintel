@@ -1,5 +1,11 @@
 #!/bin/sh
+set -e
+set -x
+
+REMOTE_TMP=/var/tmp/dataseries-test
 MARTENOT_REPO_DIR=/var/www/external/tesla.hpl.hp.com/opensource/repositories
+WWW=/var/www/external/tesla.hpl.hp.com/opensource
+
 if [ "$1" = "--diff" ]; then
     shift
     IN=$2
@@ -23,53 +29,58 @@ if [ "$1" = "--diff" ]; then
     exit 0
 elif [ "$1" = "--to-martenot" ]; then
     [ `id -u` != 0 ]
-    set -e
-    set -x
-    [ $# = 3 ]
-    REMOTE_TMP=$2
-    DATE=$3
-    MARTENOT_REPOS=martenot:$MARTENOT_REPO_DIR
-    LOCALPKGS=/var/www/localpkgs
-    for i in $LOCALPKGS/*-*-*; do
-        DIR=/unknown
-        [ -d $i/rpms ] && DIR=$i/rpms
-        [ -d $i/incoming ] && DIR=$i/incoming
-        [ -d $DIR ]
-        rsync -av --exclude=\*.log $DIR $MARTENOT_REPOS/`basename $i`
-    done
-    rsync -av $0 martenot:$REMOTE_TMP/martenot-copy
-    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-source $REMOTE_TMP $DATE
-    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-binaries
-elif [ "$1" = "--on-martenot-source" ]; then
-    set -e
-    set -x
-    shift
     [ $# = 2 ]
-    REMOTE_TMP=$1
-    DATE=$2
-    PROJ=$REMOTE_TMP/test-remote/projects
-    WWW=/var/www/external/tesla.hpl.hp.com/opensource
+    RELEASE_VERSION=$2
+    rsync -av --progress /var/www/pb-pkgs/production/ martenot:$MARTENOT_REPO_DIR
+    rsync -av $0 martenot:$REMOTE_TMP/martenot-copy
+    rsync -av /var/www/pb-sources martenot:$REMOTE_TMP
+    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-source $RELEASE_VERSION
+    ssh martenot $REMOTE_TMP/martenot-copy --on-martenot-binaries $RELEASE_VERSION
+elif [ "$1" = "--on-martenot-source" ]; then
+    shift
+    [ $# = 1 ]
+    RELEASE_VERSION=$1
+    PROJ=$REMOTE_TMP/projects
+    LINTEL_BUILD=`echo $REMOTE_TMP/opt-*/Lintel/src`
+    [ -f "$LINTEL_BUILD"/deptool-bootstrap ]
     [ "`hostname`" = martenot ]
 
-    cp $REMOTE_TMP/test-remote/deptool-bootstrap $WWW/deptool-bootstrap
+    grep -v '^BEGIN.*/var/tmp/dataseries-test' <$LINTEL_BUILD/deptool-bootstrap >$WWW/deptool-bootstrap
+    cp $LINTEL_BUILD/../../DataSeries/doc/tr/dataseries-tr.pdf $WWW/DataSeries-tr-snapshot.pdf
     cp $PROJ/Lintel/NEWS $WWW/Lintel-NEWS.txt
     cp $PROJ/DataSeries/NEWS $WWW/DataSeries-NEWS.txt
-    cp $PROJ/Lintel-$DATE.tar.bz2 $WWW/sources/Lintel-$DATE.tar.bz2
-    cp $PROJ/DataSeries-$DATE.tar.bz2 $WWW/sources/DataSeries-$DATE.tar.bz2
-    ln -sf Lintel-$DATE.tar.bz2 $WWW/sources/Lintel-latest.tar.bz2
-    ln -sf DataSeries-$DATE.tar.bz2 $WWW/sources/DataSeries-latest.tar.bz2
-    cat >$WWW/sources/latest-release <<EOF
-Lintel-$DATE.tar.bz2
-DataSeries-$DATE.tar.bz2
-EOF
+    cp $PROJ/Lintel-$RELEASE_VERSION.tar.bz2 $WWW/sources/Lintel-$RELEASE_VERSION.tar.bz2
+    cp $PROJ/DataSeries-$RELEASE_VERSION.tar.bz2 $WWW/sources/DataSeries-$RELEASE_VERSION.tar.bz2
+    cp $REMOTE_TMP/pb-sources/DataSeriesExamples-* $WWW/sources
+    cp $PROJ/latest-release $WWW/sources/latest-release
+
+    for i in Lintel-$RELEASE_VERSION.tar.bz2 DataSeries-$RELEASE_VERSION.tar.bz2 DataSeriesExamples-$RELEASE_VERSION.tar.gz latest-release; do
+        cmp $REMOTE_TMP/pb-sources/$i $WWW/sources/$i
+    done
+    ln -sf Lintel-$RELEASE_VERSION.tar.bz2 $WWW/sources/Lintel-latest.tar.bz2
+    ln -sf DataSeries-$RELEASE_VERSION.tar.bz2 $WWW/sources/DataSeries-latest.tar.bz2
+    ln -sf DataSeriesExamples-$RELEASE_VERSION.tar.gz $WWW/sources/DataSeriesExamples-latest.tar.gz
 elif [ "$1" = "--on-martenot-binaries" ]; then
+    shift
+    [ $# = 1 ]
+    RELEASE_VERSION=$1
+
+    for i in `find $WWW/repositories -name \*.sources.list -o -name \*.repo`; do
+        perl -n -i -e 's,http://localhost/pb-pkgs/production/,http://tesla.hpl.hp.com/opensources/repositories/,;print' $i
+    done
+    if [ $RELEASE_VERSION = 0.2012.05.11 ]; then
+        echo "Do not have to rebuild repo info/resign since we changed the layout so people"
+        echo "have to update anyway.  Skipping remaining steps."
+        exit 0
+    fi
+    echo "Untested, failing..."
+    exit 1
     while killall -u `whoami` -TERM gpg-agent; do 
         echo killing gpg-agent...
         sleep 1
     done
     trap 'killall -TERM gpg-agent' 0
     eval `gpg-agent --daemon --no-grab`
-    set -e
     for i in $MARTENOT_REPO_DIR/*-*-*; do
         echo "Processing $i..."
         (
@@ -107,8 +118,6 @@ elif [ "$1" = "--diff-localhost" ]; then
     # recompute on the far side and rsync to fix any glitches.
     exit 1
     shift
-    set -e
-    set -x
     [ `id -u` != 0 ]
     [ -d "$1" ]
     WORKDIR=$1/tesla
