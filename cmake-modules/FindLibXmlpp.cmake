@@ -7,7 +7,7 @@
 #  LIBXMLPP_INCLUDES - all includes for LibXml++ include
 #  LIBXMLPP_LIBRARIES - the libraries needed to use LibXml++
 #  LIBXMLPP_DEFINITIONS - Compiler switches required for using LibXml++
-# (c) Hewlett Packard Development Company, 2006
+# (c) Hewlett Packard Development Company, 2006, LP
 #
 # Copyright (c) 2006, Alexander Neundorf, <neundorf@kde.org>
 #

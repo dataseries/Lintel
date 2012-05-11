@@ -47,7 +47,7 @@ at: http://tesla.hpl.hp.com/opensource/
    # Download the build tool
    cd ~ && wget http://tesla.hpl.hp.com/opensource/deptool-bootstrap
    # Initialize the source repository (leave off the server option inside HPL)
-   perl deptool-bootstrap init --server=github.com eric-anderson/Lintel eric-anderson/DataSeries
+   perl deptool-bootstrap init --server=github.com dataseries/Lintel dataseries/DataSeries
    # Checkout the source code
    perl deptool-bootstrap checkout DataSeries
    # Build, install (-t = and test) the programs
