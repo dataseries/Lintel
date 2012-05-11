@@ -181,7 +181,7 @@ pb-examples-%: $(MAKE_DIST)/examples/pb/%/build
 # --- lintel ---
 
 $(MAKE_DIST)/lintel/pb/cms2build: $(PB_ROOT)/Lintel/pbconf/$(RELEASE_VERSION)/Lintel.pb /var/www/pb-sources/Lintel-$(RELEASE_VERSION).tar.gz
-	mkdir -p `dirname $@`
+	mkdir -p `dirname $@` $(PB_ROOT)/repos
 	pb -v -p Lintel -r $(RELEASE_VERSION) cms2build >$@-new 2>$@.err
 	mv $@-new $@
 
@@ -255,8 +255,7 @@ $(MAKE_DIST)/examples/pb/%/new-ve: $(MAKE_DIST)/dataseries/pb/%/build
 	mv $@-new $@
 
 $(MAKE_DIST)/examples/pb/%/build: $(MAKE_DIST)/examples/pb/%/new-ve
-	sudo cp dist/test-example-bootstrap.sh dist/test-example-build.sh $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'`/
-	sudo chroot $(PB_ROOT)/chroot/`echo $* | sed 's,-,/,g'` /bin/sh /test-example-bootstrap.sh $* $(RELEASE_VERSION) >$@-new 2>$@.err
+	./dist/test-example-chroot.sh $(PB_ROOT) $* $(RELEASE_VERSION) >$@-new 2>$@.err
 	[ `grep 'SUCCESS BUILDING EXAMPLES' $@-new | wc -l` = 1 ]
 	mv $@-new $@
 

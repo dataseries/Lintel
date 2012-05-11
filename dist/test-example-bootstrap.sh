@@ -14,11 +14,6 @@ OS=$1
 VER=$2
 ARCH=$3
 
-if [ $ARCH = i386 -a `uname -m` = x86_64 ]; then
-    sleep 1
-    exec linux32 $0 $TRIPLE $RELEASE_VERSION
-fi
-
 [ -d /proc/$$ ] || mount -t proc proc /proc
 rm /home/test-user || true
 deluser test-user || true
