@@ -11,8 +11,11 @@
 #define LINTEL_MERSENNE_TWISTER_RANDOM_HPP
 
 #include <stdint.h>
-
 #include <vector>
+
+#include <Lintel/RandomBase.hpp>
+
+namespace Lintel {
 
 // A possibly faster version may be adaptable from:
 // http://www.math.keio.ac.jp/matumoto/MT2002/emt19937ar.html
@@ -23,7 +26,7 @@
 // functions and verify that the performance is comparable
 
 /// \brief Mersenne Twister random number generation class.
-class MersenneTwisterRandom {
+class MersenneTwisterRandom : public RandomBase {
 public:
     // 0=Defaults to seeding with various system parameters
     MersenneTwisterRandom(uint32_t seed = 0);
@@ -34,7 +37,7 @@ public:
     // seed with seed_array repeated enough times.
     void initArray(std::vector<uint32_t> seed_array);
 
-    inline uint32_t randInt() {
+    virtual inline uint32_t randInt() {
 	uint32_t y;
 
 	if (mti >= N) {
@@ -47,54 +50,9 @@ public:
 	y ^= (y >> TEMPERING_SHIFT_L);
 	return y;
     }
-
-    inline unsigned long long randLongLong() {
-	unsigned long long ret;
-	ret = randInt();
-	ret = ret << 32;
-	ret = ret | randInt();
-	return ret;
-    }
-    // TODO: decide if we care, but below is slightly non-uniform
-    inline uint32_t randInt(uint32_t max) {
-	return randInt() % max;
-    }
-    // randDouble() gives you doubles with 32 bits of randomness.
-    // randLongDouble() gives you doubles with ~53 bits of randomness
-    // *Open() gives values in [0,1)
-    // *Closed() gives values in [0,1]
     
-    // HP-UX aCC won't let me define these as const double;
-    // const double foo = 5.0 reports error 481.
-#define MTR_int_to_open (1.0/4294967296.0) 
-#define MTR_int_to_closed (1.0/4294967295.0) 
-#define MTR_AMult (67108864.0) // 2^(32-6)
-// 9007199254740992 = 2^53, 9007199254740991 = 2^53 -1
-#define MTR_53bits_to_open(a,b) ((a * MTR_AMult + b)/9007199254740992.0)
-#define MTR_53bits_to_closed(a,b) ((a * MTR_AMult + b)/9007199254740991.0)
-    inline double randDoubleOpen() { // in [0,1), 32 bits of randomness
-	return (double)randInt() * MTR_int_to_open;
-    }
-    inline double randDoubleClosed() {  // in [0,1], 32 bits of randomness
-	return (double)randInt() * MTR_int_to_closed;
-    }
-    inline double randDouble() { // in [0,1), 32 bits of randomness
-	return randDoubleOpen();
-    }
-
-    // casting a long long to double is unbelievably slow on pa2.0 aCC C.03.30
-    inline double randDoubleOpen53() { // in [0,1), 53 bits of randomness
-	uint32_t a=randInt()>>5, b=randInt()>>6;
-	return MTR_53bits_to_open(a,b);
-    }
-    inline double randDoubleClosed53() { // in [0,1]
-	uint32_t a=randInt()>>5, b=randInt()>>6;
-	return MTR_53bits_to_closed(a,b);
-    }
-
-    inline bool randBool() {
-        return (randInt() & 0x1) ? true : false;
-    }
+    //Prevent the masking of the randInt(int max) function from RandomBase
+    using RandomBase::randInt;
 
     uint32_t seed_used; 
 
@@ -116,6 +74,11 @@ private:
     uint32_t mt[N]; 
     int mti;
 };
+
+};
+
+//Evil, but duplicates old behavior where MersenneTwisterRandom wasn't namespaced.
+using Lintel::MersenneTwisterRandom;
 
 extern MersenneTwisterRandom MTRandom; 
 
