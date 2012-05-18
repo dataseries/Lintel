@@ -26,18 +26,18 @@ namespace Lintel {
 // functions and verify that the performance is comparable
 
 /// \brief Mersenne Twister random number generation class.
-class MersenneTwisterRandom : public RandomBase {
+class MersenneTwisterInternal {
 public:
     // 0=Defaults to seeding with various system parameters
-    MersenneTwisterRandom(uint32_t seed = 0);
-    MersenneTwisterRandom(std::vector<uint32_t> seed_array);
+    MersenneTwisterInternal(uint32_t seed = 0);
+    MersenneTwisterInternal(std::vector<uint32_t> seed_array);
 
     void init(uint32_t seed); 
     // seed_array should be N bytes long for full randomness; if not, we will
     // seed with seed_array repeated enough times.
     void initArray(std::vector<uint32_t> seed_array);
 
-    virtual inline uint32_t randInt() {
+    inline uint32_t randInt() {
 	uint32_t y;
 
 	if (mti >= N) {
@@ -49,12 +49,13 @@ public:
 	y ^= (y << TEMPERING_SHIFT_T) & TEMPERING_MASK_C;
 	y ^= (y >> TEMPERING_SHIFT_L);
 	return y;
-    }
-    
-    //Prevent the masking of the randInt(int max) function from RandomBase
-    using RandomBase::randInt;
+    }    
 
     uint32_t seed_used; 
+
+    inline uint32_t seedUsed() {
+        return seed_used;
+    }
 
     static void selfTest();
 private:
@@ -75,10 +76,15 @@ private:
     int mti;
 };
 
+typedef RandomTempl<MersenneTwisterInternal> MersenneTwisterRandom;
+
 };
+
+
 
 //Evil, but duplicates old behavior where MersenneTwisterRandom wasn't namespaced.
 using Lintel::MersenneTwisterRandom;
+
 
 extern MersenneTwisterRandom MTRandom; 
 
@@ -99,4 +105,5 @@ MT_random_shuffle(RandomAccessIter first, RandomAccessIter last, MersenneTwister
     iter_swap(i,first + rval);
   }
 }
+
 #endif

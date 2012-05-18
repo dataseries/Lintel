@@ -95,7 +95,7 @@ void randomChecks(ByteBuffer &buf) {
     uint32_t expected_at = 0;
 
     MersenneTwisterRandom mt;
-    cout << format("seeded with %d\n") % mt.seed_used;
+    cout << format("seeded with %d\n") % mt.seedUsed();
     SINVARIANT(buf.empty());
     uint32_t read_count = 0, write_count = 0, resize_count = 0, shift_count = 0;
     for(uint32_t i = 0; i < 10000; ++i) {

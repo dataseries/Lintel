@@ -265,7 +265,7 @@ void generalTest() {
 void eraseTest() {
     MersenneTwisterRandom rng;
 
-    cout << format("erase test using seed %d\n") % rng.seed_used;
+    cout << format("erase test using seed %d\n") % rng.seedUsed();
     vector<int32_t> ents;
     inttable table;
 

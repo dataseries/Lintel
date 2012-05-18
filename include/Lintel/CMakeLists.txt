@@ -29,10 +29,12 @@ SET(INCLUDE_FILES
 	LockOrderingGroup.hpp
 	MathSpecialFunctions.hpp
 	Matrix.hpp
+        MarsagliaRandom.hpp
 	MersenneTwisterRandom.hpp
 	PointerUtil.hpp
 	Posix.hpp
 	PriorityQueue.hpp
+        RandomBase.hpp
 	RotatingHashMap.hpp
 	SimpleMutex.hpp
 	STLUtility.hpp

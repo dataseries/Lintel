@@ -424,7 +424,7 @@ void checkNboundTests() {
 
 void checkLazy() {
     MersenneTwisterRandom mt(1162194046);
-    cout << "test lazy... seed " << mt.seed_used << "\n";
+    cout << "test lazy... seed " << mt.seedUsed() << "\n";
     int error_mag = mt.randInt(6)+2;
     int bound_mag = mt.randInt(8)+3;
     int64_t bound = 1;

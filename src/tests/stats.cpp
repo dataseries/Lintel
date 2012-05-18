@@ -54,7 +54,7 @@ void testStatsMerging() {
 	rand.init(stringToInteger<uint32_t>(getenv("STATS_SEED")));
     }
 
-    cout << format("Seeded merge test with %d\n") % rand.seed_used;
+    cout << format("Seeded merge test with %d\n") % rand.seedUsed();
 
     for(uint32_t i=0; i < n_random_values; ++i) {
 	double rv = rand.randDoubleOpen53();

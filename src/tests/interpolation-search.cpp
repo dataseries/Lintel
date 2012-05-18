@@ -94,7 +94,7 @@ void testSimple() {
 
 void testRandom() {
     MersenneTwisterRandom rng;
-    cout << format("test random seed=%d...") % rng.seed_used;
+    cout << format("test random seed=%d...") % rng.seedUsed();
 
     static const size_t nvals = 256 * 1024;
 

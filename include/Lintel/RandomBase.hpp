@@ -10,10 +10,39 @@
 
 namespace Lintel {
 
-    class RandomBase {
+    template <class R>
+    class RandomTempl {
+    protected:
+        R r;
     public:
-        virtual ~RandomBase() { };
-        virtual uint32_t randInt()=0;
+
+        RandomTempl(uint32_t seed = 0) : r(seed) {            
+        }
+
+        RandomTempl(std::vector<uint32_t> seed_array) : r(seed_array) {
+        }
+
+        ~RandomTempl() { }
+
+        static void selfTest() {
+            R::selfTest();
+        }
+
+        inline uint32_t seedUsed() {
+            return r.seedUsed();
+        }
+
+        inline void init(uint32_t seed) {
+            r.init(seed);
+        }
+
+        inline void initArray(std::vector<uint32_t> seed_array) {
+            r.initArray(seed_array);
+        }       
+
+        inline uint32_t randInt() {
+            return r.randInt();
+        }
 
         inline unsigned long long randLongLong() {
             unsigned long long ret;
@@ -23,9 +52,8 @@ namespace Lintel {
             return ret;
         }
         
+
         // Slightly biased
-        // Note that to prevent this from being masked by the virtual randInt(), derived
-        // functions must have the line "using RandomBase::randInt;"
         inline uint32_t randInt(uint32_t max) {
             return randInt() % max;
         }
@@ -78,8 +106,7 @@ namespace Lintel {
         
         inline bool randBool() {
             return (randInt() & 0x1) ? true : false;
-        }
-        
+        }        
         
     };
 };

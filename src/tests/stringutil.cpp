@@ -146,7 +146,7 @@ void test_escapeUnprintable() {
     if (po_eu_random_seed.used()) {
         rng.init(po_eu_random_seed.get());
     }
-    LintelLog::info(format("Using --eu-random-seed=%d") % rng.seed_used);
+    LintelLog::info(format("Using --eu-random-seed=%d") % rng.seedUsed());
 
     for (uint32_t i = 0; i < 500; ++i) {
         string in;

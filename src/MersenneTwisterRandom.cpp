@@ -72,9 +72,11 @@ OR
 /* ACM Transactions on Modeling and Computer Simulation,           */
 /* Vol. 8, No. 1, January 1998, pp 3--30.                          */
 
+using namespace Lintel;
+
 MersenneTwisterRandom MTRandom;
 
-MersenneTwisterRandom::MersenneTwisterRandom(uint32_t seed)
+MersenneTwisterInternal::MersenneTwisterInternal(uint32_t seed)
 {
   if (seed == 0) {
 #ifdef SYS_POSIX
@@ -95,13 +97,13 @@ MersenneTwisterRandom::MersenneTwisterRandom(uint32_t seed)
   init(seed);
 }
 
-MersenneTwisterRandom::MersenneTwisterRandom(std::vector<uint32_t> seed_array)
+MersenneTwisterInternal::MersenneTwisterInternal(std::vector<uint32_t> seed_array)
 {
     initArray(seed_array);
 }
 
 void
-MersenneTwisterRandom::init(uint32_t seed)
+MersenneTwisterInternal::init(uint32_t seed)
 {
     seed_used = seed;
     mt[0]= seed & 0xffffffffUL;
@@ -139,7 +141,7 @@ MersenneTwisterRandom::init(uint32_t seed)
 /*  (seed_array[0]&UPPER_MASK), seed_array[1], ..., seed_array[N-1]  */
 /* can take any values except all zeros.                             */
 void
-MersenneTwisterRandom::initArray(std::vector<uint32_t> seed_array)
+MersenneTwisterInternal::initArray(std::vector<uint32_t> seed_array)
 {
     int i, j, k;
     init(19650218UL);
@@ -188,7 +190,7 @@ MersenneTwisterRandom::initArray(std::vector<uint32_t> seed_array)
 }
 
 void
-MersenneTwisterRandom::reloadArray()
+MersenneTwisterInternal::reloadArray()
 {
     static unsigned long mag01[2]={0x0, MATRIX_A};
     /* mag01[x] = x * MATRIX_A  for x=0,1 */
@@ -619,7 +621,7 @@ static uint32_t seedCheck[] = {
 static int seedCheck_count = sizeof(seedCheck)/sizeof(uint32_t);
 
 void
-MersenneTwisterRandom::selfTest()
+MersenneTwisterInternal::selfTest()
 {
     std::vector<uint32_t> init_array;
     init_array.push_back(0x123);

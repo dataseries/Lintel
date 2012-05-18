@@ -108,7 +108,7 @@ template<typename INT> uint32_t test_int_type(const string &type) {
 }
 
 void testTypes() {
-    cout << format("Using random seed %d\n") % rng.seed_used;
+    cout << format("Using random seed %d\n") % rng.seedUsed();
     // these runs test HashMap against std::map with random key-value pairs.
     test_int_type<int>("int");
     test_int_type<unsigned>("unsigned");
@@ -342,7 +342,7 @@ void testKeys() {
 void testErase() {
     MersenneTwisterRandom rng;
 
-    cout << format("erase test using seed %d\n") % rng.seed_used;
+    cout << format("erase test using seed %d\n") % rng.seedUsed();
     vector<uint32_t> ents;
     HashMap<uint32_t, uint32_t> table;
 
