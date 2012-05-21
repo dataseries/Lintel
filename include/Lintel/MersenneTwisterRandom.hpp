@@ -15,7 +15,7 @@
 
 #include <Lintel/RandomBase.hpp>
 
-namespace Lintel {
+namespace lintel {
 
 // A possibly faster version may be adaptable from:
 // http://www.math.keio.ac.jp/matumoto/MT2002/emt19937ar.html
@@ -83,7 +83,7 @@ typedef RandomTempl<MersenneTwisterInternal> MersenneTwisterRandom;
 
 
 //Evil, but duplicates old behavior where MersenneTwisterRandom wasn't namespaced.
-using Lintel::MersenneTwisterRandom;
+using lintel::MersenneTwisterRandom;
 
 
 extern MersenneTwisterRandom MTRandom; 

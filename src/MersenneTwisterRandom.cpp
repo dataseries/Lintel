@@ -72,7 +72,7 @@ OR
 /* ACM Transactions on Modeling and Computer Simulation,           */
 /* Vol. 8, No. 1, January 1998, pp 3--30.                          */
 
-using namespace Lintel;
+using namespace lintel;
 
 MersenneTwisterRandom MTRandom;
 

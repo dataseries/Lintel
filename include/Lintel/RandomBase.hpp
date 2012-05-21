@@ -8,40 +8,30 @@
 #define UINT32_MAX (0xFFFFFFF)
 #endif
 
-namespace Lintel {
+namespace lintel {
 
     template <class R>
-    class RandomTempl {
-    protected:
-        R r;
+    class RandomTempl : public R{
     public:
 
-        RandomTempl(uint32_t seed = 0) : r(seed) {            
+        RandomTempl(uint32_t seed = 0) : R(seed), boolShift(0), boolState(0) {            
         }
 
-        RandomTempl(std::vector<uint32_t> seed_array) : r(seed_array) {
+        RandomTempl(std::vector<uint32_t> seed_array) : R(seed_array), boolShift(0), boolState(0) {
         }
 
         ~RandomTempl() { }
 
-        static void selfTest() {
-            R::selfTest();
-        }
-
-        inline uint32_t seedUsed() {
-            return r.seedUsed();
-        }
-
         inline void init(uint32_t seed) {
-            r.init(seed);
+            R::init(seed);
         }
 
         inline void initArray(std::vector<uint32_t> seed_array) {
-            r.initArray(seed_array);
+            R::initArray(seed_array);
         }       
 
         inline uint32_t randInt() {
-            return r.randInt();
+            return R::randInt();
         }
 
         inline unsigned long long randLongLong() {
@@ -107,7 +97,20 @@ namespace Lintel {
         inline bool randBool() {
             return (randInt() & 0x1) ? true : false;
         }        
-        
+
+        inline bool randBoolFast() {
+            if (boolShift==0) {
+                boolState = randLongLong();
+                boolShift = 64;
+            }
+            bool ret = boolState & 0x1;
+            boolState >>= 1;
+            --boolShift;
+            return ret;
+        }
+    protected:
+        uint8_t boolShift;
+        uint64_t boolState;
     };
 };
 
