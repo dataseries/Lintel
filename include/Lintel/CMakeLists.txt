@@ -23,6 +23,7 @@ SET(INCLUDE_FILES
 	HashTable.hpp
 	HashTupleStats.hpp
 	HashUnique.hpp
+        InterpolationSearch.hpp
 	LeastSquares.hpp
 	LintelLog.hpp
 	LintelVersion.hpp
