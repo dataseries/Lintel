@@ -1,4 +1,5 @@
 SET(UNSTABLE_INCLUDES
+        InterpolationSearch.hpp
 	ProcessStatistics.hpp
 )
 

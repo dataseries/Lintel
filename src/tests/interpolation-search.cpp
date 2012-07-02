@@ -14,7 +14,7 @@
 #include <boost/format.hpp>
 
 #include <Lintel/DebugFlag.hpp>
-#include <Lintel/InterpolationSearch.hpp>
+#include <Lintel/unstable/InterpolationSearch.hpp>
 #include <Lintel/MersenneTwisterRandom.hpp>
 
 using namespace std;
