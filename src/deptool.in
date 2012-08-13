@@ -957,7 +957,8 @@ sub depCheckoutGetGitBranches {
              }
              push(@repo_dirs, $File::Find::name);
              $File::Find::prune = 1;
-         }, $git_repo_dir);
+         }, "$git_repo_dir/"); # extra / to force lookup through symlink
+    # in case working dir is local but git repo is on a shared filesystem.
     print "Found repo dirs: @repo_dirs\n";
     foreach my $repo_dir (@repo_dirs) {
         my $prefix = $repo_dir;
@@ -2106,11 +2107,14 @@ sub runCMakeConfig {
 		last;
 	    }
 	    close($fh);
+            print STDERR "\ncmake failed. You may be missing required dependencies.\n";
 	    if (@deps > 0) {
-		print STDERR "\ncmake failed. You may be missing required dependencies.\n";
 		print STDERR "From $dep_info:\n\n";
 		print STDERR @deps;
-	    }
+	    } else {
+                print STDERR "Unable to find dependencies for $os.\n";
+                print STDERR "You may find similar OSs in $dep_info.\n";
+            }
 	}
 	exit(1);
     }
@@ -3688,6 +3692,7 @@ sub operatingSystem {
                 or die "Can't open /etc/debian_version for read: $!";
 	    my %info;
 	    while(<$lsbver>) {
+                next if /^#/o || /^\s*$/o;
 		chomp;
 		die "unknown line in /etc/lsb-release '$_'"
 		    unless /^([A-Z_]+)=(.+)$/o;
