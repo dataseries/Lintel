@@ -28,7 +28,7 @@ int main() {
 
     SINVARIANT(tuple2 < tuple1);
 
-    AnyTuple anytuple1; 
+    AnyTuple anytuple1;
     assign(anytuple1, tuple1);
     AnyTuple anytuple2;
     assign(anytuple2, tuple2);
@@ -52,52 +52,52 @@ int main() {
     INVARIANT(hash(anytuple2) == 1959181482U, format("%d?") % hash(anytuple2));
 
     INVARIANT(toStr(tuple1) == "(1 a 7 123456789023 Hello, World)",
-	      format("got '%s'") % toStr(tuple1));
+              format("got '%s'") % toStr(tuple1));
 
     BitsetanyTuple bitsetanytuple1(tuple1);
     BitsetanyTuple bitsetanytuple2(tuple2);
 
     INVARIANT(toStr(bitsetanytuple1) == "(1 a 7 123456789023 Hello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple1));
+              format("got '%s'") % toStr(bitsetanytuple1));
     INVARIANT(toStr(bitsetanytuple2) == "(0 b 6 123456789022 Iello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple2));
+              format("got '%s'") % toStr(bitsetanytuple2));
 
     SINVARIANT(bitsetanytuple2 < bitsetanytuple1);
     bitsetanytuple2.any[0] = true;
     SINVARIANT(bitsetanytuple1 < bitsetanytuple2);
     bitsetanytuple1.any[0] = true;
     SINVARIANT(bitsetanytuple1 < bitsetanytuple2);
-    INVARIANT(hash(bitsetanytuple1) == 2138559752U, 
-	      format("%d?") % hash(bitsetanytuple1));
-    INVARIANT(hash(bitsetanytuple2) == 1910363323U, 
-	      format("%d?") % hash(bitsetanytuple2));
+    INVARIANT(hash(bitsetanytuple1) == 2138559752U,
+              format("%d?") % hash(bitsetanytuple1));
+    INVARIANT(hash(bitsetanytuple2) == 1910363323U,
+              format("%d?") % hash(bitsetanytuple2));
 
     INVARIANT(toStr(bitsetanytuple1) == "(* a 7 123456789023 Hello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple1));
+              format("got '%s'") % toStr(bitsetanytuple1));
     INVARIANT(toStr(bitsetanytuple2) == "(* b 6 123456789022 Iello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple2));
+              format("got '%s'") % toStr(bitsetanytuple2));
 
     bitsetanytuple1.any[1] = true;
     bitsetanytuple2.any[1] = true;
     SINVARIANT(bitsetanytuple2 < bitsetanytuple1);
 
-    INVARIANT(hash(bitsetanytuple1) == 1248248738U, format("%d?") 
-	      % hash(bitsetanytuple1));
-    INVARIANT(hash(bitsetanytuple2) == 1959181482U, format("%d?") 
-	      % hash(bitsetanytuple2));
+    INVARIANT(hash(bitsetanytuple1) == 1248248738U, format("%d?")
+              % hash(bitsetanytuple1));
+    INVARIANT(hash(bitsetanytuple2) == 1959181482U, format("%d?")
+              % hash(bitsetanytuple2));
 
     INVARIANT(toStr(bitsetanytuple1) == "(* * 7 123456789023 Hello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple1));
+              format("got '%s'") % toStr(bitsetanytuple1));
     INVARIANT(toStr(bitsetanytuple2) == "(* * 6 123456789022 Iello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple2));
+              format("got '%s'") % toStr(bitsetanytuple2));
 
     bitsetanytuple1.any[2] = true;
     bitsetanytuple1.any[4] = true;
     bitsetanytuple2.any[3] = true;
     INVARIANT(toStr(bitsetanytuple1) == "(* * * 123456789023 *)",
-	      format("got '%s'") % toStr(bitsetanytuple1));
+              format("got '%s'") % toStr(bitsetanytuple1));
     INVARIANT(toStr(bitsetanytuple2) == "(* * 6 * Iello, World)",
-	      format("got '%s'") % toStr(bitsetanytuple2));
+              format("got '%s'") % toStr(bitsetanytuple2));
 
     return 0;
 }

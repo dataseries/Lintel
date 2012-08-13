@@ -31,7 +31,7 @@ Debian-Lenny (debian-5.0):
 
      # lintel-disktool
      % aptitude install sg3-utils
-  
+
      # Lintel::ProcessManager (add support for memory resource limit)
      % aptitude install libbsd-resource-perl
 
@@ -53,7 +53,7 @@ Debian-Squeeze (debian-6.0):
 
      # lintel-disktool
      % aptitude install sg3-utils
-  
+
      # Lintel::ProcessManager (add support for memory resource limit)
      % aptitude install libbsd-resource-perl
 
@@ -82,7 +82,7 @@ Ubuntu Precise Pangolin (ubuntu-12.04):
 
      # lintel-disktool
      % aptitude install sg3-utils
-  
+
      # Lintel::ProcessManager (add support for memory resource limit)
      % aptitude install libbsd-resource-perl
 
