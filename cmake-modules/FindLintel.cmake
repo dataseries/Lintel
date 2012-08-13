@@ -23,14 +23,6 @@
 
 INCLUDE(LintelFind)
 
-LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
-                   "boost_program_options boost_program_options-mt")
-SET(LINTEL_EXTRA_LIBRARIES ${BOOST_PROGRAM_OPTIONS_LIBRARIES})
-LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(LINTEL Lintel/AssertBoost.hpp Lintel)
-
-SET(LINTELPTHREAD_EXTRA_LIBRARIES ${LINTEL_LIBRARIES})
-LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(LINTELPTHREAD Lintel/PThread.hpp LintelPThread)
-
 MACRO(LINTEL_HAS_FEATURE feature)
     IF(NOT LINTEL_${feature}_ENABLED)
         SET(LINTEL_CONFIG_FIND_REQUIRED TRUE)
@@ -46,4 +38,26 @@ MACRO(LINTEL_HAS_FEATURE feature)
 	ENDIF("${lintel_has_feature}" STREQUAL "0") 
     ENDIF(NOT LINTEL_${feature}_ENABLED)
 ENDMACRO(LINTEL_HAS_FEATURE)
+
+# Check for optional features that require additional library link options
+
+LINTEL_HAS_FEATURE(program-options)
+
+IF (LINTEL_program-options_ENABLED)
+    LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
+                       "boost_program_options boost_program_options-mt")
+    IF (NOT BOOST_PROGRAM_OPTIONS_ENABLED)
+        MESSAGE(FATAL_ERROR "ERROR: lintel-config thinks program-options is enabled, but"
+                " the library was not found")
+    ENDIF (NOT BOOST_PROGRAM_OPTIONS_ENABLED)
+
+    SET(LINTEL_EXTRA_LIBRARIES ${BOOST_PROGRAM_OPTIONS_LIBRARIES})
+ENDIF (LINTEL_program-options_ENABLED)
+
+# Find the libraries
+
+LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(LINTEL Lintel/AssertBoost.hpp Lintel)
+
+SET(LINTELPTHREAD_EXTRA_LIBRARIES ${LINTEL_LIBRARIES})
+LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(LINTELPTHREAD Lintel/PThread.hpp LintelPThread)
 
