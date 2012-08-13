@@ -118,11 +118,13 @@ int main() {
     SINVARIANT(safeCrossCast<base2>(d1_b1) == d1_b2);
     SINVARIANT(safeCrossCast<base1>(d1_b2) == d1_b1);
 
-    TEST_INVARIANT_MSG1(SINVARIANT(safeDownCast<derived2>(d1_b1) == 0),
-		      "dynamic downcast failed in Target* lintel::safeDownCast(Source*) [with Target = derived2, Source = base1]");
+    TEST_INVARIANT_MSG2(SINVARIANT(safeDownCast<derived2>(d1_b1) == 0),
+                        "dynamic downcast failed in Target* lintel::safeDownCast(Source*) [with Target = derived2, Source = base1]",
+                        "dynamic downcast failed in derived2 *lintel::safeDownCast(base1 *)");
 
-    TEST_INVARIANT_MSG1(SINVARIANT(safeCrossCast<unrelated>(d1_b1) == 0),
-		      "dynamic crosscast failed in Target* lintel::safeCrossCast(Source*) [with Target = unrelated, Source = base1]");
+    TEST_INVARIANT_MSG2(SINVARIANT(safeCrossCast<unrelated>(d1_b1) == 0),
+                        "dynamic crosscast failed in Target* lintel::safeCrossCast(Source*) [with Target = unrelated, Source = base1]",
+                        "dynamic crosscast failed in unrelated *lintel::safeCrossCast(base1 *)");
 
     // Some checks with constness
 
@@ -149,13 +151,15 @@ int main() {
     SINVARIANT(safeCrossCast<base2>(p_d1_b1) == p_d1_b2);
     SINVARIANT(safeCrossCast<base1>(p_d1_b2) == p_d1_b1);
 
-    TEST_INVARIANT_MSG2(SINVARIANT(safeDownCast<derived2>(p_d1_b1) == 0),
+    TEST_INVARIANT_MSG3(SINVARIANT(safeDownCast<derived2>(p_d1_b1) == 0),
 			"dynamic downcast failed in boost::shared_ptr<T> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]",
-			"dynamic downcast failed in boost::shared_ptr<X> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]");
+			"dynamic downcast failed in boost::shared_ptr<X> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]",
+                        "dynamic downcast failed in boost::shared_ptr<derived2> lintel::safeDownCast(boost::shared_ptr<base1>)");
     
-    TEST_INVARIANT_MSG2(SINVARIANT(safeCrossCast<unrelated>(p_d1_b1) == 0),
+    TEST_INVARIANT_MSG3(SINVARIANT(safeCrossCast<unrelated>(p_d1_b1) == 0),
 			"dynamic crosscast failed in boost::shared_ptr<T> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]",
-			"dynamic crosscast failed in boost::shared_ptr<X> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]");
+			"dynamic crosscast failed in boost::shared_ptr<X> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]",
+                        "dynamic crosscast failed in boost::shared_ptr<unrelated> lintel::safeCrossCast(boost::shared_ptr<base1>)");
 
     testSafeRef();
     testVoidCast();

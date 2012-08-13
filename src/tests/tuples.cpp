@@ -99,6 +99,5 @@ int main() {
     INVARIANT(toStr(bitsetanytuple2) == "(* * 6 * Iello, World)",
 	      format("got '%s'") % toStr(bitsetanytuple2));
 
-
     return 0;
 }

@@ -28,16 +28,10 @@
     types that interacts well with HashMap and friends.
 */
 
-namespace lintel { 
-/// \brief tuples namespace
-namespace tuples {
-    // these types are so integral to the implementation of
-    // lintel::tuples that it seems reasonable to pull them into
-    // lintel tuples namespace.  Originally this code was just written
-    // in the boost::tuples namespace, but that seemed wrong.
-    using boost::tuples::null_type;
-    using boost::tuples::cons;
-
+namespace boost { namespace tuples {
+    // These functions need to be defined inside the boost::tuples namespace or otherwise
+    // the argument based lookup + lookup at instantiation time implementation of LLVM 3.1 does
+    // not find these functions.
     inline uint32_t hash(const null_type &) { return 0; }
 
     template<class Head>
@@ -53,8 +47,25 @@ namespace tuples {
 	uint32_t a = lintel::hash(v.get_head());
 	uint32_t b = lintel::hash(v.get_tail().get_head());
 	uint32_t c = hash(v.get_tail().get_tail());
-	return BobJenkinsHashMix3(a,b,c);
+	return lintel::BobJenkinsHashMix3(a,b,c);
     }
+
+    template <typename T, typename U> 
+    inline uint32_t hashType(const cons<T, U> &v) {
+	return hash(v);
+    }
+} }
+
+namespace lintel { 
+/// \brief tuples namespace
+
+namespace tuples {
+    // these types are so integral to the implementation of lintel::tuples that it seems reasonable
+    // to pull them into lintel tuples namespace.  Minimize the amount of bits that we add in to the
+    // boost namespace.
+    using boost::tuples::null_type;
+    using boost::tuples::cons;
+
 
     template<class BitSet>
     inline uint32_t bitset_any_hash(const null_type &, const BitSet &, size_t) {
@@ -81,7 +92,7 @@ namespace tuples {
     /// \brief structure for hashing tuples
     template<class Tuple> struct TupleHash {
 	uint32_t operator()(const Tuple &a) const {
-	    return lintel::tuples::hash(a);
+	    return boost::tuples::hash(a);
 	}
     };
 
@@ -248,13 +259,6 @@ namespace tuples {
 	to.get_head().val = from.get_head();
 	assign(to.get_tail(), from.get_tail());
     }
-} }
-
-namespace lintel {
-    template <typename T, typename U> 
-    inline uint32_t hashType(const boost::tuples::cons<T, U> &v) {
-	return lintel::tuples::hash(v);
-    }
 
     template<class T> inline uint32_t hashType(const tuples::AnyPair<T> &v) {
 	if (v.any) {
@@ -270,7 +274,6 @@ namespace lintel {
     uint32_t hashType(const tuples::BitsetAnyTuple<T> &v) {
 	return tuples::bitset_any_hash(v.data, v.any, 0);
     }
-
-}
+} }
 
 #endif

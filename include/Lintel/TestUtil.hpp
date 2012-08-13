@@ -52,6 +52,12 @@
     TEST_INVARIANT_MSGVEC(code, msgs); \
 }
 
+/// Two possibility variant of TEST_INVARIANT_MSGVEC
+#define TEST_INVARIANT_MSG3(code, msg1, msg2, msg3) {                        \
+    std::vector<std::string> msgs; msgs.push_back(msg1); msgs.push_back(msg2); msgs.push_back(msg3); \
+    TEST_INVARIANT_MSGVEC(code, msgs); \
+}
+
 namespace lintel {
     struct DeptoolInfo {
         std::string os; // e.g. debian, ubuntu, centos, fedora, opensuse, scilinux
