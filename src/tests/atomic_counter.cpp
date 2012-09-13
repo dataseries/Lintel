@@ -1,27 +1,27 @@
 #include <iostream>
 #include <vector>
 
-#include <Lintel/AtomicCounter.hpp>
 #include <Lintel/PThread.hpp>
-
+#include <Lintel/AtomicCounter.hpp>
 
 // Basically, do the same operations to correct_count and incorrect_count and
 // we expect correct_count to work and incorrect_count to be affected by races.
 // Note: In simulated mode, there will be no data races.
-lintel::AtomicCounter correct_count(0);
-int32_t incorrect_count(0);
 
 // Spin barrier -- be wary!
 static volatile int32_t do_start(0);
 
-
-class AtomicCounterThread : public PThread {
+template<typename IntXX_T>
+class AtomicThread : public PThread {
 public:
-    AtomicCounterThread(int32_t num_iters, int32_t num_threads, int32_t thread_num) 
+    static lintel::Atomic<IntXX_T> correct_count;
+    static IntXX_T incorrect_count;
+public:
+    AtomicThread(int32_t num_iters, int32_t num_threads, int32_t thread_num) 
 	: num_iters(num_iters), num_threads(num_threads), thread_num(thread_num), final_sum(0) 
     { }
 
-    virtual ~AtomicCounterThread() { }
+    virtual ~AtomicThread() { }
     
     virtual void *run() {
 	// Spin barrier -- be wary.
@@ -30,7 +30,7 @@ public:
 	}
 
         for(int32_t i=0; i < 1000; ++i) {
-            int32_t val = incorrect_count;
+            IntXX_T val = incorrect_count;
             correct_count.incThenFetch();
             sched_yield(); // Almost guarantee a failure
             incorrect_count = val + 1;
@@ -40,33 +40,101 @@ public:
             // Excercise both increment interfaces: fetchThenAdd and
             // fetchThenInc
 	    if (thread_num == 0) {
-                int32_t val = incorrect_count;
+                IntXX_T val = incorrect_count;
 		correct_count.incThenFetch();
                 incorrect_count = val + 1;
 	    } else {
 		// Split up the increment operation to vastly increase the
 		// odds of a data race.
-		int32_t val = incorrect_count;
+		IntXX_T val = incorrect_count;
 		correct_count.addThenFetch(thread_num+1);
 		val += thread_num;
 		incorrect_count = val;
+	    } /*
+	    std::clog << (int)thread_num << " " << (int)correct_count.load() << std::endl;
+	    const IntXX_T xxx = correct_count.load();
+	    if (!xxx) {
+	      std::clog << "correct_count==0!" << (int) xxx << std::endl;
 	    }
-            
-	    SINVARIANT(thread_num == 0 || !correct_count.isZero());
+
+	    SINVARIANT(thread_num == 0 || !correct_count.isZero()); */
 	}
 	return 0;
     }
 
-    int32_t num_iters, num_threads, thread_num, final_sum;
+    int32_t num_iters;
+    IntXX_T num_threads, thread_num, final_sum;
 };
 
-void simpleTest() {
-    lintel::AtomicCounter foo;
+template<typename IntXX_T> lintel::Atomic<IntXX_T> AtomicThread<IntXX_T>::correct_count(0);
+template<typename IntXX_T> IntXX_T AtomicThread<IntXX_T>::incorrect_count(0);
 
-    int32_t x = foo.addThenFetch(0); 
+template <typename IntXX_T>
+void simpleTest() {
+    std::cout << "testing int" << sizeof(IntXX_T)*CHAR_BIT << std::endl;
+
+    lintel::Atomic<IntXX_T> bar;
+    asm volatile ("#OZ1");
+    bar.store(3); SINVARIANT(bar.load() == 3);
+    asm volatile ("#OZ3");
+    //std::cout << (bar|=3) << std::endl;
+    SINVARIANT(bar.fetch_add(5)==3); SINVARIANT(bar.load()==8);
+
+    bar=7; SINVARIANT(bar==7);
+    SINVARIANT(bar.exchange(9)==7); SINVARIANT(bar==9);
+
+    bar=11;
+    SINVARIANT(bar.exchange(13)==11); SINVARIANT(bar==13);
+
+    bar=15; IntXX_T expected = 15, desired = 17;
+    asm volatile ("#OZ5");
+    SINVARIANT(bar.compare_exchange_strong(&expected, desired)); SINVARIANT(expected==15);
+    bar=19;
+    SINVARIANT(!bar.compare_exchange_strong(&expected, desired)); SINVARIANT(expected==19);
+
+    bar = 0; SINVARIANT(bar.fetch_or(0) == 0); SINVARIANT(bar==0);
+    bar = 0; SINVARIANT(bar.fetch_or(1) == 0); SINVARIANT(bar==1);
+    bar = 1; SINVARIANT(bar.fetch_or(0) == 1); SINVARIANT(bar==1);
+    bar = 1; SINVARIANT(bar.fetch_or(1) == 1); SINVARIANT(bar==1);
+
+    bar = 0; SINVARIANT(bar.fetch_and(0) == 0); SINVARIANT(bar==0);
+    bar = 0; SINVARIANT(bar.fetch_and(1) == 0); SINVARIANT(bar==0);
+    bar = 1; SINVARIANT(bar.fetch_and(0) == 1); SINVARIANT(bar==0);
+    bar = 1; SINVARIANT(bar.fetch_and(1) == 1); SINVARIANT(bar==1);
+
+    bar = 0; SINVARIANT(bar.fetch_xor(0) == 0); SINVARIANT(bar==0);
+    bar = 0; SINVARIANT(bar.fetch_xor(1) == 0); SINVARIANT(bar==1);
+    bar = 1; SINVARIANT(bar.fetch_xor(0) == 1); SINVARIANT(bar==1);
+    bar = 1; SINVARIANT(bar.fetch_xor(1) == 1); SINVARIANT(bar==0);
+
+    bar=0; SINVARIANT(0==(bar|=0));
+    bar=0; SINVARIANT(1==(bar|=1));
+    bar=1; SINVARIANT(1==(bar|=0));
+    bar=1; SINVARIANT(1==(bar|=1));
+
+    bar=0; SINVARIANT(0==(bar&=0));
+    bar=0; SINVARIANT(0==(bar&=1));
+    bar=1; SINVARIANT(0==(bar&=0));
+    bar=1; SINVARIANT(1==(bar&=1));
+
+    bar=0; SINVARIANT(0==(bar^=0));
+    bar=0; SINVARIANT(1==(bar^=1));
+    bar=1; SINVARIANT(1==(bar^=0));
+    bar=1; SINVARIANT(0==(bar^=1));
+
+    asm volatile ("#OZ7");
+    lintel::atomic_thread_fence(lintel::memory_order_relaxed);
+    lintel::atomic_thread_fence(lintel::memory_order_consume);
+    lintel::atomic_thread_fence(lintel::memory_order_acquire);
+    lintel::atomic_thread_fence(lintel::memory_order_release);
+    lintel::atomic_thread_fence(lintel::memory_order_acq_rel);
+    lintel::atomic_thread_fence(lintel::memory_order_seq_cst);
+
+    lintel::Atomic<IntXX_T> foo;
+    IntXX_T x = foo.load();
     INVARIANT(x == 0, boost::format("initial value is %d, not 0") % x);
     x = foo.incThenFetch();
-    INVARIANT(x == 1, boost::format("inc-then-fetch -> %d ; cur -> %d") % x % foo.addThenFetch(0));
+    INVARIANT(x == 1, boost::format("inc-then-fetch -> %d ; cur -> %d") % x % foo.load());
     foo.addThenFetch(-1);
     SINVARIANT(foo.isZero());
     SINVARIANT(foo.incThenFetch() == 1);
@@ -76,8 +144,9 @@ void simpleTest() {
     std::cout << "simple test ok\n";
 }
 
-int main () {
-    simpleTest();
+template <typename IntXX_T>
+void doTest () {
+    simpleTest<IntXX_T>();
 
     // For this test, running on more than # cores doesn't have any
     // benefit since our races are entirely from running threads.
@@ -89,14 +158,14 @@ int main () {
     int32_t num_iters = 1000 * 1000; // 1 million chances to screw up.
 
     // Determine "the answer" for final sum.
-    int32_t final_sum = 1000 * num_threads; // initial loop with sched_yield
+    IntXX_T final_sum = 1000 * num_threads; // initial loop with sched_yield
     for(int32_t i=0; i<num_threads; ++i) {
 	final_sum += (i+1) * num_iters; // each thread adds a different amount
     }
     
     std::vector<PThread *> thread_list;
     for(int32_t i=0; i<num_threads; ++i) {
-        thread_list.push_back(new AtomicCounterThread(num_iters, num_threads, i));
+        thread_list.push_back(new AtomicThread<IntXX_T>(num_iters, num_threads, i));
     }
 
     // Run them all at once
@@ -108,14 +177,25 @@ int main () {
 	thread_list[i]->join();
     }
 
-    SINVARIANT(correct_count.addThenFetch(0) == final_sum);
+    SINVARIANT(AtomicThread<IntXX_T>::correct_count.load() == final_sum);
 
     // Theoretically, this could fail, but with such vanishingly low
     // probability (especially with the summation split the way it is)
     // that I'm not going to hold my breath.
-    SINVARIANT(incorrect_count != final_sum);
+    SINVARIANT(AtomicThread<IntXX_T>::incorrect_count != final_sum);
 
-    std::cout << incorrect_count << " vs " << final_sum << 
-	"(" << incorrect_count / (final_sum / 100.0) << "%)" << "\n";
-    return 0;
+    std::cout << AtomicThread<IntXX_T>::incorrect_count << " vs " << final_sum << "(" 
+	      << AtomicThread<IntXX_T>::incorrect_count / (final_sum / 100.0) << "%)"
+	      << std::endl;
+}
+
+int main()
+{
+  asm volatile ("#OZ __sync_synchronize()" :::"memory");
+  __sync_synchronize();
+  asm volatile ("#OZ __sync_synchronize()" :::"memory");
+  doTest<uint8_t>();
+  doTest<uint16_t>();
+  doTest<int32_t>();
+  doTest<int64_t>();
 }

@@ -94,6 +94,22 @@ namespace lintel {
 	lintel_BobJenkinsHashMix(a,b,c);
 	return c;
     }
+
+    // Automatically generate the hash for pairs
+    template <typename A, typename B> inline uint32_t 
+    hashType(const std::pair<A, B> &p) {
+	uint32_t f = hash(p.first);
+	return hashBytes(& f, sizeof(uint32_t), hash(p.second));
+    }
+
+    inline uint32_t hashType(const std::string &a) { 
+	return hashBytes(a.data(), a.length());
+    }
+    
+    inline uint32_t hashType(const char * const a) {
+	return hashBytes(a, strlen(a));
+    }
+
     /// \cond SEMI_INTERNAL_CLASSES
     namespace detail {
 	// Overview of magic in here:
@@ -191,21 +207,6 @@ namespace lintel {
 	
     }
     
-    // Automatically generate the hash for pairs
-    template <typename A, typename B> inline uint32_t 
-    hashType(const std::pair<A, B> &p) {
-	uint32_t f = hash(p.first);
-	return hashBytes(& f, sizeof(uint32_t), hash(p.second));
-    }
-
-    inline uint32_t hashType(const std::string &a) { 
-	return hashBytes(a.data(), a.length());
-    }
-    
-    inline uint32_t hashType(const char * const a) {
-	return hashBytes(a, strlen(a));
-    }
-
     /// \brief Hash objects by pointer
     ///
     /// Object comparison by pointer, useful for making a hash
