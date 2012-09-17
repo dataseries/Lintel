@@ -28,12 +28,12 @@
         FATAL_ERROR("no invariant happened"); \
     } catch (AssertBoostException &e) { \
         AssertBoostClearFns(); \
-	bool found = false; \
-	for (std::vector<std::string>::iterator i = messages.begin(); \
-	     i != messages.end(); ++i) { \
-  	     if (e.msg == *i) { found = true; break; } \
-	} \
-	INVARIANT(found, boost::format("unexpected error message '%s'") % e.msg); \
+        bool found = false; \
+        for (std::vector<std::string>::iterator i = messages.begin(); \
+             i != messages.end(); ++i) { \
+             if (e.msg == *i) { found = true; break; } \
+        } \
+        INVARIANT(found, boost::format("unexpected error message '%s'") % e.msg); \
     }
 
 /// One possibility variant of TEST_INVARIANT_MSGVEC
@@ -47,7 +47,7 @@
 #define TEST_INVARIANTMSG(code, message) TEST_INVARIANT_MSG1(code, message)
 
 /// Two possibility variant of TEST_INVARIANT_MSGVEC
-#define TEST_INVARIANT_MSG2(code, msg1, msg2) {		    \
+#define TEST_INVARIANT_MSG2(code, msg1, msg2) {                    \
     std::vector<std::string> msgs; msgs.push_back(msg1); msgs.push_back(msg2); \
     TEST_INVARIANT_MSGVEC(code, msgs); \
 }
@@ -73,7 +73,7 @@ namespace lintel {
             return !(os.empty() || version.empty() || arch.empty());
         }
     };
-    
+
     // If $BUILD_OS/$UNAME_M are present in the environment, use those values and convert them
     // into os/version/arch.  Otherwise, run deptool to get those values and return them in the
     // structure.  If deptool is not present, a structure of all empty strings will be returned.

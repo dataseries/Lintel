@@ -16,34 +16,48 @@
 #  LINTEL_INCLUDE_DIR - where to find Lintel/AssertBoost.hpp
 #  LINTEL_LIBRARIES   - List of libraries when using LINTEL
 #  LINTEL_ENABLED     - True if LINTEL is enabled
-# 
+#
 #  LINTELPTHREAD_INCLUDE_DIR - where to find Lintel/PThread.hpp
 #  LINTELPTHREAD_LIBRARIES   - List of libraries when using LINTELPTHREAD
 #  LINTELPTHREAD_ENABLED     - True if LINTELPTHREAD is enabled
 
 INCLUDE(LintelFind)
 
-LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp 
-                   "boost_program_options boost_program_options-mt")
-SET(LINTEL_EXTRA_LIBRARIES ${BOOST_PROGRAM_OPTIONS_LIBRARIES})
+MACRO(LINTEL_HAS_FEATURE feature)
+    IF(NOT LINTEL_${feature}_ENABLED)
+        SET(LINTEL_CONFIG_FIND_REQUIRED TRUE)
+        LINTEL_FIND_PROGRAM(LINTEL_CONFIG lintel-config)
+        EXECUTE_PROCESS(COMMAND ${LINTEL_CONFIG_PATH} --has-feature ${feature}
+                        RESULT_VARIABLE lintel_has_feature)
+        IF("${lintel_has_feature}" STREQUAL "0")
+            SET(LINTEL_${feature}_ENABLED TRUE CACHE BOOL
+                "Did lintel support feature ${feature}" FORCE)
+            MARK_AS_ADVANCED(LINTEL_${feature}_ENABLED)
+        ELSE("${lintel_has_feature}" STREQUAL "0")
+            SET(LINTEL_${feature}_ENABLED FALSE)
+        ENDIF("${lintel_has_feature}" STREQUAL "0")
+    ENDIF(NOT LINTEL_${feature}_ENABLED)
+ENDMACRO(LINTEL_HAS_FEATURE)
+
+# Check for optional features that require additional library link options
+
+LINTEL_HAS_FEATURE(program-options)
+
+IF (LINTEL_program-options_ENABLED)
+    LINTEL_BOOST_EXTRA(BOOST_PROGRAM_OPTIONS boost/program_options.hpp
+                       "boost_program_options boost_program_options-mt")
+    IF (NOT BOOST_PROGRAM_OPTIONS_ENABLED)
+        MESSAGE(FATAL_ERROR "ERROR: lintel-config thinks program-options is enabled, but"
+                " the library was not found")
+    ENDIF (NOT BOOST_PROGRAM_OPTIONS_ENABLED)
+
+    SET(LINTEL_EXTRA_LIBRARIES ${BOOST_PROGRAM_OPTIONS_LIBRARIES})
+ENDIF (LINTEL_program-options_ENABLED)
+
+# Find the libraries
+
 LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(LINTEL Lintel/AssertBoost.hpp Lintel)
 
 SET(LINTELPTHREAD_EXTRA_LIBRARIES ${LINTEL_LIBRARIES})
 LINTEL_FIND_LIBRARY_CMAKE_INCLUDE_FILE(LINTELPTHREAD Lintel/PThread.hpp LintelPThread)
-
-MACRO(LINTEL_HAS_FEATURE feature)
-    IF(NOT LINTEL_${feature}_ENABLED)
-        SET(LINTEL_CONFIG_FIND_REQUIRED TRUE)
-	LINTEL_FIND_PROGRAM(LINTEL_CONFIG lintel-config)
-        EXECUTE_PROCESS(COMMAND ${LINTEL_CONFIG_PATH} --has-feature ${feature}
-	                RESULT_VARIABLE lintel_has_feature)
-	IF("${lintel_has_feature}" STREQUAL "0") 
-	    SET(LINTEL_${feature}_ENABLED TRUE CACHE BOOL 
-                "Did lintel support feature ${feature}" FORCE)
-	    MARK_AS_ADVANCED(LINTEL_${feature}_ENABLED)
-	ELSE("${lintel_has_feature}" STREQUAL "0") 
-	    SET(LINTEL_${feature}_ENABLED FALSE)
-	ENDIF("${lintel_has_feature}" STREQUAL "0") 
-    ENDIF(NOT LINTEL_${feature}_ENABLED)
-ENDMACRO(LINTEL_HAS_FEATURE)
 
