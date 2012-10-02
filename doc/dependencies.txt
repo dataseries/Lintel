@@ -31,7 +31,7 @@ Debian-Lenny (debian-5.0):
 
      # lintel-disktool
      % aptitude install sg3-utils
-  
+
      # Lintel::ProcessManager (add support for memory resource limit)
      % aptitude install libbsd-resource-perl
 
@@ -53,7 +53,36 @@ Debian-Squeeze (debian-6.0):
 
      # lintel-disktool
      % aptitude install sg3-utils
-  
+
+     # Lintel::ProcessManager (add support for memory resource limit)
+     % aptitude install libbsd-resource-perl
+
+----------------------------
+
+Ubuntu Precise Pangolin (ubuntu-12.04):
+  Lintel required:
+     % aptitude install perl git cmake build-essential
+     % aptitude install libboost-dev libboost-thread-dev
+
+  Lintel optional:
+     # remove checksum warning
+     % aptitude install libdigest-sha-perl
+
+     # Add documentation
+     % aptitude install doxygen
+
+     # Add XML support library
+     % aptitude install libxml2-dev
+
+     # lintel-latex-rebuild:
+     % aptitude install texlive-latex-base ghostscript
+
+     # mercury-plot
+     % aptitude install gnuplot libio-pty-perl libdata-showtable-perl netpbm
+
+     # lintel-disktool
+     % aptitude install sg3-utils
+
      # Lintel::ProcessManager (add support for memory resource limit)
      % aptitude install libbsd-resource-perl
 
