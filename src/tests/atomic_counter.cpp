@@ -50,14 +50,7 @@ public:
 		correct_count.addThenFetch(thread_num+1);
 		val += thread_num;
 		incorrect_count = val;
-	    } /*
-	    std::clog << (int)thread_num << " " << (int)correct_count.load() << std::endl;
-	    const IntXX_T xxx = correct_count.load();
-	    if (!xxx) {
-	      std::clog << "correct_count==0!" << (int) xxx << std::endl;
 	    }
-
-	    SINVARIANT(thread_num == 0 || !correct_count.isZero()); */
 	}
 	return 0;
     }
@@ -74,23 +67,31 @@ void simpleTest() {
     std::cout << "testing int" << sizeof(IntXX_T)*CHAR_BIT << std::endl;
 
     lintel::Atomic<IntXX_T> bar;
-    asm volatile ("#OZ1");
     bar.store(3); SINVARIANT(bar.load() == 3);
-    asm volatile ("#OZ3");
-    //std::cout << (bar|=3) << std::endl;
     SINVARIANT(bar.fetch_add(5)==3); SINVARIANT(bar.load()==8);
+    SINVARIANT(bar.fetch_sub(5)==8); SINVARIANT(bar.load()==3);
+
+    IntXX_T ibar;
+    lintel::unsafe::atomic_store(&ibar, 3); SINVARIANT(lintel::unsafe::atomic_load(&ibar) == 3);
+    SINVARIANT(lintel::unsafe::atomic_fetch_add(&ibar, 5)==3); SINVARIANT(lintel::unsafe::atomic_load(&ibar)==8);
+    SINVARIANT(lintel::unsafe::atomic_fetch_sub(&ibar, 5)==8); SINVARIANT(lintel::unsafe::atomic_load(&ibar)==3);
 
     bar=7; SINVARIANT(bar==7);
     SINVARIANT(bar.exchange(9)==7); SINVARIANT(bar==9);
 
-    bar=11;
-    SINVARIANT(bar.exchange(13)==11); SINVARIANT(bar==13);
+    ibar=7; SINVARIANT(lintel::unsafe::atomic_load(&ibar)==7);
+    SINVARIANT(lintel::unsafe::atomic_exchange(&ibar, 9)==7); SINVARIANT(lintel::unsafe::atomic_load(&ibar)==9);
 
     bar=15; IntXX_T expected = 15, desired = 17;
-    asm volatile ("#OZ5");
     SINVARIANT(bar.compare_exchange_strong(&expected, desired)); SINVARIANT(expected==15);
     bar=19;
     SINVARIANT(!bar.compare_exchange_strong(&expected, desired)); SINVARIANT(expected==19);
+
+    ibar=15; expected = 15, desired = 17;
+    SINVARIANT(lintel::unsafe::atomic_compare_exchange_strong(&ibar, &expected, desired)); SINVARIANT(expected==15);
+    ibar=19;
+    SINVARIANT(!lintel::unsafe::atomic_compare_exchange_strong(&ibar, &expected, desired)); SINVARIANT(expected==19);
+
 
     bar = 0; SINVARIANT(bar.fetch_or(0) == 0); SINVARIANT(bar==0);
     bar = 0; SINVARIANT(bar.fetch_or(1) == 0); SINVARIANT(bar==1);
@@ -122,7 +123,10 @@ void simpleTest() {
     bar=1; SINVARIANT(1==(bar^=0));
     bar=1; SINVARIANT(0==(bar^=1));
 
-    asm volatile ("#OZ7");
+    ibar = 1; SINVARIANT(lintel::unsafe::atomic_fetch_or (&ibar,0) == 1); SINVARIANT(lintel::unsafe::atomic_load(&ibar)==1);
+    ibar = 1; SINVARIANT(lintel::unsafe::atomic_fetch_and(&ibar,1) == 1); SINVARIANT(lintel::unsafe::atomic_load(&ibar)==1);
+    ibar = 1; SINVARIANT(lintel::unsafe::atomic_fetch_xor(&ibar,1) == 1); SINVARIANT(lintel::unsafe::atomic_load(&ibar)==0);
+
     lintel::atomic_thread_fence(lintel::memory_order_relaxed);
     lintel::atomic_thread_fence(lintel::memory_order_consume);
     lintel::atomic_thread_fence(lintel::memory_order_acquire);
@@ -130,7 +134,7 @@ void simpleTest() {
     lintel::atomic_thread_fence(lintel::memory_order_acq_rel);
     lintel::atomic_thread_fence(lintel::memory_order_seq_cst);
 
-    lintel::Atomic<IntXX_T> foo;
+    lintel::Atomic<IntXX_T> foo(0);
     IntXX_T x = foo.load();
     INVARIANT(x == 0, boost::format("initial value is %d, not 0") % x);
     x = foo.incThenFetch();
@@ -191,9 +195,6 @@ void doTest () {
 
 int main()
 {
-  asm volatile ("#OZ __sync_synchronize()" :::"memory");
-  __sync_synchronize();
-  asm volatile ("#OZ __sync_synchronize()" :::"memory");
   doTest<uint8_t>();
   doTest<uint16_t>();
   doTest<int32_t>();
