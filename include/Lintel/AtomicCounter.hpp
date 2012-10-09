@@ -186,20 +186,20 @@ namespace lintel {
         switch(order) {
 	case memory_order_acquire:
 	case memory_order_consume:
-	    // gcc issues lfence, which is never needed for current Atomic
+	    // gcc 4.6 issues lfence, which is never needed for current Atomic
 	    asm volatile ("#lfence":::"memory");
 	    break;
 	case memory_order_release:
-	    // gcc issues sfence, which is never needed for current Atomic
+	    // gcc 4.6 issues sfence, which is never needed for current Atomic
 	    asm volatile ("#sfence":::"memory");
 	    break;
 	case memory_order_acq_rel:
-	    // gcc issues mfence, which is not needed for current Atomic
+	    // gcc 4.6 issues mfence, which is not needed for current Atomic
 	    asm volatile ("#mfence":::"memory");
 	case memory_order_seq_cst:
 	    // what gcc does. StoreLoad barrier.
 	    asm volatile ("mfence":::"memory");
-	    //asm volatile ("lock; orl $0, (%%rsp)":::"memory"); // faster on x86
+	    //asm volatile ("lock; orl $0, (%%rsp)":::"memory"); // faster on x86 <= Westmere
 	    break;
         case memory_order_relaxed:
 	    break; // do nothing
@@ -210,6 +210,9 @@ namespace lintel {
 
     extern "C" void atomic_thread_fence(memory_order order)
     { LINTEL_ATOMIC_THREAD_FENCE(order); }
+
+    extern "C" void atomic_signal_fence(memory_order)
+    { asm volatile ("":::"memory"); }
 
     /// \brief An atomic counter that avoids using locks.
     ///
@@ -288,7 +291,7 @@ namespace lintel {
 #if defined (LINTEL_USE_STD_ATOMICS)
         std::atomic<T> counter;
 #elif defined (LINTEL_USE_GCC_BUILTIN_SYNC_ATOMICS) || defined (LINTEL_USE_GCC_ASM_ATOMICS)
-        T counter;
+        T counter; // gcc will always align it because it ignores packed attribute on non-POD fields
 #endif
     };
 
@@ -297,6 +300,11 @@ namespace lintel {
 
     namespace unsafe {
         // These are not "Type-Based Alias Analysis" (TBAA) safe. Undefined behaviour. use -fno-strict-aliasing
+        // to somewhat constrain compiler, but it is still unsafe. for example
+        // struct S { short x; int a; } __attribute__((packed)) s;
+        // assert (__alignof__(s.a) != 4);
+        // lintel::unsafe::atomic_load(&s.a); //FAIL, not atomic!
+ 
         template<typename T> T atomic_load(const T* object)
 	{ return reinterpret_cast<const Atomic<T>*>(object)->load(); }
 
