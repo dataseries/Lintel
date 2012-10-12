@@ -295,6 +295,8 @@ namespace lintel {
 #endif
     };
 
+    typedef Atomic<int> AtomicCounter; //for backward compatibility. Remove when no longer needed.
+
 #pragma GCC push_options
 #pragma GCC optimize ("no-strict-aliasing")
 
@@ -330,6 +332,6 @@ namespace lintel {
     }
 #pragma GCC pop_options
 
-}
+} // namespace lintel
 
 #endif
