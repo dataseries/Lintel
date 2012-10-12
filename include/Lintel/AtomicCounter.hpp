@@ -297,8 +297,11 @@ namespace lintel {
 
     typedef Atomic<int> AtomicCounter; //for backward compatibility. Remove when no longer needed.
 
+#if defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ > 404) 
+// Below pragmas trigger ICE for GCC 4.4 and below;
 #pragma GCC push_options
 #pragma GCC optimize ("no-strict-aliasing")
+#endif
 
     namespace unsafe {
         // These are not "Type-Based Alias Analysis" (TBAA) safe. Undefined behaviour. use -fno-strict-aliasing
@@ -330,8 +333,10 @@ namespace lintel {
         template<typename T, typename C> T atomic_fetch_xor(T* object, C operand)
 	{ return reinterpret_cast<Atomic<T>*>(object)->fetch_xor(static_cast<T>(operand)); }
     }
-#pragma GCC pop_options
 
+#if defined(__GNUC__) && (__GNUC__ * 100 + __GNUC_MINOR__ > 404) 
+#pragma GCC pop_options
+#endif
 } // namespace lintel
 
 #endif
