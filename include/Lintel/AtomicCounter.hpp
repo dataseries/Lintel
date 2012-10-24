@@ -208,10 +208,10 @@ namespace lintel {
 
 #endif
 
-    extern "C" void atomic_thread_fence(memory_order order)
+    extern "C" inline void atomic_thread_fence(memory_order order)
     { LINTEL_ATOMIC_THREAD_FENCE(order); }
 
-    extern "C" void atomic_signal_fence(memory_order)
+    extern "C" inline void atomic_signal_fence(memory_order)
     { asm volatile ("":::"memory"); }
 
     /// \brief An atomic counter that avoids using locks.
