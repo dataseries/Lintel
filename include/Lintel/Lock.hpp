@@ -47,6 +47,45 @@ public:
   void unlock() { pthread_spin_unlock(&rwl); }
 };
 
+class GlibcPosixSpinLock {
+private:
+  int rwl;
+  GlibcPosixSpinLock(const GlibcPosixSpinLock&); //=delete
+  void operator=(const GlibcPosixSpinLock&); //=delete
+  //GlibcPosixSpinLock& operator=(const GlibcPosixSpinLock&&); // maybe implement
+private:
+  void spin_unlock (int *lock)
+  {
+    asm("":::"memory");
+    //*lock = 1;
+    const int one = 1;
+    asm volatile ("movl %1, %0": "=m" (*lock) : "g"(one));
+  }
+
+  void spin_lock (int *lock)
+  {
+    asm ("\n"
+         "1:\t lock decl %0\n\t"
+         "jne 2f\n\t"
+         ".subsection 1\n\t"
+         ".align 16\n"
+         "2:\trep; nop\n\t"
+         "cmpl $0, %0\n\t"
+         "jg 1b\n\t"
+         "jmp 2b\n\t"
+         ".previous"
+         : "+m" (*lock)
+         ::);
+    asm("":::"memory");
+  }
+
+public:
+  GlibcPosixSpinLock(){ unlock(); }
+  void rdlock() { spin_lock(&rwl); }
+  void wrlock() { spin_lock(&rwl); }
+  void unlock() { spin_unlock(&rwl); }
+};
+
 class AtomicSpinLock {
 private:
   lintel::Atomic<int> rwl;
@@ -158,10 +197,13 @@ private:
   //CachePingPongNullLock& operator=(const CachePingPongNullLock&&); // maybe implement
 public:
   CachePingPongNullLock(){ unlock(); }
-  void rdlock() { asm volatile ("lock decl %1": "+m" (rwl) ::"memory"); }
+  void rdlock() { read(); }
   void wrlock() { rdlock(); }
   //void unlock() { int v = 1; asm volatile ("xchg %1, %0": "+m" (rwl), "+r" (v)::"memory"); }
-  void unlock() { asm("movl $1, %0\n\t": "=m"(rwl)::"memory"); }
+  void unlock() { write(); /*asm("movl $1, %0\n\t": "=m"(rwl)::"memory");*/ }
+private:
+  void read  () { int x; asm volatile ("movl %1, %0\n\t": "=r"(x): "m"(rwl):"memory"); }
+  void write () {        asm volatile ("movl $1, %0\n\t": "=m"(rwl)::"memory"); }
 };
 
 }; //namespace lintel

@@ -71,8 +71,10 @@ sub testCoreDump {
     eval q{ setrlimit(RLIMIT_CORE, 0, 4096) or die "setrlimit: $!"; }; die $@ if $@;
     my $pid = $process_manager->fork(cmd => sub { kill 'SEGV', $$ });
     my $status = $process_manager->waitPid($pid);
+    print `kill -l $status`;
 
-    die "? $status" unless $status == 11;
+    die "? $status on $pid" unless `kill -l $status` eq "SEGV\n";
+    $status = 11; # the status was SEGV, but not necessarily 11; see posix spec
 
     eval q{ setrlimit(RLIMIT_CORE, 4096, 4096) or die "setrlimit(core-4k): $!"; }; die $@ if $@;
 
