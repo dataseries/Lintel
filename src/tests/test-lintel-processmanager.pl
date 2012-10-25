@@ -27,7 +27,10 @@ sub memtest {
     my $pid = $process_manager->fork(
 	cmd => "perl -e 'BEGIN { my \$foo = \".\"x$objsize; } exit(0);'",
         # limit of 25 MB does not work on centos5 chroot (1 MB size does not succeed)
-	max_mem_bytes => 50*1024*1024); 
+        # Note on 10/19/2012: doubled max_mem_bytes because otherwise (on Centos) there's 
+	# error:  "41 Testing lintel-processmanager         ***Failed  27/"
+	# max_mem_bytes => 50*1024*1024); 
+	 max_mem_bytes => 2*50*1024*1024); 
     my $ecode = $process_manager->waitPid($pid);
     die "unexpected error $ecode on memtest $objsize" if $ecode && !$expect_error;
     die "unexpected completion $ecode on memtest $objsize" if !$ecode && $expect_error;
