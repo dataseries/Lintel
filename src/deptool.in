@@ -4992,13 +4992,17 @@ handle this situation.  Suggestions are welcome.\n "
     main::runCommand(qw/git add -u/); # any uncommitted files we want to track should already be added
     my $pm = Lintel::ProcessManager->new();
 
-    my $commit_pid = $pm->fork(cmd => [qw/git commit/, $this->{amend} ? ('--amend') : ()]);
+    my $config = $this->readConfig();
+
+    my $commit_pid;
+    if($config->{'deptool.serialdiff'} ne 'serial') {
+        $commit_pid = $pm->fork(cmd => [qw/git commit/, $this->{amend} ? ('--amend') : ()]);
+    }
 
     # TODO-reviewer: I find the git diff somewhat harder to read because it's condensed more
     # tightly.  Is it worth writing something that makes the diff easier to read by adding
     # separators between files?
 
-    my $config = $this->readConfig();
     my @common = qw/--staged -M75 -C50/;
     # TODO-reviewer: new files with no content don't get shown in diff or difftool.
     if ($config->{'deptool.diff'} eq 'difftool') {
@@ -5007,6 +5011,10 @@ handle this situation.  Suggestions are welcome.\n "
         eval { main::runCommand(qw/git diff --patience/, @common); };
     }
     print "=================== done showing differences.\n";
+    if($config->{'deptool.serialdiff'} eq 'serial') {
+        $commit_pid = $pm->fork(cmd => [qw/git commit/, $this->{amend} ? ('--amend') : ()]);        
+    }
+
     my %status = $pm->waitAll();
     die "missing $commit_pid status?" unless defined $status{$commit_pid};
     if ($status{$commit_pid} != 0) {
