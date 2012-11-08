@@ -1625,12 +1625,12 @@ sub dbpFinishWhich {
     die "internal" unless defined $info->{"status_$which"};
     aliasChdir($dir);
     if ($info->{"status_$which"} == 0) {
-        print "Finish $which of $dir.";
+        print "Successful finish of $which of $dir.";
         my $errors = "$dir/deptool.$which.err";
         if (-s $errors == 0) {
             print " No error output.\n";
         } else {
-            print " Error output:\n";
+            print " Error/warning output (stderr):\n";
             my $fh = new FileHandle($errors)
                 or die "Can't open $errors for read: $!";
             while (<$fh>) {
