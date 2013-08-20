@@ -14,6 +14,9 @@ namespace lintel {
         uint32_t x, y, z, w;  // fits in a cache line likely.
         
         MicroRandInner(uint32_t seed=0) {
+            init(seed);
+        }
+        void init(uint32_t seed) {
             // Need to handle seed==0 as choose own entropy.
 
             // For a nothing-up-my-sleeve number, we'll use the hexadecimal digits of pi.
@@ -93,6 +96,9 @@ namespace lintel {
         static const uint32_t B = 0xffffffff; 
     public:
         MarsagliaInner(uint32_t seed=0) {        
+            init(seed);
+        }
+        void init(uint32_t seed) {
             MarsagliaRNGMicro r(seed);
             for(int32_t i=0; i<SIZE; ++i) {
                 x[i] = r.randInt();

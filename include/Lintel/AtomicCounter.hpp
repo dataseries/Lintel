@@ -226,7 +226,7 @@ namespace lintel {
     template<class T>
     class Atomic {
     public:
-        Atomic() { } /*=default*/ // uninitialized
+        Atomic():counter(0) { } /*=default*/ // uninitialized is dangerous!
         explicit Atomic(T counter) : counter(counter) { }
 
         /// Increments the counter and then returns the value
