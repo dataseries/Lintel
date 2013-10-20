@@ -159,6 +159,7 @@ int main() {
     msg.push_back("dynamic downcast failed in boost::shared_ptr<T> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]");
     msg.push_back("dynamic downcast failed in boost::shared_ptr<T> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2; Source = base1]");
     msg.push_back("dynamic downcast failed in boost::shared_ptr<X> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2, Source = base1]");
+    msg.push_back("dynamic downcast failed in boost::shared_ptr<X> lintel::safeDownCast(boost::shared_ptr<U>) [with Target = derived2; Source = base1]");
     msg.push_back("dynamic downcast failed in boost::shared_ptr<derived2> lintel::safeDownCast(boost::shared_ptr<base1>)");
     TEST_INVARIANT_MSGVEC(SINVARIANT(safeDownCast<derived2>(p_d1_b1) == 0), msg);
     msg.clear();
@@ -168,6 +169,7 @@ int main() {
     msg.push_back("dynamic crosscast failed in boost::shared_ptr<T> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated; Source = base1]");
     msg.push_back("dynamic crosscast failed in boost::shared_ptr<X> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated, Source = base1]");
     msg.push_back("dynamic crosscast failed in boost::shared_ptr<unrelated> lintel::safeCrossCast(boost::shared_ptr<base1>)");
+    msg.push_back("dynamic crosscast failed in boost::shared_ptr<X> lintel::safeCrossCast(boost::shared_ptr<U>) [with Target = unrelated; Source = base1]");
     TEST_INVARIANT_MSGVEC(SINVARIANT(safeCrossCast<unrelated>(p_d1_b1) == 0), msg);
     msg.clear();
 

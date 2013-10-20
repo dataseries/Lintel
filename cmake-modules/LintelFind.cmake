@@ -388,6 +388,13 @@ MACRO(LINTEL_BOOST_EXTRA variable header libname)
                 # prefers the lib64 versions
 	        MESSAGE("Warning: cmake determined the Boost library dir incorrectly. It should be /usr/lib64 not /usr/lib")
 		SET(Boost_LIBRARY_DIRS /usr/lib64)
+	    ELSEIF("${Boost_LIBRARY_DIRS}" STREQUAL "/usr/lib"
+	           AND EXISTS "/usr/lib/x86_64-linux-gnu/libboost_thread.so"
+		   AND "${LBE_TMP}" STREQUAL "/usr/lib/x86_64-linux-gnu")
+		 #Ubuntu 13.10 (maybe others?) misidentify boost as being in /usr/lib
+		 #when it is really in /usr/lib/x86_64-linux-gnu
+		 MESSAGE("Overriding boost dir; should be /usr/lib/x86_64-linux-gnu")
+		 SET(Boost_LIBRARY_DIRS /usr/lib/x86_64-linux-gnu)
 	    ENDIF(0)
 	        
 	    IF(NOT "${LBE_TMP}" STREQUAL "${Boost_LIBRARY_DIRS}")

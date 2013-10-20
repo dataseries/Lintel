@@ -66,17 +66,27 @@ sub test {
         sleep(5);
     }
 }
-
+sub getSigName {
+    #On some systems, /bin/kill doesn't understand the nonstandard signal numbers
+    #However, bash's builtin kill does.
+    return `echo "kill -l $_[0]" | bash -s`
+}
 sub testCoreDump {
     if (-f "core") {
         unlink("core");
     }
+
+    if(-f "/etc/lsb-release" && `grep CODENAME /etc/lsb-release` eq "DISTRIB_CODENAME=saucy\n") {
+        #beh - Ubuntu saucy redirects core files; just skip this test.
+        return;
+    }
+
     eval q{ setrlimit(RLIMIT_CORE, 0, 4096) or die "setrlimit: $!"; }; die $@ if $@;
     my $pid = $process_manager->fork(cmd => sub { kill 'SEGV', $$ });
     my $status = $process_manager->waitPid($pid);
-    print `kill -l $status`;
+    print getSigName($status);
 
-    die "? $status on $pid" unless `kill -l $status` eq "SEGV\n";
+    die "? $status on $pid" unless getSigName($status) eq "SEGV\n";
     $status = 11; # the status was SEGV, but not necessarily 11; see posix spec
 
     eval q{ setrlimit(RLIMIT_CORE, 4096, 4096) or die "setrlimit(core-4k): $!"; }; die $@ if $@;
@@ -105,7 +115,7 @@ sub testCoreDump {
 
     die "missing core file" unless -f "core" || -f "core.$pid";
     unlink("core", "core.$pid");
-    
+
     print "Core dump masking test passed\n";
 }
 
