@@ -3,6 +3,8 @@ SET(CMAKE_MODULE_FILES
 	FindLibXmlpp.cmake
 	FindLintel.cmake
 	FindLZO.cmake
+        FindLZ4.cmake
+        FindSnappy.cmake
 	LintelCMakeUtil.cmake
 	LintelDocs.cmake
 	LintelFind.cmake
