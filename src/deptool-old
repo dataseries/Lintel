@@ -3798,7 +3798,7 @@ sub operatingSystem {
             chomp;
             if (/^Red Hat Enterprise Linux.+release (\d+)\b/o) {
                 $Cache::operating_system = "rhel$1";
-	    } elsif (/^Fedora release (\d+) \(\w+\)$/o) {
+	    } elsif (/^Fedora release (\d+) \(.+\)$/o) {
 		$Cache::operating_system = "fedora$1";
 	    } elsif (/^CentOS release (\d+)\b/o) {
 		$Cache::operating_system = "centos$1";
