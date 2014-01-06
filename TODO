@@ -1,4 +1,4 @@
-Remove all of the static classes that are not just base types; replace it with the static inside
+\Remove all of the static classes that are not just base types; replace it with the static inside
 function returning reference trick.  It just seems unsafe to have the static classes, the most
 recent case was in program options which was failing with a bus error converting doubles into
 strings for the help text on openbsd-4.9-amd64 (and only that variant, either 5.0 or i386 worked).
@@ -23,5 +23,3 @@ it's roughly balanced.
 
 HashMap.H: figure out why HashMap<const std::string, int> gives a
 compiler error with gcc-4.1
-
-make a simple commit for no good reason
