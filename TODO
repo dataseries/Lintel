@@ -24,4 +24,3 @@ it's roughly balanced.
 HashMap.H: figure out why HashMap<const std::string, int> gives a
 compiler error with gcc-4.1
 
-yet another trivial change
