@@ -3761,6 +3761,8 @@ sub operatingSystem {
                 $Cache::operating_system = "opensuse-$1";
             } elsif (/^SUSE Linux Enterprise Server (\d+\.\d+)\b/o) {
                 $Cache::operating_system = "suse-$1";
+            } elsif (/^SUSE Linux Enterprise Server (\d+)/o) {
+                $Cache::operating_system = "suse-$1";
             } else {
                 s/\W/_/go; s/\s/_/go;
                 $Cache::operating_system = "suse-unknown-$_";
