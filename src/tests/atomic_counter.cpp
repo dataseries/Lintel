@@ -1,8 +1,9 @@
+#include <limits.h>
 #include <iostream>
 #include <vector>
 
-#include <Lintel/PThread.hpp>
 #include <Lintel/AtomicCounter.hpp>
+#include <Lintel/PThread.hpp>
 
 // Basically, do the same operations to correct_count and incorrect_count and
 // we expect correct_count to work and incorrect_count to be affected by races.
