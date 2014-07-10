@@ -74,7 +74,7 @@
 # TODO: there is a bunch of duplicate code in the below macros,
 # eliminate it.
 
-# SET(LINTEL_FIND_DEBUG ON)
+SET(LINTEL_FIND_DEBUG OFF)
 MACRO(LINTEL_FIND_DEBUG message)
     IF(LINTEL_FIND_DEBUG)
         MESSAGE("lintel-find-debug: ${message}")

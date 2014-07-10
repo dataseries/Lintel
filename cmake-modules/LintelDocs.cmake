@@ -116,7 +116,8 @@ MACRO(LINTEL_DOCS_BUILD)
 
         FIND_FILE(DOXYGEN_CONFIG_IN
 	    	  doxygen.config.in
-		  PATHS ${CMAKE_HOME_DIRECTORY}/doc
+		  PATHS ${LINTEL_DIR}/doc
+		        ${CMAKE_HOME_DIRECTORY}/doc
 		        ${CMAKE_INSTALL_PREFIX}/share/Lintel
 	   	        /usr/share/Lintel
 	)
