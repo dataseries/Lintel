@@ -15,12 +15,23 @@
 
 extern "C" {
 #include <EXTERN.h>
+
 // Defined in perl.h and Lintel/CompilerMarkup.hpp
 #undef LIKELY
 #undef UNLIKELY
 #include <perl.h>
+
 #undef list
 #include "XSUB.h"
+
+// perl 5.18 with c++ compiler doesn't define Perl___notused in dNOOP, it
+// defines it as (void)0.  This makes the later macro expansion of
+// PERL_UNUSED_VAR(Perl___notused) fail because the variable is undefined.
+// Since we're already getting lots of unused parameter warnings, just
+// suppress this entirely by changing the macro definition.
+
+#undef PERL_UNUSED_VAR
+#define PERL_UNUSED_VAR(x)
 }
 
 

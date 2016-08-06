@@ -86,6 +86,8 @@ ELSE(0)
     SET(LINTEL_DBI_ENABLED OFF)
 ENDIF(0)
 
+OPTION(WITH_PERL_BINARY_MODULES "Build the perl binary modules?" On)
+
 OPTION(ENABLE_STDIO64 "Enable 64 bit stdio bits")
 # Package for detecting if we are in a virtual machine...
 #  Home page:        http://et.redhat.com/~rjones/virt-what/

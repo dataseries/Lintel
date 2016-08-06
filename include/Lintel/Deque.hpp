@@ -79,7 +79,6 @@ public:
     }
     /// Add in an entire vector of values onto the back.
     void push_back(const std::vector<T> &vals) {
-	typedef typename std::vector<T> vectorT;
 	typedef typename std::vector<T>::const_iterator vector_iterator;
 	for(vector_iterator i = vals.begin(); 
 	    i != vals.end(); ++i) {
