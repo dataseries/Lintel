@@ -37,8 +37,17 @@ using boost::format;
 // old code below works and doesn't, but it is good enough for the few
 // platforms tested.
 
-#define GLIBC_PTHREADS (defined(_BITS_PTHREADTYPES_H))
-#define GLIBC_OLD_PTHREADS  (!defined(__SIZEOF_PTHREAD_MUTEX_T))
+#if (defined(_BITS_PTHREADTYPES_H))
+#define GLIBC_PTHREADS 1
+#else
+#define GLIBC_PTHREADS 0
+#endif
+
+#if (!defined(__SIZEOF_PTHREAD_MUTEX_T))
+#define GLIBC_OLD_PTHREADS 1
+#else
+#define GLIBC_OLD_PTHREADS 0
+#endif
 
 int PThreadMisc::getCurrentCPU(bool unknown_ok) {
 #if HPUX_ACC
@@ -67,9 +76,9 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
 #ifdef __linux__
 	} else if (1) {
 	    ifstream infile("/proc/cpuinfo");
-	    
+
 	    INVARIANT(infile.good(), "unable to open /proc/cpuinfo");
-	    
+
 	    string line;
 	    string processor("processor\t: ");
 	    while(!infile.eof()) {
@@ -84,10 +93,10 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
         } else if (1) {
             int name[4];
             int ncpus = 0;
-            size_t length = sizeof(ncpus); 
+            size_t length = sizeof(ncpus);
 
             name[0] = CTL_HW;
-#if defined HW_AVAILCPU            
+#if defined HW_AVAILCPU
             name[1] = HW_AVAILCPU;  // alternatively, try HW_NCPU;
 
             /* get the number of CPUs from the system */
@@ -119,9 +128,9 @@ int PThreadMisc::getNCpus(bool unknown_ok) {
 
 PThread::PThread() : thread_live(false) {
     // memset needed on cygwin so it doesn't think attr is already initialized
-    memset(&attr,0,sizeof(attr)); 
+    memset(&attr,0,sizeof(attr));
     int ret = pthread_attr_init(&attr);
-    INVARIANT(ret == 0, 
+    INVARIANT(ret == 0,
 	      format("pthread_attr_init failed: %s") % strerror(ret));
     memset(&last_tid,0,sizeof(last_tid));
 }
@@ -133,21 +142,21 @@ PThread::~PThread() {
 void PThread::setDetached(bool detached) {
     int state = detached ? PTHREAD_CREATE_DETACHED : PTHREAD_CREATE_JOINABLE;
     int ret = pthread_attr_setdetachstate(&attr, state);
-    INVARIANT(ret == 0,format("pthread_attr_setdetachstate failed: %s") 
+    INVARIANT(ret == 0,format("pthread_attr_setdetachstate failed: %s")
 	      % strerror(ret));
 }
 
 size_t PThread::getStackSize() {
     size_t size;
     int ret = pthread_attr_getstacksize(&attr, &size);
-    INVARIANT(ret == 0, format("pthread_attr_getstacksize failed: %s") 
+    INVARIANT(ret == 0, format("pthread_attr_getstacksize failed: %s")
 	      % strerror(ret));
     return size;
 }
 
 void PThread::setStackSize(size_t size) {
     int ret = pthread_attr_setstacksize(&attr, size);
-    INVARIANT(ret == 0, format("pthread_attr_setstacksize failed: %s") 
+    INVARIANT(ret == 0, format("pthread_attr_setstacksize failed: %s")
 	      % strerror(ret));
 }
 
@@ -158,7 +167,7 @@ size_t PThread::getGuardSize() {
 #else
     size_t size;
     int ret = pthread_attr_getguardsize(&attr, &size);
-    INVARIANT(ret == 0, format("pthread_attr_getguardsize failed: %s") 
+    INVARIANT(ret == 0, format("pthread_attr_getguardsize failed: %s")
 	      % strerror(ret));
     return size;
 #endif
@@ -169,7 +178,7 @@ void PThread::setGuardSize(size_t size) {
     // nothing to do
 #else
     int ret = pthread_attr_setguardsize(&attr, size);
-    INVARIANT(ret == 0, format("pthread_attr_setguardsize failed: %s") 
+    INVARIANT(ret == 0, format("pthread_attr_setguardsize failed: %s")
 	      % strerror(ret));
 #endif
 }
@@ -186,7 +195,7 @@ pthread_t PThread::start() {
     int ret = pthread_create(&tid,&attr,pthread_starter,this);
 
     INVARIANT(ret == 0, format("pthread_create failed: %s") % strerror(ret));
-    
+
     thread_live = true;
     last_tid = tid;
     return tid;
@@ -207,8 +216,8 @@ int PThread::kill(int sig) {
     return rc;
 }
 
-PThreadScopedOnlyMutex::PThreadScopedOnlyMutex(bool errorcheck) 
-    : ncontention(0) 
+PThreadScopedOnlyMutex::PThreadScopedOnlyMutex(bool errorcheck)
+    : ncontention(0)
 {
     pthread_mutexattr_t attr;
     SINVARIANT(pthread_mutexattr_init(&attr)==0);
@@ -244,10 +253,10 @@ PThreadScopedOnlyMutex::~PThreadScopedOnlyMutex() {
 string PThreadScopedOnlyMutex::debugInfo() const {
     // this is for some version of glibc prior to 2.5 (but maybe earlier)
     // code by ea
-    return (format("mutex %p: recursive-depth %d owner %p kind %d status %d spinlock %d") 
-	    % reinterpret_cast<const void *>(&m) % m.__m_count 
-	    % reinterpret_cast<const void *>(m.__m_owner) % m.__m_kind 
-	    % m.__m_lock.__status 
+    return (format("mutex %p: recursive-depth %d owner %p kind %d status %d spinlock %d")
+	    % reinterpret_cast<const void *>(&m) % m.__m_count
+	    % reinterpret_cast<const void *>(m.__m_owner) % m.__m_kind
+	    % m.__m_lock.__status
 	    % static_cast<uint32_t>(m.__m_lock.__spinlock)).str();
 }
 #endif
@@ -257,11 +266,11 @@ string PThreadScopedOnlyMutex::debugInfo() const {
 string PThreadScopedOnlyMutex::debugInfo() const {
     // glibc 2.5 (but maybe earlier)
     // code by ch
-    return (format("mutex %p: recursive-depth %d owner %p kind %d lock %d") 
-	    % reinterpret_cast<const void *>(&m) 
-	    % m.__data.__count 
-	    % reinterpret_cast<const void *>(m.__data.__owner) 
-	    % m.__data.__kind 
+    return (format("mutex %p: recursive-depth %d owner %p kind %d lock %d")
+	    % reinterpret_cast<const void *>(&m)
+	    % m.__data.__count
+	    % reinterpret_cast<const void *>(m.__data.__owner)
+	    % m.__data.__kind
 	    % m.__data.__lock).str();
 }
 #endif
@@ -278,7 +287,7 @@ pthread_t PThreadNoSignals::start() {
     sigfillset(&newset);
 
     // don't catch any signals in this thread
-    // n.b. we're expecting this to be called from a master thread, 
+    // n.b. we're expecting this to be called from a master thread,
     // so no contention for the sigmask should occur
     pthread_sigmask(SIG_BLOCK, &newset, &oldset);
     pthread_t tid = PThread::start();
