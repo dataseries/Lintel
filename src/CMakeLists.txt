@@ -16,11 +16,11 @@ ADD_DEFINITIONS(-DLIBLINTEL_VERSION="\\"${LINTEL_VERSION}\\"")
 IF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
     ADD_DEFINITIONS(-DDEBUG)
 ENDIF(${CMAKE_BUILD_TYPE} STREQUAL "Debug")
-		       
+
 IF(CMAKE_COMPILER_IS_GNUCXX)
 # Note -Wextra warns about unused parameters in LintelPerl.cpp auto-generated code
 # See http://www.semantics.org/talknotes/SD2002W_HIERARCHY.pdf slide 10 about overloaded-virtual
-    ADD_DEFINITIONS(-Wall -Wextra -Woverloaded-virtual -Wpointer-arith -Wwrite-strings)
+    ADD_DEFINITIONS(-Wall -Wno-terminate -Wno-implicit-fallthrough -Wextra -Woverloaded-virtual -Wpointer-arith -Wwrite-strings)
 # TODO: get these in and mostly cleaned up
 # -Wold-style-cast -Weffc++
 ENDIF(CMAKE_COMPILER_IS_GNUCXX)
@@ -151,7 +151,7 @@ ENDIF(WITH_PROCESS_STATISTICS)
 ################################## LIBRARY
 
 ADD_LIBRARY(Lintel ${LIBRARY_TYPE} ${LIBLINTEL_SOURCES})
-SET_TARGET_PROPERTIES(Lintel 
+SET_TARGET_PROPERTIES(Lintel
     PROPERTIES VERSION ${LINTEL_VERSION} SOVERSION ${LINTEL_ABI_VERSION})
 
 IF ("${LINTEL_SYSTEM_TYPE}" STREQUAL "OpenBSD")
@@ -200,18 +200,18 @@ IF(${CMAKE_SYSTEM_NAME} STREQUAL "CYGWIN")
 ENDIF(${CMAKE_SYSTEM_NAME} STREQUAL "CYGWIN")
 LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-config 1 "Lintel ${LINTEL_VERSION}")
 
-IF(PERL_ENABLED) 
+IF(PERL_ENABLED)
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(batch-parallel 1 "Lintel ${LINTEL_VERSION}")
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(lintel-flock 1 "Lintel ${LINTEL_VERSION}")
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(deptool 1 "Lintel ${LINTEL_VERSION}")
     # Built, but intentionally not installed.
-    ADD_CUSTOM_TARGET(deptool-bootstrap ALL 
+    ADD_CUSTOM_TARGET(deptool-bootstrap ALL
                       COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/make-deptool-bootstrap.sh
-    		          ${CMAKE_CURRENT_SOURCE_DIR} 
+    		          ${CMAKE_CURRENT_SOURCE_DIR}
     		      DEPENDS deptool.in Lintel/File/Lock.pm Lintel/ProcessManager.pm)
 ELSE(PERL_ENABLED)
     MESSAGE("deptool will NOT be built.  Could not find perl")
-ENDIF(PERL_ENABLED) 
+ENDIF(PERL_ENABLED)
 
 
 IF(PERL_ENABLED AND SFDISK_ENABLED AND SGINFO_ENABLED)
@@ -223,7 +223,7 @@ IF(MERCURY_PLOT_ENABLED)
     LINTEL_INSTALL_CONFIG_POD2MAN_PROGRAM(mercury-plot 1 "Lintel ${LINTEL_VERSION}" "User Commands")
 ENDIF(MERCURY_PLOT_ENABLED)
 
-LINTEL_INSTALL_CONFIG_FILE(redhat-rules 
+LINTEL_INSTALL_CONFIG_FILE(redhat-rules
 	${CMAKE_INSTALL_PREFIX}/share/packaging)
 
 IF(THREADS_ENABLED)
