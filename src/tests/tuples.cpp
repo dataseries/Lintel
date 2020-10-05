@@ -23,8 +23,10 @@ int main() {
     // alternate so attributes are <, >, <, >, <
     Tuple tuple2(false, 'b', 6, 123456789022LL, "Iello, World");
 
-    INVARIANT(hash(tuple1) == 2462433311U, format("got %d?") % hash(tuple1));
-    INVARIANT(hash(tuple2) == 1460156332U, format("got %d?") % hash(tuple2));
+    INVARIANT(boost::tuples::hash(tuple1) == 2462433311U,
+              format("got %d?") % boost::tuples::hash(tuple1));
+    INVARIANT(boost::tuples::hash(tuple2) == 1460156332U,
+              format("got %d?") % boost::tuples::hash(tuple2));
 
     SINVARIANT(tuple2 < tuple1);
 
@@ -33,23 +35,29 @@ int main() {
     AnyTuple anytuple2;
     assign(anytuple2, tuple2);
 
-    INVARIANT(hash(anytuple1) == 2462433311U, format("%d?") % hash(anytuple1));
-    INVARIANT(hash(anytuple2) == 1460156332U, format("%d?") % hash(anytuple2));
+    INVARIANT(boost::tuples::hash(anytuple1) == 2462433311U,
+              format("%d?") % boost::tuples::hash(anytuple1));
+    INVARIANT(boost::tuples::hash(anytuple2) == 1460156332U,
+              format("%d?") % boost::tuples::hash(anytuple2));
 
     SINVARIANT(anytuple2 < anytuple1);
     anytuple2.get<0>().any = true;
     SINVARIANT(anytuple1 < anytuple2);
     anytuple1.get<0>().any = true;
     SINVARIANT(anytuple1 < anytuple2);
-    INVARIANT(hash(anytuple1) == 2138559752U, format("%d?") % hash(anytuple1));
-    INVARIANT(hash(anytuple2) == 1910363323U, format("%d?") % hash(anytuple2));
+    INVARIANT(boost::tuples::hash(anytuple1) == 2138559752U,
+              format("%d?") % boost::tuples::hash(anytuple1));
+    INVARIANT(boost::tuples::hash(anytuple2) == 1910363323U,
+              format("%d?") % boost::tuples::hash(anytuple2));
 
     anytuple1.get<1>().any = true;
     anytuple2.get<1>().any = true;
     SINVARIANT(anytuple2 < anytuple1);
 
-    INVARIANT(hash(anytuple1) == 1248248738U, format("%d?") % hash(anytuple1));
-    INVARIANT(hash(anytuple2) == 1959181482U, format("%d?") % hash(anytuple2));
+    INVARIANT(boost::tuples::hash(anytuple1) == 1248248738U,
+              format("%d?") % boost::tuples::hash(anytuple1));
+    INVARIANT(boost::tuples::hash(anytuple2) == 1959181482U,
+              format("%d?") % boost::tuples::hash(anytuple2));
 
     INVARIANT(toStr(tuple1) == "(1 a 7 123456789023 Hello, World)",
               format("got '%s'") % toStr(tuple1));
@@ -67,10 +75,10 @@ int main() {
     SINVARIANT(bitsetanytuple1 < bitsetanytuple2);
     bitsetanytuple1.any[0] = true;
     SINVARIANT(bitsetanytuple1 < bitsetanytuple2);
-    INVARIANT(hash(bitsetanytuple1) == 2138559752U,
-              format("%d?") % hash(bitsetanytuple1));
-    INVARIANT(hash(bitsetanytuple2) == 1910363323U,
-              format("%d?") % hash(bitsetanytuple2));
+    INVARIANT(lintel::hash(bitsetanytuple1) == 2138559752U,
+              format("%d?") % lintel::hash(bitsetanytuple1));
+    INVARIANT(lintel::hash(bitsetanytuple2) == 1910363323U,
+              format("%d?") % lintel::hash(bitsetanytuple2));
 
     INVARIANT(toStr(bitsetanytuple1) == "(* a 7 123456789023 Hello, World)",
               format("got '%s'") % toStr(bitsetanytuple1));
@@ -81,10 +89,10 @@ int main() {
     bitsetanytuple2.any[1] = true;
     SINVARIANT(bitsetanytuple2 < bitsetanytuple1);
 
-    INVARIANT(hash(bitsetanytuple1) == 1248248738U, format("%d?")
-              % hash(bitsetanytuple1));
-    INVARIANT(hash(bitsetanytuple2) == 1959181482U, format("%d?")
-              % hash(bitsetanytuple2));
+    INVARIANT(lintel::hash(bitsetanytuple1) == 1248248738U, format("%d?")
+              % lintel::hash(bitsetanytuple1));
+    INVARIANT(lintel::hash(bitsetanytuple2) == 1959181482U, format("%d?")
+              % lintel::hash(bitsetanytuple2));
 
     INVARIANT(toStr(bitsetanytuple1) == "(* * 7 123456789023 Hello, World)",
               format("got '%s'") % toStr(bitsetanytuple1));

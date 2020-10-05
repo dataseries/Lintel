@@ -23,11 +23,11 @@ void verifyWalk(const IBSTuple &tuple, Stats &stat) {
     vw_seen[v] = true;
 }
 
-static int32_t prev = -1;
+static int32_t prev_test = -1;
 void verifySortedWalk(const IBSTuple &tuple, Stats &stat) {
-    ++prev;
+    ++prev_test;
     int32_t v = tuple.get<0>();
-    SINVARIANT(v == prev);
+    SINVARIANT(v == prev_test);
     verifyWalk(tuple, stat);
 }
 
@@ -100,14 +100,14 @@ int main() {
     SINVARIANT(hut.get<1>().size() == 2);
     SINVARIANT(hut.get<2>().size() == 5);
 
-    prev = -1;
+    prev_test = -1;
     hts.walkOrdered(boost::bind(&verifySortedWalk, _1, _2));
-    SINVARIANT(prev == 4);
+    SINVARIANT(prev_test == 4);
    
-    prev = -1;
+    prev_test = -1;
     hts.clear();
     hts.walkOrdered(boost::bind(&verifySortedWalk, _1, _2));
-    SINVARIANT(prev == -1);
+    SINVARIANT(prev_test == -1);
 
     return 0;
 }

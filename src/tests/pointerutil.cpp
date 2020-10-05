@@ -25,7 +25,7 @@ using boost::format;
 
 class base1 {
 public:
-    typedef shared_ptr<base1> Ptr;
+    typedef boost::shared_ptr<base1> Ptr;
     base1(int a) : val1(a) { }
     virtual ~base1() { }
 
@@ -34,7 +34,7 @@ public:
 
 class base2 {
 public:
-    typedef shared_ptr<base2> Ptr;
+    typedef boost::shared_ptr<base2> Ptr;
     base2(int a) : val2(a) { }
     virtual ~base2() { }
 
@@ -43,7 +43,7 @@ public:
 
 class derived1 : public base1, public base2  {
 public:
-    typedef shared_ptr<derived1> Ptr;
+    typedef boost::shared_ptr<derived1> Ptr;
 
     derived1(int a, int b) : base1(a), base2(b) { }
     virtual ~derived1() { }
@@ -51,7 +51,7 @@ public:
 
 class derived2 : public base1, public base2  {
 public:
-    typedef shared_ptr<derived2> Ptr;
+    typedef boost::shared_ptr<derived2> Ptr;
 
     derived2(int a, int b, int c) : base1(a), base2(b), val3(c) { }
     virtual ~derived2() { }
@@ -61,7 +61,7 @@ public:
 
 class unrelated {
 public:
-    typedef shared_ptr<unrelated> Ptr;
+    typedef boost::shared_ptr<unrelated> Ptr;
 
     unrelated(int a) : val3(a) { }
     virtual ~unrelated() { }
